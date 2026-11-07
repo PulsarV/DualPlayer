@@ -305,87 +305,88 @@ depth: "medium"
 
 ## 2. Problem
 
-- **Бажаний результат (owner-reported):** двоє людей дивляться одне відео на ТБ, кожен чує свою
-  аудіодоріжку (наприклад, українську й англійську) у своїх Bluetooth-навушниках синхронно з
-  картинкою, а керування зручне з дивана без миші.
-- **Спостережувана проблема:** not established. Сценарій ще не пробували ні в якому вигляді
-  (owner-reported, 2026-11-07): зараз дивляться з одним звуком, двох виходів одночасно не запускали.
-  Тому розсинхрон, незручність керування чи обмеження Bluetooth — поки очікувані, а не спостережені проблеми.
-- **Запропоноване рішення (не проблема):** власний плеєр на C#/.NET 8 + Avalonia + два екземпляри libmpv
-  (архітектура A) — це рішення з ТЗ, ще не підтверджене вимірюваннями.
+- **Desired outcome (owner-reported):** two people watch the same video on a TV, each hearing their own
+  audio track (e.g. Ukrainian and English) in their own Bluetooth headphones, in sync with the picture,
+  with comfortable control from the couch without a mouse.
+- **Observed problem:** not established. The scenario has not been tried in any form
+  (owner-reported, 2026-11-07): today they watch with a single audio output and have never run two outputs
+  at once. Desync, awkward controls and Bluetooth limits are therefore expected, not observed, problems.
+- **Proposed solution (not the problem):** a custom player on C#/.NET 8 + Avalonia + two libmpv instances
+  (architecture A) — the solution from the spec, not yet confirmed by measurements.
 
 ## 3. Users
 
-- **Основні користувачі (owner-reported):** двоє людей удома дивляться одне відео з дивана за 2–4 м
-  від екрана. Кожен слухає свою аудіодоріжку у своїх Bluetooth-навушниках (JBL Tune 520BT, Marshall Motif II ANC).
-- **Обсяг аудиторії (owner-reported, рішення 2026-11-07):** спершу інструмент для власного сценарію,
-  згодом — публікація для інших людей зі схожим сценарієм. Ширші сегменти поки не визначені.
-- **Розробник/оператор (owner-reported):** власник; розробка на macOS, цільова машина — Windows 11 x64.
+- **Primary users (owner-reported):** two people at home watching one video from a couch 2–4 m from the
+  screen. Each listens to their own audio track in their own Bluetooth headphones (JBL Tune 520BT, Marshall Motif II ANC).
+- **Audience scope (owner-reported, decision 2026-11-07):** first a tool for the owner's own scenario,
+  later published for other people with a similar scenario. Broader segments are not defined yet.
+- **Developer/operator (owner-reported):** the owner; development on macOS, target machine Windows 11 x64.
 
 ## 4. Why now
 
-Конкретного поштовху чи терміну немає: це особистий проєкт без дедлайну (owner-reported, 2026-11-07).
+No specific trigger or deadline: a personal project without a deadline (owner-reported, 2026-11-07).
 
 ## 5. Out of scope
 
-- **Виключення з ТЗ (owner-reported):** бібліотека з обкладинками / медіацентр у стилі Kodi/Plex;
-  копіювання графіки й тем чужих плеєрів; додаткове обладнання, крім другого USB-адаптера Bluetooth за потреби.
-- **Обмеження, які треба зберегти (owner-required):** Windows 11 x64 як ціль; розробка на macOS;
-  MKV і MP4 обов'язково; LGPL-сумісне динамічне підключення libmpv.
-- **Не узгоджено:** вимоги C (OpenSubtitles, геймпад, >2 виходи тощо) вже позначені «можна пізніше»,
-  але явного рішення «не робимо» щодо них немає.
+- **Exclusions from the spec (owner-reported):** a cover-art library / Kodi/Plex-style media center;
+  copying graphics and themes of other players; extra hardware beyond a second USB Bluetooth adapter if needed.
+- **Constraints to preserve (owner-required):** Windows 11 x64 as the target; development on macOS;
+  MKV and MP4 mandatory; LGPL-compatible dynamic linking of libmpv.
+- **Not agreed:** C-priority requirements (OpenSubtitles, gamepad, >2 outputs, etc.) are marked
+  "can come later", but there is no explicit "won't do" decision for them.
 
 ## 6. Risks
 
-1. **Найслабше припущення: цільовий ПК одночасно тримає дві пари BT-навушників у режимі стерео (A2DP).**
-   Не перевірено (owner-reported, 2026-11-07). Якщо ні — потрібен другий USB-адаптер або сценарій
-   неможливий без іншого обладнання. Перевірка дешева і повністю зворотна.
-2. **Досяжність AUD-08 (≤ 20 мс між виходами) з архітектурою A** — assumption. Ніхто не вимірював
-   ні дрейф двох BT-пристроїв, ні різницю їхніх затримок. Якщо A не дасть цього, B оцінена в 3–4 рази дорожче (оцінка з ТЗ, assumption).
-3. **Чи потрібна точність 20 мс узагалі** — unknown. Двоє людей у різних навушниках не чують
-   один одного; критична синхронізація кожного виходу з відео (lip-sync), а не виходів між собою.
-   Якщо так, вимога AUD-08 може бути суттєво м'якшою, а простіший варіант — прийнятним.
-4. **Обсяг:** ~45 вимог рівня M для домашнього інструмента до перевірки базового сценарію; ризик
-   витратити тижні на інтерфейс до підтвердження, що звук узагалі працює.
+1. **Weakest assumption: the target PC can drive two pairs of BT headphones in stereo (A2DP) simultaneously.**
+   Not verified (owner-reported, 2026-11-07). If not, a second USB adapter is needed or the scenario is
+   impossible without other hardware. The check is cheap and fully reversible.
+2. **Achievability of AUD-08 (≤ 20 ms between outputs) with architecture A** — assumption. Nobody has
+   measured the drift of two BT devices or the difference in their latencies. If A cannot meet it, B is
+   estimated at 3–4× the cost (estimate from the spec, assumption).
+3. **Whether 20 ms precision is needed at all** — unknown. Two people in separate headphones do not hear
+   each other; what matters is each output's sync with the video (lip-sync), not the outputs with each other.
+   If so, AUD-08 could be substantially relaxed and a simpler approach could be acceptable.
+4. **Scope:** ~45 M-priority requirements for a home tool before the basic scenario is validated; risk of
+   spending weeks on UI before confirming that the audio setup works at all.
 
 Evidence ledger:
 
 | Claim / question | Class | Source / origin | Finding / limit |
 |---|---|---|---|
-| Сценарій ще не пробували | owner-reported | відповідь власника, 2026-11-07 | — |
-| Два BT-аудіопристрої одночасно на цільовому ПК | unknown | відповідь власника, 2026-11-07 | не перевірено |
-| Синхронізація окремих процесів mpv через IPC обмежена ~100 мс | source-verified (наявність твердження) | https://github.com/mpv-player/mpv/issues/13989, переглянуто 2026-11-07 | Відкритий feature request; автор стверджує «100ms resolution of ipc calls» щодо скрипта audio-dupe. Це думка автора, а не вимірювання; на точність двох libmpv в одному процесі не поширюється |
-| Bluetooth додає 150–300 мс затримки | assumption | ТЗ §3 «Ризики» | джерело не наведено, для цих моделей не виміряно |
-| Архітектура B у 3–4 рази дорожча | assumption | ТЗ §3 | оцінка власника без розбивки |
+| Scenario not tried yet | owner-reported | owner answer, 2026-11-07 | — |
+| Two BT audio devices at once on the target PC | unknown | owner answer, 2026-11-07 | not verified |
+| Syncing separate mpv processes via IPC is limited to ~100 ms | source-verified (claim exists) | https://github.com/mpv-player/mpv/issues/13989, inspected 2026-11-07 | Open feature request; the author states "100ms resolution of ipc calls" about the audio-dupe script. Author's opinion, not a measurement; does not apply to two libmpv instances in one process |
+| Bluetooth adds 150–300 ms latency | assumption | spec §3 "Ризики" | no source given; not measured for these models |
+| Architecture B costs 3–4× more | assumption | spec §3 | owner estimate without breakdown |
 
-Критика виконана inline (без окремого devils-advocate): зміна не торкається доступів, даних чи
-публічних контрактів і повністю зворотна.
+Critique done inline (no separate devils-advocate): the change does not touch access, data or public
+contracts and is fully reversible.
 
 ## 7. Recommendation
 
-- **Напрям (owner-accepted, 2026-11-07):** до специфікації й коду — дешевий експеримент на вечір на
-  цільовому ПК. Підключити JBL і Marshall одночасно, запустити два звичайні процеси mpv
-  (`--audio-device` на кожну пару, різні `--aid`, у другого `--vid=no`), дивитися 30–60 хв.
-  Зафіксувати: чи обидві пари в стерео (не Hands-Free), чи немає обривів, чи відчутний розсинхрон
-  кожного виходу з відео й між виходами, чи потрібна ручна затримка.
-- **Спостережуваний результат експерименту:** відповідь «так/ні» на питання про два BT-потоки та
-  якісна оцінка розсинхрону, на основі якої AUD-08 підтверджується, пом'якшується або переглядається.
-- **Головний компроміс:** день-два затримки старту розробки замість ризику збудувати великий
-  інтерфейс над неперевіреним апаратним сценарієм.
-- **Відхилені альтернативи:** одразу roadmap, з перевіркою як першим кроком (власник відхилив). Простіший
-  варіант «два mpv + скрипт» ТЗ відкидає через ~100 мс точності; експеримент покаже, чи цього
-  справді не досить для двох людей у різних навушниках.
+- **Direction (owner-accepted, 2026-11-07):** before spec and code — a cheap one-evening experiment on the
+  target PC. Connect JBL and Marshall simultaneously, run two plain mpv processes
+  (`--audio-device` per pair, different `--aid`, `--vid=no` on the second), watch for 30–60 min.
+  Record: whether both pairs are in stereo (not Hands-Free), whether there are dropouts, whether desync of
+  each output with the video and between outputs is noticeable, whether manual delay is needed.
+- **Observable result of the experiment:** a yes/no answer on two BT streams and a qualitative desync
+  assessment, based on which AUD-08 is confirmed, relaxed or revised.
+- **Main tradeoff:** a day or two of delay before development starts versus the risk of building a large
+  UI on top of an unvalidated hardware scenario.
+- **Rejected alternatives:** go straight to roadmap with validation as the first step (rejected by the owner).
+  The simpler "two mpv + script" option is dismissed by the spec due to ~100 ms precision; the experiment
+  will show whether that is really insufficient for two people in separate headphones.
 - **Outcome: needs-evidence.**
-- **Наступна дія:** провести експеримент, дописати результати сюди (§6/§8) і повторно запустити
-  `/sdd:interview` → очікувано `ready-for-roadmap`.
+- **Next action:** run the experiment, append the results here (§6/§8) and re-run
+  `/sdd:interview` → expected `ready-for-roadmap`.
 
 ## 8. Open questions
 
-| Питання | Наслідок | Блокує? | Перевірка | Власник |
+| Question | Consequence | Blocking? | Verification | Owner |
 |---|---|---|---|---|
-| Чи тримає цільовий ПК дві пари BT у стерео одночасно? | Ні → другий USB-адаптер або сценарій неможливий | blocking | експеримент з §7 | Volodymyr Kravchuk |
-| Наскільки відчутний розсинхрон двох незалежних mpv на практиці? | Визначає, чи потрібна архітектура A/B і точність 20 мс | blocking | експеримент з §7 | Volodymyr Kravchuk |
-| Яка реальна вимога до синхронізації: між виходами чи кожного з відео? | Може пом'якшити AUD-08 і спростити рушій | blocking | висновок після експерименту | Volodymyr Kravchuk |
-| Роздільність, діагональ ТБ і відстань перегляду (ТЗ, питання 1) | Впливає на розміри інтерфейсу | nonblocking | виміряти вдома | Volodymyr Kravchuk |
-| Модель бездротової клавіатури/пульта (ТЗ, питання 3) | Впливає на CTL-02 | nonblocking | перевірити наявне обладнання | Volodymyr Kravchuk |
-| Режим «звук у колонки» та інші мови інтерфейсу (ТЗ, питання 2, 4) | Обсяг MVP | nonblocking | рішення під час roadmap | Volodymyr Kravchuk |
+| Can the target PC drive two BT pairs in stereo simultaneously? | No → second USB adapter or scenario impossible | blocking | experiment from §7 | Volodymyr Kravchuk |
+| How noticeable is the desync of two independent mpv processes in practice? | Decides whether architecture A/B and 20 ms precision are needed | blocking | experiment from §7 | Volodymyr Kravchuk |
+| What is the real sync requirement: between outputs or each with the video? | May relax AUD-08 and simplify the engine | blocking | conclusion after the experiment | Volodymyr Kravchuk |
+| TV resolution, diagonal and viewing distance (spec, question 1) | Affects UI sizes | nonblocking | measure at home | Volodymyr Kravchuk |
+| Wireless keyboard/remote model (spec, question 3) | Affects CTL-02 | nonblocking | check existing hardware | Volodymyr Kravchuk |
+| Speaker-only mode and other UI languages (spec, questions 2, 4) | MVP scope | nonblocking | decide during roadmap | Volodymyr Kravchuk |
