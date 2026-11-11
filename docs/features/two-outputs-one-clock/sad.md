@@ -250,6 +250,204 @@ sequenceDiagram
     end
 ```
 
+### Flow 4: list devices and tracks (US-02 — AC-02, AC-03 file branch)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as client
+    participant S as service
+    participant X as external-system
+
+    Note over C,S: Precondition: no run in progress
+    C->>S: list devices
+    S->>X: enumerate playback devices the OS offers now
+    X-->>S: name, device type when known, endpoint id
+    S-->>C: numbered device list
+    C->>S: list tracks of a media file
+    S->>X: open the file and read its audio streams
+    alt file opens as media
+        X-->>S: audio streams
+        S-->>C: tracks numbered from 1 with language and channel layout
+    else file cannot be opened as media
+        X-->>S: open failed
+        S-->>C: the file cannot be opened, with the reason in plain language
+    end
+    Note over C,S: Postcondition: nothing plays and no run starts
+```
+
+### Flow 5: pause and resume, seek while paused (US-04 — AC-08, AC-09b)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as client
+    participant S as service
+    participant X as external-system
+
+    Note over C,S: Precondition: two or more audio outputs are playing
+    C->>S: pause
+    S->>S: pick the pause instant beyond the audio queued in every device
+    X->>S: render request with device position
+    S-->>X: audio up to the pause instant, then silence
+    S->>S: stop the master clock at the pause instant
+    S-->>C: paused at master-clock position
+    opt Developer seeks while paused
+        C->>S: seek to target
+        S->>S: new epoch, clock moves to the target and stays stopped
+        S-->>C: position moved, still paused, every output silent
+    end
+    C->>S: resume
+    S->>S: wait until every ring holds the start level
+    S->>S: start the master clock from the paused or new position
+    X->>S: render request with device position
+    S-->>X: audio from that position
+    S->>S: drift controller brings each output within tolerance
+    S-->>C: resumed
+    Note over C,X: Postcondition: on pause all outputs fell silent within 10 ms of each other, after resume each is within tolerance in 1 s or less
+```
+
+### Flow 6: seek outside the file (US-04 — AC-10)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as client
+    participant S as service
+    participant D as data-store
+
+    Note over C,S: Precondition: two or more audio outputs are playing
+    C->>S: seek to a target outside the file
+    alt target before the start
+        S->>S: clamp the target to the beginning, new epoch
+        S-->>C: target was outside the file, playing from the beginning
+    else target past the end
+        S->>S: move the position to the end of the file at once, new epoch
+        S->>S: all outputs fall silent, master clock stops, run ends
+        S->>D: write the run summary
+        Note over S,D: persists run summary for every output
+        S-->>C: target was outside the file, run summary
+    end
+```
+
+### Flow 7: steady playback — drift correction, records, excursions (US-03, US-06 — AC-07, AC-11)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as client
+    participant S as service
+    participant X as external-system
+    participant D as data-store
+
+    Note over S,X: Precondition: a run is playing on one or more devices
+    loop every device period, on that device's render thread
+        X->>S: render request with device position
+        S->>S: measure drift of the device position against the master clock
+        S->>S: apply the controller's rate ratio in the adaptive resampler
+        alt ring holds enough frames
+            S-->>X: frames for that device
+        else ring ran dry
+            S-->>X: silence, underrun counter increases
+        end
+    end
+    loop once per second, on the engine-control loop
+        S->>S: snapshot the counters of every output
+        opt drift too large for the rate adjustment
+            S->>S: re-align that output's position in one step, count a correction
+        end
+        S-->>C: one sync record per device as an engine event
+        S->>D: write the sync records
+        Note over S,D: persists sync record per device - drift, current correction, cumulative underruns, device id, clock position
+        alt drift beyond the 10 ms tolerance
+            S->>S: open or extend the excursion for that device
+        else back within tolerance after an excursion
+            S->>D: write the excursion
+            Note over S,D: persists excursion - device, peak, duration, start position
+            S-->>C: excursion event
+        end
+    end
+    Note over C,S: Postcondition: every excursion is recorded once, no Developer action needed
+```
+
+### Flow 8: convert a track to its device format (US-07 — AC-12)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant S as service
+    participant F as external-system media file
+    participant X as external-system device
+
+    Note over S,X: Precondition: the device stream is open in shared mode
+    X-->>S: device mix format - sample rate and channel layout
+    S->>S: set up this output's converter from track format to mix format
+    loop while decoding
+        S->>F: read the next packets of the track
+        F-->>S: compressed audio
+        S->>S: decode and resample to the device rate
+        alt track has more channels than the device
+            S->>S: fold every channel except LFE into the device layout
+        else track has fewer channels than the device
+            S->>S: route to the front channels only, mono to both, no upmix
+        else layouts match
+            S->>S: pass the channels through
+        end
+        S->>S: write the frames into the output's ring buffer
+    end
+    Note over S,X: Postcondition: correct pitch and speed, the output still meets the drift tolerance
+```
+
+### Flow 9: end a run and print the run summary (US-08 — AC-13)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as client
+    participant S as service
+    participant X as external-system
+    participant D as data-store
+
+    Note over C,S: Precondition: a run has been playing
+    alt the file ended
+        S->>S: decoder reports end of file, outputs drain their rings
+    else Developer gives the stop command
+        C->>S: stop
+    else Ctrl+C or the console window is closed
+        C->>S: stop requested by the console shutdown signal
+    end
+    S->>S: pick the stop instant beyond the audio queued in every device, new epoch
+    X->>S: render request with device position
+    S-->>X: silence from the stop instant
+    S->>S: stop the master clock, build the run summary per output
+    S->>D: write the run summary
+    Note over S,D: persists run summary - device, played duration, largest steady-state drift, clock mismatch in ppm, corrections, underruns, device-lost events
+    S-->>C: run summary
+    S->>X: close every device stream
+    C->>C: print the summary and exit
+    Note over C,D: Postcondition: a crash or killed process gives no summary, the records so far stay in the log
+```
+
+**Coverage (user story / AC → flow):**
+
+| Spec item | Shown in |
+|---|---|
+| US-01 · AC-01, AC-03 (track/device), AC-04, AC-05 | Flow 1 (happy + `alt` branches) |
+| US-02 · AC-02, AC-03 (file) | Flow 4 |
+| US-03 · AC-07 | Flow 7 |
+| US-04 · AC-08, AC-09b | Flow 5 |
+| US-04 · AC-09 | Flow 2 |
+| US-04 · AC-10 | Flow 6 |
+| US-05 · AC-06, AC-06b | Flow 3 |
+| US-06 · AC-11 | Flow 7 |
+| US-07 · AC-12 | Flow 8 |
+| US-08 · AC-13 | Flow 9 (also reached from Flow 3 and Flow 6) |
+
+**Flags for later stages (not decisions):**
+- Flows 4–9 use the generic participant names `client` / `service` / `external-system` / `data-store`; Flows 1–3 (from `design`) name the §5 containers. Mapping: `client` = DualPlayer.Console, `service` = DualPlayer.Core with DualPlayer.Media, `external-system` = OS audio subsystem, devices or the media file, `data-store` = log files.
+- No database: every persist note is a structured log record (sync record, excursion, device-lost event, run summary), so `data-model` has no schema to change.
+- Flow 9: closing the console window on Windows leaves the process only a few seconds to shut down; writing the run summary must fit in that window — note for `tasks`.
+
 ## 7. Deployment view
 
 One process, `DualPlayer.Console`, runs on one PC: the target Windows 11 x64 PC for evidence runs, the dev Mac for development (dev backend, no sync targets). It is started from the repository with `dotnet run --project src/DualPlayer.Console` or as a `win-x64` build output; no installer in this step (roadmap step 13). FFmpeg's LGPL shared libraries are fetched on Windows by `build/fetch-ffmpeg.ps1`, which downloads one pinned LGPL win-x64 shared build, checks its SHA-256 and unpacks it into a git-ignored folder; the console project copies the DLLs beside its executable. The pinned FFmpeg major version matches the FFmpeg.AutoGen package version. On the dev Mac FFmpeg comes from Homebrew. Logs go to the per-user app-data `logs/` folder.
