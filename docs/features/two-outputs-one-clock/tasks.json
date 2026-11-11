@@ -311,7 +311,7 @@
         "tests/DualPlayer.Media.Tests/TestMedia/"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T14-decode-tracks-with-ffmpeg.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T15",

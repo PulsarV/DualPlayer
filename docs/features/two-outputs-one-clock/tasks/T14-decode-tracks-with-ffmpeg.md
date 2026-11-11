@@ -9,8 +9,8 @@ files_hint: ["src/DualPlayer.Media/Audio/FfmpegAudioDecoder.cs", "src/DualPlayer
 owner: "Volodymyr Kravchuk"
 estimate: "L"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Self-contained task: work from what is inlined here. Every quoted chunk ends with its provenance
