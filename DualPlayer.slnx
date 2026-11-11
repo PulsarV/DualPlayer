@@ -10,6 +10,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/DualPlayer.Core.Tests/DualPlayer.Core.Tests.csproj" />
     <Project Path="tests/DualPlayer.Console.Tests/DualPlayer.Console.Tests.csproj" />
+    <Project Path="tests/DualPlayer.Media.Tests/DualPlayer.Media.Tests.csproj" />
     <Project Path="tests/DualPlayer.App.Tests/DualPlayer.App.Tests.csproj" />
     <Project Path="tests/DualPlayer.Platform.Windows.Tests/DualPlayer.Platform.Windows.Tests.csproj" />
   </Folder>

@@ -1,6 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!-- Adapters: FFmpeg audio decoder, libmpv video renderer (added by features). -->
   <ItemGroup>
+    <PackageReference Include="FFmpeg.AutoGen" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\DualPlayer.Core\DualPlayer.Core.csproj" />
+  </ItemGroup>
+  <!-- LGPL FFmpeg DLLs fetched by build/fetch-ffmpeg.ps1 (Windows); flow beside every referencing exe. -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../../build/ffmpeg/*.dll" CopyToOutputDirectory="PreserveNewest" Link="%(Filename)%(Extension)" Visible="false" />
   </ItemGroup>
 </Project>

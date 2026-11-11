@@ -23,6 +23,18 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
+      - name: Install FFmpeg (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ffmpeg
+      - name: Cache FFmpeg (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: build/ffmpeg
+          key: ffmpeg-win64-${{ hashFiles('build/fetch-ffmpeg.ps1') }}
+      - name: Install FFmpeg (Windows)
+        if: runner.os == 'Windows'
+        run: ./build/fetch-ffmpeg.ps1
       - name: Build
         run: dotnet build DualPlayer.slnx
       - name: Test

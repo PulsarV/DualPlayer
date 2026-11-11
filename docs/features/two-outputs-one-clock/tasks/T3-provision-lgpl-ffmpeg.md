@@ -9,8 +9,8 @@ files_hint: ["build/fetch-ffmpeg.ps1", ".gitignore", "Directory.Packages.props",
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "S"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Self-contained task: work from what is inlined here. Every quoted chunk ends with its provenance
