@@ -13,5 +13,6 @@
     <Project Path="tests/DualPlayer.Media.Tests/DualPlayer.Media.Tests.csproj" />
     <Project Path="tests/DualPlayer.App.Tests/DualPlayer.App.Tests.csproj" />
     <Project Path="tests/DualPlayer.Platform.Windows.Tests/DualPlayer.Platform.Windows.Tests.csproj" />
+    <Project Path="tests/DualPlayer.Platform.MacOS.Tests/DualPlayer.Platform.MacOS.Tests.csproj" />
   </Folder>
 </Solution>
