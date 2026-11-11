@@ -1,7 +1,7 @@
 ---
 status: Draft
 owner: "Volodymyr Kravchuk"
-updated_at: "2026-11-07"
+updated_at: "2026-11-11"
 depth: "medium"
 ---
 
@@ -271,6 +271,10 @@ No specific trigger or deadline: a personal project without a deadline (owner-re
 4. **Scope:** ~45 M-priority requirements for a home tool before the basic scenario is validated; risk of
    spending weeks on UI before confirming that the audio setup works at all.
 
+Experiment results (owner-reported, 2026-11-08): two independent mpv processes on the target PC, JBL and
+Marshall both as WASAPI "Headphones" endpoints (stereo, 48000 Hz, no Hands-Free endpoint listed).
+No noticeable desync. Crackling, like a vinyl record, was heard on quiet passages; cause not yet localized.
+
 Evidence ledger:
 
 | Claim / question | Class | Source / origin | Finding / limit |
@@ -312,3 +316,8 @@ contracts and is fully reversible.
 | TV resolution, diagonal and viewing distance (spec, question 1) | Affects UI sizes | nonblocking | measure at home | Volodymyr Kravchuk |
 | Wireless keyboard/remote model (spec, question 3) | Affects CTL-02 | nonblocking | check existing hardware | Volodymyr Kravchuk |
 | Speaker-only mode and other UI languages (spec, questions 2, 4) | MVP scope | nonblocking | decide during roadmap | Volodymyr Kravchuk |
+| Is the crackling present in the source track itself? | Rules out / in a Bluetooth cause | blocking | play the same quiet passage on the Realtek output | Volodymyr Kravchuk |
+| Does each pair crackle when it plays alone? | Alone clean + together crackling → built-in adapter bandwidth → second USB BT adapter | blocking | play JBL alone, then Marshall alone | Volodymyr Kravchuk |
+| Does a larger audio buffer remove the crackling? | Yes → buffer underruns, fixable in software | blocking | add `--audio-buffer=0.5` to both mpv commands | Volodymyr Kravchuk |
+| Is it 2.4 GHz Wi-Fi interference or distance? | Environment issue, not the player | nonblocking | switch PC to 5 GHz / cable; compare near vs far from the PC | Volodymyr Kravchuk |
+| Which headphones crackled: one pair or both? | Narrows down device vs adapter | blocking | owner recollection / repeat test | Volodymyr Kravchuk |
