@@ -9,6 +9,10 @@ internal sealed class FakeAudioDevice(TimeProvider time, MixFormat format, TimeS
     private bool _lost;
     private bool _closed;
 
+    public bool IsStarted => _started;
+
+    public bool IsClosed => _closed;
+
     public MixFormat MixFormat => format;
 
     public TimeSpan GrantedBuffer => buffer;
