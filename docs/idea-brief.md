@@ -311,7 +311,7 @@ contracts and is fully reversible.
 - **Rejected alternatives:** go straight to roadmap with validation as the first step (rejected by the owner).
   The simpler "two mpv + script" option is dismissed by the spec due to ~100 ms precision; the experiment
   will show whether that is really insufficient for two people in separate headphones.
-- **Proposed direction change (proposal, NOT yet accepted, 2026-11-11)** — driven by the portability goal in §2:
+- **Architecture direction change (owner-accepted, 2026-11-11)** — driven by the portability goal in §2:
   1. One engine and one master clock instead of two independent mpv instances: decode once, fan audio
      out to N WASAPI endpoints, correct each device's drift automatically by resampling against its
      reported position (`IAudioClock`). Architecture B becomes primary; libmpv may still render video.
@@ -328,7 +328,8 @@ contracts and is fully reversible.
   7. Sync verification on the developer side: an automated click/flash test recorded via microphone or
      loopback on several test machines, so users get pre-validated behavior.
   Impact on the spec: AUD-05/AUD-11 become optional fine-tuning; new requirements for auto latency
-  compensation, self-diagnostics and minimum requirements; larger scope. To be decided as an ADR in `/sdd:design`.
+  compensation, self-diagnostics and minimum requirements; larger scope. The direction is accepted; the
+  concrete design still has to be recorded as an ADR in `/sdd:design`.
 - **Outcome: needs-evidence.**
 - **Next action:** run the experiment, append the results here (§6/§8) and re-run
   `/sdd:interview` → expected `ready-for-roadmap`.
@@ -348,6 +349,5 @@ contracts and is fully reversible.
 | Does a larger audio buffer remove the crackling? | Yes → buffer underruns, fixable in software | blocking | add `--audio-buffer=0.5` to both mpv commands | Volodymyr Kravchuk |
 | Is it 2.4 GHz Wi-Fi interference or distance? | Environment issue, not the player | nonblocking | switch PC to 5 GHz / cable; compare near vs far from the PC | Volodymyr Kravchuk |
 | Which headphones crackled: one pair or both? | Narrows down device vs adapter | blocking | owner recollection / repeat test | Volodymyr Kravchuk |
-| Accept the proposed portability direction (architecture B primary, video delay, auto latency, self-diagnostics)? | Changes the engine, scope and the spec's priorities | blocking | owner decision; record as ADR in `/sdd:design` | Volodymyr Kravchuk |
 | What are the minimum requirements (Windows version, BT adapter, CPU/GPU)? | Defines what "works on any computer" means | nonblocking | decide during roadmap/specify | Volodymyr Kravchuk |
 | Where do per-model Bluetooth latency defaults come from? | Without data, auto-compensation falls back to a generic default | nonblocking | research measurements / build own table from tests | unassigned |
