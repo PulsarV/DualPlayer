@@ -20,6 +20,7 @@ lives in spec.md.
 - Device — an audio endpoint the operating system exposes (BT headphones, speakers, HDMI, USB), identified by its OS endpoint id. NOT Audio output.
 - Drift — how far an audio output's playback position has moved away from the master clock, because its device runs slightly fast or slow. NOT Latency (a fixed delay between playing a sample and hearing it, handled in roadmap step 4).
 - Master clock — the single playback timeline every audio output follows; it keeps running when any one device stops. NOT a device's own clock.
+- Run summary — the per-output account of one run, printed by the console and recorded in the log when playback stops: for every audio output its device, played duration, largest drift, device clock mismatch, number of corrections and underruns, and any device-lost events. NOT the live sync counters (they report the current state while playing; the run summary totals the whole run after it stops).
 - Track — one audio stream inside the media file (e.g. the Ukrainian or English dub). NOT Audio output (a track is content, an output is where it plays).
 - Underrun — a moment when a device had no audio ready to play, heard as a click, gap or crackle. NOT Drift.
 - Viewer — one of the people watching the video, each listening to their own audio output. NOT Developer.
