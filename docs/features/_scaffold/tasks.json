@@ -1,0 +1,50 @@
+{
+  "slug": "_scaffold",
+  "tasks": [
+    {
+      "id": "S1",
+      "title": "Create DualPlayer.slnx with Core, Media, Platform.Windows, Platform.MacOS and App projects (net10.0), Directory.Build.props, Directory.Packages.props, and an Avalonia entry point that opens an empty dark window",
+      "layer": "scaffold",
+      "deps": [],
+      "acs": [],
+      "dod": "dotnet build DualPlayer.slnx succeeds on macOS with warnings-as-errors; the App boots and shows an empty window; Core has no reference to Avalonia, NAudio, FFmpeg or Platform projects",
+      "files_hint": ["DualPlayer.slnx", "Directory.Build.props", "Directory.Packages.props", "src/DualPlayer.Core/", "src/DualPlayer.Media/", "src/DualPlayer.Platform.Windows/", "src/DualPlayer.Platform.MacOS/", "src/DualPlayer.App/Program.cs", "src/DualPlayer.App/Themes/Tokens.axaml"]
+    },
+    {
+      "id": "S2",
+      "title": "Wire the test harness: Core, App and Platform.Windows test projects (xUnit v3 + Shouldly + NSubstitute), a [HardwareFact] attribute gated by DUALPLAYER_HARDWARE=1, and an app-boots smoke test",
+      "layer": "scaffold",
+      "deps": ["S1"],
+      "acs": [],
+      "dod": "dotnet test DualPlayer.slnx runs green; the smoke test builds the DI container from the composition root and resolves the main ViewModel; a [HardwareFact] test is reported as skipped without the env var",
+      "files_hint": ["tests/DualPlayer.Core.Tests/", "tests/DualPlayer.App.Tests/", "tests/DualPlayer.Platform.Windows.Tests/"]
+    },
+    {
+      "id": "S3",
+      "title": "Set up the state store: IStateStore port in Core, JSON file adapter with schemaVersion, an upgrader chain and atomic temp+rename writes, plus an initial empty settings file v1",
+      "layer": "scaffold",
+      "deps": ["S1"],
+      "acs": [],
+      "dod": "a test writes settings v1, reloads it, and lifts a v0 fixture to v1 through the upgrader chain; an interrupted write leaves the previous file intact",
+      "files_hint": ["src/DualPlayer.Core/Settings/", "src/DualPlayer.Core/Result.cs", "tests/DualPlayer.Core.Tests/Settings/"]
+    },
+    {
+      "id": "S4",
+      "title": "Add logging (Microsoft.Extensions.Logging + Serilog rolling file in app-data logs/) and the GitHub Actions CI workflow (windows-latest + macos-latest: build + test + lint)",
+      "layer": "scaffold",
+      "deps": ["S2"],
+      "acs": [],
+      "dod": "the app writes a startup log line to the log file; dotnet format DualPlayer.slnx --verify-no-changes passes; the CI YAML is valid and its commands match build_cmd/test_cmd/lint_cmd in docs/architecture-map.md",
+      "files_hint": ["src/DualPlayer.App/Program.cs", ".github/workflows/ci.yml", ".editorconfig"]
+    },
+    {
+      "id": "S5",
+      "title": "Write CLAUDE.md from the foundation conventions (module boundaries, platform selection, Result over exceptions, TimeProvider, threading, tests, persistence)",
+      "layer": "scaffold",
+      "deps": ["S1"],
+      "acs": [],
+      "dod": "CLAUDE.md reflects every convention line in docs/architecture-map.md and names the build/test/lint commands",
+      "files_hint": ["CLAUDE.md"]
+    }
+  ]
+}
