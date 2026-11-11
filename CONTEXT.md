@@ -15,6 +15,7 @@ lives in spec.md.
 ## Glossary
 
 - Audio output — one listening channel of the player: a track played on a device with its own volume and offset. NOT Device (each output plays on its own device; the output is the player's notion, the device is the OS's).
+- Correction — the adjustment the engine makes to bring an audio output back to the master clock: reported as the continuous playback-rate adjustment in parts per million, and counted only when the output's position is re-aligned in one step. NOT Drift (drift is the error; correction is the response to it).
 - Developer — the project owner who builds, runs and measures the player, including the step-3 console. NOT Viewer (a Developer acts on the engine; a Viewer only watches and listens).
 - Device — an audio endpoint the operating system exposes (BT headphones, speakers, HDMI, USB), identified by its OS endpoint id. NOT Audio output.
 - Drift — how far an audio output's playback position has moved away from the master clock, because its device runs slightly fast or slow. NOT Latency (a fixed delay between playing a sample and hearing it, handled in roadmap step 4).
