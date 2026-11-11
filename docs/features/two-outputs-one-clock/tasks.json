@@ -128,7 +128,7 @@
         "tests/DualPlayer.Core.Tests/Sync/AdaptiveResamplerTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T6-write-adaptive-resampler.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T7",

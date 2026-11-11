@@ -9,8 +9,8 @@ files_hint: ["src/DualPlayer.Core/Sync/AdaptiveResampler.cs", "src/DualPlayer.Co
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "S"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Self-contained task: work from what is inlined here. Every quoted chunk ends with its provenance
