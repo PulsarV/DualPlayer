@@ -426,7 +426,7 @@
         "tests/DualPlayer.Console.Tests/ListAndPlayCommandTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T19-console-list-and-play.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T20",

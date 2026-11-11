@@ -1,3 +1,5 @@
+using DualPlayer.Console.Commands;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Extensions.Logging;
@@ -28,15 +30,23 @@ internal static class Program
 
         try
         {
-            if (args.Length == 0)
+            var parsed = CommandLine.Parse(args);
+            if (!parsed.IsSuccess)
             {
-                System.Console.Error.WriteLine("error cli.usage: a command is required");
+                System.Console.Error.WriteLine($"error {parsed.Error.Code}: {parsed.Error.Message}");
                 return ExitUsage;
             }
 
             using var services = ConsoleCompositionRoot.Build(paths, loggerFactory);
-            System.Console.Error.WriteLine($"error cli.usage: unknown command '{args[0]}'");
-            return ExitUsage;
+            var stdout = System.Console.Out;
+            var stderr = System.Console.Error;
+            return parsed.Value switch
+            {
+                DevicesRequest => services.GetRequiredService<DevicesCommand>().Run(stdout, stderr),
+                TracksRequest t => services.GetRequiredService<TracksCommand>().Run(t, stdout, stderr),
+                PlayRequest p => services.GetRequiredService<PlayCommand>().Run(p, stdout, stderr),
+                _ => ExitUsage,
+            };
         }
         catch (Exception ex)
         {

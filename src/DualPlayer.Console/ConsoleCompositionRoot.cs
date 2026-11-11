@@ -1,3 +1,4 @@
+using DualPlayer.Console.Commands;
 using DualPlayer.Core;
 using DualPlayer.Media;
 using DualPlayer.Platform.MacOS;
@@ -28,6 +29,10 @@ public static class ConsoleCompositionRoot
         services.AddSingleton(paths);
         services.AddSingleton(loggerFactory);
         services.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
+
+        services.AddTransient<DevicesCommand>();
+        services.AddTransient<TracksCommand>();
+        services.AddTransient<PlayCommand>();
 
         services.AddCore(paths.StateDirectory);
         services.AddMedia();
