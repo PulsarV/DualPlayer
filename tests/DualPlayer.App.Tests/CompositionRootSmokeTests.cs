@@ -1,5 +1,6 @@
 using DualPlayer.App;
 using DualPlayer.App.ViewModels;
+using DualPlayer.Core;
 using DualPlayer.Core.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
