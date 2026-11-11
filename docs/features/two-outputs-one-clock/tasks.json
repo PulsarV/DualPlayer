@@ -111,7 +111,7 @@
         "tests/DualPlayer.Core.Tests/Outputs/AudioRingBufferTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T5-build-epoch-ring-buffer.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T6",
