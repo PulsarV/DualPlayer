@@ -73,7 +73,7 @@
         ".github/workflows/ci.yml"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T3-provision-lgpl-ffmpeg.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T4",
@@ -95,7 +95,7 @@
         "tests/DualPlayer.Core.Tests/Outputs/OutputAssignmentValidatorTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T4-validate-output-assignments.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T5",
@@ -150,7 +150,7 @@
         "tests/DualPlayer.Core.Tests/Sync/DriftControllerTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T7-implement-master-clock-and-drift-controller.md",
-      "status": "todo"
+      "status": "blocked"
     },
     {
       "id": "T8",
@@ -215,7 +215,7 @@
         "tests/DualPlayer.Core.Tests/Playback/DecodePumpTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T10-fan-out-decode-pump.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T11",

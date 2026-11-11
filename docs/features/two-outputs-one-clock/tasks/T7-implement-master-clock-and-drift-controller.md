@@ -9,8 +9,8 @@ files_hint: ["src/DualPlayer.Core/Sync/MasterClock.cs", "src/DualPlayer.Core/Syn
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "blocked"
+step: "GATE - red after 3 attempts: RED test harness Seek never moves content position; needs test fix"
 ---
 
 <!-- Self-contained task: work from what is inlined here. Every quoted chunk ends with its provenance
