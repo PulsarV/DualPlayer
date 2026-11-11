@@ -17,6 +17,18 @@ internal sealed class FakeAudioDevice(TimeProvider time, MixFormat format, TimeS
 
     public TimeSpan GrantedBuffer => buffer;
 
+    private readonly List<float> _rendered = [];
+
+    /// <summary>First-channel sample of every frame handed to the device so far, in order.</summary>
+    public IReadOnlyList<float> Rendered => _rendered;
+
+    /// <summary>Frames handed to the device so far.</summary>
+    public long WrittenFrames => _rendered.Count;
+
+    /// <summary>Frames the device has played at the current time.</summary>
+    public long PlayedFramesNow =>
+        (long)Math.Round(time.GetElapsedTime(_startTimestamp, time.GetTimestamp()).TotalSeconds * format.SampleRate * (1 + (ppm * 1e-6)));
+
     public event EventHandler? DeviceLost;
 
     public void Start()
@@ -50,6 +62,11 @@ internal sealed class FakeAudioDevice(TimeProvider time, MixFormat format, TimeS
         var now = time.GetTimestamp();
         var elapsed = time.GetElapsedTime(_startTimestamp, now).TotalSeconds;
         var played = (long)Math.Round(elapsed * format.SampleRate * (1 + (ppm * 1e-6)));
-        source.Render(new float[frames * format.Channels], new DevicePosition(played, now));
+        var buffer = new float[frames * format.Channels];
+        source.Render(buffer, new DevicePosition(played, now));
+        for (var i = 0; i < frames; i++)
+        {
+            _rendered.Add(buffer[i * format.Channels]);
+        }
     }
 }

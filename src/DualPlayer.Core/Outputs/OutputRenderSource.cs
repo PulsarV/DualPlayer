@@ -19,6 +19,7 @@ public sealed class OutputRenderSource : IRenderSource
     private long _silenceFrom = long.MaxValue;
     private long _ratioBits = BitConverter.DoubleToInt64Bits(1.0);
     private int _pendingRealign;
+    private int _realignsApplied;
     private long _underruns;
     private long _framesPlayed;
     private long _timestamp;
@@ -26,6 +27,10 @@ public sealed class OutputRenderSource : IRenderSource
     private long _lastContentFrame = -1;
     private long _previousEpochLastContentFrame = -1;
     private long _oldEpochEndFramesWritten;
+    private int _positionVersion; // odd while the position pair is being written
+    private int _bufferVersion; // odd while the audio-buffer pair below is being written
+    private long _bufferDeviceFrame = -1;
+    private long _bufferContentBits;
     private bool _awaitingFirstFrame = true; // render thread only
 
     public OutputRenderSource(AudioRingBuffer ring)
@@ -41,6 +46,15 @@ public sealed class OutputRenderSource : IRenderSource
     public long LatestFramesPlayed => Interlocked.Read(ref _framesPlayed);
 
     public long LatestTimestamp => Interlocked.Read(ref _timestamp);
+
+    /// <summary>A consistent pair: the device position the last render saw and the time it was read; false while a render is updating it.</summary>
+    public bool TryGetLatestPosition(out long framesPlayed, out long timestamp)
+    {
+        var before = Volatile.Read(ref _positionVersion);
+        framesPlayed = Interlocked.Read(ref _framesPlayed);
+        timestamp = Interlocked.Read(ref _timestamp);
+        return before % 2 == 0 && before == Volatile.Read(ref _positionVersion);
+    }
 
     /// <summary>Frames written to the device and not yet played (never understated by a torn read).</summary>
     public long QueuedFrames
@@ -72,22 +86,50 @@ public sealed class OutputRenderSource : IRenderSource
     public bool HasPlayedOutOldEpoch(int epoch) =>
         AppliedEpoch >= epoch && LatestFramesPlayed >= OldEpochEndFramesWritten;
 
+    /// <summary>Content frame the newest requested epoch starts at.</summary>
+    public long EpochStartContentFrame => Volatile.Read(ref _epochState).StartContentFrame;
+
     public void BeginEpoch(int epoch, long startContentFrame) =>
         Volatile.Write(ref _epochState, new EpochState(epoch, startContentFrame));
 
+    /// <summary>Content frame the source falls silent at; <see cref="long.MaxValue"/> when it plays on.</summary>
+    public long SilenceFrom => Interlocked.Read(ref _silenceFrom);
+
+    /// <summary>
+    /// The most recent device buffer filled entirely with audio since the epoch began or since
+    /// <see cref="ClearSilence"/>: its first device frame and the content position (in frames, fractional) of its
+    /// first audio frame. False until one exists, or while a render is updating it.
+    /// </summary>
+    public bool TryGetLatestAudioBuffer(out long deviceFrame, out double contentPosition)
+    {
+        var before = Volatile.Read(ref _bufferVersion);
+        deviceFrame = Interlocked.Read(ref _bufferDeviceFrame);
+        contentPosition = BitConverter.Int64BitsToDouble(Interlocked.Read(ref _bufferContentBits));
+        return before % 2 == 0 && deviceFrame >= 0 && before == Volatile.Read(ref _bufferVersion);
+    }
+
     public void SetSilenceFrom(long contentFrame) => Interlocked.Exchange(ref _silenceFrom, contentFrame);
 
-    public void ClearSilence() => Interlocked.Exchange(ref _silenceFrom, long.MaxValue);
+    public void ClearSilence()
+    {
+        PublishAudioBuffer(-1, 0);
+        Interlocked.Exchange(ref _silenceFrom, long.MaxValue);
+    }
 
     public void SetResamplerRatio(double ratio) =>
         Interlocked.Exchange(ref _ratioBits, BitConverter.DoubleToInt64Bits(ratio));
+
+    /// <summary>Number of re-alignments the render thread has applied; each one invalidates <see cref="TryGetLatestAudioBuffer"/>.</summary>
+    public int RealignsApplied => Volatile.Read(ref _realignsApplied);
 
     public void RequestRealign(int frames) => Interlocked.Add(ref _pendingRealign, frames);
 
     public void Render(Span<float> buffer, DevicePosition position)
     {
+        Interlocked.Increment(ref _positionVersion);
         Interlocked.Exchange(ref _framesPlayed, position.FramesPlayed);
         Interlocked.Exchange(ref _timestamp, position.Timestamp);
+        Interlocked.Increment(ref _positionVersion);
 
         var state = Volatile.Read(ref _epochState);
         var epochChanged = !ReferenceEquals(state, _appliedState);
@@ -107,12 +149,15 @@ public sealed class OutputRenderSource : IRenderSource
         if (realign != 0)
         {
             _resampler.Realign(realign);
+            PublishAudioBuffer(-1, 0); // later buffers are the ones that show the effect
+            Interlocked.Increment(ref _realignsApplied);
         }
 
         var frames = buffer.Length / _ring.Channels;
         var produced = 0;
         var limit = (double)(Interlocked.Read(ref _silenceFrom) - state.StartContentFrame);
         var startPosition = _resampler.NextOutputPosition;
+        var insertPending = _resampler.PendingInsertFrames != 0;
         if (startPosition < limit)
         {
             var ratio = BitConverter.Int64BitsToDouble(Interlocked.Read(ref _ratioBits));
@@ -132,6 +177,11 @@ public sealed class OutputRenderSource : IRenderSource
 
         if (produced > 0)
         {
+            if (produced == frames && !insertPending && _resampler.PendingInsertFrames == 0)
+            {
+                PublishAudioBuffer(Interlocked.Read(ref _framesWritten), state.StartContentFrame + startPosition);
+            }
+
             var last = state.StartContentFrame + (long)Math.Floor(_resampler.LastOutputPosition);
             Interlocked.Exchange(ref _lastContentFrame, last);
         }
@@ -139,16 +189,26 @@ public sealed class OutputRenderSource : IRenderSource
         Interlocked.Add(ref _framesWritten, frames);
     }
 
+    private void PublishAudioBuffer(long deviceFrame, double contentPosition)
+    {
+        Interlocked.Increment(ref _bufferVersion);
+        Interlocked.Exchange(ref _bufferDeviceFrame, deviceFrame);
+        Interlocked.Exchange(ref _bufferContentBits, BitConverter.DoubleToInt64Bits(contentPosition));
+        Interlocked.Increment(ref _bufferVersion);
+    }
+
     private void ApplyEpoch(EpochState state)
     {
         if (_appliedState is not null)
         {
             Interlocked.Exchange(ref _previousEpochLastContentFrame, Interlocked.Read(ref _lastContentFrame));
+            Interlocked.Exchange(ref _pendingRealign, 0); // a correction measured in the old epoch does not apply to the new one
         }
 
         Interlocked.Exchange(ref _oldEpochEndFramesWritten, Interlocked.Read(ref _framesWritten));
         _appliedState = state;
         _resampler.Reset();
+        PublishAudioBuffer(-1, 0);
         _awaitingFirstFrame = true;
         Interlocked.Exchange(ref _lastContentFrame, state.StartContentFrame - 1);
     }

@@ -38,6 +38,11 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
         return Result<IDecodeSession>.Success(session);
     }
 
+    public TimeSpan? Duration =>
+        !_disposed && _fmt->duration > 0 && _fmt->duration != ffmpeg.AV_NOPTS_VALUE
+            ? TimeSpan.FromSeconds((double)_fmt->duration / ffmpeg.AV_TIME_BASE)
+            : null;
+
     public Result Seek(TimeSpan position, int epoch)
     {
         if (_disposed)

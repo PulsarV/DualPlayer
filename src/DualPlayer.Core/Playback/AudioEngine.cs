@@ -14,6 +14,11 @@ namespace DualPlayer.Core.Playback;
 public sealed partial class AudioEngine : IAudioEngine, IDisposable
 {
     private static readonly TimeSpan StartLevelTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan AlignTolerance = TimeSpan.FromMilliseconds(1);
+    private const int MaxAlignRounds = 16;
+
+    /// <summary>How long after a seek or resume each output keeps being re-measured, so a later hole is corrected too.</summary>
+    private static readonly TimeSpan AlignWindow = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan StartLevelPollInterval = TimeSpan.FromMilliseconds(2);
 
     private readonly IAudioBackend _backend;
@@ -50,6 +55,12 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         ArgumentNullException.ThrowIfNull(options);
         return _loop.Execute(() => StartCore(file, assignments, options));
     }
+
+    public Result<TimeSpan> Pause() => _loop.Execute(PauseCore);
+
+    public Result<TimeSpan> Resume() => _loop.Execute(ResumeCore);
+
+    public Result<SeekResult> Seek(TimeSpan target) => _loop.Execute(() => SeekCore(target));
 
     public void Stop(RunEndReason reason)
     {
@@ -128,6 +139,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             return Result<RunStarted>.Failure(session.Error);
         }
 
+        run.FileDuration = session.Value.Duration;
         run.Pump = new DecodePump(
             session.Value,
             [.. run.Outputs.Select(o => o.Ring)],
@@ -160,6 +172,189 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         return Result<RunStarted>.Success(new RunStarted(
             [.. run.Outputs.Select(o => new StartedOutput(o.TrackNumber, o.DeviceId, o.DeviceName, o.Format))],
             run.Clock.PositionAt(now)));
+    }
+
+    private Result<TimeSpan> PauseCore()
+    {
+        if (_run is not { } run)
+        {
+            return Result<TimeSpan>.Failure("playback.no_run", "No run is active.");
+        }
+
+        var clock = run.Clock!;
+        var now = _time.GetTimestamp();
+        if (run.Paused)
+        {
+            return Result<TimeSpan>.Success(clock.PositionAt(now));
+        }
+
+        StopBeyondQueue(run, now);
+        run.Paused = true;
+        return Result<TimeSpan>.Success(clock.PositionAt(now));
+    }
+
+    private Result<TimeSpan> ResumeCore()
+    {
+        if (_run is not { } run)
+        {
+            return Result<TimeSpan>.Failure("playback.no_run", "No run is active.");
+        }
+
+        var clock = run.Clock!;
+        if (!run.Paused)
+        {
+            return Result<TimeSpan>.Success(clock.PositionAt(_time.GetTimestamp()));
+        }
+
+        var filled = WaitForStartLevel(run);
+        if (!filled.IsSuccess)
+        {
+            return Result<TimeSpan>.Failure(filled.Error);
+        }
+
+        var now = _time.GetTimestamp();
+        if (now < run.StopTimestamp)
+        {
+            // The devices have not reached the pause instant yet: carry on from where they really are, so the
+            // audio still queued before that instant and the ring after it play on without a jump.
+            clock.JumpTo(clock.PositionAt(now) - _time.GetElapsedTime(now, run.StopTimestamp));
+        }
+
+        var position = clock.PositionAt(now);
+        run.StopTimestamp = long.MinValue;
+        clock.Start();
+        foreach (var output in run.Outputs.Where(o => !o.Lost))
+        {
+            output.Source.ClearSilence();
+            BeginAlignment(output, now);
+        }
+
+        run.Paused = false;
+        _loop.Polling = true;
+        return Result<TimeSpan>.Success(position);
+    }
+
+    private Result<SeekResult> SeekCore(TimeSpan target)
+    {
+        if (_run is not { } run)
+        {
+            return Result<SeekResult>.Failure("playback.no_run", "No run is active.");
+        }
+
+        var outsideFile = target < TimeSpan.Zero;
+        if (outsideFile)
+        {
+            target = TimeSpan.Zero;
+            LogSeekOutsideFile("before the start");
+        }
+
+        var active = run.Outputs.Where(o => !o.Lost).ToArray();
+        var heardBefore = active.Length == 0
+            ? TimeSpan.Zero
+            : active.Max(o => TimeSpan.FromSeconds((double)(o.Source.LastContentFrameHandedOut + 1) / o.Format.SampleRate));
+        var epoch = ++run.Epoch; // a new epoch is not ended until the pump reports it so
+        var now = _time.GetTimestamp();
+        run.Clock!.JumpTo(target);
+        run.StopTimestamp = long.MinValue; // a pause instant before the seek no longer applies
+        run.Pump!.Seek(target, epoch);
+        foreach (var output in active)
+        {
+            var startFrame = (long)Math.Round(target.TotalSeconds * output.Format.SampleRate);
+            output.Source.BeginEpoch(epoch, startFrame);
+            if (run.Paused)
+            {
+                output.Source.SetSilenceFrom(startFrame); // stays silent until resume, which aligns
+                output.AlignPending = false;
+            }
+            else
+            {
+                BeginAlignment(output, now);
+            }
+        }
+
+        var confirmed = WaitForSeek(run, active, epoch);
+        if (!confirmed.IsSuccess)
+        {
+            return Result<SeekResult>.Failure(confirmed.Error);
+        }
+
+        if (!confirmed.Value)
+        {
+            // The end is the container's duration; without one, the furthest audio heard before the seek.
+            LogSeekOutsideFile("past the end");
+            var end = run.FileDuration is { } duration ? (duration < target ? duration : target) : heardBefore;
+            run.Clock.JumpTo(end);
+            run.Clock.StopAt(_time.GetTimestamp());
+            EndRun(run, RunEndReason.SeekPastEnd);
+            return Result<SeekResult>.Success(new SeekResult(end, true, run.Paused));
+        }
+
+        _loop.Polling = true;
+        return Result<SeekResult>.Success(new SeekResult(run.Clock.PositionAt(_time.GetTimestamp()), outsideFile, run.Paused));
+    }
+
+    /// <summary>
+    /// Blocks the loop until every output has discarded its old-epoch audio and its device has played past it.
+    /// Returns false when the decoder ended without delivering any audio at the target (seek past the end).
+    /// </summary>
+    private Result<bool> WaitForSeek(Run run, Output[] active, int epoch)
+    {
+        var deadline = _time.GetTimestamp() + (long)(StartLevelTimeout.TotalSeconds * _time.TimestampFrequency);
+        while (true)
+        {
+            if (run.DecodeError is { } error)
+            {
+                return Result<bool>.Failure(error);
+            }
+
+            if (active.All(o => o.Source.AppliedEpoch >= epoch)
+                && run.DecodeEnded
+                && active.All(o => o.Ring.FramesAvailable == 0 && o.Source.LastContentFrameHandedOut < o.Source.EpochStartContentFrame))
+            {
+                return Result<bool>.Success(false);
+            }
+
+            if (active.All(o => o.Source.HasPlayedOutOldEpoch(epoch)))
+            {
+                return Result<bool>.Success(true);
+            }
+
+            if (_time.GetTimestamp() >= deadline || Volatile.Read(ref _disposed) != 0)
+            {
+                return Result<bool>.Failure("playback.seek_timeout", "The outputs did not confirm the seek in time.");
+            }
+
+            Thread.Sleep(StartLevelPollInterval);
+        }
+    }
+
+    /// <summary>
+    /// Silences every active output from one master-clock instant beyond the audio queued in the fullest device and
+    /// stops the clock at that instant.
+    /// </summary>
+    private void StopBeyondQueue(Run run, long now)
+    {
+        var clock = run.Clock!;
+        var active = run.Outputs.Where(o => !o.Lost).ToArray();
+        var queued = active.Length == 0
+            ? TimeSpan.Zero
+            : active.Max(o => TimeSpan.FromSeconds((double)Math.Max(0, o.Source.QueuedFrames) / o.Format.SampleRate));
+        var stopInstant = clock.PositionAt(now) + queued;
+        foreach (var output in active)
+        {
+            output.Source.SetSilenceFrom((long)Math.Ceiling(stopInstant.TotalSeconds * output.Format.SampleRate));
+        }
+
+        run.StopTimestamp = now + (long)(queued.TotalSeconds * _time.TimestampFrequency);
+        clock.StopAt(run.StopTimestamp);
+    }
+
+    private void BeginAlignment(Output output, long now)
+    {
+        output.AlignPending = true;
+        output.AlignRounds = 0;
+        output.AlignUntil = now + (long)(AlignWindow.TotalSeconds * _time.TimestampFrequency);
+        output.RealignsRequested = output.Source.RealignsApplied;
     }
 
     private Result OpenOutput(Run run, int index, ResolvedOutput resolved, string name, EngineOptions options)
@@ -197,7 +392,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
                 return Result.Failure(error);
             }
 
-            if (run.DecodeEnded || run.Outputs.All(o => o.Ring.FramesAvailable >= o.StartLevelFrames))
+            if (run.DecodeEnded || run.Outputs.Where(o => !o.Lost).All(o => o.Ring.FramesAvailable >= o.StartLevelFrames))
             {
                 return Result.Success();
             }
@@ -211,9 +406,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         }
     }
 
-    private void OnPumpEnded(Run run)
-    {
-        run.DecodeEnded = true;
+    private void OnPumpEnded(Run run) =>
         _loop.Post(() =>
         {
             if (_run == run)
@@ -221,7 +414,6 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
                 _loop.Polling = true;
             }
         });
-    }
 
     /// <summary>
     /// A decoder failure during the start is returned by <see cref="StartRun"/>; once running, it ends the run with
@@ -259,7 +451,62 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             return;
         }
 
-        _loop.Polling = awaitingFirstAudio || run.DecodeEnded;
+        var aligning = AlignOutputs(run);
+        _loop.Polling = awaitingFirstAudio || run.DecodeEnded || aligning;
+    }
+
+    /// <summary>
+    /// One-step re-alignment after a seek or resume: once an output has handed a full buffer of audio from the new
+    /// position to the device, measures how far that audio is from the master clock when the device plays it and
+    /// removes the offset. Each output keeps being measured for <see cref="AlignWindow"/> after the command, so a
+    /// hole that appears after a good measurement (the decoder not keeping up) is removed as well. True while some
+    /// output is still being aligned. Continuous drift correction is the sync controller's job.
+    /// </summary>
+    private bool AlignOutputs(Run run)
+    {
+        if (run.Paused)
+        {
+            return false;
+        }
+
+        var pending = false;
+        var now = _time.GetTimestamp();
+        foreach (var output in run.Outputs.Where(o => !o.Lost && o.AlignPending))
+        {
+            var source = output.Source;
+            var rate = output.Format.SampleRate;
+            if (source.RealignsApplied < output.RealignsRequested
+                || !source.TryGetLatestPosition(out var played, out var timestamp)
+                || !source.TryGetLatestAudioBuffer(out var bufferFrame, out var bufferContent))
+            {
+                pending = true; // the last correction or the first audio is still on its way, or a render moved while reading
+                continue;
+            }
+
+            // A device buffer is heard when the device reaches its first frame; the content it carries should be
+            // what the master clock says at that moment.
+            var heardAt = timestamp + (long)((double)(bufferFrame - played) / rate * _time.TimestampFrequency);
+            var drift = TimeSpan.FromSeconds(bufferContent / rate) - run.Clock!.PositionAt(heardAt);
+            var inTolerance = Math.Abs(drift.TotalMilliseconds) <= AlignTolerance.TotalMilliseconds;
+            if (output.AlignRounds >= MaxAlignRounds || (inTolerance && now >= output.AlignUntil))
+            {
+                output.AlignPending = false;
+                continue;
+            }
+
+            pending = true;
+            if (inTolerance)
+            {
+                continue; // aligned for now; keep measuring until the window closes
+            }
+
+            // A hole in the audio (the decoder not keeping up) shows up as drift later: remove it and measure again.
+            source.RequestRealign(DriftController.ResamplerRealignFrames(drift, rate));
+            output.RealignsRequested++;
+            output.AlignRounds++;
+        }
+
+        return pending;
     }
 
     /// <summary>Logs start-to-audio for every output that has rendered its first audio; true while some still have not.</summary>
@@ -307,19 +554,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
     {
         var clock = run.Clock!;
         var now = _time.GetTimestamp();
-        var active = run.Outputs.Where(o => !o.Lost).ToArray();
-
-        // Stop beyond the audio already queued in every active device: silence from exactly that instant.
-        var queued = active.Length == 0
-            ? TimeSpan.Zero
-            : active.Max(o => TimeSpan.FromSeconds((double)Math.Max(0, o.Source.QueuedFrames) / o.Format.SampleRate));
-        var stopInstant = clock.PositionAt(now) + queued;
-        foreach (var output in active)
-        {
-            output.Source.SetSilenceFrom((long)Math.Ceiling(stopInstant.TotalSeconds * output.Format.SampleRate));
-        }
-
-        clock.StopAt(now + (long)(queued.TotalSeconds * _time.TimestampFrequency));
+        StopBeyondQueue(run, now);
         run.Pump!.Dispose();
         foreach (var output in run.Outputs)
         {
@@ -367,6 +602,9 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
     [LoggerMessage(Level = LogLevel.Information, Message = "Output {DeviceId}: played {PlayedSeconds:F3} s, max drift {MaxDriftMs:F2} ms, clock mismatch {MismatchPpm:F1} ppm, corrections {Corrections}, underruns {Underruns}, device-lost events {LostEvents}")]
     private partial void LogOutputSummary(string deviceId, double playedSeconds, double maxDriftMs, double mismatchPpm, int corrections, long underruns, int lostEvents);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Seek target was outside the file ({Where})")]
+    private partial void LogSeekOutsideFile(string where);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Decoder failed ({ErrorCode}): {ErrorMessage}; ending the run")]
     private partial void LogDecodeFailed(string errorCode, string errorMessage);
 
@@ -391,7 +629,19 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
         public DecodePump? Pump { get; set; }
 
-        public volatile bool DecodeEnded;
+        /// <summary>The decoder reached the end of the file in the current epoch (control-loop thread only).</summary>
+        public bool DecodeEnded => Pump is { } pump && pump.EndedEpoch == Epoch;
+
+        /// <summary>Playback epoch; seeks increment it (control-loop thread only).</summary>
+        public int Epoch { get; set; }
+
+        /// <summary>Length of the file when the decoder knows it.</summary>
+        public TimeSpan? FileDuration { get; set; }
+
+        /// <summary>Timestamp of the last pause or stop instant (the clock stopped there); <see cref="long.MinValue"/> when none applies.</summary>
+        public long StopTimestamp { get; set; } = long.MinValue;
+
+        public bool Paused { get; set; }
 
         /// <summary>Set from the decode thread when the decoder reports a failure.</summary>
         public Error? DecodeError
@@ -438,6 +688,17 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         public EventHandler LostHandler { get; set; } = static (_, _) => { };
 
         public bool Lost { get; set; }
+
+        /// <summary>The output's audio must still be re-aligned to the master clock (after a seek or resume).</summary>
+        public bool AlignPending { get; set; }
+
+        public int AlignRounds { get; set; }
+
+        /// <summary>Timestamp until which the output keeps being re-measured after the command.</summary>
+        public long AlignUntil { get; set; }
+
+        /// <summary>Re-alignments requested so far, counted on the same scale as <see cref="OutputRenderSource.RealignsApplied"/>.</summary>
+        public int RealignsRequested { get; set; }
     }
 
     /// <summary>

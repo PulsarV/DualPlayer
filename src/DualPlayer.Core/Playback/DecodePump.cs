@@ -24,11 +24,14 @@ public sealed partial class DecodePump : IDisposable
     private readonly long[] _lastDropLog;
     private readonly CancellationTokenSource _cts = new();
     private readonly Lock _seekLock = new();
+    private readonly ManualResetEventSlim _seekRequested = new();
     private (TimeSpan Position, int Epoch)? _pendingSeek;
     private Thread? _thread;
     private long _startTimestamp;
     private int _epoch;
+    private int _endedEpoch = -1;
     private int _disposed;
+    private bool _releaseOnExit; // pump thread only
 
     public DecodePump(IDecodeSession session, IReadOnlyList<AudioRingBuffer> rings, TimeProvider time, ILogger<DecodePump> logger)
     {
@@ -41,8 +44,14 @@ public sealed partial class DecodePump : IDisposable
         _lastDropLog = new long[_rings.Length];
     }
 
-    /// <summary>End of file reached; all blocks were delivered.</summary>
+    /// <summary>
+    /// End of file reached; all blocks of the epoch in <see cref="EndedEpoch"/> were delivered. The pump thread then
+    /// waits for a seek, so a later <see cref="Seek"/> still decodes.
+    /// </summary>
     public event Action? Ended;
+
+    /// <summary>Epoch whose blocks reached the end of the file; -1 while no epoch has.</summary>
+    public int EndedEpoch => Volatile.Read(ref _endedEpoch);
 
     /// <summary>An unexpected decode failure (a bug); the pump thread ends after raising this once.</summary>
     public event Action<Exception>? Faulted;
@@ -64,12 +73,16 @@ public sealed partial class DecodePump : IDisposable
     /// </summary>
     public void Detach(int outputIndex) => Volatile.Write(ref _detached[outputIndex], true);
 
-    /// <summary>Re-seeks the decoder on the pump thread; frames decoded afterwards carry <paramref name="epoch"/>.</summary>
+    /// <summary>
+    /// Re-seeks the decoder on the pump thread (also after the end of the file); frames decoded afterwards carry
+    /// <paramref name="epoch"/>.
+    /// </summary>
     public void Seek(TimeSpan position, int epoch)
     {
         lock (_seekLock)
         {
             _pendingSeek = (position, epoch);
+            _seekRequested.Set();
         }
     }
 
@@ -108,13 +121,14 @@ public sealed partial class DecodePump : IDisposable
         }
 
         _cts.Cancel();
-        if (_thread is not null && _thread != Thread.CurrentThread)
+        if (_thread == Thread.CurrentThread)
         {
-            _thread.Join();
+            _releaseOnExit = true; // disposed from an event handler: the pump thread releases on its way out
+            return;
         }
 
-        _cts.Dispose();
-        _session.Dispose();
+        _thread?.Join();
+        Release();
     }
 
     private void Run()
@@ -131,6 +145,20 @@ public sealed partial class DecodePump : IDisposable
             LogDecodeFault(ex);
             Faulted?.Invoke(ex);
         }
+        finally
+        {
+            if (_releaseOnExit)
+            {
+                Release();
+            }
+        }
+    }
+
+    private void Release()
+    {
+        _cts.Dispose();
+        _seekRequested.Dispose();
+        _session.Dispose();
     }
 
     private void Pump()
@@ -147,19 +175,39 @@ public sealed partial class DecodePump : IDisposable
             var read = _session.Read();
             if (!read.IsSuccess)
             {
-                if (read.Error.Code == "playback.end_of_stream")
-                {
-                    Ended?.Invoke();
-                }
-                else
+                if (read.Error.Code != "playback.end_of_stream")
                 {
                     ReportDecodeFailure(read.Error);
+                    return;
                 }
 
-                return;
+                Volatile.Write(ref _endedEpoch, _epoch);
+                Ended?.Invoke();
+                WaitForSeek(token);
+                continue;
             }
 
             Deliver(read.Value, token);
+        }
+    }
+
+    /// <summary>Blocks the pump thread after the end of the file until a seek is requested or the pump is disposed.</summary>
+    private void WaitForSeek(CancellationToken token)
+    {
+        while (true)
+        {
+            token.ThrowIfCancellationRequested();
+            lock (_seekLock)
+            {
+                if (_pendingSeek is not null)
+                {
+                    return;
+                }
+
+                _seekRequested.Reset();
+            }
+
+            _seekRequested.Wait(token);
         }
     }
 

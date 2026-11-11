@@ -338,6 +338,29 @@ public sealed class DecodePumpTests
     }
 
     [Fact]
+    public void A_seek_after_the_end_of_the_file_decodes_again_from_the_target_with_the_new_epoch()
+    {
+        var time = new FakeTimeProvider();
+        var ring = new AudioRingBuffer(10_000, 2);
+        var ended = new ManualResetEventSlim();
+        using var pump = NewPump(OpenSession(4_800, outputs: 1), time, ring);
+        pump.Ended += ended.Set;
+        pump.Start(epoch: 1);
+        ended.Wait(Timeout, TestContext.Current.CancellationToken).ShouldBeTrue();
+        pump.EndedEpoch.ShouldBe(1);
+        ended.Reset();
+
+        pump.Seek(TimeSpan.FromSeconds(0.05), epoch: 2);
+
+        ended.Wait(Timeout, TestContext.Current.CancellationToken).ShouldBeTrue();
+        pump.EndedEpoch.ShouldBe(2);
+        var dest = new float[Block * 2];
+        ring.Read(dest, 2, out var discarded, time.GetTimestamp()).ShouldBe(Block);
+        discarded.ShouldBe(4_800);
+        dest[0].ShouldBe(2.4f, 0.0001f);
+    }
+
+    [Fact]
     public void A_decoder_exception_is_reported_once_as_a_fault_and_the_thread_ends_cleanly()
     {
         var time = new FakeTimeProvider();

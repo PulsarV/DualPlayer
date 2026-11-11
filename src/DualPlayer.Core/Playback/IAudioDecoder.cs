@@ -15,6 +15,9 @@ public interface IDecodeSession : IDisposable
 
     /// <summary>Next block, or failure code <c>playback.end_of_stream</c> at end of file.</summary>
     Result<DecodedBlock> Read();
+
+    /// <summary>Length of the file, when the container reports it; null when unknown.</summary>
+    TimeSpan? Duration => null;
 }
 
 public interface IAudioDecoder

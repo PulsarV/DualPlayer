@@ -267,7 +267,7 @@
         "tests/DualPlayer.Core.Tests/Playback/AudioEngineTransportTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T12-coordinate-pause-resume-seek.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T13",

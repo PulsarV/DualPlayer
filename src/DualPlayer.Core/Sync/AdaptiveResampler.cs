@@ -34,6 +34,9 @@ public sealed class AdaptiveResampler
     /// </summary>
     public double NextOutputPosition => _framesRead + _drop - _filled + Math.Max(0, _pendingSteps - _insert) + _phase;
 
+    /// <summary>Frames still to be inserted (repeated) from a negative <see cref="Realign"/>; they are consumed one per output frame.</summary>
+    public int PendingInsertFrames => _insert;
+
     /// <summary>Input-frame position (since the last <see cref="Reset"/>) of the last output frame produced; -1 when none.</summary>
     public double LastOutputPosition => _lastOutputPosition;
 

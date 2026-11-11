@@ -28,6 +28,8 @@ internal sealed class FakeAudioDecoder(IReadOnlyList<AudioTrackInfo> tracks, lon
         private int _epoch;
         private int _next;
 
+        public TimeSpan? Duration => TimeSpan.FromSeconds((double)totalFrames / outputs[0].Target.SampleRate);
+
         public Result Seek(TimeSpan position, int epoch)
         {
             _position = (long)(position.TotalSeconds * outputs[0].Target.SampleRate);
