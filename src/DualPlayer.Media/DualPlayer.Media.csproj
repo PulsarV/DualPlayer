@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Adapters: FFmpeg audio decoder, libmpv video renderer (added by features). -->
+  <ItemGroup>
+    <ProjectReference Include="..\DualPlayer.Core\DualPlayer.Core.csproj" />
+  </ItemGroup>
+</Project>

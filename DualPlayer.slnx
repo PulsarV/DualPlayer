@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DualPlayer.Core/DualPlayer.Core.csproj" />
+    <Project Path="src/DualPlayer.Media/DualPlayer.Media.csproj" />
+    <Project Path="src/DualPlayer.Platform.Windows/DualPlayer.Platform.Windows.csproj" />
+    <Project Path="src/DualPlayer.Platform.MacOS/DualPlayer.Platform.MacOS.csproj" />
+    <Project Path="src/DualPlayer.App/DualPlayer.App.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DualPlayer.Core.Tests/DualPlayer.Core.Tests.csproj" />
+    <Project Path="tests/DualPlayer.App.Tests/DualPlayer.App.Tests.csproj" />
+    <Project Path="tests/DualPlayer.Platform.Windows.Tests/DualPlayer.Platform.Windows.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Targets plain net10.0 so the solution builds on macOS; callers must guard with OperatingSystem.IsWindows(). -->
+  <ItemGroup>
+    <ProjectReference Include="..\DualPlayer.Core\DualPlayer.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="DualPlayer.Platform.Windows.Tests" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DualPlayer.Core\DualPlayer.Core.csproj" />
+  </ItemGroup>
+</Project>

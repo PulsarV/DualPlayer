@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Dev-only AudioQueue backend; never shipped. Callers must guard with OperatingSystem.IsMacOS(). -->
+  <ItemGroup>
+    <ProjectReference Include="..\DualPlayer.Core\DualPlayer.Core.csproj" />
+  </ItemGroup>
+</Project>
