@@ -26,7 +26,7 @@
         "Directory.Packages.props"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T1-define-audio-engine-ports.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T2",
