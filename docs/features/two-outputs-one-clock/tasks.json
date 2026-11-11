@@ -1,0 +1,501 @@
+{
+  "slug": "two-outputs-one-clock",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Define the audio engine ports, value types and test fakes in Core",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-02",
+        "AC-04",
+        "AC-06"
+      ],
+      "dod": "Core still references only the BCL + `Microsoft.Extensions.*.Abstractions` (no new package in `DualPlayer.Core.csproj`); `tests/DualPlayer.Core.Tests/Fakes/FakeAudioDeviceTests.cs` passes: the fake device reports positions advancing at the configured ppm and raises loss once",
+      "files_hint": [
+        "src/DualPlayer.Core/Outputs/IAudioBackend.cs",
+        "src/DualPlayer.Core/Outputs/IAudioDevice.cs",
+        "src/DualPlayer.Core/Outputs/IRenderSource.cs",
+        "src/DualPlayer.Core/Outputs/AudioDeviceInfo.cs",
+        "src/DualPlayer.Core/Outputs/DevicePosition.cs",
+        "src/DualPlayer.Core/Outputs/MixFormat.cs",
+        "src/DualPlayer.Core/Playback/IAudioDecoder.cs",
+        "src/DualPlayer.Core/Playback/AudioTrackInfo.cs",
+        "src/DualPlayer.Core/Playback/EngineOptions.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/",
+        "Directory.Packages.props"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T1-define-audio-engine-ports.md",
+      "status": "todo"
+    },
+    {
+      "id": "T2",
+      "title": "Create the DualPlayer.Console executable with its own composition root and capped logging",
+      "layer": "wiring",
+      "deps": [],
+      "acs": [
+        "AC-11"
+      ],
+      "dod": "`ConsoleCompositionRootSmokeTests` and the existing `CompositionRootSmokeTests` pass; `dotnet run --project src/DualPlayer.Console` with no arguments exits `2` with `cli.usage`; both roots configure the 20 MB × 10 files cap (asserted by a test on the Serilog configuration helper or by inspection in review)",
+      "files_hint": [
+        "src/DualPlayer.Console/DualPlayer.Console.csproj",
+        "src/DualPlayer.Console/Program.cs",
+        "src/DualPlayer.Console/ConsoleCompositionRoot.cs",
+        "src/DualPlayer.Core/AppPaths.cs",
+        "src/DualPlayer.App/AppPaths.cs",
+        "src/DualPlayer.App/Program.cs",
+        "src/DualPlayer.App/CompositionRoot.cs",
+        "tests/DualPlayer.Console.Tests/",
+        "tests/DualPlayer.App.Tests/CompositionRootSmokeTests.cs",
+        "DualPlayer.slnx",
+        "CLAUDE.md"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T2-create-console-project.md",
+      "status": "todo"
+    },
+    {
+      "id": "T3",
+      "title": "Provision LGPL FFmpeg for the dev Mac, CI and the Windows build",
+      "layer": "wiring",
+      "deps": [],
+      "acs": [
+        "AC-12"
+      ],
+      "dod": "`FfmpegLibraryTests` pass locally on the dev Mac and in both CI jobs; `build/fetch-ffmpeg.ps1` downloads, verifies and unpacks the pinned LGPL build into the git-ignored folder",
+      "files_hint": [
+        "build/fetch-ffmpeg.ps1",
+        ".gitignore",
+        "Directory.Packages.props",
+        "src/DualPlayer.Media/DualPlayer.Media.csproj",
+        "src/DualPlayer.Media/Audio/FfmpegLibrary.cs",
+        "tests/DualPlayer.Media.Tests/",
+        "DualPlayer.slnx",
+        ".github/workflows/ci.yml"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T3-provision-lgpl-ffmpeg.md",
+      "status": "todo"
+    },
+    {
+      "id": "T4",
+      "title": "Validate output assignments and resolve devices by list number or OS id",
+      "layer": "domain",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-02",
+        "AC-03",
+        "AC-05"
+      ],
+      "dod": "`OutputAssignmentValidatorTests` pass for every Edge-case row and for AC-05; resolved outputs carry the full OS id (echoed later by the console, AC-02)",
+      "files_hint": [
+        "src/DualPlayer.Core/Outputs/OutputAssignment.cs",
+        "src/DualPlayer.Core/Outputs/OutputAssignmentValidator.cs",
+        "src/DualPlayer.Core/Outputs/DeviceCatalog.cs",
+        "tests/DualPlayer.Core.Tests/Outputs/OutputAssignmentValidatorTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T4-validate-output-assignments.md",
+      "status": "todo"
+    },
+    {
+      "id": "T5",
+      "title": "Build the epoch-tagged single-producer/single-consumer ring buffer",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-09"
+      ],
+      "dod": "`AudioRingBufferTests` pass: wrap-around, partial write, epoch discard, and a 1-writer/1-reader stress test with a checksum over ≥ 10 million frames; a test asserts `Read` allocates 0 bytes (`GC.GetAllocatedBytesForCurrentThread`)",
+      "files_hint": [
+        "src/DualPlayer.Core/Outputs/AudioRingBuffer.cs",
+        "tests/DualPlayer.Core.Tests/Outputs/AudioRingBufferTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T5-build-epoch-ring-buffer.md",
+      "status": "todo"
+    },
+    {
+      "id": "T6",
+      "title": "Write the managed adaptive resampler with one-step re-alignment",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-07"
+      ],
+      "dod": "`AdaptiveResamplerTests` pass: at ratios 1 ± 500 ppm a sine keeps its expected frequency and shows no new spectral peak above a threshold named in the test; `Realign(±n)` changes the consumed input count by exactly n; a test asserts `Process` allocates 0 bytes",
+      "files_hint": [
+        "src/DualPlayer.Core/Sync/AdaptiveResampler.cs",
+        "src/DualPlayer.Core/Sync/IFrameReader.cs",
+        "tests/DualPlayer.Core.Tests/Sync/AdaptiveResamplerTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T6-write-adaptive-resampler.md",
+      "status": "todo"
+    },
+    {
+      "id": "T7",
+      "title": "Implement the master clock, drift measurement, PI drift controller and clock-mismatch estimate",
+      "layer": "domain",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-07"
+      ],
+      "dod": "`MasterClockTests` pass (start, stop, jump, stopped-jump); `DriftControllerTests` pass: fake devices at ±ppm hold |drift| ≤ 10 ms in steady state and recover ≤ 1 s after start, resume and seek; mismatch estimate matches the configured ppm",
+      "files_hint": [
+        "src/DualPlayer.Core/Sync/MasterClock.cs",
+        "src/DualPlayer.Core/Sync/DriftMeter.cs",
+        "src/DualPlayer.Core/Sync/DriftController.cs",
+        "src/DualPlayer.Core/Sync/ClockMismatchEstimator.cs",
+        "tests/DualPlayer.Core.Tests/Sync/MasterClockTests.cs",
+        "tests/DualPlayer.Core.Tests/Sync/DriftControllerTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T7-implement-master-clock-and-drift-controller.md",
+      "status": "todo"
+    },
+    {
+      "id": "T8",
+      "title": "Define engine events, the excursion tracker and the run-summary builder",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-07",
+        "AC-11",
+        "AC-13"
+      ],
+      "dod": "`ExcursionTrackerTests` pass: one excursion per out-of-tolerance stretch with correct device, peak, duration and start position; `RunSummaryBuilderTests` pass: recovery windows excluded from largest drift; every output and device-lost event present",
+      "files_hint": [
+        "src/DualPlayer.Core/Diagnostics/EngineEvent.cs",
+        "src/DualPlayer.Core/Diagnostics/ExcursionTracker.cs",
+        "src/DualPlayer.Core/Diagnostics/RunSummaryBuilder.cs",
+        "tests/DualPlayer.Core.Tests/Diagnostics/ExcursionTrackerTests.cs",
+        "tests/DualPlayer.Core.Tests/Diagnostics/RunSummaryBuilderTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T8-define-engine-events-and-run-summary.md",
+      "status": "todo"
+    },
+    {
+      "id": "T9",
+      "title": "Assemble the per-output render source: epoch discard, drift-corrected read, silence instant and underrun counting",
+      "layer": "app",
+      "deps": [
+        "T1",
+        "T5",
+        "T6",
+        "T7"
+      ],
+      "acs": [
+        "AC-07",
+        "AC-08",
+        "AC-09"
+      ],
+      "dod": "`OutputRenderSourceTests` pass: underrun counting, epoch discard without underrun, silence at the exact frame, queued-frames accounting, re-alignment applied once; a test asserts `Render` allocates 0 bytes",
+      "files_hint": [
+        "src/DualPlayer.Core/Outputs/OutputRenderSource.cs",
+        "src/DualPlayer.Core/Outputs/AudioRingBuffer.cs",
+        "tests/DualPlayer.Core.Tests/Outputs/OutputRenderSourceTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T9-assemble-output-render-source.md",
+      "status": "todo"
+    },
+    {
+      "id": "T10",
+      "title": "Fan one decoder out to the output rings with epochs, full-ring dropping and stall detection",
+      "layer": "app",
+      "deps": [
+        "T1",
+        "T5"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-06"
+      ],
+      "dod": "`DecodePumpTests` pass: one decode feeds N rings, stalled output stops pacing within 1 s, full ring drops only its own frames, detach and seek-epoch tagging",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/DecodePump.cs",
+        "tests/DualPlayer.Core.Tests/Playback/DecodePumpTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T10-fan-out-decode-pump.md",
+      "status": "todo"
+    },
+    {
+      "id": "T11",
+      "title": "Run the engine-control loop: start a run, stop it, and end it on file end or device loss",
+      "layer": "app",
+      "deps": [
+        "T4",
+        "T7",
+        "T8",
+        "T9",
+        "T10"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-04",
+        "AC-06",
+        "AC-06b",
+        "AC-13"
+      ],
+      "dod": "`AudioEngineRunTests` pass for AC-01, AC-04, AC-06, AC-06b and AC-13 with fake devices, including the QG-2 ±5 s underrun assertion and a 3-output start; start-to-audio with fakes is logged and ≤ 2 s on the fake clock",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/IAudioEngine.cs",
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "src/DualPlayer.Core/Playback/EngineControlLoop.cs",
+        "src/DualPlayer.Core/CoreServiceCollectionExtensions.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T11-run-engine-control-loop.md",
+      "status": "todo"
+    },
+    {
+      "id": "T12",
+      "title": "Pause, resume and seek every output together with playback epochs",
+      "layer": "app",
+      "deps": [
+        "T11"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-09",
+        "AC-09b",
+        "AC-10"
+      ],
+      "dod": "`AudioEngineTransportTests` pass for AC-08, AC-09, AC-09b and AC-10, including the 10 ms pause alignment by device position and ≤ 1 s recovery on the fake clock",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/IAudioEngine.cs",
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "src/DualPlayer.Core/Playback/EngineControlLoop.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineTransportTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T12-coordinate-pause-resume-seek.md",
+      "status": "todo"
+    },
+    {
+      "id": "T13",
+      "title": "Publish per-device sync records, excursions and one-step corrections once per second",
+      "layer": "app",
+      "deps": [
+        "T11"
+      ],
+      "acs": [
+        "AC-07",
+        "AC-11"
+      ],
+      "dod": "`SyncRecordPublisherTests` pass: one record per device per second with device id + clock position, also written to the log; `LongRunSimulationTests` pass: 3 fake outputs at different ±ppm over a simulated ≥ 3 h run keep every record ≤ 10 ms outside recovery windows with 0 corrections",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/EngineControlLoop.cs",
+        "src/DualPlayer.Core/Diagnostics/SyncRecordPublisher.cs",
+        "tests/DualPlayer.Core.Tests/Diagnostics/SyncRecordPublisherTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/LongRunSimulationTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T13-publish-sync-records.md",
+      "status": "todo"
+    },
+    {
+      "id": "T14",
+      "title": "List a file's audio tracks and decode the chosen ones once with FFmpeg",
+      "layer": "infra",
+      "deps": [
+        "T1",
+        "T3"
+      ],
+      "acs": [
+        "AC-02",
+        "AC-03"
+      ],
+      "dod": "`FfmpegAudioDecoderTests` pass on the dev Mac and in CI: track listing for the test files, `file_unreadable` for a non-media file, decode of two tracks in one pass, seek tags frames with the new epoch",
+      "files_hint": [
+        "src/DualPlayer.Media/Audio/FfmpegAudioDecoder.cs",
+        "src/DualPlayer.Media/Audio/FfmpegDecodeSession.cs",
+        "src/DualPlayer.Media/MediaServiceCollectionExtensions.cs",
+        "tests/DualPlayer.Media.Tests/FfmpegAudioDecoderTests.cs",
+        "tests/DualPlayer.Media.Tests/TestMedia/"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T14-decode-tracks-with-ffmpeg.md",
+      "status": "todo"
+    },
+    {
+      "id": "T15",
+      "title": "Convert each output's track to its device mix format with swresample and a fold-down matrix",
+      "layer": "infra",
+      "deps": [
+        "T14"
+      ],
+      "acs": [
+        "AC-12"
+      ],
+      "dod": "`MixFormatConverterTests` pass for every Edge-case row on the dev Mac and in CI",
+      "files_hint": [
+        "src/DualPlayer.Media/Audio/MixFormatConverter.cs",
+        "src/DualPlayer.Media/Audio/FoldDownMatrix.cs",
+        "src/DualPlayer.Media/Audio/FfmpegDecodeSession.cs",
+        "tests/DualPlayer.Media.Tests/MixFormatConverterTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T15-convert-tracks-to-mix-format.md",
+      "status": "todo"
+    },
+    {
+      "id": "T16",
+      "title": "List Windows playback devices and open them in shared mode, reporting access denial",
+      "layer": "infra",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-02",
+        "AC-04"
+      ],
+      "dod": "HRESULT-mapping unit tests pass on `windows-latest` CI; `[HardwareFact]` listing/open tests pass on the target PC with `DUALPLAYER_HARDWARE=1`",
+      "files_hint": [
+        "src/DualPlayer.Platform.Windows/Audio/WasapiAudioBackend.cs",
+        "src/DualPlayer.Platform.Windows/Audio/WasapiAudioDevice.cs",
+        "src/DualPlayer.Platform.Windows/WindowsPlatformServiceCollectionExtensions.cs",
+        "Directory.Packages.props",
+        "src/DualPlayer.Platform.Windows/DualPlayer.Platform.Windows.csproj",
+        "tests/DualPlayer.Platform.Windows.Tests/WasapiAudioBackendTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T16-list-and-open-wasapi-devices.md",
+      "status": "todo"
+    },
+    {
+      "id": "T17",
+      "title": "Render each Windows device on its own MMCSS thread with the device position and the loss signal",
+      "layer": "infra",
+      "deps": [
+        "T16"
+      ],
+      "acs": [
+        "AC-06",
+        "AC-07"
+      ],
+      "dod": "`QpcTimeBase` unit test passes on `windows-latest` CI; `[HardwareFact]` render test passes on the target PC: 10 s of silence rendered, positions monotonic, loss raised when the device is disabled",
+      "files_hint": [
+        "src/DualPlayer.Platform.Windows/Audio/WasapiAudioDevice.cs",
+        "src/DualPlayer.Platform.Windows/Audio/WasapiRenderThread.cs",
+        "src/DualPlayer.Platform.Windows/Audio/QpcTimeBase.cs",
+        "tests/DualPlayer.Platform.Windows.Tests/WasapiRenderTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T17-render-wasapi-devices.md",
+      "status": "todo"
+    },
+    {
+      "id": "T18",
+      "title": "Provide the macOS AudioQueue development backend behind the same port",
+      "layer": "infra",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "`[HardwareFact]` tests pass on the dev Mac: devices listed, 2 s of a tone rendered on the default device; solution still builds and tests on `windows-latest` (CA1416 guards hold)",
+      "files_hint": [
+        "src/DualPlayer.Platform.MacOS/Audio/AudioQueueBackend.cs",
+        "src/DualPlayer.Platform.MacOS/Audio/AudioQueueDevice.cs",
+        "src/DualPlayer.Platform.MacOS/Audio/CoreAudioInterop.cs",
+        "src/DualPlayer.Platform.MacOS/MacOSPlatformServiceCollectionExtensions.cs",
+        "tests/DualPlayer.Platform.MacOS.Tests/",
+        "DualPlayer.slnx"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T18-macos-dev-backend.md",
+      "status": "todo"
+    },
+    {
+      "id": "T19",
+      "title": "Console: list devices and tracks, and start a run from command-line arguments",
+      "layer": "ports",
+      "deps": [
+        "T2",
+        "T11"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-03",
+        "AC-04",
+        "AC-05"
+      ],
+      "dod": "`ListAndPlayCommandTests` pass for AC-01, AC-02, AC-03, AC-04, AC-05: printed lines, stderr codes and exit codes match `contracts/cli.md`; console smoke test resolves the command handlers",
+      "files_hint": [
+        "src/DualPlayer.Console/Program.cs",
+        "src/DualPlayer.Console/ConsoleCompositionRoot.cs",
+        "src/DualPlayer.Console/Commands/CommandLine.cs",
+        "src/DualPlayer.Console/Commands/DevicesCommand.cs",
+        "src/DualPlayer.Console/Commands/TracksCommand.cs",
+        "src/DualPlayer.Console/Commands/PlayCommand.cs",
+        "src/DualPlayer.Console/Rendering/ConsoleFormat.cs",
+        "tests/DualPlayer.Console.Tests/ListAndPlayCommandTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T19-console-list-and-play.md",
+      "status": "todo"
+    },
+    {
+      "id": "T20",
+      "title": "Console: pause, resume, seek and stop a running run from standard input",
+      "layer": "ports",
+      "deps": [
+        "T19",
+        "T12"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-09",
+        "AC-09b",
+        "AC-10"
+      ],
+      "dod": "`RunCommandLoopTests` pass for AC-08, AC-09, AC-09b, AC-10: printed confirmations and warnings match `contracts/cli.md` §1.4",
+      "files_hint": [
+        "src/DualPlayer.Console/Commands/RunCommandLoop.cs",
+        "src/DualPlayer.Console/Commands/PlayCommand.cs",
+        "tests/DualPlayer.Console.Tests/RunCommandLoopTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T20-console-transport-commands.md",
+      "status": "todo"
+    },
+    {
+      "id": "T21",
+      "title": "Console: print sync records, excursions, device loss and the run summary, also on Ctrl+C and window close",
+      "layer": "ports",
+      "deps": [
+        "T19",
+        "T13"
+      ],
+      "acs": [
+        "AC-06",
+        "AC-06b",
+        "AC-11",
+        "AC-13"
+      ],
+      "dod": "`EventPrinterTests` pass: record, excursion, device-lost and summary lines match `contracts/cli.md` §2; a test sends the interrupt path and asserts the summary is printed with `ended interrupt` and exit `0`",
+      "files_hint": [
+        "src/DualPlayer.Console/Rendering/EventPrinter.cs",
+        "src/DualPlayer.Console/Rendering/RunSummaryPrinter.cs",
+        "src/DualPlayer.Console/ShutdownSignals.cs",
+        "src/DualPlayer.Console/Program.cs",
+        "tests/DualPlayer.Console.Tests/EventPrinterTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T21-console-live-output-and-shutdown.md",
+      "status": "todo"
+    },
+    {
+      "id": "T22",
+      "title": "Record the ≥ 3 h evidence run on the target Windows PC and commit its run summary",
+      "layer": "docs",
+      "deps": [
+        "T15",
+        "T17",
+        "T20",
+        "T21"
+      ],
+      "acs": [
+        "AC-07",
+        "AC-13"
+      ],
+      "dod": "the evidence file is committed under `docs/` with a ≥ 3 h run summary for both headsets; every spec §6 target is listed with its measured value and pass/fail",
+      "files_hint": [
+        "docs/features/two-outputs-one-clock/evidence/"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T22-record-target-pc-evidence-run.md",
+      "status": "todo"
+    }
+  ]
+}
