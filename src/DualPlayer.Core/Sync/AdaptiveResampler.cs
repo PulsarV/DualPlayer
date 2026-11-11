@@ -17,6 +17,8 @@ public sealed class AdaptiveResampler
     private int _pendingSteps;
     private int _drop;
     private int _insert;
+    private long _framesRead;
+    private double _lastOutputPosition = -1;
 
     public AdaptiveResampler(int channels)
     {
@@ -25,6 +27,15 @@ public sealed class AdaptiveResampler
         _history = new float[channels * HistoryFrames];
         _frame = new float[channels];
     }
+
+    /// <summary>
+    /// Input-frame position (since the last <see cref="Reset"/>) of the next output frame, counting pending
+    /// drops and inserts.
+    /// </summary>
+    public double NextOutputPosition => _framesRead + _drop - _filled + Math.Max(0, _pendingSteps - _insert) + _phase;
+
+    /// <summary>Input-frame position (since the last <see cref="Reset"/>) of the last output frame produced; -1 when none.</summary>
+    public double LastOutputPosition => _lastOutputPosition;
 
     /// <summary>Positive drops input frames, negative inserts (repeats) frames; applied at the next <see cref="Process"/>.</summary>
     public void Realign(int frames)
@@ -48,11 +59,25 @@ public sealed class AdaptiveResampler
         _pendingSteps = 0;
         _drop = 0;
         _insert = 0;
+        _framesRead = 0;
+        _lastOutputPosition = -1;
     }
 
     /// <summary>Fills <paramref name="output"/> producing <paramref name="ratio"/> output frames per input frame (ratio above 1 stretches: tone frequency scales by 1/ratio); returns frames produced.</summary>
-    public int Process(IFrameReader input, Span<float> output, double ratio)
+    public int Process(IFrameReader input, Span<float> output, double ratio) =>
+        Process(input, output, ratio, double.PositiveInfinity);
+
+    /// <summary>
+    /// As <see cref="Process(IFrameReader, Span{float}, double)"/>, but stops before the first output frame whose
+    /// input position reaches <paramref name="positionLimit"/> (see <see cref="NextOutputPosition"/>).
+    /// </summary>
+    public int Process(IFrameReader input, Span<float> output, double ratio, double positionLimit)
     {
+        if (NextOutputPosition >= positionLimit)
+        {
+            return 0;
+        }
+
         var channels = _channels;
         var wanted = output.Length / channels;
 
@@ -63,6 +88,7 @@ public sealed class AdaptiveResampler
                 return 0;
             }
 
+            _framesRead++;
             _drop--;
         }
 
@@ -79,6 +105,11 @@ public sealed class AdaptiveResampler
         var produced = 0;
         while (produced < wanted)
         {
+            if (NextOutputPosition >= positionLimit)
+            {
+                return produced;
+            }
+
             while (_pendingSteps > 0)
             {
                 if (_insert > 0)
@@ -104,6 +135,7 @@ public sealed class AdaptiveResampler
                     h1 + (0.5f * t * (h2 - h0 + (t * ((2 * h0) - (5 * h1) + (4 * h2) - h3 + (t * ((3 * (h1 - h2)) + h3 - h0))))));
             }
 
+            _lastOutputPosition = _framesRead - PrimingFrames + _phase;
             produced++;
             _phase += 1.0 / ratio;
             var steps = (int)_phase;
@@ -121,6 +153,7 @@ public sealed class AdaptiveResampler
             return false;
         }
 
+        _framesRead++;
         var channels = _channels;
         Array.Copy(_history, channels, _history, 0, channels * (HistoryFrames - 1));
         _frame.CopyTo(_history.AsSpan(channels * (HistoryFrames - 1)));

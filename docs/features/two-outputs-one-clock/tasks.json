@@ -195,7 +195,7 @@
         "tests/DualPlayer.Core.Tests/Outputs/OutputRenderSourceTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T9-assemble-output-render-source.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T10",

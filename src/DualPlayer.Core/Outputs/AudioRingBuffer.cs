@@ -5,7 +5,7 @@ namespace DualPlayer.Core.Outputs;
 /// playback epoch it was decoded in; the reader skips frames from an older epoch. Pre-allocated, so
 /// <see cref="Read"/> never allocates, locks or throws on the render thread.
 /// </summary>
-public sealed class AudioRingBuffer
+public sealed class AudioRingBuffer : DualPlayer.Core.Sync.IFrameReader
 {
     private readonly float[] _samples;
     private readonly int[] _epochs;
@@ -14,6 +14,8 @@ public sealed class AudioRingBuffer
     private long _head; // frames consumed; written by the reader only
     private long _tail; // frames produced; written by the writer only
     private long _lastReadTimestamp;
+    private int _readerEpoch; // render thread only
+    private long _readerTimestamp; // render thread only
 
     public AudioRingBuffer(int capacityFrames, int channels)
     {
@@ -26,6 +28,22 @@ public sealed class AudioRingBuffer
     }
 
     public int Channels => _channels;
+
+    /// <summary>
+    /// Render thread, once per device period: sets the epoch and timestamp later <see cref="IFrameReader"/> reads
+    /// use, refreshes <see cref="LastReadTimestamp"/> (so a paused reader is not seen as stalled) and discards
+    /// older-epoch frames at the head even when nothing is read. Returns the frames discarded.
+    /// </summary>
+    public int BeginRead(int currentEpoch, long readTimestamp)
+    {
+        _readerEpoch = currentEpoch;
+        _readerTimestamp = readTimestamp;
+        _ = Read([], currentEpoch, out var discarded, readTimestamp);
+        return discarded;
+    }
+
+    /// <summary>Reads frames with the epoch and timestamp of the last <see cref="BeginRead"/>; the resampler's input.</summary>
+    public int Read(Span<float> destination) => Read(destination, _readerEpoch, out _, _readerTimestamp);
 
     public int CapacityFrames => _capacity;
 
