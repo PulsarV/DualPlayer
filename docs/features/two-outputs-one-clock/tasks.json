@@ -150,7 +150,7 @@
         "tests/DualPlayer.Core.Tests/Sync/DriftControllerTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T7-implement-master-clock-and-drift-controller.md",
-      "status": "blocked"
+      "status": "done"
     },
     {
       "id": "T8",
