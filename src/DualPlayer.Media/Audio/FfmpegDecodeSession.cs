@@ -6,7 +6,7 @@ namespace DualPlayer.Media.Audio;
 
 /// <summary>
 /// One demux pass over a file, decoding every chosen track to interleaved float blocks (one output per request).
-/// Sample-rate and channel-count conversion here is the plain swresample default; the fold-down matrix lands in T15.
+/// Each output converts to its device mix format through a MixFormatConverter (swresample + fold-down matrix).
 /// </summary>
 internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
 {
@@ -224,7 +224,7 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
         private readonly int _rate;
         private readonly int _channels;
         private readonly AVChannelLayout _outLayout;
-        private SwrContext* _swr;
+        private MixFormatConverter? _converter;
         private float[] _buffer = [];
         private int _buffered;
         private long _startFrame;
@@ -274,39 +274,30 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
 
         public void ResetResampler(TimeSpan position)
         {
-            var swr = _swr;
-            ffmpeg.swr_free(&swr);
-            _swr = null;
+            _converter?.Dispose();
+            _converter = null;
             _buffered = 0;
             _startFrame = (long)(position.TotalSeconds * _rate);
         }
 
         public void Convert(AVFrame* frame)
         {
-            if (_swr is null)
+            if (_converter is null)
             {
-                var swr = _swr;
-                var outLayout = _outLayout;
                 if (frame is null)
                 {
                     return;
                 }
 
-                var inLayout = frame->ch_layout;
-                if (ffmpeg.swr_alloc_set_opts2(
-                        &swr, &outLayout, AVSampleFormat.AV_SAMPLE_FMT_FLT, _rate,
-                        &inLayout, (AVSampleFormat)frame->format, frame->sample_rate, 0, null) < 0
-                    || ffmpeg.swr_init(swr) < 0)
+                var outLayout = _outLayout;
+                _converter = MixFormatConverter.Create(frame, _rate, &outLayout);
+                if (_converter is null)
                 {
-                    ffmpeg.swr_free(&swr);
                     return;
                 }
-
-                _swr = swr;
             }
 
-            var inCount = frame is null ? 0 : frame->nb_samples;
-            var capacity = ffmpeg.swr_get_out_samples(_swr, inCount) + (frame is null ? 4096 : 0);
+            var capacity = _converter.OutputCapacity(frame is null ? 0 : frame->nb_samples) + (frame is null ? 4096 : 0);
             if (capacity <= 0)
             {
                 return;
@@ -315,17 +306,7 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
             EnsureCapacity((_buffered + capacity) * _channels);
             fixed (float* dst = &_buffer[_buffered * _channels])
             {
-                var outPtr = (byte*)dst;
-                var produced = ffmpeg.swr_convert(
-                    _swr,
-                    &outPtr,
-                    capacity,
-                    frame is null ? null : frame->extended_data,
-                    inCount);
-                if (produced > 0)
-                {
-                    _buffered += produced;
-                }
+                _buffered += _converter.Convert(frame, dst, capacity);
             }
         }
 
@@ -345,9 +326,8 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
 
         public void Dispose()
         {
-            var swr = _swr;
-            ffmpeg.swr_free(&swr);
-            _swr = null;
+            _converter?.Dispose();
+            _converter = null;
             var codec = Codec;
             ffmpeg.avcodec_free_context(&codec);
             Codec = null;

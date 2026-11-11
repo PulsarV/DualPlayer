@@ -331,7 +331,7 @@
         "tests/DualPlayer.Media.Tests/MixFormatConverterTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T15-convert-tracks-to-mix-format.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T16",
