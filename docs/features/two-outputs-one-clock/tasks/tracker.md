@@ -24,7 +24,7 @@
 | T14 | [List a file's audio tracks and decode the chosen ones once with FFmpeg](./T14-decode-tracks-with-ffmpeg.md) | infra | Volodymyr Kravchuk | L | T1, T3 | done | COMMIT |
 | T15 | [Convert each output's track to its device mix format with swresample and a fold-down matrix](./T15-convert-tracks-to-mix-format.md) | infra | Volodymyr Kravchuk | M | T14 | done | COMMIT |
 | T16 | [List Windows playback devices and open them in shared mode, reporting access denial](./T16-list-and-open-wasapi-devices.md) | infra | Volodymyr Kravchuk | M | T1 | done | COMMIT |
-| T17 | [Render each Windows device on its own MMCSS thread with the device position and the loss signal](./T17-render-wasapi-devices.md) | infra | Volodymyr Kravchuk | L | T16 | todo | — |
+| T17 | [Render each Windows device on its own MMCSS thread with the device position and the loss signal](./T17-render-wasapi-devices.md) | infra | Volodymyr Kravchuk | L | T16 | done | COMMIT |
 | T18 | [Provide the macOS AudioQueue development backend behind the same port](./T18-macos-dev-backend.md) | infra | Volodymyr Kravchuk | M | T1 | done | COMMIT |
 | T19 | [Console: list devices and tracks, and start a run from command-line arguments](./T19-console-list-and-play.md) | ports | Volodymyr Kravchuk | L | T2, T11 | todo | — |
 | T20 | [Console: pause, resume, seek and stop a running run from standard input](./T20-console-transport-commands.md) | ports | Volodymyr Kravchuk | M | T19, T12 | todo | — |

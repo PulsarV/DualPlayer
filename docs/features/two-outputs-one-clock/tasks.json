@@ -375,7 +375,7 @@
         "tests/DualPlayer.Platform.Windows.Tests/WasapiRenderTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T17-render-wasapi-devices.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T18",

@@ -10,10 +10,11 @@ namespace DualPlayer.Platform.Windows.Audio;
 
 /// <summary>Lists active render endpoints and opens them in shared mode.</summary>
 [SupportedOSPlatform("windows")]
-public sealed class WasapiAudioBackend(ILogger<WasapiAudioBackend>? logger = null) : IAudioBackend
+public sealed class WasapiAudioBackend(TimeProvider? time = null, ILogger<WasapiAudioBackend>? logger = null) : IAudioBackend
 {
     private static readonly PropertyKey FormFactorKey = new(new Guid("1da5d803-d492-4edd-8c23-e0c0ffee7f0e"), 0);
 
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
     private readonly ILogger _logger = logger ?? NullLogger<WasapiAudioBackend>.Instance;
 
     public IReadOnlyList<AudioDeviceInfo> ListDevices()
@@ -57,7 +58,7 @@ public sealed class WasapiAudioBackend(ILogger<WasapiAudioBackend>? logger = nul
         try
         {
             name = device.FriendlyName;
-            var opened = WasapiAudioDevice.Create(device, requestedBuffer, _logger);
+            var opened = WasapiAudioDevice.Create(device, requestedBuffer, source, _time, _logger);
             if (!opened.IsSuccess)
             {
                 device.Dispose();

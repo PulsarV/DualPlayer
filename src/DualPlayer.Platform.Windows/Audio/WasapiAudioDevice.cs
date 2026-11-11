@@ -6,7 +6,7 @@ using NAudio.Wave;
 
 namespace DualPlayer.Platform.Windows.Audio;
 
-/// <summary>An open shared-mode, event-driven WASAPI stream. The render thread lands in T17.</summary>
+/// <summary>An open shared-mode, event-driven WASAPI stream. Rendered on its own thread.</summary>
 [System.Runtime.Versioning.SupportedOSPlatform("windows")]
 internal sealed class WasapiAudioDevice : IAudioDevice, IDisposable
 {
@@ -14,12 +14,24 @@ internal sealed class WasapiAudioDevice : IAudioDevice, IDisposable
 
     private readonly MMDevice _device;
     private readonly AudioClient _client;
-    private bool _disposed;
+    private readonly WasapiRenderThread _thread;
+    private int _lostRaised;
+    private int _started;
+    private volatile bool _disposed;
 
-    private WasapiAudioDevice(MMDevice device, AudioClient client, MixFormat mixFormat, TimeSpan grantedBuffer)
+    private WasapiAudioDevice(
+        MMDevice device,
+        AudioClient client,
+        MixFormat mixFormat,
+        TimeSpan grantedBuffer,
+        IRenderSource source,
+        TimeProvider time,
+        ILogger logger)
     {
         _device = device;
         _client = client;
+        _thread = new WasapiRenderThread(
+            client, source, $"{device.FriendlyName} [{device.ID}]", mixFormat.SampleRate, mixFormat.Channels, time, RaiseLost, logger);
         MixFormat = mixFormat;
         GrantedBuffer = grantedBuffer;
     }
@@ -28,17 +40,22 @@ internal sealed class WasapiAudioDevice : IAudioDevice, IDisposable
 
     public TimeSpan GrantedBuffer { get; }
 
-    public event EventHandler? DeviceLost
+    public event EventHandler? DeviceLost;
+
+    private void RaiseLost()
     {
-        add { }
-        remove { }
+        if (Interlocked.Exchange(ref _lostRaised, 1) == 0)
+        {
+            ThreadPool.QueueUserWorkItem(_ => DeviceLost?.Invoke(this, EventArgs.Empty));
+        }
     }
 
     /// <summary>
     /// Initialises the endpoint in shared mode. On success the device owns <paramref name="device"/>; on failure the
     /// caller still owns it. COM failures propagate to the caller for HRESULT mapping; the audio client is released first.
     /// </summary>
-    internal static Result<IAudioDevice> Create(MMDevice device, TimeSpan requestedBuffer, ILogger logger)
+    internal static Result<IAudioDevice> Create(
+        MMDevice device, TimeSpan requestedBuffer, IRenderSource source, TimeProvider time, ILogger logger)
     {
         var client = device.AudioClient;
         try
@@ -69,7 +86,7 @@ internal sealed class WasapiAudioDevice : IAudioDevice, IDisposable
                 mix.Channels,
                 granted.TotalMilliseconds,
                 requestedBuffer.TotalMilliseconds);
-            return Result<IAudioDevice>.Success(new WasapiAudioDevice(device, client, mix, granted));
+            return Result<IAudioDevice>.Success(new WasapiAudioDevice(device, client, mix, granted, source, time, logger));
         }
         catch
         {
@@ -84,7 +101,16 @@ internal sealed class WasapiAudioDevice : IAudioDevice, IDisposable
         && (format.Encoding == WaveFormatEncoding.IeeeFloat
             || (format is WaveFormatExtensible extensible && extensible.SubFormat == IeeeFloatSubFormat));
 
-    public void Start() => _client.Start();
+    /// <summary>Starts the render thread once; a repeated call, or a call after <see cref="Close"/>, does nothing.</summary>
+    public void Start()
+    {
+        if (_disposed || Interlocked.Exchange(ref _started, 1) != 0)
+        {
+            return;
+        }
+
+        _thread.Start();
+    }
 
     public void Close()
     {
@@ -95,7 +121,11 @@ internal sealed class WasapiAudioDevice : IAudioDevice, IDisposable
 
         try
         {
-            _client.Stop();
+            // A thread stuck in the driver still owns the client; leave it alone rather than block on it.
+            if (_thread.Stop())
+            {
+                _client.Stop();
+            }
         }
         catch (Exception ex) when (WasapiErrorMapper.IsDeviceFailure(ex))
         {
@@ -115,8 +145,13 @@ internal sealed class WasapiAudioDevice : IAudioDevice, IDisposable
         }
 
         _disposed = true;
-        _client.Dispose();
-        _device.Dispose();
+        var threadEnded = _thread.Stop();
+        _thread.Dispose();
+        if (threadEnded)
+        {
+            _client.Dispose();
+            _device.Dispose();
+        }
     }
 
     private static ChannelLayout ToLayout(int channels) => channels switch
