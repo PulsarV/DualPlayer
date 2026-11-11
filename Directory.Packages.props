@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup Label="Media">
     <PackageVersion Include="FFmpeg.AutoGen" Version="8.1.0" />
+    <PackageVersion Include="NAudio.Wasapi" Version="2.2.1" />
   </ItemGroup>
   <ItemGroup Label="Tests">
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />

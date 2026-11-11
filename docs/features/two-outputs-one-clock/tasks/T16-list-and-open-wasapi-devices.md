@@ -9,8 +9,8 @@ files_hint: ["src/DualPlayer.Platform.Windows/Audio/WasapiAudioBackend.cs", "src
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Self-contained task: work from what is inlined here. Every quoted chunk ends with its provenance

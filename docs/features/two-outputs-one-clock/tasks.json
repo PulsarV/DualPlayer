@@ -354,7 +354,7 @@
         "tests/DualPlayer.Platform.Windows.Tests/WasapiAudioBackendTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T16-list-and-open-wasapi-devices.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T17",

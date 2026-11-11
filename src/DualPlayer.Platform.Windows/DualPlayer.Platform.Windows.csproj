@@ -4,6 +4,9 @@
     <ProjectReference Include="..\DualPlayer.Core\DualPlayer.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="NAudio.Wasapi" />
+  </ItemGroup>
+  <ItemGroup>
     <InternalsVisibleTo Include="DualPlayer.Platform.Windows.Tests" />
   </ItemGroup>
 </Project>
