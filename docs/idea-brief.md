@@ -276,7 +276,10 @@ No specific trigger or deadline: a personal project without a deadline (owner-re
 5. **Zero-calibration is only partly achievable** — assumption. Windows reports buffer/driver latency,
    but not the Bluetooth codec latency of a given headset model. Without a measurement, the exact
    per-model latency stays unknown; the realistic goal is "calibration optional", not "never needed".
-6. **Cost of the portability direction** — assumption. It makes architecture B (estimated 3–4× the cost
+6. **Speakers are heard by everyone in the room** — assumption. If one output is speakers, the person in
+   headphones may still hear the speakers' track (ANC/closed headphones reduce it, open ones less), and
+   the speakers' sound must stay in sync with the video for both. Not verified for this room/headphones.
+7. **Cost of the portability direction** — assumption. It makes architecture B (estimated 3–4× the cost
    of A in the spec) the primary engine and adds new requirements (auto latency compensation,
    self-diagnostics, minimum requirements check).
 
@@ -330,6 +333,16 @@ contracts and is fully reversible.
   Impact on the spec: AUD-05/AUD-11 become optional fine-tuning; new requirements for auto latency
   compensation, self-diagnostics and minimum requirements; larger scope. The direction is accepted; the
   concrete design still has to be recorded as an ADR in `/sdd:design`.
+- **Any audio device per output (owner-required, 2026-11-11):** each output can use any Windows audio
+  endpoint, not only Bluetooth headphones: wired speakers or headphones on the PC's audio jack, HDMI/DisplayPort
+  audio to the TV, USB audio, Bluetooth speakers. Example: one person in BT headphones, the other listening
+  through the speakers. Consequences for the accepted direction:
+  - outputs with very different latencies (wired ≈ few ms, BT ≈ 150–300 ms, TV over HDMI — its own
+    processing delay) are aligned by the same mechanism: video delayed by the largest latency, faster
+    outputs padded (item 2);
+  - the device type (headphones / speakers / HDMI / BT) is shown in the output tile and used for default
+    latency values (item 3) and for self-diagnostics hints (item 5);
+  - the Hands-Free check (item 5) applies only to Bluetooth devices.
 - **Anti-crackling player settings (owner-proposed, 2026-11-11; exact set to be shaped in specify):**
   - audio buffer size: `Auto` (adaptive) by default, manual value in ms as override;
   - automatic buffer growth when underruns are detected (ties into self-diagnostics, item 5 above);
@@ -356,7 +369,7 @@ contracts and is fully reversible.
 |---|---|---|---|---|
 | TV resolution, diagonal and viewing distance (spec, question 1) | Affects UI sizes | nonblocking | measure at home | Volodymyr Kravchuk |
 | Wireless keyboard/remote model (spec, question 3) | Affects CTL-02 | nonblocking | check existing hardware | Volodymyr Kravchuk |
-| Speaker-only mode and other UI languages (spec, questions 2, 4) | MVP scope | nonblocking | decide during roadmap | Volodymyr Kravchuk |
+| Speaker-only mode (no headphones at all) and other UI languages (spec, questions 2, 4) | MVP scope; speakers as one of the outputs are already in scope (§7) | nonblocking | decide during roadmap | Volodymyr Kravchuk |
 | Is the crackling present in the source track itself? | Rules out / in a Bluetooth cause | nonblocking (first roadmap step) | play the same quiet passage on the Realtek output | Volodymyr Kravchuk |
 | Does each pair crackle when it plays alone? | Alone clean + together crackling → built-in adapter bandwidth → second USB BT adapter | nonblocking (first roadmap step) | play JBL alone, then Marshall alone | Volodymyr Kravchuk |
 | Does a larger audio buffer remove the crackling? | Yes → buffer underruns, fixable in software | nonblocking (first roadmap step) | add `--audio-buffer=0.5` to both mpv commands | Volodymyr Kravchuk |
@@ -364,3 +377,4 @@ contracts and is fully reversible.
 | Which headphones crackled: one pair or both? | Narrows down device vs adapter | nonblocking (first roadmap step) | owner recollection / repeat test | Volodymyr Kravchuk |
 | What are the minimum requirements (Windows version, BT adapter, CPU/GPU)? | Defines what "works on any computer" means | nonblocking | decide during roadmap/specify | Volodymyr Kravchuk |
 | Where do per-model Bluetooth latency defaults come from? | Without data, auto-compensation falls back to a generic default | nonblocking | research measurements / build own table from tests | unassigned |
+| Is speaker bleed acceptable for the headphones listener when the other output is speakers? | May require a hint to use ANC/closed headphones or a lower speaker volume | nonblocking | try BT headphones + PC speakers with different tracks | Volodymyr Kravchuk |
