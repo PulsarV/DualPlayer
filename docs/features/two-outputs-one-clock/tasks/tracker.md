@@ -15,7 +15,7 @@
 | T5 | [Build the epoch-tagged single-producer/single-consumer ring buffer](./T5-build-epoch-ring-buffer.md) | domain | Volodymyr Kravchuk | M | — | done | COMMIT |
 | T6 | [Write the managed adaptive resampler with one-step re-alignment](./T6-write-adaptive-resampler.md) | domain | Volodymyr Kravchuk | M | — | done | COMMIT |
 | T7 | [Implement the master clock, drift measurement, PI drift controller and clock-mismatch estimate](./T7-implement-master-clock-and-drift-controller.md) | domain | Volodymyr Kravchuk | M | T1 | todo | — |
-| T8 | [Define engine events, the excursion tracker and the run-summary builder](./T8-define-engine-events-and-run-summary.md) | domain | Volodymyr Kravchuk | M | — | todo | — |
+| T8 | [Define engine events, the excursion tracker and the run-summary builder](./T8-define-engine-events-and-run-summary.md) | domain | Volodymyr Kravchuk | M | — | done | COMMIT |
 | T9 | [Assemble the per-output render source: epoch discard, drift-corrected read, silence instant and underrun counting](./T9-assemble-output-render-source.md) | app | Volodymyr Kravchuk | L | T1, T5, T6, T7 | todo | — |
 | T10 | [Fan one decoder out to the output rings with epochs, full-ring dropping and stall detection](./T10-fan-out-decode-pump.md) | app | Volodymyr Kravchuk | M | T1, T5 | todo | — |
 | T11 | [Run the engine-control loop: start a run, stop it, and end it on file end or device loss](./T11-run-engine-control-loop.md) | app | Volodymyr Kravchuk | L | T4, T7, T8, T9, T10 | todo | — |
