@@ -1269,6 +1269,65 @@
       "file": "docs/features/two-outputs-one-clock/tasks/T57-check-the-restore-seek-after-the-matroska-duration-probe.md",
       "status": "done",
       "origin": "review-2026-11-12-r4: T6"
+    },
+    {
+      "id": "T58",
+      "title": "Rewind or fail after a failed restore seek, and test it for real",
+      "layer": "integration",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-09"
+      ],
+      "dod": "restore failure reopens input or returns Unreadable; byte branch gone; seam fails every rewind; nocues asset fixed or removed; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Media/Audio/FfmpegDecodeSession.cs",
+        "src/DualPlayer.Media/Audio/FfmpegAudioDecoder.cs",
+        "tests/DualPlayer.Media.Tests/Audio/FfmpegAudioDecoderTests.cs",
+        "tests/DualPlayer.Media.Tests/TestMedia/README.md",
+        "tests/DualPlayer.Media.Tests/TestMedia/ramp-offset-nocues.mkv"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T58-rewind-or-fail-after-a-failed-restore-seek-and-test-it-for-real.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r5: U1, U3"
+    },
+    {
+      "id": "T59",
+      "title": "Decide a seek target is inside the file from every active output, hung ones included",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-09",
+        "AC-10"
+      ],
+      "dod": "inside-file evidence from all active outputs; HasPlayedOutOldEpoch gate on confirming only; test with hung+ended track; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineSeekEvidenceTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T59-decide-a-seek-target-is-inside-the-file-from-every-active-output.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r5: U2"
+    },
+    {
+      "id": "T60",
+      "title": "Include a late first render in AudioStarted and trim the late-start test",
+      "layer": "app",
+      "deps": [
+        "T59"
+      ],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "never-rendered output awaited until the start deadline; test with >1 s late first render; T54 test trimmed to ~20-30 steps; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T60-include-a-late-first-render-in-audiostarted-and-trim-the-late-start-test.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r5: U4, U5"
     }
   ]
 }
