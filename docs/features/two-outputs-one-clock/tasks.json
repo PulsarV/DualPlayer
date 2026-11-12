@@ -1067,7 +1067,7 @@
         "docs/features/two-outputs-one-clock/sad.md"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T47-print-the-started-line-after-the-output-lines-and-list-the-new-events.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r3: S4"
     },
     {

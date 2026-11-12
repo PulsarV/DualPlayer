@@ -41,6 +41,49 @@ public sealed class EventPrinterTests
         new(reason, TimeSpan.FromSeconds(4330), outputs);
 
     [Fact]
+    public void A_held_started_line_is_written_when_released_and_other_events_are_not_held()
+    {
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
+        printer.HoldStartLine();
+
+        _engine.Publish(new AudioStarted(TimeSpan.Zero, TimeSpan.FromMilliseconds(500)));
+        _engine.Publish(new SyncRecord(Dev1, new TimeSpan(0, 0, 1), 0, 0, 0));
+        Lines().Length.ShouldBe(1, "only the started line is held");
+
+        printer.ReleaseStartLine();
+
+        var lines = Lines();
+        lines.Length.ShouldBe(2);
+        lines[1].ShouldStartWith("started");
+    }
+
+    [Fact]
+    public void AudioStarted_arriving_after_the_release_prints_at_once()
+    {
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
+        printer.HoldStartLine();
+        printer.ReleaseStartLine();
+
+        _engine.Publish(new AudioStarted(TimeSpan.Zero, TimeSpan.FromMilliseconds(500)));
+
+        Lines().ShouldHaveSingleItem().ShouldStartWith("started");
+    }
+
+    [Fact]
+    public void A_started_line_still_held_when_the_summary_comes_is_written_before_it()
+    {
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
+        printer.HoldStartLine();
+
+        _engine.Publish(new AudioStarted(TimeSpan.Zero, TimeSpan.FromMilliseconds(500)));
+        _engine.Publish(Summary(RunEndReason.FileEnd));
+
+        var lines = Lines();
+        lines[0].ShouldStartWith("started");
+        lines.Length.ShouldBeGreaterThan(1);
+    }
+
+    [Fact]
     public void A_sync_record_prints_one_record_line_with_clock_device_drift_correction_and_underruns()
     {
         using var printer = Track(new EventPrinter(_engine.Events, _out));

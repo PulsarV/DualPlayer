@@ -10,6 +10,9 @@ internal sealed class EventPrinter : IObserver<EngineEvent>, IDisposable
     private readonly ConsoleLineQueue _lines;
     private readonly bool _ownsLines;
     private bool _summarized;
+    private readonly Lock _startGate = new();
+    private bool _holdingStart;
+    private string? _heldStart;
     private readonly IDisposable _subscription;
     private readonly CancellationTokenSource _runEnded = new();
 
@@ -58,9 +61,19 @@ internal sealed class EventPrinter : IObserver<EngineEvent>, IDisposable
                     $"device-lost  output {d.OutputIndex + 1}  device {d.DeviceId}  clock {ConsoleFormat.Clock(d.ClockPosition)}  {(d.OthersContinue ? "others continue" : "last output, run ends")}"));
                 break;
             case AudioStarted a:
-                Write(string.Create(
+                var started = string.Create(
                     CultureInfo.InvariantCulture,
-                    $"started   clock {ConsoleFormat.Clock(a.ClockPosition)}  start-to-audio {ConsoleFormat.Seconds(a.StartToAudio)}"));
+                    $"started   clock {ConsoleFormat.Clock(a.ClockPosition)}  start-to-audio {ConsoleFormat.Seconds(a.StartToAudio)}");
+                lock (_startGate)
+                {
+                    if (_holdingStart)
+                    {
+                        _heldStart = started;
+                        break;
+                    }
+                }
+
+                Write(started);
                 break;
             case SeekTargetOutsideFile o:
                 // Before the start is a negative target (playing on from 0); anything else is past the end.
@@ -79,6 +92,13 @@ internal sealed class EventPrinter : IObserver<EngineEvent>, IDisposable
                     _summarized = true;
                 }
 
+                lock (_startGate)
+                {
+                    // A run that ends before the output lines are released still shows that audio started, ahead of the summary.
+                    _holdingStart = false;
+                    WriteHeldStart();
+                }
+
                 ExitCode = s.EndReason == RunEndReason.AllDevicesLost ? 3 : 0;
                 var summary = RunSummaryPrinter.Lines(s).ToList();
                 for (var i = 0; i < summary.Count; i++)
@@ -89,6 +109,25 @@ internal sealed class EventPrinter : IObserver<EngineEvent>, IDisposable
                 break;
             default:
                 break;
+        }
+    }
+
+    /// <summary>Holds the <c>started</c> line until <see cref="ReleaseStartLine"/>: the engine can publish AudioStarted before StartRun returns, and the output lines must come first (contracts/cli.md §1.3).</summary>
+    public void HoldStartLine()
+    {
+        lock (_startGate)
+        {
+            _holdingStart = true;
+        }
+    }
+
+    /// <summary>The output lines are queued: writes a held <c>started</c> line now, and later ones as they arrive.</summary>
+    public void ReleaseStartLine()
+    {
+        lock (_startGate)
+        {
+            _holdingStart = false;
+            WriteHeldStart();
         }
     }
 
@@ -128,6 +167,16 @@ internal sealed class EventPrinter : IObserver<EngineEvent>, IDisposable
     }
 
     private static string Signed(double value) => value.ToString("+0.0;-0.0;0.0", CultureInfo.InvariantCulture);
+
+    // Caller holds _startGate.
+    private void WriteHeldStart()
+    {
+        if (_heldStart is { } line)
+        {
+            _heldStart = null;
+            _lines.Enqueue(line);
+        }
+    }
 
     private void Write(string line) => _lines.Enqueue(line);
 }

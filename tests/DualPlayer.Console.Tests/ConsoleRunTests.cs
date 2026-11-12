@@ -94,6 +94,22 @@ public sealed class ConsoleRunTests
         exit.ShouldBe(0);
     }
 
+    // ---- T47 (S4): the started line comes after the output lines ----------------------------------------------
+
+    [Fact]
+    public void AudioStarted_published_inside_StartRun_still_prints_after_every_output_line()
+    {
+        var engine = new StubEngine();
+
+        new PlayCommand(engine).Run(TwoOutputs(), _out, _err);
+
+        var lines = SplitLines(_out.ToString());
+        var started = Array.FindIndex(lines, l => l.StartsWith("started", StringComparison.Ordinal));
+        started.ShouldBeGreaterThanOrEqualTo(0, _out.ToString());
+        lines.Select((l, i) => (l, i)).Where(x => x.l.StartsWith("output ", StringComparison.Ordinal)).Select(x => x.i)
+            .ShouldAllBe(i => i < started, _out.ToString());
+    }
+
     // ---- F19: a dedicated writer ------------------------------------------------------------------------------
 
     [Fact]

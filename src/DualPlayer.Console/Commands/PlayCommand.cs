@@ -20,6 +20,7 @@ internal sealed class PlayCommand(IAudioEngine engine, TimeProvider? time = null
         var console = lines.Writer(toError: false);
         var errors = lines.Writer(toError: true);
         using var printer = new EventPrinter(engine.Events, lines);
+        printer.HoldStartLine();
         using var signals = new ShutdownSignals(engine, () =>
         {
             WaitForSummary(printer);
@@ -40,6 +41,7 @@ internal sealed class PlayCommand(IAudioEngine engine, TimeProvider? time = null
             console.WriteLine($"output {index++}  track {o.TrackNumber} ({ConsoleFormat.TrackConversion(o)})  device {o.DeviceName}  id {o.DeviceId}");
         }
 
+        printer.ReleaseStartLine();
         signals.RunStarted();
         if (input is null)
         {
