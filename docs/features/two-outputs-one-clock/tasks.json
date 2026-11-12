@@ -543,7 +543,7 @@
         "tests/DualPlayer.Core.Tests/Playback/DecodePumpTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T24-start-audio-exactly-at-the-seek-target-and-honour.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12: F4"
     },
     {

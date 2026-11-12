@@ -232,12 +232,16 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
         private MixFormatConverter? _converter;
         private float[] _buffer = [];
         private int _buffered;
-        private long _startFrame;
+        private readonly AVRational _timeBase;
+        private long _startFrame; // content position (output frames) of _buffer[0]; the next expected one when empty
+        private long _trimTarget; // frames before this are discarded (seek target)
+        private bool _anchored;   // _startFrame has been taken from a pts since the last seek
 
         private Output(int index, AVStream* stream, AVCodecContext* codec, MixFormatInfo target, AVChannelLayout outLayout)
         {
             _index = index;
             StreamIndex = stream->index;
+            _timeBase = stream->time_base;
             Codec = codec;
             _rate = target.Rate;
             _channels = target.Channels;
@@ -282,7 +286,9 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
             _converter?.Dispose();
             _converter = null;
             _buffered = 0;
-            _startFrame = (long)(position.TotalSeconds * _rate);
+            _trimTarget = (long)(position.TotalSeconds * _rate);
+            _startFrame = _trimTarget;
+            _anchored = false;
         }
 
         public void Convert(AVFrame* frame)
@@ -302,6 +308,11 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
                 }
             }
 
+            if (frame is not null && _buffered == 0)
+            {
+                Anchor(frame);
+            }
+
             var capacity = _converter.OutputCapacity(frame is null ? 0 : frame->nb_samples) + (frame is null ? 4096 : 0);
             if (capacity <= 0)
             {
@@ -312,6 +323,47 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
             fixed (float* dst = &_buffer[_buffered * _channels])
             {
                 _buffered += _converter.Convert(frame, dst, capacity);
+            }
+
+            Trim();
+        }
+
+        // Takes the content position of the frame about to be converted from its pts (the timeline of the file), so
+        // the first block after a seek lands where the demuxer really delivered, and real gaps stay visible.
+        // Jitter within one time-base tick (container rounding) keeps the blocks contiguous.
+        private void Anchor(AVFrame* frame)
+        {
+            var pts = frame->best_effort_timestamp;
+            if (pts == ffmpeg.AV_NOPTS_VALUE)
+            {
+                return;
+            }
+
+            var heldByResampler = _converter!.DelayFrames(_rate);
+            var start = ffmpeg.av_rescale_q(pts, _timeBase, new AVRational { num = 1, den = _rate }) - heldByResampler;
+            var tolerance = Math.Max(1, ffmpeg.av_rescale_q(1, _timeBase, new AVRational { num = 1, den = _rate })) + 1;
+            if (!_anchored || Math.Abs(start - _startFrame) > tolerance)
+            {
+                _startFrame = start;
+            }
+
+            _anchored = true;
+        }
+
+        // Discards decoded samples before the seek target (the demuxer starts at the previous keyframe).
+        private void Trim()
+        {
+            if (_startFrame >= _trimTarget)
+            {
+                return;
+            }
+
+            var drop = (int)Math.Min(_buffered, _trimTarget - _startFrame);
+            if (drop > 0)
+            {
+                Array.Copy(_buffer, drop * _channels, _buffer, 0, (_buffered - drop) * _channels);
+                _buffered -= drop;
+                _startFrame += drop;
             }
         }
 

@@ -21,6 +21,7 @@ public sealed partial class DecodePump : IDisposable
     private readonly ILogger<DecodePump> _logger;
     private readonly bool[] _detached;
     private readonly long[] _lastDropLog;
+    private readonly long[] _expectedNext; // per output: content frame the next block must start at; -1 until the first block of an epoch
     private readonly CancellationTokenSource _cts = new();
     private readonly Lock _seekLock = new();
     private readonly ManualResetEventSlim _seekRequested = new();
@@ -40,6 +41,8 @@ public sealed partial class DecodePump : IDisposable
         _logger = logger;
         _detached = new bool[_rings.Length];
         _lastDropLog = new long[_rings.Length];
+        _expectedNext = new long[_rings.Length];
+        Array.Fill(_expectedNext, -1L);
     }
 
     /// <summary>
@@ -216,6 +219,7 @@ public sealed partial class DecodePump : IDisposable
         }
 
         _epoch = s.Epoch;
+        Array.Fill(_expectedNext, -1L);
         return true;
     }
 
@@ -230,6 +234,31 @@ public sealed partial class DecodePump : IDisposable
         var index = block.OutputIndex;
         var ring = _rings[index];
         ReadOnlySpan<float> pending = block.Samples;
+
+        // Keep the content timeline true: a hole (skipped corrupt packets) is reported to the ring, overlapping
+        // frames (already delivered) are dropped.
+        var blockFrames = pending.Length / ring.Channels;
+        var expected = _expectedNext[index];
+        if (expected >= 0)
+        {
+            var gap = block.StartFrame - expected;
+            if (gap > 0)
+            {
+                ring.NoteSkipped((int)Math.Min(gap, int.MaxValue), _epoch);
+            }
+            else if (gap < 0)
+            {
+                var overlap = -gap;
+                if (overlap >= blockFrames)
+                {
+                    return;
+                }
+
+                pending = pending[((int)overlap * ring.Channels)..];
+            }
+        }
+
+        _expectedNext[index] = Math.Max(expected, block.StartFrame + blockFrames);
 
         while (!Volatile.Read(ref _detached[index]))
         {

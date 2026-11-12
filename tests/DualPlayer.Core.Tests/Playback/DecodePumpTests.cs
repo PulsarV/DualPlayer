@@ -64,6 +64,75 @@ public sealed class DecodePumpTests
         dest[(4_799 * 2)].ShouldBe(4.799f, 0.0001f);
     }
 
+    private static (AudioRingBuffer Ring, long Skipped) RunScripted(params long[] startFrames)
+    {
+        var ring = new AudioRingBuffer(10_000, 2);
+        var ended = new ManualResetEventSlim();
+        using var pump = NewPump(new ScriptedSession(startFrames), new FakeTimeProvider(), ring);
+        pump.Ended += ended.Set;
+        pump.Start(epoch: 1);
+        ended.Wait(Timeout, TestContext.Current.CancellationToken).ShouldBeTrue();
+        return (ring, 0);
+    }
+
+    [Fact]
+    public void A_gap_between_blocks_from_the_decoder_advances_the_content_position_by_the_gap()
+    {
+        // Blocks at frames 0 and 960 with a 480-frame hole between them (skipped corrupt packets).
+        var (ring, _) = RunScripted(0, 960, 1_440);
+
+        var dest = new float[1_440 * 2];
+        ring.Read(dest, 1, out _).ShouldBe(1_440);
+
+        ring.SkippedFramesConsumed.ShouldBe(480, "the reader must be told that 480 content frames are missing");
+    }
+
+    [Fact]
+    public void Blocks_that_overlap_the_previous_block_have_the_overlapping_frames_dropped()
+    {
+        // Second block claims to start at frame 240, i.e. its first 240 frames were already delivered.
+        var (ring, _) = RunScripted(0, 240, 720);
+
+        ring.FramesAvailable.ShouldBe(1_200, "480 + (480 - 240 overlap) + 480");
+        var dest = new float[1_200 * 2];
+        ring.Read(dest, 1, out _).ShouldBe(1_200);
+        for (var frame = 0; frame < 1_200; frame++)
+        {
+            dest[frame * 2].ShouldBe(frame / 1000f, 0.0001f, $"content frame {frame} must appear exactly once, in order");
+        }
+
+        ring.SkippedFramesConsumed.ShouldBe(0);
+    }
+
+    /// <summary>Emits 480-frame blocks of the ramp (frame / 1000) at the given content start frames, then end of stream.</summary>
+    private sealed class ScriptedSession(long[] startFrames) : IDecodeSession
+    {
+        private int _next;
+
+        public Result Seek(TimeSpan position, int epoch) => Result.Success();
+
+        public Result<DecodedBlock> Read()
+        {
+            if (_next >= startFrames.Length)
+            {
+                return Result<DecodedBlock>.Failure("playback.end_of_stream", "End of file.");
+            }
+
+            var start = startFrames[_next++];
+            var samples = new float[Block * 2];
+            for (var i = 0; i < Block; i++)
+            {
+                samples[i * 2] = samples[(i * 2) + 1] = (start + i) / 1000f;
+            }
+
+            return Result<DecodedBlock>.Success(new DecodedBlock(0, 1, start, samples));
+        }
+
+        public void Dispose()
+        {
+        }
+    }
+
     [Fact]
     public void A_full_ring_whose_output_has_stalled_drops_only_its_own_frames_while_another_ring_has_room()
     {

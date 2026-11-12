@@ -113,4 +113,64 @@ public sealed class FfmpegAudioDecoderTests
         read.IsSuccess.ShouldBeFalse();
         read.Error.Code.ShouldBe("playback.end_of_stream");
     }
+
+    // long-gop-ramp.mkv: one video keyframe at 0 s; mono 48 kHz tracks whose sample value is the timeline
+    // (track 1 = t/12, track 2 = 0.5*t/12), so a decoded sample says which content second it came from.
+    private static readonly MixFormat Mono48 = new(48000, 1, ChannelLayout.Mono);
+
+    private static IDecodeSession OpenLongGop()
+    {
+        var opened = NewDecoder().Open(
+            Media("long-gop-ramp.mkv"),
+            [new DecodeRequest(1, Mono48), new DecodeRequest(2, Mono48)]);
+        opened.IsSuccess.ShouldBeTrue(opened.Error?.Message);
+        return opened.Value;
+    }
+
+    private static DecodedBlock ReadBlockOf(IDecodeSession session, int output)
+    {
+        for (var i = 0; i < 1000; i++)
+        {
+            var read = session.Read();
+            read.IsSuccess.ShouldBeTrue(read.Error?.Message);
+            if (read.Value.OutputIndex == output)
+            {
+                return read.Value;
+            }
+        }
+
+        throw new ShouldAssertException($"no block for output {output}");
+    }
+
+    [Theory]
+    [InlineData(0, 12.0)]
+    [InlineData(1, 24.0)]
+    public void Seek_into_a_long_gop_starts_each_output_audio_at_the_target_not_at_the_video_keyframe(int output, double secondsPerUnit)
+    {
+        using var session = OpenLongGop();
+
+        session.Seek(TimeSpan.FromSeconds(7), 2).IsSuccess.ShouldBeTrue();
+        var block = ReadBlockOf(session, output);
+
+        var contentSeconds = block.Samples[0] * secondsPerUnit;
+        contentSeconds.ShouldBe(7.0, 0.1, "audio must start at the seek target, not at the keyframe at 0 s");
+    }
+
+    [Fact]
+    public void Seek_into_a_long_gop_derives_block_start_frames_from_pts_and_keeps_them_contiguous()
+    {
+        using var session = OpenLongGop();
+
+        session.Seek(TimeSpan.FromSeconds(7), 2).IsSuccess.ShouldBeTrue();
+        var expectedNext = 7L * 48000;
+        for (var i = 0; i < 20; i++)
+        {
+            var block = ReadBlockOf(session, 0);
+            block.StartFrame.ShouldBe(expectedNext, $"block {i} must start where the previous one ended");
+
+            // The ramp encodes the frame index; 16-bit quantisation of a 12 s ramp is ~18 frames.
+            (block.Samples[0] * 12.0 * 48000).ShouldBe(block.StartFrame, 40.0, $"block {i} StartFrame must match its content");
+            expectedNext += block.Samples.Length / Mono48.Channels;
+        }
+    }
 }

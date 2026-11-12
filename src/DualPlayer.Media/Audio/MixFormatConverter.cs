@@ -62,6 +62,9 @@ internal sealed unsafe class MixFormatConverter : IDisposable
     /// <summary>Upper bound of the frames produced by converting <paramref name="inFrames"/> input frames.</summary>
     public int OutputCapacity(int inFrames) => ffmpeg.swr_get_out_samples(_swr, inFrames);
 
+    /// <summary>Output frames still held inside the resampler (at <paramref name="rate"/>).</summary>
+    public long DelayFrames(int rate) => ffmpeg.swr_get_delay(_swr, rate);
+
     /// <summary>Converts (or, with null input, flushes) into <paramref name="destination"/>; returns frames produced.</summary>
     public int Convert(AVFrame* frame, float* destination, int capacity)
     {
