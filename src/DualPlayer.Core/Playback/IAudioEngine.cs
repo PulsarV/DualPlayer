@@ -4,10 +4,18 @@ using DualPlayer.Core.Outputs;
 namespace DualPlayer.Core.Playback;
 
 /// <summary>One started output: the track it plays, the device it resolved to and the device's mix format.</summary>
-public sealed record StartedOutput(int TrackNumber, string DeviceId, string DeviceName, MixFormat Format);
+public sealed record StartedOutput(int TrackNumber, string DeviceId, string DeviceName, MixFormat Format)
+{
+    /// <summary>The source track as the file declares it; null when the engine did not report it.</summary>
+    public AudioTrackInfo? Source { get; init; }
+}
 
 /// <summary>Result of a successful start: every output and the master-clock position at the start.</summary>
-public sealed record RunStarted(IReadOnlyList<StartedOutput> Outputs, TimeSpan ClockPosition);
+public sealed record RunStarted(IReadOnlyList<StartedOutput> Outputs, TimeSpan ClockPosition)
+{
+    /// <summary>Time from the start request until audio reached the devices.</summary>
+    public TimeSpan StartToAudio { get; init; }
+}
 
 /// <summary>Outcome of a seek: where playback is now, whether the target was outside the file and whether playback is paused.</summary>
 public sealed record SeekResult(TimeSpan Position, bool OutsideFile, bool Paused);

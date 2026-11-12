@@ -1,4 +1,5 @@
 using DualPlayer.Console.Commands;
+using DualPlayer.Media.Audio;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
@@ -31,6 +32,16 @@ internal static class Program
 
         try
         {
+            var ffmpeg = FfmpegLibrary.Load();
+            if (ffmpeg.IsSuccess)
+            {
+                StartupDiagnostics.LogFfmpeg(ffmpeg.Value, log);
+            }
+            else
+            {
+                log.LogWarning("FFmpeg not loaded: {Code} {Message}", ffmpeg.Error.Code, ffmpeg.Error.Message);
+            }
+
             var parsed = CommandLine.Parse(args);
             if (!parsed.IsSuccess)
             {

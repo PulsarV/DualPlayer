@@ -37,11 +37,10 @@ internal sealed class PlayCommand(IAudioEngine engine, TimeProvider? time = null
         var index = 1;
         foreach (var o in started.Value.Outputs)
         {
-            console.WriteLine(
-                $"output {index++}  track {o.TrackNumber} (-> {ConsoleFormat.Layout(o.Format.ChannelLayout)} {o.Format.SampleRate})  device {o.DeviceName}  id {o.DeviceId}");
+            console.WriteLine($"output {index++}  track {o.TrackNumber} ({ConsoleFormat.TrackConversion(o)})  device {o.DeviceName}  id {o.DeviceId}");
         }
 
-        console.WriteLine($"started   clock {ConsoleFormat.Clock(started.Value.ClockPosition)}");
+        console.WriteLine($"started   clock {ConsoleFormat.Clock(started.Value.ClockPosition)}  start-to-audio {ConsoleFormat.Seconds(started.Value.StartToAudio)}");
 
         signals.RunStarted();
         if (input is null)

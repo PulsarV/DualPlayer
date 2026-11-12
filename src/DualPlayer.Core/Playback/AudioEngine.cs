@@ -196,10 +196,17 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         _run = run;
         run.SyncTimer = _time.CreateTimer(_ => _loop.Post(() => OnSyncSample(run)), null, SyncSampleInterval, SyncSampleInterval);
         _loop.Polling = true; // until every output's first audio is logged
-        LogRunStarted(run.Outputs.Count, _time.GetElapsedTime(startTimestamp, now).TotalMilliseconds);
+        var startToAudio = _time.GetElapsedTime(startTimestamp, now);
+        LogRunStarted(run.Outputs.Count, startToAudio.TotalMilliseconds);
         return Result<RunStarted>.Success(new RunStarted(
-            [.. run.Outputs.Select(o => new StartedOutput(o.TrackNumber, o.DeviceId, o.DeviceName, o.Format))],
-            run.Clock.PositionAt(now)));
+            [.. run.Outputs.Select(o => new StartedOutput(o.TrackNumber, o.DeviceId, o.DeviceName, o.Format)
+            {
+                Source = tracks.Value.FirstOrDefault(t => t.Number == o.TrackNumber),
+            })],
+            run.Clock.PositionAt(now))
+        {
+            StartToAudio = startToAudio,
+        });
     }
 
     private Result<TimeSpan> PauseCore()

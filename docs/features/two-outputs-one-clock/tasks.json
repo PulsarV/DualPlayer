@@ -705,7 +705,7 @@
         "tests/DualPlayer.Console.Tests/ListAndPlayCommandTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T30-console-full-start-lines-with-source-track-convers.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12: F12, F25"
     },
     {
