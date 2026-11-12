@@ -1026,7 +1026,7 @@
         "tests/DualPlayer.Core.Tests/Playback/AudioEngineRecoveryTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T45-keep-the-recovery-window-to-start-resume-and-seek.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r3: S5"
     },
     {

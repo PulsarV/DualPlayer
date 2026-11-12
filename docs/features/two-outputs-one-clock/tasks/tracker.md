@@ -52,7 +52,7 @@
 | T42 | [Take the LFE-dropped note from Media's conversion](./T42-take-the-lfe-dropped-note-from-media-s-conversion.md) | app | Volodymyr Kravchuk | S | T34, T41, T38 | done | COMMIT |
 | T43 | [Make Core test rigs fail instead of spinning and bound the stop wait in real time](./T43-make-core-test-rigs-fail-instead-of-spinning-and-bound-the-stop-wait-i.md) | test | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T44 | [Make reclaiming a stalled ring exclusive so skipped frames are never counted twice](./T44-make-reclaiming-a-stalled-ring-exclusive-so-skipped-frames-are-never-c.md) | app | Volodymyr Kravchuk | M | T43 | done | COMMIT |
-| T45 | [Keep the recovery window to start, resume and seek](./T45-keep-the-recovery-window-to-start-resume-and-seek.md) | app | Volodymyr Kravchuk | S | T44 | todo | SELECT |
+| T45 | [Keep the recovery window to start, resume and seek](./T45-keep-the-recovery-window-to-start-resume-and-seek.md) | app | Volodymyr Kravchuk | S | T44 | done | COMMIT |
 | T46 | [Publish AudioStarted without waiting on stalled outputs and only for real audio](./T46-publish-audiostarted-without-waiting-on-stalled-outputs-and-only-for-r.md) | app | Volodymyr Kravchuk | S | T45 | todo | SELECT |
 | T47 | [Print the started line after the output lines and list the new events in the SAD](./T47-print-the-started-line-after-the-output-lines-and-list-the-new-events.md) | app | Volodymyr Kravchuk | S | T46 | todo | SELECT |
 | T48 | [Decide seek past the end from the decoder, not from the Matroska duration](./T48-decide-seek-past-the-end-from-the-decoder-not-from-the-matroska-durati.md) | integration | Volodymyr Kravchuk | S | — | todo | SELECT |

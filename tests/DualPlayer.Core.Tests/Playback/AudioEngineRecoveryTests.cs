@@ -215,4 +215,30 @@ public sealed class AudioEngineRecoveryTests
             (withHang - baseline).ShouldBeLessThanOrEqualTo(1, "corrections dev-2 needed after the hang beyond a run without it");
         }
     }
+
+    [Fact]
+    public void When_an_output_recovers_from_a_hang_across_a_seek_its_off_sync_time_counts_towards_max_drift_and_excursions()
+    {
+        using var rig = new EngineRig([new RigDevice(48_000, 0), new RigDevice(44_100, 0)], observe: true);
+        rig.Start();
+        rig.Render(1_000);
+        rig.Devices[1].Hang();
+        rig.Render(300);
+        rig.Seek(TimeSpan.FromSeconds(120));
+        rig.Render(300); // the seek's own one second is over: the clock is past it
+
+        rig.Devices[1].Unhang();
+        var recoveredAt = rig.Elapsed;
+        var position = rig.Position;
+        rig.Render(3_200);
+        rig.Stop(RunEndReason.Stop);
+
+        // what dev-2 actually played off sync right after it came back, from its rendered samples
+        var real = rig.MaxDriftMs(1, recoveredAt, position, TimeSpan.Zero, Recovery);
+        real.ShouldBeGreaterThan(100, "the rig must make dev-2 audibly off sync after it recovers");
+
+        var second = rig.Summary!.Outputs.Single(o => o.DeviceId == "dev-2");
+        second.MaxDriftMs.ShouldBeGreaterThan(ToleranceMs, "dev-2 was off sync after it recovered: that is not recovery time");
+        rig.Events.OfType<Excursion>().ShouldContain(e => e.DeviceId == "dev-2");
+    }
 }

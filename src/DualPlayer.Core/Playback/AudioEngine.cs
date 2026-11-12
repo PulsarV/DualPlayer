@@ -626,7 +626,6 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
         output.AlignAfterRecovery = false;
         BeginAlignment(output, now);
-        BeginRecovery(run, now);
 
         // What the device was still playing when it came back is the audio from before the seek: the record says so.
         var staleFrame = output.Source.PreviousEpochLastContentFrame;
