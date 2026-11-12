@@ -1267,7 +1267,7 @@
         "tests/DualPlayer.Media.Tests/Audio/FfmpegAudioDecoderTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T57-check-the-restore-seek-after-the-matroska-duration-probe.md",
-      "status": "todo",
+      "status": "blocked",
       "origin": "review-2026-11-12-r4: T6"
     }
   ]
