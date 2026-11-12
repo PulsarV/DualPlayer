@@ -1364,6 +1364,23 @@
       "file": "docs/features/two-outputs-one-clock/tasks/T62-await-a-late-first-render-past-the-start-to-audio-budget.md",
       "status": "done",
       "origin": "review-2026-11-12-r6: V2"
+    },
+    {
+      "id": "T63",
+      "title": "Step the start-deadline tests on the fake clock and fix the deadline comment",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "stalled-at-start test jumps the fake clock; T62 test asserts no AudioStarted while dev-2 is hung past 2 s and fails on the 2 s deadline; deadline comment matches code; gate clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs",
+        "src/DualPlayer.Core/Playback/AudioEngine.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T63-step-the-start-deadline-tests-on-the-fake-clock-and-fix-the-deadline-comment.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r7: W1, W2, W3"
     }
   ]
 }
