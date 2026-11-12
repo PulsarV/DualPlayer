@@ -173,4 +173,64 @@ public sealed class FfmpegAudioDecoderTests
             expectedNext += block.Samples.Length / Mono48.Channels;
         }
     }
+
+    // ramp-offset.ts / .mkv: 6 s mono 48 kHz ramp (value = t/6) in containers whose timestamps start above 0
+    // (TS start_time 1.4 s, MKV 600 s). Content time is relative to the stream start.
+    private static IDecodeSession OpenRamp(string name)
+    {
+        var opened = NewDecoder().Open(Media(name), [new DecodeRequest(1, Mono48)]);
+        opened.IsSuccess.ShouldBeTrue(opened.Error?.Message);
+        return opened.Value;
+    }
+
+    [Theory]
+    [InlineData("ramp-offset.ts")]
+    [InlineData("ramp-offset.mkv")]
+    public void Open_of_a_file_whose_timestamps_start_above_zero_starts_the_first_block_at_frame_zero(string name)
+    {
+        using var session = OpenRamp(name);
+
+        var block = ReadBlockOf(session, 0);
+
+        block.StartFrame.ShouldBeInRange(0L, 2048L, "the first block must start at content time 0, not at the container offset");
+        (block.Samples[0] * 6.0).ShouldBe(0.0, 0.1, "the first block must carry content from time 0");
+    }
+
+    [Theory]
+    [InlineData("ramp-offset.ts")]
+    [InlineData("ramp-offset.mkv")]
+    public void Duration_of_a_file_whose_timestamps_start_above_zero_excludes_the_start_offset(string name)
+    {
+        using var session = OpenRamp(name);
+
+        session.Duration.ShouldNotBeNull();
+        session.Duration.Value.TotalSeconds.ShouldBe(6.0, 0.2);
+    }
+
+    [Theory]
+    [InlineData("ramp-offset.ts")]
+    [InlineData("ramp-offset.mkv")]
+    public void Seek_in_a_file_whose_timestamps_start_above_zero_lands_on_the_target_content_time(string name)
+    {
+        using var session = OpenRamp(name);
+
+        session.Seek(TimeSpan.FromSeconds(3), 2).IsSuccess.ShouldBeTrue();
+        var block = ReadBlockOf(session, 0);
+
+        block.StartFrame.ShouldBeInRange(3L * 48000 - 2048, 3L * 48000 + 2048);
+        (block.Samples[0] * 6.0).ShouldBe(3.0, 0.1, "audio must start at the seek target, not offset early");
+    }
+
+    [Fact]
+    public void Seek_just_before_the_end_of_a_file_whose_timestamps_start_above_zero_still_yields_audio()
+    {
+        using var session = OpenRamp("ramp-offset.ts");
+
+        session.Seek(TimeSpan.FromSeconds(5.5), 2).IsSuccess.ShouldBeTrue();
+        var read = session.Read();
+
+        read.IsSuccess.ShouldBeTrue("a seek 0.5 s before the end is not past the end: " + read.Error?.Message);
+        read.Value.StartFrame.ShouldBeInRange(5L * 48000 + 24000 - 2048, 5L * 48000 + 24000 + 2048);
+        (read.Value.Samples[0] * 6.0).ShouldBe(5.5, 0.1, "audio must start at the seek target, not offset early");
+    }
 }

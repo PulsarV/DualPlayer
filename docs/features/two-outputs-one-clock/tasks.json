@@ -797,7 +797,7 @@
         "tests/DualPlayer.Media.Tests/TestMedia/"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T34-subtract-the-stream-start-time-so-files-whose-timestamps-start-above-0.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r2: R1"
     },
     {

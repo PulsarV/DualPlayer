@@ -17,6 +17,7 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
     private AVFormatContext* _fmt;
     private AVPacket* _packet;
     private AVFrame* _frame;
+    private long _startTime; // container start_time (AV_TIME_BASE); content position 0 is this timestamp
     private int _epoch;
     private bool _drained;
     private bool _disposed;
@@ -38,10 +39,26 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
         return Result<IDecodeSession>.Success(session);
     }
 
-    public TimeSpan? Duration =>
-        !_disposed && _fmt->duration > 0 && _fmt->duration != ffmpeg.AV_NOPTS_VALUE
-            ? TimeSpan.FromSeconds((double)_fmt->duration / ffmpeg.AV_TIME_BASE)
-            : null;
+    public TimeSpan? Duration => !_disposed && ContentDuration() is { } d ? TimeSpan.FromSeconds((double)d / ffmpeg.AV_TIME_BASE) : null;
+
+    // Length of the content in AV_TIME_BASE units, or null when unknown. The Matroska demuxer reports the end
+    // timestamp (start offset included) as the duration, MPEG-TS the span; this returns the span.
+    private long? ContentDuration()
+    {
+        var duration = _fmt->duration;
+        if (duration <= 0 || duration == ffmpeg.AV_NOPTS_VALUE)
+        {
+            return null;
+        }
+
+        var name = System.Runtime.InteropServices.Marshal.PtrToStringUTF8((nint)_fmt->iformat->name) ?? "";
+        if (name.Contains("matroska", StringComparison.Ordinal))
+        {
+            duration -= _startTime;
+        }
+
+        return duration > 0 ? duration : null;
+    }
 
     public Result Seek(TimeSpan position, int epoch)
     {
@@ -51,10 +68,10 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
         }
 
         var target = (long)(position.TotalSeconds * ffmpeg.AV_TIME_BASE);
-        var rc = ffmpeg.av_seek_frame(_fmt, -1, target, ffmpeg.AVSEEK_FLAG_BACKWARD);
+        var rc = ffmpeg.av_seek_frame(_fmt, -1, target + _startTime, ffmpeg.AVSEEK_FLAG_BACKWARD);
         _pending.Clear();
         _epoch = epoch;
-        var pastEnd = _fmt->duration > 0 && _fmt->duration != ffmpeg.AV_NOPTS_VALUE && target >= _fmt->duration;
+        var pastEnd = Duration is { } length && position >= length;
         if (rc < 0 || pastEnd)
         {
             // Seeking beyond the end of a file: nothing is left to play (the engine decides what that means).
@@ -131,6 +148,7 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
             return open;
         }
 
+        _startTime = _fmt->start_time == ffmpeg.AV_NOPTS_VALUE ? 0 : _fmt->start_time;
         var streams = FfmpegAudioDecoder.AudioStreams(_fmt);
         _packet = ffmpeg.av_packet_alloc();
         _frame = ffmpeg.av_frame_alloc();
@@ -144,7 +162,7 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
                     $"Track {number} does not exist; the file has {streams.Count} audio track(s).");
             }
 
-            var created = Output.Create(i, (AVStream*)streams[number - 1], requests[i].Target);
+            var created = Output.Create(i, (AVStream*)streams[number - 1], requests[i].Target, _startTime);
             if (!created.IsSuccess)
             {
                 return Result.Failure(created.Error);
@@ -233,12 +251,14 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
         private float[] _buffer = [];
         private int _buffered;
         private readonly AVRational _timeBase;
+        private readonly long _startOffset; // container start_time in output frames, subtracted from every pts
         private long _startFrame; // content position (output frames) of _buffer[0]; the next expected one when empty
         private long _trimTarget; // frames before this are discarded (seek target)
         private bool _anchored;   // _startFrame has been taken from a pts since the last seek
 
-        private Output(int index, AVStream* stream, AVCodecContext* codec, MixFormatInfo target, AVChannelLayout outLayout)
+        private Output(int index, AVStream* stream, AVCodecContext* codec, MixFormatInfo target, AVChannelLayout outLayout, long startTime)
         {
+            _startOffset = ffmpeg.av_rescale_q(startTime, new AVRational { num = 1, den = ffmpeg.AV_TIME_BASE }, new AVRational { num = 1, den = target.Rate });
             _index = index;
             StreamIndex = stream->index;
             _timeBase = stream->time_base;
@@ -252,7 +272,7 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
 
         public AVCodecContext* Codec { get; private set; }
 
-        public static Result<Output> Create(int index, AVStream* stream, Core.Outputs.MixFormat target)
+        public static Result<Output> Create(int index, AVStream* stream, Core.Outputs.MixFormat target, long startTime)
         {
             var decoder = ffmpeg.avcodec_find_decoder(stream->codecpar->codec_id);
             if (decoder is null)
@@ -277,7 +297,7 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
 
             AVChannelLayout layout = default;
             ffmpeg.av_channel_layout_default(&layout, target.Channels);
-            var output = new Output(index, stream, codec, new MixFormatInfo(target.SampleRate, target.Channels), layout);
+            var output = new Output(index, stream, codec, new MixFormatInfo(target.SampleRate, target.Channels), layout, startTime);
             return Result<Output>.Success(output);
         }
 
@@ -340,7 +360,7 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
             }
 
             var heldByResampler = _converter!.DelayFrames(_rate);
-            var start = ffmpeg.av_rescale_q(pts, _timeBase, new AVRational { num = 1, den = _rate }) - heldByResampler;
+            var start = ffmpeg.av_rescale_q(pts, _timeBase, new AVRational { num = 1, den = _rate }) - _startOffset - heldByResampler;
             var tolerance = Math.Max(1, ffmpeg.av_rescale_q(1, _timeBase, new AVRational { num = 1, den = _rate })) + 1;
             if (!_anchored || Math.Abs(start - _startFrame) > tolerance)
             {
