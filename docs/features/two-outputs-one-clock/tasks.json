@@ -1362,7 +1362,7 @@
         "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T62-await-a-late-first-render-past-the-start-to-audio-budget.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r6: V2"
     }
   ]

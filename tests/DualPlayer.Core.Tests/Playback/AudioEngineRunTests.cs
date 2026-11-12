@@ -458,7 +458,9 @@ public sealed class AudioEngineRunTests
         rig.Engine.StartRun("film.mkv", [Assign(1, 1), Assign(2, 2)], new EngineOptions()).IsSuccess.ShouldBeTrue();
         rig.Backend.Devices["dev-2"].Hang();
 
-        rig.Render(250); // past the two-second start deadline after which a never-rendered output is no longer awaited
+        rig.Render(1);
+        rig.Time.Advance(TimeSpan.FromSeconds(5)); // past the start deadline after which a never-rendered output is no longer awaited
+        rig.Render(2);
 
         rig.WaitFor(() => rig.Events.OfType<AudioStarted>().Any()).ShouldBeTrue("AudioStarted waited for the hung output");
         var started = rig.Events.OfType<AudioStarted>().Single();
@@ -572,6 +574,27 @@ public sealed class AudioEngineRunTests
         }).ShouldBeTrue();
 
         rig.Events.OfType<AudioStarted>().Single().StartToAudio.ShouldBeGreaterThanOrEqualTo(TimeSpan.FromSeconds(1));
+        rig.Stop(RunEndReason.Stop);
+    }
+
+    [Fact]
+    public void Audio_started_counts_a_first_render_just_past_the_two_second_start_to_audio_budget()
+    {
+        using var rig = new Rig(2);
+        rig.Engine.StartRun("film.mkv", [Assign(1, 1), Assign(2, 2)], new EngineOptions()).IsSuccess.ShouldBeTrue();
+        rig.Backend.Devices["dev-2"].Hang();
+        rig.Render(1); // dev-1 renders its first audio
+        rig.Time.Advance(TimeSpan.FromMilliseconds(2_350)); // dev-2 has never rendered and is now past the two-second budget
+        rig.Render(2);
+        rig.Backend.Devices["dev-2"].Unhang();
+
+        rig.WaitFor(() =>
+        {
+            rig.Render(1);
+            return rig.Events.OfType<AudioStarted>().Any();
+        }).ShouldBeTrue();
+
+        rig.Events.OfType<AudioStarted>().Single().StartToAudio.ShouldBeGreaterThanOrEqualTo(TimeSpan.FromSeconds(2), "a budget breach must not be reported as the faster output's value");
         rig.Stop(RunEndReason.Stop);
     }
 

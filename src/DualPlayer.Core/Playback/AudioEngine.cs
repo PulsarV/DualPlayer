@@ -532,7 +532,8 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         }
 
         var aligning = AlignOutputs(run);
-        // A stalled output is not waited for by AudioStarted, but polling continues until it logs its first audio (if it recovers).
+        // AudioStarted waits for a never-rendered output until FirstAudioDeadline, then not for a stalled one; polling continues
+        // until every output logs its first audio (if it recovers).
         var unlogged = run.Outputs.Any(o => !o.Lost && !o.FirstAudioLogged);
         _loop.Polling = awaitingFirstAudio || unlogged || run.DecodeEnded || aligning;
     }
@@ -731,8 +732,11 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         run.Publisher!.Publish(run.Clock!.PositionAt(now), samples);
     }
 
-    /// <summary>How long after the start an output that has never rendered is still awaited by <see cref="AudioStarted"/>.</summary>
-    private static readonly TimeSpan FirstAudioDeadline = TimeSpan.FromSeconds(2);
+    /// <summary>
+    /// How long after the start an output that has never rendered is still awaited by <see cref="AudioStarted"/>: well above the
+    /// 2 s start-to-audio budget, so a first render that misses the budget is reported, not hidden behind a faster output.
+    /// </summary>
+    private static readonly TimeSpan FirstAudioDeadline = TimeSpan.FromSeconds(5);
 
     /// <summary>Logs start-to-audio for every output that has rendered its first audio; true while some still have not.</summary>
     private bool LogFirstAudio(Run run)
@@ -754,8 +758,8 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             LogFirstAudio(output.DeviceId, _time.GetElapsedTime(run.StartTimestamp, timestamp).TotalMilliseconds);
         }
 
-        // Once per run, when no non-lost output still waits; an output lost or stalled before its first audio is not waited for,
-        // and a run that ends first (or loses every output) publishes nothing.
+        // Once per run, when no non-lost output still waits; an output lost before its first audio, or still silent and stalled past
+        // FirstAudioDeadline, is not waited for, and a run that ends first (or loses every output) publishes nothing.
         if (!awaiting && !run.AudioStartedPublished && run.LatestFirstAudio is { } latest)
         {
             run.AudioStartedPublished = true;

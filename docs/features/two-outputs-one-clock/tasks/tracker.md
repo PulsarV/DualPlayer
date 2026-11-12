@@ -69,6 +69,6 @@
 | T59 | [Decide a seek target is inside the file from every active output, hung ones included](./T59-decide-a-seek-target-is-inside-the-file-from-every-active-output.md) | app | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T60 | [Include a late first render in AudioStarted and trim the late-start test](./T60-include-a-late-first-render-in-audiostarted-and-trim-the-late-start-test.md) | app | Volodymyr Kravchuk | S | T59 | done | COMMIT |
 | T61 | [Pin the restore reopen and its unreadable branch with tests](./T61-pin-the-restore-reopen-and-its-unreadable-branch-with-tests.md) | integration | Volodymyr Kravchuk | S | — | done | COMMIT |
-| T62 | [Await a late first render past the start-to-audio budget](./T62-await-a-late-first-render-past-the-start-to-audio-budget.md) | app | Volodymyr Kravchuk | S | — | todo | — |
+| T62 | [Await a late first render past the start-to-audio budget](./T62-await-a-late-first-render-past-the-start-to-audio-budget.md) | app | Volodymyr Kravchuk | S | — | done | COMMIT |
 
 **Total:** 62 tasks (T23–T33 are follow-ups from review-2026-11-12, T34–T42 from review-2026-11-12-r2, T43–T51 from review-2026-11-12-r3, T52–T57 from review-2026-11-12-r4, T58–T60 from review-2026-11-12-r5, T61–T62 from review-2026-11-12-r6), ~49 person-days (S = ½ day, M/L = 1 day; L tasks are full days with a split risk).

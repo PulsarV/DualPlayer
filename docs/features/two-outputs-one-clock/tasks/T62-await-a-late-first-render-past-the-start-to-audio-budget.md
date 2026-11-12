@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-12-r6 (V2)"
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from re-review 6. Work from what is inlined here; the source always wins.
@@ -29,8 +29,8 @@ See [spec.md](../spec.md) §5 AC-01.
 
 ## Definition of Done
 
-- [ ] The first-audio deadline sits clearly above the 2 s budget (e.g. reuse `StartLevelTimeout` or another named option), so a first render up to the deadline is counted in `AudioStarted.StartToAudio`.
-- [ ] A test with a first render just past 2 s (e.g. 2.4 s) asserts `StartToAudio` ≥ 2 s; it fails on the current code.
-- [ ] An output that never renders is still not awaited forever (existing tests stay green, wall-clock cost kept small).
-- [ ] The comments at `:535` and `:757` describe the actual behaviour.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The first-audio deadline sits clearly above the 2 s budget (e.g. reuse `StartLevelTimeout` or another named option), so a first render up to the deadline is counted in `AudioStarted.StartToAudio`.
+- [x] A test with a first render just past 2 s (e.g. 2.4 s) asserts `StartToAudio` ≥ 2 s; it fails on the current code.
+- [x] An output that never renders is still not awaited forever (existing tests stay green, wall-clock cost kept small).
+- [x] The comments at `:535` and `:757` describe the actual behaviour.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
