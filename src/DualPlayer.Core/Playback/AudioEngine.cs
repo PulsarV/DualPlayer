@@ -731,7 +731,8 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         {
             if (output.Gate.FirstAudioTimestamp is not { } timestamp)
             {
-                awaiting = true;
+                // A hung output is not waited for, as a seek or stop does not wait for it; it is logged if it recovers.
+                awaiting |= !run.Pump!.IsStalled(output.Index);
                 continue;
             }
 
@@ -740,7 +741,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             LogFirstAudio(output.DeviceId, _time.GetElapsedTime(run.StartTimestamp, timestamp).TotalMilliseconds);
         }
 
-        // Once per run, when no non-lost output still waits; an output lost before its first audio is not waited for,
+        // Once per run, when no non-lost output still waits; an output lost or stalled before its first audio is not waited for,
         // and a run that ends first (or loses every output) publishes nothing.
         if (!awaiting && !run.AudioStartedPublished && run.LatestFirstAudio is { } latest)
         {
@@ -1010,7 +1011,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             }
 
             inner.Render(buffer, position);
-            if (Interlocked.Read(ref _firstAudioTimestamp) == NoAudioYet && inner.LastContentFrameHandedOut >= 0)
+            if (Interlocked.Read(ref _firstAudioTimestamp) == NoAudioYet && inner.HasHandedOutAudio)
             {
                 Interlocked.Exchange(ref _firstAudioTimestamp, position.Timestamp);
             }

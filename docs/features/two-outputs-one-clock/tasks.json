@@ -1046,7 +1046,7 @@
         "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T46-publish-audiostarted-without-waiting-on-stalled-outputs-and-only-for-r.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r3: S3"
     },
     {

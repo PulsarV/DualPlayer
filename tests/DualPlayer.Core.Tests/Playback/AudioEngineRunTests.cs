@@ -211,6 +211,50 @@ public sealed class AudioEngineRunTests
         return decoder;
     }
 
+    /// <summary>Delegates to another decoder, but after a seek delivers only empty blocks until released.</summary>
+    private sealed class GatedSeekDecoder(IAudioDecoder inner) : IAudioDecoder
+    {
+        private volatile bool _held;
+        private volatile bool _seeked;
+
+        public bool Seeked => _seeked;
+
+        public void Release() => _held = false;
+
+        public Result<IReadOnlyList<AudioTrackInfo>> ListTracks(string path) => inner.ListTracks(path);
+
+        public Result<IDecodeSession> Open(string path, IReadOnlyList<DecodeRequest> outputs)
+        {
+            var opened = inner.Open(path, outputs);
+            return opened.IsSuccess ? Result<IDecodeSession>.Success(new Session(this, opened.Value)) : opened;
+        }
+
+        private sealed class Session(GatedSeekDecoder owner, IDecodeSession inner) : IDecodeSession
+        {
+            public TimeSpan? Duration => inner.Duration;
+
+            public Result Seek(TimeSpan position, int epoch)
+            {
+                owner._held = true;
+                owner._seeked = true;
+                return inner.Seek(position, epoch);
+            }
+
+            public Result<DecodedBlock> Read()
+            {
+                if (owner._held)
+                {
+                    Thread.Sleep(1);
+                    return Result<DecodedBlock>.Success(new DecodedBlock(0, 0, 0, []));
+                }
+
+                return inner.Read();
+            }
+
+            public void Dispose() => inner.Dispose();
+        }
+    }
+
     private sealed class RecordingBackend(FakeAudioBackend inner) : IAudioBackend
     {
         public Dictionary<string, FakeAudioDevice> Devices { get; } = [];
@@ -405,6 +449,64 @@ public sealed class AudioEngineRunTests
         rig.Events.OfType<AudioStarted>().Count().ShouldBe(1);
         var events = rig.Events.ToList();
         events.FindIndex(e => e is AudioStarted).ShouldBeLessThan(events.FindIndex(e => e is RunSummary));
+    }
+
+    [Fact]
+    public void Audio_started_is_published_from_the_rendering_output_when_another_is_hung_from_the_start()
+    {
+        using var rig = new Rig(2);
+        rig.Engine.StartRun("film.mkv", [Assign(1, 1), Assign(2, 2)], new EngineOptions()).IsSuccess.ShouldBeTrue();
+        rig.Backend.Devices["dev-2"].Hang();
+
+        rig.Render(150); // well past the one second after which an output counts as stalled
+
+        rig.WaitFor(() => rig.Events.OfType<AudioStarted>().Any()).ShouldBeTrue("AudioStarted waited for the hung output");
+        var started = rig.Events.OfType<AudioStarted>().Single();
+        started.StartToAudio.ShouldBeLessThanOrEqualTo(TimeSpan.FromMilliseconds(100), "measured to the rendering output's first audio");
+        rig.Stop(RunEndReason.Stop);
+        rig.Events.OfType<AudioStarted>().Count().ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task A_silent_render_after_a_seek_before_the_first_audio_does_not_count_as_first_audio()
+    {
+        var held = new GatedSeekDecoder(new FakeAudioDecoder(Tracks, 48_000 * 30));
+        using var rig = new Rig(2, decoder: held);
+        var startedAt = rig.Time.GetTimestamp();
+        rig.Engine.StartRun("film.mkv", [Assign(1, 1), Assign(2, 2)], new EngineOptions()).IsSuccess.ShouldBeTrue();
+
+        var seek = Task.Factory.StartNew(
+            () => rig.Engine.Seek(TimeSpan.FromSeconds(5)),
+            CancellationToken.None,
+            TaskCreationOptions.LongRunning,
+            TaskScheduler.Default);
+        rig.WaitFor(() =>
+        {
+            rig.Time.Advance(TimeSpan.FromMilliseconds(5)); // the pump waits on the fake clock; no device renders yet
+            return held.Seeked;
+        }).ShouldBeTrue("the seek never reached the decoder");
+        for (var i = 0; i < 3_000 && !seek.IsCompleted; i++)
+        {
+            rig.Render(1);
+        }
+
+        await seek.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        rig.Render(20); // the epoch is applied and rendered, but the decoder has delivered nothing yet
+        Thread.Sleep(100);
+        rig.Events.OfType<AudioStarted>().ShouldBeEmpty("silent renders after the seek are not audio");
+
+        var releasedAt = rig.Time.GetTimestamp();
+        held.Release();
+        rig.Render(1);
+        rig.WaitFor(() =>
+        {
+            rig.Render(1);
+            return rig.Events.OfType<AudioStarted>().Any();
+        }).ShouldBeTrue();
+
+        var started = rig.Events.OfType<AudioStarted>().Single();
+        started.StartToAudio.ShouldBeGreaterThanOrEqualTo(rig.Time.GetElapsedTime(startedAt, releasedAt));
+        rig.Stop(RunEndReason.Stop);
     }
 
     [Fact]
