@@ -863,7 +863,7 @@
         "tests/DualPlayer.Core.Tests/Playback/AudioEngineRecoveryTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T37-recover-a-stalled-output-without-seek-in-one-correction-and-no-underru.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r2: R4"
     },
     {

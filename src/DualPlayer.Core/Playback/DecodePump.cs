@@ -294,15 +294,15 @@ public sealed partial class DecodePump : IDisposable
 
             if (IsStalled(index))
             {
-                // An output that hung before a seek has not read anything of this epoch yet: it loses its oldest
-                // frames, so it comes back with the newest audio instead of a hole after the stale part.
+                // A stalled output loses its oldest frames, so it comes back with the newest audio (the part the
+                // master clock is playing) instead of a hole after the stale part.
                 if (ring.TryReclaimOldest(piece, _epoch))
                 {
                     LogDrop(index);
                     continue;
                 }
 
-                // Otherwise only this output loses frames, the new ones; the ring is told how many, so its content
+                // Nothing older to drop: this output loses the new frames; the ring is told how many, so its content
                 // position stays true when it reads again.
                 ring.NoteSkipped(pending.Length / ring.Channels, _epoch);
                 LogDrop(index);

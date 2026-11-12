@@ -15,12 +15,15 @@ public sealed class AudioRingBuffer : DualPlayer.Core.Sync.IFrameReader
     private long _head; // frames consumed; written by the reader only
     private long _tail; // frames produced; written by the writer only
     private long _floor; // frames before this position are dead, whatever _head says; written by the writer only
+    private int _reclaimVersion; // bumped by the writer before it reuses reclaimed slots; the reader retries a read that overlapped it
     private long _lastReadTimestamp;
     private long _skippedConsumed; // skipped frames the reader has passed; written by the reader only
     private int _pendingSkip; // writer only
     private int _pendingSkipEpoch; // writer only
     private int _readerEpoch; // written by the render thread only
     private long _readerTimestamp; // render thread only
+    private long _pendingHead; // render thread only: head a read attempt reached, published once no reclaim overlapped it
+    private long _pendingSkipped; // render thread only
 
     public AudioRingBuffer(int capacityFrames, int channels)
     {
@@ -79,19 +82,14 @@ public sealed class AudioRingBuffer : DualPlayer.Core.Sync.IFrameReader
     }
 
     /// <summary>
-    /// Decode thread, for a reader that has stopped reading and has not yet adopted <paramref name="epoch"/> (it hung
-    /// before a seek): frees room for <paramref name="frames"/> more frames by dropping the oldest ones instead of the
-    /// new ones, so when the reader returns it plays the newest audio. Returns false, dropping nothing, when the
-    /// reader already reads in <paramref name="epoch"/>. Dropped frames of <paramref name="epoch"/> are counted as
-    /// skipped, so the content position stays true.
+    /// Decode thread, for a reader that has stopped reading (it hung): frees room for <paramref name="frames"/> more
+    /// frames by dropping the oldest ones instead of the new ones, so when the reader returns it plays the newest
+    /// audio. Returns false, dropping nothing, when there is nothing to drop. Dropped frames of
+    /// <paramref name="epoch"/> are counted as skipped, so the content position stays true. A reader that happens to
+    /// be reading meanwhile notices (<see cref="_reclaimVersion"/>) and reads again.
     /// </summary>
     public bool TryReclaimOldest(int frames, int epoch)
     {
-        if (Volatile.Read(ref _readerEpoch) >= epoch)
-        {
-            return false;
-        }
-
         var tail = Volatile.Read(ref _tail);
         var floor = Math.Max(Volatile.Read(ref _head), Volatile.Read(ref _floor));
         var drop = Math.Min(tail - floor, tail - floor + frames - _capacity);
@@ -101,6 +99,7 @@ public sealed class AudioRingBuffer : DualPlayer.Core.Sync.IFrameReader
         }
 
         var newFloor = floor + drop;
+        Interlocked.Increment(ref _reclaimVersion);
         long dropped = 0;
         for (var position = floor; position < newFloor; position++)
         {
@@ -159,6 +158,31 @@ public sealed class AudioRingBuffer : DualPlayer.Core.Sync.IFrameReader
     {
         Volatile.Write(ref _lastReadTimestamp, readTimestamp);
 
+        while (true)
+        {
+            var version = Volatile.Read(ref _reclaimVersion);
+            var result = ReadOnce(dest, currentEpoch, out discardedFrames);
+            Interlocked.MemoryBarrier();
+            if (version == Volatile.Read(ref _reclaimVersion))
+            {
+                CommitRead();
+                return result;
+            }
+        }
+    }
+
+    private void CommitRead()
+    {
+        if (_pendingSkipped != 0)
+        {
+            Volatile.Write(ref _skippedConsumed, _skippedConsumed + _pendingSkipped);
+        }
+
+        Volatile.Write(ref _head, _pendingHead);
+    }
+
+    private int ReadOnce(Span<float> dest, int currentEpoch, out int discardedFrames)
+    {
         var head = Math.Max(Volatile.Read(ref _head), Volatile.Read(ref _floor));
         var tail = Volatile.Read(ref _tail);
         var maxFrames = dest.Length / _channels;
@@ -187,12 +211,8 @@ public sealed class AudioRingBuffer : DualPlayer.Core.Sync.IFrameReader
             head++;
         }
 
-        if (skipped != 0)
-        {
-            Volatile.Write(ref _skippedConsumed, _skippedConsumed + skipped);
-        }
-
-        Volatile.Write(ref _head, head);
+        _pendingSkipped = skipped;
+        _pendingHead = head;
         discardedFrames = discarded;
         return read;
     }

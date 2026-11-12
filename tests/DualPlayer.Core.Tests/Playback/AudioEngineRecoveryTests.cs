@@ -1,3 +1,4 @@
+using DualPlayer.Core.Diagnostics;
 using DualPlayer.Core.Tests.Fakes;
 using Shouldly;
 
@@ -50,7 +51,7 @@ public sealed class AudioEngineRecoveryTests
     {
         using var rig = new EngineRig([new RigDevice(48_000, ppm), new RigDevice(44_100, -ppm)], observe: true);
         rig.Start();
-        rig.Render(3_000);
+        rig.Render(3_200);
         rig.Pause();
         rig.Render(500);
         rig.Devices[1].StepPosition(stepMs * 44_100L / 1000);
@@ -162,5 +163,56 @@ public sealed class AudioEngineRecoveryTests
         }
 
         rig.Summary.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(300)]
+    public void After_an_output_that_hung_for_three_seconds_recovers_without_a_seek_it_is_aligned_once_with_no_underruns(double ppm)
+    {
+        RigDevice[] devices = [new RigDevice(48_000, ppm), new RigDevice(44_100, -ppm)];
+
+        // control run: the same playback without the hang, to count what a healthy run corrects anyway
+        int Corrections(bool hang, out TimeSpan recoveredAt, out TimeSpan position, out long underrunsAtRecovery, out EngineRig rig)
+        {
+            rig = new EngineRig(devices, observe: true);
+            rig.Start();
+            rig.Render(1_000);
+            if (hang)
+            {
+                rig.Devices[1].Hang();
+                rig.Render(300);
+                rig.Devices[1].Unhang();
+            }
+            else
+            {
+                rig.Render(300);
+            }
+
+            recoveredAt = rig.Elapsed;
+            position = rig.Position;
+            underrunsAtRecovery = rig.RecordsOf("dev-2").LastOrDefault()?.Underruns ?? 0;
+            rig.Render(3_200);
+            rig.Stop(RunEndReason.Stop);
+            return rig.Summary!.Outputs.Single(o => o.DeviceId == "dev-2").Corrections;
+        }
+
+        var baseline = Corrections(false, out _, out _, out _, out var control);
+        control.Dispose();
+        var withHang = Corrections(true, out var recoveredAt, out var position, out var underrunsAtRecovery, out var rig);
+        using (rig)
+        {
+            // what the recovered output actually plays, from its rendered samples
+            rig.MaxDriftMs(1, recoveredAt, position, Recovery, Settled)
+                .ShouldBeLessThanOrEqualTo(ToleranceMs, "dev-2 played drift after it recovered");
+            rig.MaxDriftMs(0, recoveredAt, position, TimeSpan.Zero, Settled)
+                .ShouldBeLessThanOrEqualTo(ToleranceMs, "dev-1 must be unaffected");
+
+            var second = rig.Summary!.Outputs.Single(o => o.DeviceId == "dev-2");
+            var first = rig.Summary.Outputs.Single(o => o.DeviceId == "dev-1");
+            (second.Underruns - underrunsAtRecovery).ShouldBe(0, "dev-2 underruns after recovery");
+            first.Underruns.ShouldBe(0, "the healthy output must never underrun");
+            (withHang - baseline).ShouldBeLessThanOrEqualTo(1, "corrections dev-2 needed after the hang beyond a run without it");
+        }
     }
 }
