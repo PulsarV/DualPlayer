@@ -438,6 +438,44 @@ public sealed class DecodePumpTests
         last.ShouldBe(4.799f, 0.0001f);
     }
 
+    private static IDecodeSession OpenPerTrackSession(TimeSpan track1, TimeSpan track2) =>
+        new PerTrackLengthDecoder(Tracks(), new Dictionary<int, TimeSpan> { [1] = track1, [2] = track2 })
+            .Open("file.mkv", [new DecodeRequest(1, Stereo), new DecodeRequest(2, Stereo)]).Value!;
+
+    [Fact]
+    public void After_a_seek_past_one_tracks_end_the_pump_reports_no_more_blocks_for_that_output_once_another_track_is_ahead()
+    {
+        var ring0 = new AudioRingBuffer(96_000, 2);
+        var ring1 = new AudioRingBuffer(96_000, 2);
+        using var pump = NewPump(OpenPerTrackSession(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(60)), new FakeTimeProvider(), ring0, ring1);
+        pump.Seek(TimeSpan.FromSeconds(20), epoch: 2); // applied before the first read
+
+        pump.Start(epoch: 1);
+
+        WaitFor(() => pump.HasNoBlocksInEpoch(0, 2)).ShouldBeTrue("track 1 ends at 10 s and track 2 is decoded on past 20 s");
+        pump.HasNoBlocksInEpoch(1, 2).ShouldBeFalse();
+        pump.HasNoBlocksInEpoch(0, 1).ShouldBeFalse("only the epoch it was decided in");
+        pump.EndedEpoch.ShouldBe(-1, "the file goes on for the longer track");
+        ring0.LastWrittenEpoch.ShouldBe(-1);
+        ring1.LastWrittenEpoch.ShouldBe(2);
+    }
+
+    [Fact]
+    public void At_the_end_of_the_file_an_output_that_got_no_block_in_the_epoch_has_no_more_blocks_and_the_others_do_not()
+    {
+        var ring0 = new AudioRingBuffer(96_000, 2);
+        var ring1 = new AudioRingBuffer(96_000, 2);
+        using var pump = NewPump(OpenPerTrackSession(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(21)), new FakeTimeProvider(), ring0, ring1);
+        pump.Seek(TimeSpan.FromSeconds(20.5), epoch: 2); // track 2 has only 0.5 s left: less than the lead
+
+        pump.Start(epoch: 1);
+
+        WaitFor(() => pump.EndedEpoch == 2).ShouldBeTrue();
+        pump.HasNoBlocksInEpoch(0, 2).ShouldBeTrue();
+        pump.HasNoBlocksInEpoch(1, 2).ShouldBeFalse();
+        ring1.FramesAvailable.ShouldBe(24_000);
+    }
+
     [Fact]
     public void Disposing_the_pump_from_its_ended_handler_does_not_deadlock()
     {

@@ -28,6 +28,21 @@ public sealed class AudioRingBufferTests
     }
 
     [Fact]
+    public void Last_written_epoch_is_the_epoch_of_the_newest_frame_written_even_after_it_was_read()
+    {
+        var ring = new AudioRingBuffer(8, 2);
+        ring.LastWrittenEpoch.ShouldBe(-1);
+
+        ring.Write(Ramp(0, 2, 2), epoch: 3);
+        ring.Read(new float[4], 3, out _).ShouldBe(2);
+        ring.LastWrittenEpoch.ShouldBe(3);
+
+        ring.Write(Ramp(0, 8, 2), epoch: 4);
+        ring.Write(Ramp(0, 1, 2), epoch: 5).ShouldBe(0, "the ring is full");
+        ring.LastWrittenEpoch.ShouldBe(4, "nothing of epoch 5 was written");
+    }
+
+    [Fact]
     public void Read_when_empty_returns_zero()
     {
         var ring = new AudioRingBuffer(8, 2);

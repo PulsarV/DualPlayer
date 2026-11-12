@@ -485,19 +485,21 @@ public sealed class AudioEngineRunTests
             rig.Time.Advance(TimeSpan.FromMilliseconds(5)); // the pump waits on the fake clock; no device renders yet
             return held.Seeked;
         }).ShouldBeTrue("the seek never reached the decoder");
-        for (var i = 0; i < 3_000 && !seek.IsCompleted; i++)
-        {
-            rig.Render(1);
-        }
-
-        await seek.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
-        rig.Render(20); // the epoch is applied and rendered, but the decoder has delivered nothing yet
+        rig.Render(30); // the epoch is applied and rendered, but the decoder has delivered nothing yet (300 ms of the 10 s deadline)
         Thread.Sleep(100);
+        seek.IsCompleted.ShouldBeFalse("the seek is confirmed only by audio at the target");
         rig.Events.OfType<AudioStarted>().ShouldBeEmpty("silent renders after the seek are not audio");
 
         var releasedAt = rig.Time.GetTimestamp();
         held.Release();
-        rig.Render(1);
+        for (var i = 0; i < 300 && !seek.IsCompleted; i++)
+        {
+            rig.Render(1);
+        }
+
+        var seekResult = await seek.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        seekResult.IsSuccess.ShouldBeTrue(seekResult.Error?.Message);
+        seekResult.Value.OutsideFile.ShouldBeFalse();
         rig.WaitFor(() =>
         {
             rig.Render(1);

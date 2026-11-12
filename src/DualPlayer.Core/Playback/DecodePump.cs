@@ -18,6 +18,13 @@ public sealed partial class DecodePump : IDisposable
     private static readonly TimeSpan WaitSlice = TimeSpan.FromMilliseconds(10);
     private static readonly TimeSpan DropLogInterval = TimeSpan.FromSeconds(1);
 
+    /// <summary>
+    /// How far another output's track must have been decoded past the epoch's start, with no block for an output, before
+    /// that output's track counts as having no audio there (it ended earlier). Capped at half that output's ring, so a
+    /// paused output whose ring fills still decides it.
+    /// </summary>
+    private static readonly TimeSpan NoAudioLead = TimeSpan.FromSeconds(1);
+
     private readonly IDecodeSession _session;
     private readonly AudioRingBuffer[] _rings;
     private readonly TimeProvider _time;
@@ -26,6 +33,8 @@ public sealed partial class DecodePump : IDisposable
     private readonly long[] _lastDropLog;
     private readonly int[] _sampleRates;
     private readonly long[] _expectedNext; // per output: content frame the next block must start at; seeded with the epoch's start frame
+    private readonly long[] _epochStart; // per output: the seed of _expectedNext; pump thread only
+    private readonly int[] _noBlocksEpoch; // per output: epoch in which its track has no more blocks; -1 when none
     private readonly CancellationTokenSource _cts = new();
     private readonly Lock _seekLock = new();
     private readonly ManualResetEventSlim _seekRequested = new();
@@ -46,6 +55,8 @@ public sealed partial class DecodePump : IDisposable
         _detached = new bool[_rings.Length];
         _lastDropLog = new long[_rings.Length];
         _expectedNext = new long[_rings.Length];
+        _epochStart = new long[_rings.Length];
+        _noBlocksEpoch = [.. Enumerable.Repeat(-1, _rings.Length)];
         _sampleRates = sampleRates is null ? [.. Enumerable.Repeat(DefaultSampleRate, _rings.Length)] : [.. sampleRates];
         SeedExpected(TimeSpan.Zero);
     }
@@ -56,6 +67,7 @@ public sealed partial class DecodePump : IDisposable
         for (var i = 0; i < _expectedNext.Length; i++)
         {
             _expectedNext[i] = (long)Math.Round(epochStart.TotalSeconds * _sampleRates[i]);
+            _epochStart[i] = _expectedNext[i];
         }
     }
 
@@ -67,6 +79,13 @@ public sealed partial class DecodePump : IDisposable
 
     /// <summary>Epoch whose blocks reached the end of the file; -1 while no epoch has.</summary>
     public int EndedEpoch => Volatile.Read(ref _endedEpoch);
+
+    /// <summary>
+    /// True when the decoder has no more blocks for the output's track in <paramref name="epoch"/> and delivered none:
+    /// the file ended, or another output's track was decoded <see cref="NoAudioLead"/> past the epoch's start while this
+    /// one got nothing (its track ended earlier than the file). Stays true for the epoch.
+    /// </summary>
+    public bool HasNoBlocksInEpoch(int outputIndex, int epoch) => Volatile.Read(ref _noBlocksEpoch[outputIndex]) == epoch;
 
     /// <summary>An unexpected decode failure (a bug); the pump thread ends after raising this once.</summary>
     public event Action<Exception>? Faulted;
@@ -180,6 +199,7 @@ public sealed partial class DecodePump : IDisposable
                     return;
                 }
 
+                MarkOutputsWithoutBlocks(endOfFile: true);
                 Volatile.Write(ref _endedEpoch, _epoch);
                 Ended?.Invoke();
                 WaitForSeek(token);
@@ -187,6 +207,31 @@ public sealed partial class DecodePump : IDisposable
             }
 
             Deliver(read.Value, token);
+            MarkOutputsWithoutBlocks(endOfFile: false);
+        }
+    }
+
+    /// <summary>Marks the outputs that got no block in this epoch as having none (see <see cref="HasNoBlocksInEpoch"/>).</summary>
+    private void MarkOutputsWithoutBlocks(bool endOfFile)
+    {
+        var decided = endOfFile;
+        for (var i = 0; i < _rings.Length && !decided; i++)
+        {
+            var lead = Math.Min((long)(NoAudioLead.TotalSeconds * _sampleRates[i]), _rings[i].CapacityFrames / 2);
+            decided = _expectedNext[i] - _epochStart[i] >= lead;
+        }
+
+        if (!decided)
+        {
+            return;
+        }
+
+        for (var i = 0; i < _rings.Length; i++)
+        {
+            if (_expectedNext[i] == _epochStart[i] && _noBlocksEpoch[i] != _epoch)
+            {
+                Volatile.Write(ref _noBlocksEpoch[i], _epoch);
+            }
         }
     }
 

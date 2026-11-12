@@ -374,15 +374,17 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
             if (confirming.All(o => o.Source.AppliedEpoch >= epoch)
                 && run.DecodeEnded
-                && confirming.All(o => o.Ring.FramesAvailable == 0 && o.Source.LastContentFrameHandedOut < o.Source.EpochStartContentFrame))
+                && !confirming.Any(o => HasAudioOfEpoch(o, epoch)))
             {
                 return Result<bool>.Success(false);
             }
 
             // Audio of the new epoch must have arrived too: an empty ring may still be the decoder reading on towards a
-            // seek past the end, which only its end of stream decides.
+            // seek past the end, which only its end of stream decides. An output whose track has no more blocks in this
+            // epoch (it ended before the target, inside the file) is not waited for, as long as another output has audio.
             if (confirming.All(o => o.Source.HasPlayedOutOldEpoch(epoch)
-                && (o.Ring.FramesAvailable > 0 || o.Source.LastContentFrameHandedOut >= o.Source.EpochStartContentFrame)))
+                    && (HasAudioOfEpoch(o, epoch) || run.Pump!.HasNoBlocksInEpoch(o.Index, epoch)))
+                && confirming.Any(o => HasAudioOfEpoch(o, epoch)))
             {
                 return Result<bool>.Success(true);
             }
@@ -395,6 +397,13 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             Thread.Sleep(StartLevelPollInterval);
         }
     }
+
+    /// <summary>
+    /// True once audio of <paramref name="epoch"/> reached the output: written to its ring (a late older-epoch block
+    /// left there does not count) or already handed to the device.
+    /// </summary>
+    private static bool HasAudioOfEpoch(Output output, int epoch) =>
+        output.Ring.LastWrittenEpoch >= epoch || output.Source.LastContentFrameHandedOut >= output.Source.EpochStartContentFrame;
 
     /// <summary>
     /// Silences every active output from one master-clock instant beyond the audio queued in the fullest device and

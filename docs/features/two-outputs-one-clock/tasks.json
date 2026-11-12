@@ -1191,7 +1191,7 @@
         "tests/DualPlayer.Core.Tests/Fakes/"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T53-confirm-a-seek-without-waiting-on-outputs-whose-track-has-no-audio-at-th.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r4: T2, T3, T7"
     },
     {

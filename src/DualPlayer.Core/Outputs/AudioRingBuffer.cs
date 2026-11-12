@@ -32,6 +32,7 @@ public sealed class AudioRingBuffer : DualPlayer.Core.Sync.IFrameReader
     private int _pendingSkip; // writer only
     private int _pendingSkipEpoch; // writer only
     private int _readerEpoch; // written by the render thread only
+    private int _lastWrittenEpoch = -1; // writer only; published after the tail
     private long _readerTimestamp; // render thread only
 
     public AudioRingBuffer(int capacityFrames, int channels)
@@ -69,6 +70,13 @@ public sealed class AudioRingBuffer : DualPlayer.Core.Sync.IFrameReader
     public int FramesAvailable => (int)(Volatile.Read(ref _tail) - Volatile.Read(ref _head));
 
     public int FreeFrames => _capacity - FramesAvailable;
+
+    /// <summary>
+    /// Epoch of the most recently written frame; -1 before the first write. Once it reaches an epoch, frames of that
+    /// epoch have been written (whether or not they are still in the ring), so a late older-epoch block left in the ring
+    /// is never mistaken for audio of a newer epoch.
+    /// </summary>
+    public int LastWrittenEpoch => Volatile.Read(ref _lastWrittenEpoch);
 
     /// <summary>The timestamp the reader passed on its most recent <see cref="Read(Span{float}, int, out int, long)"/>.</summary>
     public long LastReadTimestamp => Volatile.Read(ref _lastReadTimestamp);
@@ -163,6 +171,11 @@ public sealed class AudioRingBuffer : DualPlayer.Core.Sync.IFrameReader
         }
 
         Volatile.Write(ref _tail, tail + count);
+        if (count > 0)
+        {
+            Volatile.Write(ref _lastWrittenEpoch, epoch);
+        }
+
         return count;
     }
 
