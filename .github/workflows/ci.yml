@@ -25,7 +25,10 @@ jobs:
           global-json-file: global.json
       - name: Install FFmpeg (macOS)
         if: runner.os == 'macOS'
-        run: brew install ffmpeg
+        # FFmpeg major must match FFmpeg.AutoGen (8.x); ffmpeg@8 is keg-only, so link it into /opt/homebrew/lib.
+        run: |
+          brew install ffmpeg@8
+          brew link --force ffmpeg@8
       - name: Cache FFmpeg (Windows)
         if: runner.os == 'Windows'
         uses: actions/cache@v4
