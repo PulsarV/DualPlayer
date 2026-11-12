@@ -1227,7 +1227,7 @@
         "tests/DualPlayer.Core.Tests/Outputs/AudioRingBufferReclaimRaceTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T55-assert-the-race-test-writes-after-join-instead-of-on-the-writer-thread.md",
-      "status": "todo",
+      "status": "blocked",
       "origin": "review-2026-11-12-r4: T8"
     },
     {

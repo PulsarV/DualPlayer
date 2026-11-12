@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-12-r4 (T8)"
-status: "todo"
-step: "SELECT"
+status: "blocked"
+step: "RED — stage failed (RED not GOOD or agent error)"
 ---
 
 <!-- Follow-up task from re-review 4. Work from what is inlined here; the source always wins.
