@@ -1211,7 +1211,7 @@
         "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T54-log-first-audio-for-every-output-that-starts-late-and-fix-the-handed-out.md",
-      "status": "todo",
+      "status": "blocked",
       "origin": "review-2026-11-12-r4: T5, T9"
     },
     {
