@@ -532,7 +532,9 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         }
 
         var aligning = AlignOutputs(run);
-        _loop.Polling = awaitingFirstAudio || run.DecodeEnded || aligning;
+        // A stalled output is not waited for by AudioStarted, but polling continues until it logs its first audio (if it recovers).
+        var unlogged = run.Outputs.Any(o => !o.Lost && !o.FirstAudioLogged);
+        _loop.Polling = awaitingFirstAudio || unlogged || run.DecodeEnded || aligning;
     }
 
     /// <summary>

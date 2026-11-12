@@ -527,6 +527,30 @@ public sealed class AudioEngineRunTests
     }
 
     [Fact]
+    public void An_output_stalled_at_start_that_recovers_after_audio_started_still_logs_its_start_to_audio()
+    {
+        using var rig = new Rig(2);
+        rig.Engine.StartRun("film.mkv", [Assign(1, 1), Assign(2, 2)], new EngineOptions()).IsSuccess.ShouldBeTrue();
+        rig.Backend.Devices["dev-2"].Hang();
+        rig.Render(150);
+        rig.WaitFor(() => rig.Events.OfType<AudioStarted>().Any()).ShouldBeTrue();
+
+        rig.Render(400);
+        rig.Log.With("DeviceId", "StartToAudioMs").Count.ShouldBe(1, "precondition: only dev-1 logged before recovery");
+        rig.Backend.Devices["dev-2"].Unhang();
+        rig.Render(20);
+
+        rig.WaitFor(() =>
+        {
+            rig.Render(1);
+            return rig.Log.With("DeviceId", "StartToAudioMs").Any(e => (string)e["DeviceId"]! == "dev-2");
+        }).ShouldBeTrue("the recovered output never got its start-to-audio log line");
+        var late = rig.Log.With("DeviceId", "StartToAudioMs").Single(e => (string)e["DeviceId"]! == "dev-2");
+        ((double)late["StartToAudioMs"]!).ShouldBeGreaterThanOrEqualTo(1_000);
+        rig.Stop(RunEndReason.Stop);
+    }
+
+    [Fact]
     public void A_decoder_failure_during_start_is_returned_at_once_and_no_device_starts()
     {
         var error = new Error("media.decode_error", "The audio stream is corrupt.");

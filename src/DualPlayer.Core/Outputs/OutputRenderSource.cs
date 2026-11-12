@@ -71,10 +71,10 @@ public sealed class OutputRenderSource : IRenderSource
         }
     }
 
-    /// <summary>Content frame of the last audio frame handed to the device in the current epoch.</summary>
     /// <summary>True once a render has handed decoded audio to the device (silence, even from a seek's start frame, does not count).</summary>
     public bool HasHandedOutAudio => Volatile.Read(ref _audioHandedOut);
 
+    /// <summary>Content frame of the last audio frame handed to the device in the current epoch.</summary>
     public long LastContentFrameHandedOut => Interlocked.Read(ref _lastContentFrame);
 
     /// <summary>Epoch the render thread has applied (old-epoch ring frames discarded); -1 before the first render.</summary>
