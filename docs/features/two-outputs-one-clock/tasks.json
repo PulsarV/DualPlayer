@@ -1288,7 +1288,7 @@
         "tests/DualPlayer.Media.Tests/TestMedia/ramp-offset-nocues.mkv"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T58-rewind-or-fail-after-a-failed-restore-seek-and-test-it-for-real.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r5: U1, U3"
     },
     {

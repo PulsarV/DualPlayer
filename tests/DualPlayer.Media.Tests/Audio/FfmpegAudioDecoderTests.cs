@@ -302,12 +302,11 @@ public sealed class FfmpegAudioDecoderTests
         session.Read().Error?.Code.ShouldBe("playback.end_of_stream");
     }
 
-    // ramp-offset-nocues.mkv: ramp-offset-span.mkv with every CueTime pushed past the end of the file, so the cue index is useless
-    // and the seek back to the start (after the Duration probe) cannot be served from cues.
     [Fact]
-    public void Open_of_a_cueless_matroska_file_with_a_start_offset_plays_from_the_start_or_fails_as_unreadable()
+    public void Open_when_the_restore_seek_after_the_duration_probe_fails_plays_from_the_start_or_fails_as_unreadable()
     {
-        var opened = NewDecoder().Open(Media("ramp-offset-nocues.mkv"), [new DecodeRequest(1, Mono48)]);
+        var decoder = new FfmpegAudioDecoder { RewindSeekHook = () => -1 };
+        var opened = decoder.Open(Media("ramp-offset-span.mkv"), [new DecodeRequest(1, Mono48)]);
 
         if (!opened.IsSuccess)
         {
@@ -323,11 +322,14 @@ public sealed class FfmpegAudioDecoderTests
         (read.Value.Samples[0] * 10.0).ShouldBe(0.0, 0.1, "the first block must carry content from time 0");
     }
 
+    // RewindSeekHook = -1 fails every seek back to the start (none is made). ramp-offset.mkv's Duration is its end
+    // timestamp, so the duration probe reads to end of file: the demuxer sits at EOF, where any seek or byte-seek
+    // fallback that reports success without rewinding leaves the first Read at end of stream.
     [Fact]
-    public void Open_when_the_restore_seek_after_the_duration_probe_fails_plays_from_the_start_or_fails_as_unreadable()
+    public void Open_when_every_rewind_seek_fails_with_the_demuxer_at_end_of_file_plays_from_content_zero_or_fails_as_unreadable()
     {
-        var decoder = new FfmpegAudioDecoder { RestoreSeekHook = () => -1 };
-        var opened = decoder.Open(Media("ramp-offset-span.mkv"), [new DecodeRequest(1, Mono48)]);
+        var decoder = new FfmpegAudioDecoder { RewindSeekHook = () => -1 };
+        var opened = decoder.Open(Media("ramp-offset.mkv"), [new DecodeRequest(1, Mono48)]);
 
         if (!opened.IsSuccess)
         {
@@ -338,8 +340,9 @@ public sealed class FfmpegAudioDecoderTests
         using var session = opened.Value;
         var read = session.Read();
 
-        read.IsSuccess.ShouldBeTrue("a failed restore seek must not end the stream before playing: " + read.Error?.Message);
+        read.IsSuccess.ShouldBeTrue("a failed rewind must not leave the demuxer at end of stream: " + read.Error?.Message);
         read.Value.StartFrame.ShouldBeInRange(0L, 2048L);
-        (read.Value.Samples[0] * 10.0).ShouldBe(0.0, 0.1, "the first block must carry content from time 0");
+        (read.Value.Samples[0] * 6.0).ShouldBe(0.0, 0.1, "the first block must carry content from time 0");
+        session.Duration.ShouldNotBeNull().TotalSeconds.ShouldBe(6.0, 0.1);
     }
 }

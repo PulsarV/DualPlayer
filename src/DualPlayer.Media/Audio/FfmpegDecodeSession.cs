@@ -24,18 +24,21 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
     private bool _restoreFailed;
     private bool _disposed;
 
-    private readonly Func<int>? _restoreSeekHook;
+    private readonly Func<int>? _rewindSeekHook;
 
-    private FfmpegDecodeSession(Func<int>? restoreSeekHook)
+    private string _path = "";
+
+    private FfmpegDecodeSession(Func<int>? rewindSeekHook)
     {
-        _restoreSeekHook = restoreSeekHook;
+        _rewindSeekHook = rewindSeekHook;
     }
 
-    // restoreSeekHook is a test seam: when set it replaces the seek back to the start after the duration probe and
-    // returns that seek's result code (negative = failed), so a failing restore can be forced.
-    public static Result<IDecodeSession> Create(string path, IReadOnlyList<DecodeRequest> requests, Func<int>? restoreSeekHook = null)
+    // rewindSeekHook is a test seam: when set it replaces every seek back to the start after the duration probe (the
+    // seek is not made, so the demuxer stays where the probe left it) and returns that seek's result code
+    // (negative = failed), so a rewind that cannot be done by seeking can be forced.
+    public static Result<IDecodeSession> Create(string path, IReadOnlyList<DecodeRequest> requests, Func<int>? rewindSeekHook = null)
     {
-        var session = new FfmpegDecodeSession(restoreSeekHook);
+        var session = new FfmpegDecodeSession(rewindSeekHook);
         var opened = session.Init(path, requests);
         if (!opened.IsSuccess)
         {
@@ -88,7 +91,7 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
             }
         }
 
-        _restoreFailed = (_restoreSeekHook?.Invoke() ?? ffmpeg.av_seek_frame(_fmt, -1, _startTime, ffmpeg.AVSEEK_FLAG_BACKWARD)) < 0;
+        _restoreFailed = (_rewindSeekHook?.Invoke() ?? ffmpeg.av_seek_frame(_fmt, -1, _startTime, ffmpeg.AVSEEK_FLAG_BACKWARD)) < 0;
         return beyond;
     }
 
@@ -180,6 +183,7 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
             return open;
         }
 
+        _path = path;
         _startTime = _fmt->start_time == ffmpeg.AV_NOPTS_VALUE ? 0 : _fmt->start_time;
         var streams = FfmpegAudioDecoder.AudioStreams(_fmt);
         _packet = ffmpeg.av_packet_alloc();
@@ -207,22 +211,28 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
         return _restoreFailed ? RestoreStart() : Result.Success();
     }
 
-    // The seek back to the start after the duration probe failed (no index to serve it): retry as a ranged seek, then
-    // as a plain byte seek to the start of the file; if neither works the stream position is unknown, so the file is
-    // unusable.
+    // The seek back to the start after the duration probe failed (no index to serve it). Seeking again cannot be
+    // trusted (the demuxer may sit at end of file), so the input is reopened: the stream layout and the computed
+    // duration are kept, the codecs are flushed, and playback starts from content 0.
     private Result RestoreStart()
     {
-        if (ffmpeg.avformat_seek_file(_fmt, -1, long.MinValue, _startTime, _startTime, 0) >= 0)
+        var old = _fmt;
+        ffmpeg.avformat_close_input(&old);
+        _fmt = null;
+        var fmt = _fmt;
+        var open = FfmpegAudioDecoder.OpenInput(_path, &fmt);
+        _fmt = fmt;
+        if (!open.IsSuccess)
         {
-            return Result.Success();
+            return Result.Failure(FfmpegAudioDecoder.Unreadable, "The file could not be rewound to its start after reading its duration.");
         }
 
-        if (_fmt->pb != null && ffmpeg.avio_seek(_fmt->pb, 0, 0) >= 0 && ffmpeg.avformat_seek_file(_fmt, -1, long.MinValue, _startTime, long.MaxValue, ffmpeg.AVSEEK_FLAG_BYTE) >= 0)
+        foreach (var o in _outputs)
         {
-            return Result.Success();
+            ffmpeg.avcodec_flush_buffers(o.Codec);
         }
 
-        return Result.Failure(FfmpegAudioDecoder.Unreadable, "The file could not be rewound to its start after reading its duration.");
+        return Result.Success();
     }
 
     // Reads one packet (or drains at end of file) and queues whatever blocks it yields.
