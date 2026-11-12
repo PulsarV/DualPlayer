@@ -36,7 +36,11 @@ public sealed unsafe class FfmpegAudioDecoder : IAudioDecoder
                     tracks.Count + 1,
                     LanguageOf(stream),
                     ToLayout(par->ch_layout.nb_channels),
-                    par->sample_rate));
+                    par->sample_rate)
+                {
+                    Channels = par->ch_layout.nb_channels,
+                    HasLfe = HasLfe(par->ch_layout),
+                });
             }
 
             return Result<IReadOnlyList<AudioTrackInfo>>.Success(tracks);
@@ -93,6 +97,25 @@ public sealed unsafe class FfmpegAudioDecoder : IAudioDecoder
         }
 
         return list;
+    }
+
+    // Same fact MixFormatConverter uses to say the LFE is dropped when folding onto fewer channels.
+    private static bool HasLfe(AVChannelLayout layout)
+    {
+        if (layout.order == AVChannelOrder.AV_CHANNEL_ORDER_UNSPEC)
+        {
+            ffmpeg.av_channel_layout_default(&layout, layout.nb_channels);
+        }
+
+        for (var i = 0; i < layout.nb_channels; i++)
+        {
+            if (ffmpeg.av_channel_layout_channel_from_index(&layout, (uint)i) == AVChannel.AV_CHAN_LOW_FREQUENCY)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     internal static string ErrorText(int code)

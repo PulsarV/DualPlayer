@@ -1109,7 +1109,7 @@
         "tests/DualPlayer.Media.Tests/"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T49-carry-media-s-lfe-dropped-fact-to-the-start-line.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r3: S7"
     },
     {

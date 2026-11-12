@@ -27,7 +27,7 @@ internal static class ConsoleFormat
         {
             text += $" -> {Layout(device.ChannelLayout)}";
             // Media's rule (MixFormatConverter): folding a track with an LFE onto fewer channels drops the LFE.
-            if (source.ChannelLayout switch { ChannelLayout.Surround51 => 6, ChannelLayout.Surround71 => 8, _ => 0 } > device.Channels)
+            if (source.HasLfe && source.Channels > device.Channels)
             {
                 text += ", LFE dropped";
             }

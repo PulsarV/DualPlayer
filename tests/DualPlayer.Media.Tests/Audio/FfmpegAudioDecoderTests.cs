@@ -35,6 +35,21 @@ public sealed class FfmpegAudioDecoderTests
     }
 
     [Theory]
+    [InlineData("mono.wav", 1, false)]
+    [InlineData("tones-2.1.wav", 3, true)]
+    [InlineData("tones-6.0.wav", 6, false)]
+    [InlineData("tones-5.1.wav", 6, true)]
+    [InlineData("tones-7.1.wav", 8, true)]
+    public void ListTracks_reports_the_channel_count_and_whether_the_source_has_an_LFE(string file, int channels, bool hasLfe)
+    {
+        var result = NewDecoder().ListTracks(Media(file));
+
+        result.IsSuccess.ShouldBeTrue(result.Error?.Message);
+        result.Value[0].Channels.ShouldBe(channels);
+        result.Value[0].HasLfe.ShouldBe(hasLfe);
+    }
+
+    [Theory]
     [InlineData("not-media.txt")]
     [InlineData("empty.bin")]
     [InlineData("does-not-exist.mkv")]

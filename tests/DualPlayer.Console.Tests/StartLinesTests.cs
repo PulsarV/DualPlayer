@@ -69,6 +69,22 @@ public sealed class StartLinesTests
         lines[0].ShouldBe($"output 1  track 1 ({expected})  device Test Headset A  id {IdA}");
     }
 
+    [Theory]
+    [InlineData(3, true, 2, ChannelLayout.Stereo, "eng other -> stereo, LFE dropped")]
+    [InlineData(6, false, 2, ChannelLayout.Stereo, "eng other -> stereo")]
+    [InlineData(8, true, 6, ChannelLayout.Surround51, "eng 7.1 -> 5.1, LFE dropped")]
+    [InlineData(6, true, 6, ChannelLayout.Surround51, "eng 5.1")]
+    public void The_LFE_note_follows_the_channel_facts_Media_reports(int sourceChannels, bool hasLfe, int deviceChannels, ChannelLayout device, string expected)
+    {
+        var layout = sourceChannels switch { 6 when hasLfe => ChannelLayout.Surround51, 8 => ChannelLayout.Surround71, _ => ChannelLayout.Other };
+        var source = new AudioTrackInfo(1, "eng", layout, 48000) { Channels = sourceChannels, HasLfe = hasLfe };
+        var lines = PlayLines(new RunStarted(
+            [new StartedOutput(1, IdA, "Test Headset A", new MixFormat(48000, deviceChannels, device)) { Source = source }],
+            TimeSpan.Zero));
+
+        lines[0].ShouldBe($"output 1  track 1 ({expected})  device Test Headset A  id {IdA}");
+    }
+
     [Fact]
     public void A_44100_Hz_stereo_track_on_a_48000_Hz_device_prints_the_source_rate_and_the_device_rate()
     {

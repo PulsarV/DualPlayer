@@ -40,3 +40,11 @@ PY
 ```
 
 Check with `ffprobe -show_entries format=start_time,duration` (3.0 and 10.0; before patching 3.0 and 13.0).
+
+`tones-2.1.wav` (3 channels, with LFE) and `tones-6.0.wav` (hexagonal, 6 channels, no LFE): 0.2 s 440 Hz sine, 48 kHz PCM,
+used to check that track info reports the real channel count and LFE presence (both map to `ChannelLayout.Other`):
+
+```sh
+ffmpeg -f lavfi -i "sine=f=440:d=0.2:r=48000" -af "aformat=channel_layouts=2.1" -c:a pcm_s16le tones-2.1.wav
+ffmpeg -f lavfi -i "sine=f=440:d=0.2:r=48000" -af "aformat=channel_layouts=hexagonal" -c:a pcm_s16le tones-6.0.wav
+```
