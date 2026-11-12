@@ -11,9 +11,6 @@ public sealed class DriftController
     /// <summary>Rate authority of the continuous correction, in ppm (ADR-0003: ratios within a few hundred ppm).</summary>
     public const double MaxCorrectionPpm = 500;
 
-    /// <summary>Filtered drift beyond this is removed by a one-step re-alignment instead of the rate adjustment.</summary>
-    public static readonly TimeSpan RealignThreshold = TimeSpan.FromMilliseconds(4);
-
     private const double Kp = 0.2;            // rate change per second of error, per second
     private const double Ki = 0.02;           // per second squared (damping ≈ 0.7)
     private const double FilterSeconds = 1.0; // drift low-pass time constant
@@ -37,13 +34,6 @@ public sealed class DriftController
 
     /// <summary>Gets the low-pass filtered drift the controller acts on.</summary>
     public TimeSpan FilteredDrift => TimeSpan.FromSeconds(_filteredSeconds);
-
-    /// <summary>
-    /// Gets the drift to remove in one step (the caller re-aligns, then calls <see cref="Realigned"/>);
-    /// zero while the filtered drift is within <see cref="RealignThreshold"/>.
-    /// </summary>
-    public TimeSpan PendingRealignment =>
-        Math.Abs(_filteredSeconds) > RealignThreshold.TotalSeconds ? FilteredDrift : TimeSpan.Zero;
 
     /// <summary>Converts a drift to remove into the frame count for <see cref="AdaptiveResampler.Realign"/> (content ahead → insert, negative).</summary>
     public static int ResamplerRealignFrames(TimeSpan drift, int sampleRate) =>

@@ -1,111 +1,56 @@
 using DualPlayer.Core.Diagnostics;
-using DualPlayer.Core.Sync;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Time.Testing;
+using DualPlayer.Core.Tests.Fakes;
 using Shouldly;
 
 namespace DualPlayer.Core.Tests.Playback;
 
+/// <summary>
+/// AC-07 through the real <see cref="DualPlayer.Core.Playback.AudioEngine"/>: three hours of fake time with devices at
+/// different sample rates whose clocks run at +/-200 ppm, a decoder with mismatched block sizes (1536 and 1024 frames) and a
+/// start latency, sampled by the engine at its real 100 ms cadence.
+/// </summary>
 public sealed class LongRunSimulationTests
 {
-    private static readonly TimeSpan Tick = TimeSpan.FromMilliseconds(10);
     private const double ToleranceMs = 10;
-
-    /// <summary>
-    /// A fake output whose clock runs (1 + ppm) fast, kept on the master clock by the engine's per-output sync
-    /// logic: a drift reading every render period, the record and the one-step re-alignment decision once per second.
-    /// </summary>
-    private sealed class FakeOutput(string id, double ppm, MasterClock clock)
-    {
-        private readonly OutputSync _sync = new(clock, TimeSpan.FromMilliseconds(ToleranceMs));
-        private double _contentSeconds;
-
-        public string Id { get; } = id;
-
-        public int Corrections { get; private set; }
-
-        public void Step(FakeTimeProvider time)
-        {
-            _contentSeconds += Tick.TotalSeconds * (1 + (ppm * 1e-6)) / _sync.ResamplerRatio;
-            _sync.AddReading(TimeSpan.FromSeconds(_contentSeconds), time.GetTimestamp(), Tick, correct: true);
-        }
-
-        public void InjectStep(double ms) => _contentSeconds += ms / 1000;
-
-        public OutputSample Snapshot(bool recovery)
-        {
-            var interval = _sync.CloseInterval(mayRealign: !recovery);
-            if (interval.Realignment != TimeSpan.Zero)
-            {
-                _contentSeconds -= interval.Realignment.TotalSeconds;
-                Corrections++;
-            }
-
-            return new(Id, interval.AverageDrift, _sync.CorrectionPpm, 0, recovery);
-        }
-    }
-
-    private static (List<EngineEvent> Events, List<FakeOutput> Outputs, int Seconds) Run(
-        TimeSpan duration, double[] ppms, Action<int, List<FakeOutput>>? atSecond = null)
-    {
-        var time = new FakeTimeProvider();
-        var clock = new MasterClock(time);
-        clock.Start();
-        var events = new List<EngineEvent>();
-        var publisher = new SyncRecordPublisher(events.Add, NullLogger<SyncRecordPublisher>.Instance);
-        var outputs = ppms.Select((p, i) => new FakeOutput($"dev-{i}", p, clock)).ToList();
-        var seconds = (int)duration.TotalSeconds;
-        for (var s = 1; s <= seconds; s++)
-        {
-            for (var t = 0; t < 100; t++)
-            {
-                time.Advance(Tick);
-                outputs.ForEach(o => o.Step(time));
-            }
-
-            atSecond?.Invoke(s, outputs);
-            publisher.Publish(clock.PositionAt(time.GetTimestamp()), [.. outputs.Select(o => o.Snapshot(recovery: s == 1))]);
-        }
-
-        publisher.Finish(clock.PositionAt(time.GetTimestamp()));
-        return (events, outputs, seconds);
-    }
+    private static readonly TimeSpan ThreeHours = TimeSpan.FromHours(3);
 
     [Fact]
-    public void Three_outputs_at_different_clock_speeds_stay_within_tolerance_for_three_hours_with_no_corrections()
+    public void Two_outputs_at_plus_and_minus_200_ppm_stay_within_tolerance_for_three_hours_with_no_underruns_and_no_corrections()
     {
-        var (events, outputs, seconds) = Run(TimeSpan.FromHours(3), [300, -250, 40]);
+        using var rig = new EngineRig(
+            [
+                new RigDevice(Rate: 48_000, Ppm: 200, StartLatency: TimeSpan.FromMilliseconds(20)),
+                new RigDevice(Rate: 44_100, Ppm: -200, StartLatency: TimeSpan.FromMilliseconds(5)),
+            ],
+            totalSeconds: ThreeHours.TotalSeconds + 120,
+            keepRendered: false,
+            barrierEvery: 10);
+        rig.Start();
 
-        var records = events.OfType<SyncRecord>().ToList();
-        records.Count.ShouldBe(3 * seconds);
-        records.Where(r => r.ClockPosition > TimeSpan.FromSeconds(1))
-            .Max(r => Math.Abs(r.DriftMs)).ShouldBeLessThanOrEqualTo(ToleranceMs);
-        events.OfType<Excursion>().ShouldBeEmpty();
-        outputs.Sum(o => o.Corrections).ShouldBe(0);
-        records.Select(r => r.DeviceId).Distinct().Count().ShouldBe(3);
-    }
+        rig.Render((int)(ThreeHours / EngineRig.Step));
+        rig.Stop(RunEndReason.Stop);
 
-    [Fact]
-    public void An_injected_step_error_is_re_aligned_in_one_step_counted_once_and_recorded_as_one_excursion()
-    {
-        var (events, outputs, _) = Run(
-            TimeSpan.FromMinutes(5),
-            [100, -100],
-            (s, outs) =>
-            {
-                if (s == 120)
-                {
-                    outs[0].InjectStep(60);
-                }
-            });
+        var records = rig.Records;
+        var seconds = (int)ThreeHours.TotalSeconds;
+        foreach (var id in new[] { "dev-1", "dev-2" })
+        {
+            rig.RecordsOf(id).Count.ShouldBeGreaterThanOrEqualTo(seconds - 5, $"{id} sync records");
+        }
 
-        outputs[0].Corrections.ShouldBe(1);
-        outputs[1].Corrections.ShouldBe(0);
-        var excursions = events.OfType<Excursion>().ToList();
-        excursions.Count.ShouldBe(1);
-        excursions[0].DeviceId.ShouldBe("dev-0");
-        excursions[0].PeakMs.ShouldBeGreaterThan(ToleranceMs);
-        excursions[0].Start.ShouldBeGreaterThanOrEqualTo(TimeSpan.FromSeconds(119));
-        excursions[0].Start.ShouldBeLessThanOrEqualTo(TimeSpan.FromSeconds(121));
+        var steady = records.Where(r => r.ClockPosition > TimeSpan.FromSeconds(2)).ToList();
+        steady.Max(r => Math.Abs(r.DriftMs)).ShouldBeLessThanOrEqualTo(ToleranceMs);
+        records.ShouldAllBe(r => r.Underruns == 0);
+        rig.Events.OfType<Excursion>().ShouldBeEmpty();
+        rig.Events.OfType<DeviceLost>().ShouldBeEmpty();
+
+        var summary = rig.Summary.ShouldNotBeNull();
+        summary.EndReason.ShouldBe(RunEndReason.Stop);
+        summary.Outputs.Count.ShouldBe(2);
+        summary.Outputs.ShouldAllBe(o => o.Corrections == 0);
+        summary.Outputs.ShouldAllBe(o => o.Underruns == 0);
+        summary.Outputs.ShouldAllBe(o => o.MaxDriftMs <= ToleranceMs);
+        summary.Outputs.ShouldAllBe(o => o.Played >= ThreeHours - TimeSpan.FromSeconds(2));
+        summary.Outputs.Single(o => o.DeviceId == "dev-1").ClockMismatchPpm.ShouldBe(200, 5);
+        summary.Outputs.Single(o => o.DeviceId == "dev-2").ClockMismatchPpm.ShouldBe(-200, 5);
     }
 }

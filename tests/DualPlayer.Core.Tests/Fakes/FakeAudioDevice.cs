@@ -9,10 +9,16 @@ internal sealed class FakeAudioDevice(TimeProvider time, MixFormat format, TimeS
     private bool _lost;
     private bool _closed;
     private long? _frozenPlayed;
+    private long _written;
+    private long _positionStep;
+    private float[] _scratch = [];
 
     public bool IsStarted => _started;
 
     public bool IsClosed => _closed;
+
+    /// <summary>True after <see cref="SimulateLoss"/>: the device no longer renders.</summary>
+    public bool IsLost => _lost;
 
     public MixFormat MixFormat => format;
 
@@ -24,7 +30,13 @@ internal sealed class FakeAudioDevice(TimeProvider time, MixFormat format, TimeS
     public IReadOnlyList<float> Rendered => _rendered;
 
     /// <summary>Frames handed to the device so far.</summary>
-    public long WrittenFrames => _rendered.Count;
+    public long WrittenFrames => _written;
+
+    /// <summary>When false the rendered samples are not kept (<see cref="Rendered"/> stays empty); for runs too long to store.</summary>
+    public bool KeepRendered { get; set; } = true;
+
+    /// <summary>From now on the device reports <paramref name="frames"/> more played frames (a step error in its position).</summary>
+    public void StepPosition(long frames) => _positionStep += frames;
 
     /// <summary>The device reports position 0 (plays nothing) for this long after <see cref="Start"/>.</summary>
     public TimeSpan StartLatency { get; set; }
@@ -73,17 +85,23 @@ internal sealed class FakeAudioDevice(TimeProvider time, MixFormat format, TimeS
 
         var now = time.GetTimestamp();
         var played = PlayedAt(now);
-        var buffer = new float[frames * format.Channels];
+        var length = frames * format.Channels;
+        var buffer = KeepRendered ? new float[length] : (_scratch.Length == length ? _scratch : _scratch = new float[length]);
         source.Render(buffer, new DevicePosition(played, now));
-        for (var i = 0; i < frames; i++)
+        _written += frames;
+        if (KeepRendered)
         {
-            _rendered.Add(buffer[i * format.Channels]);
+            for (var i = 0; i < frames; i++)
+            {
+                _rendered.Add(buffer[i * format.Channels]);
+            }
         }
     }
 
-    private long PlayedAt(long timestamp)
+    /// <summary>Frames the device has played when the fake clock read <paramref name="timestamp"/>.</summary>
+    public long PlayedAt(long timestamp)
     {
         var elapsed = time.GetElapsedTime(_startTimestamp, timestamp) - StartLatency;
-        return elapsed <= TimeSpan.Zero ? 0 : (long)Math.Round(elapsed.TotalSeconds * format.SampleRate * (1 + (ppm * 1e-6)));
+        return elapsed <= TimeSpan.Zero ? 0 : (long)Math.Round(elapsed.TotalSeconds * format.SampleRate * (1 + (ppm * 1e-6))) + _positionStep;
     }
 }

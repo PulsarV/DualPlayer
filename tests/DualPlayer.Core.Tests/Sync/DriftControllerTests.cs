@@ -50,11 +50,7 @@ public sealed class DriftControllerTests
 
         public double DriftMs { get; private set; }
 
-        public int Realignments { get; private set; }
-
         public double MaxRatioExcursionPpm { get; private set; }
-
-        public void Offset(double ms) => _contentSeconds += ms / 1000;
 
         public void Seek(TimeSpan position)
         {
@@ -79,7 +75,6 @@ public sealed class DriftControllerTests
         public double Run(TimeSpan duration, out double maxAbsMs)
         {
             maxAbsMs = 0;
-            Realignments = 0;
             MaxRatioExcursionPpm = 0;
             for (var t = TimeSpan.Zero; t < duration; t += Tick)
             {
@@ -97,14 +92,6 @@ public sealed class DriftControllerTests
                 _contentSeconds += deviceDt * _controller.RateRatio;
                 var drift = _meter.Record(TimeSpan.FromSeconds(_contentSeconds + jitter), now);
                 _controller.Update(drift, Tick);
-                var step = _controller.PendingRealignment;
-                if (step != TimeSpan.Zero)
-                {
-                    _contentSeconds -= step.TotalSeconds;
-                    _controller.Realigned(step);
-                    Realignments++;
-                }
-
                 DriftMs = (_contentSeconds + jitter - _clock.PositionAt(now).TotalSeconds) * 1000;
                 maxAbsMs = Math.Max(maxAbsMs, Math.Abs(DriftMs));
                 MaxRatioExcursionPpm = Math.Max(MaxRatioExcursionPpm, Math.Abs(_controller.CorrectionPpm - _devicePpm));
@@ -146,7 +133,7 @@ public sealed class DriftControllerTests
     [InlineData(300)]
     [InlineData(-300)]
     [InlineData(0)]
-    public void Measurement_jitter_keeps_the_steady_state_ratio_near_the_needed_correction_without_step_realignments(double ppm)
+    public void Measurement_jitter_keeps_the_steady_state_ratio_near_the_needed_correction(double ppm)
     {
         var h = new Harness(ppm, jitterMs: 1);
         h.Run(TimeSpan.FromSeconds(60), out _); // settle
@@ -154,7 +141,6 @@ public sealed class DriftControllerTests
         h.Run(TimeSpan.FromMinutes(10), out _);
 
         h.MaxRatioExcursionPpm.ShouldBeLessThanOrEqualTo(MaxSteadyRatioExcursionPpm);
-        h.Realignments.ShouldBe(0);
     }
 
     [Fact]
@@ -233,62 +219,6 @@ public sealed class DriftControllerTests
 
         controller.RateRatio.ShouldBe(1.0);
         controller.CorrectionPpm.ShouldBe(0);
-        controller.PendingRealignment.ShouldBe(TimeSpan.Zero);
-    }
-
-    [Theory]
-    [InlineData(300, 15)]
-    [InlineData(-300, -15)]
-    [InlineData(300, -15)]
-    [InlineData(-300, 15)]
-    public void An_initial_error_after_start_is_back_within_tolerance_within_one_second(double ppm, double startErrorMs)
-    {
-        var h = new Harness(ppm);
-        h.Offset(startErrorMs);
-
-        h.Run(TimeSpan.FromSeconds(1), out _);
-
-        Math.Abs(h.DriftMs).ShouldBeLessThanOrEqualTo(ToleranceMs);
-        h.Run(TimeSpan.FromSeconds(30), out var maxAbsMs);
-        maxAbsMs.ShouldBeLessThanOrEqualTo(ToleranceMs);
-    }
-
-    [Theory]
-    [InlineData(300, 15)]
-    [InlineData(-300, -15)]
-    [InlineData(300, -15)]
-    [InlineData(-300, 15)]
-    public void A_resume_with_a_residual_error_recovers_within_one_second(double ppm, double residualMs)
-    {
-        var h = new Harness(ppm);
-        h.Run(TimeSpan.FromSeconds(30), out _);
-        h.Pause();
-        h.Run(TimeSpan.FromSeconds(5), out _);
-
-        h.Resume();
-        h.Offset(residualMs);
-        h.Run(TimeSpan.FromSeconds(1), out _);
-
-        Math.Abs(h.DriftMs).ShouldBeLessThanOrEqualTo(ToleranceMs);
-        h.Run(TimeSpan.FromSeconds(30), out var maxAbsMs);
-        maxAbsMs.ShouldBeLessThanOrEqualTo(ToleranceMs);
-    }
-
-    [Theory]
-    [InlineData(300)]
-    [InlineData(-300)]
-    public void A_seek_with_a_residual_error_recovers_within_one_second_after_reset(double ppm)
-    {
-        var h = new Harness(ppm);
-        h.Run(TimeSpan.FromSeconds(30), out _);
-
-        h.Seek(TimeSpan.FromMinutes(42));
-        h.Offset(15); // content lands 15 ms off the new master position
-        h.Run(TimeSpan.FromSeconds(1), out _);
-
-        Math.Abs(h.DriftMs).ShouldBeLessThanOrEqualTo(ToleranceMs);
-        h.Run(TimeSpan.FromSeconds(30), out var maxAbsMs);
-        maxAbsMs.ShouldBeLessThanOrEqualTo(ToleranceMs);
     }
 
     [Theory]

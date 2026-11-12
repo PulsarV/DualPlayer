@@ -8,7 +8,19 @@ internal sealed class FakeAudioBackend(TimeProvider time, MixFormat format) : IA
     private readonly HashSet<string> _denied = [];
     private readonly Dictionary<string, TimeSpan> _startLatency = [];
 
+    private readonly Dictionary<string, MixFormat> _formats = [];
+    private readonly Dictionary<string, double> _ppm = [];
+
     public double PpmOffset { get; set; }
+
+    /// <summary>False: the devices do not keep the audio they render (very long runs).</summary>
+    public bool KeepRendered { get; set; } = true;
+
+    /// <summary>The device <paramref name="id"/> runs at <paramref name="format"/> instead of the backend's default.</summary>
+    public void SetFormat(string id, MixFormat format) => _formats[id] = format;
+
+    /// <summary>The device <paramref name="id"/>'s clock runs <paramref name="ppm"/> fast instead of the backend's <see cref="PpmOffset"/>.</summary>
+    public void SetPpm(string id, double ppm) => _ppm[id] = ppm;
 
     public void AddDevice(AudioDeviceInfo device) => _devices.Add(device);
 
@@ -32,8 +44,9 @@ internal sealed class FakeAudioBackend(TimeProvider time, MixFormat format) : IA
             return Result<IAudioDevice>.Failure("outputs.device_access_denied", $"The operating system denied access to '{info.Name}'.");
         }
 
-        return Result<IAudioDevice>.Success(new FakeAudioDevice(time, format, requestedBuffer, source, PpmOffset)
+        return Result<IAudioDevice>.Success(new FakeAudioDevice(time, _formats.GetValueOrDefault(deviceId, format), requestedBuffer, source, _ppm.GetValueOrDefault(deviceId, PpmOffset))
         {
+            KeepRendered = KeepRendered,
             StartLatency = _startLatency.GetValueOrDefault(deviceId),
         });
     }

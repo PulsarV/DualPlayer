@@ -14,6 +14,7 @@ public sealed class AudioEngineSyncRecordTests
     private static readonly MixFormat Stereo = new(48_000, 2, ChannelLayout.Stereo);
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan Step = TimeSpan.FromMilliseconds(10);
+    private const double FileSeconds = 120;
 
     private static readonly IReadOnlyList<AudioTrackInfo> Tracks =
     [
@@ -29,14 +30,21 @@ public sealed class AudioEngineSyncRecordTests
         private readonly List<EngineEvent> _events = [];
         private readonly Lock _gate = new();
         private readonly IDisposable _subscription;
+        private readonly RealisticAudioDecoder _decoder = new(Tracks, FileSeconds, [1536, 1024]);
+        private DateTimeOffset _origin;
+        private TimeSpan _positionBase;
+        private TimeSpan _positionSince;
 
         public Rig(params double[] ppms)
         {
             Time = new FakeTimeProvider();
             Backend = new PpmBackend(Time, ppms);
-            Engine = new AudioEngine(Backend, new FakeAudioDecoder(Tracks, 48_000 * 120), Time, Log);
+            Engine = new AudioEngine(Backend, _decoder, Time, Log);
             _subscription = Engine.Events.Subscribe(new Collector(this));
         }
+
+        /// <summary>False while a seek command is pending: the decoder only moves to the target once the command runs.</summary>
+        public bool WaitForDecoder { get; set; } = true;
 
         public FakeTimeProvider Time { get; }
 
@@ -68,6 +76,14 @@ public sealed class AudioEngineSyncRecordTests
             var assignments = Enumerable.Range(1, outputs).Select(n => Assign(((n - 1) % 2) + 1, n)).ToArray();
             var started = Engine.StartRun("film.mkv", assignments, new EngineOptions());
             started.IsSuccess.ShouldBeTrue(started.Error?.Message);
+            _origin = Time.GetUtcNow();
+        }
+
+        /// <summary>Tells the rig where the master clock is now (after a seek), so it knows how far the decoder has to be.</summary>
+        public void Rebase(TimeSpan position)
+        {
+            _positionBase = position;
+            _positionSince = Time.GetUtcNow() - _origin;
         }
 
         /// <summary>Advances the fake clock by <paramref name="steps"/> x 10 ms, asking every open device for 10 ms of audio each step.</summary>
@@ -81,7 +97,30 @@ public sealed class AudioEngineSyncRecordTests
                     device.PumpRender(480);
                 }
 
+                if (WaitForDecoder)
+                {
+                    AwaitDecoder();
+                }
+
                 Thread.Sleep(1);
+            }
+        }
+
+        /// <summary>
+        /// The decode thread runs in real time while fake time does not: wait until it is a second ahead of the master
+        /// clock, so a slow machine cannot starve an output into a hole (which the engine would re-align and count).
+        /// </summary>
+        private void AwaitDecoder()
+        {
+            var position = _positionBase + (Time.GetUtcNow() - _origin - _positionSince);
+            var wanted = Math.Min(position.TotalSeconds + 1.0, FileSeconds);
+            var deadline = DateTime.UtcNow + Timeout;
+            for (var i = 0; i < Backend.Devices.Count; i++)
+            {
+                while (_decoder.DecodedSeconds(i) < wanted && DateTime.UtcNow < deadline)
+                {
+                    Thread.Yield();
+                }
             }
         }
 
@@ -337,6 +376,7 @@ public sealed class AudioEngineSyncRecordTests
         rig.RecordsOf("dev-1").Any(r => Math.Abs(r.DriftMs) > 10).ShouldBeTrue("the step never showed as drift");
         var preSeek = rig.RecordsOf("dev-1")[^1].ClockPosition;
 
+        rig.WaitForDecoder = false;
         var seek = Task.Run(() => rig.Engine.Seek(TimeSpan.FromSeconds(targetSeconds)), TestContext.Current.CancellationToken);
         for (var i = 0; i < 3_000 && !seek.IsCompleted; i++)
         {
@@ -344,6 +384,8 @@ public sealed class AudioEngineSyncRecordTests
         }
 
         seek.IsCompleted.ShouldBeTrue();
+        rig.Rebase(TimeSpan.FromSeconds(targetSeconds));
+        rig.WaitForDecoder = true;
         rig.Render(500);
         rig.Stop(RunEndReason.Stop);
 

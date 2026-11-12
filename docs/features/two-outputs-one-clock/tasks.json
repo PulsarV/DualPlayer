@@ -649,7 +649,7 @@
         "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T28-make-the-long-run-recovery-and-device-loss-tests-d.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12: F14, F16"
     },
     {
