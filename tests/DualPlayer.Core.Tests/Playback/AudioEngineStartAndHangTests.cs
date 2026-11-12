@@ -208,16 +208,15 @@ public sealed class AudioEngineStartAndHangTests
         rig.Render(100);
         rig.Devices[1].Hang();
         rig.Render(300); // well past the one second after which an output counts as stalled
-        var before = rig.Elapsed;
+        var commandAt = rig.Elapsed; // the master clock jumps to the target when the command starts, not when it returns
 
         var seek = rig.Call(() => rig.Engine.Seek(TimeSpan.FromSeconds(120)));
-        var took = rig.Elapsed - before;
+        var took = rig.Elapsed - commandAt;
 
         seek.IsSuccess.ShouldBeTrue(seek.Error?.Message);
         took.ShouldBeLessThan(TimeSpan.FromSeconds(5), "the control loop waited for the hung output");
         rig.Events.OfType<RunSummary>().ShouldBeEmpty();
         rig.Events.OfType<DeviceLost>().ShouldBeEmpty();
-        var commandAt = rig.Elapsed;
         rig.Render(170);
         AssertInSync(rig.Devices[0], commandAt, TimeSpan.FromSeconds(120), 1.0, 1.5);
     }
