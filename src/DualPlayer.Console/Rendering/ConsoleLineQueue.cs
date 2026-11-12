@@ -9,8 +9,9 @@ namespace DualPlayer.Console.Rendering;
 /// </summary>
 internal sealed class ConsoleLineQueue : IDisposable
 {
-    private static readonly TimeSpan DrainLimit = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan DefaultDrainLimit = TimeSpan.FromSeconds(5);
 
+    private readonly TimeSpan _drainLimit;
     private readonly TextWriter _output;
     private readonly TextWriter _error;
     private readonly ILogger? _log;
@@ -22,12 +23,19 @@ internal sealed class ConsoleLineQueue : IDisposable
     private bool _writeFailureLogged; // writer thread only
 
     public ConsoleLineQueue(TextWriter output, TextWriter error, ILogger? log = null)
+        : this(output, error, log, DefaultDrainLimit)
+    {
+    }
+
+    /// <summary>How long Flush and Dispose wait for a stalled console before giving up (tests shorten it).</summary>
+    internal ConsoleLineQueue(TextWriter output, TextWriter error, ILogger? log, TimeSpan drainLimit)
     {
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(error);
         _output = output;
         _error = error;
         _log = log;
+        _drainLimit = drainLimit;
         _thread = new Thread(Drain) { IsBackground = true, Name = "console-writer" };
         _thread.Start();
     }
@@ -56,7 +64,7 @@ internal sealed class ConsoleLineQueue : IDisposable
     {
         lock (_gate)
         {
-            WaitIdle(DrainLimit);
+            WaitIdle(_drainLimit);
         }
     }
 
@@ -69,12 +77,12 @@ internal sealed class ConsoleLineQueue : IDisposable
                 return;
             }
 
-            WaitIdle(DrainLimit);
+            WaitIdle(_drainLimit);
             _completed = true;
             Monitor.PulseAll(_gate);
         }
 
-        _thread.Join(DrainLimit);
+        _thread.Join(_drainLimit);
     }
 
     private void WaitIdle(TimeSpan limit)

@@ -128,7 +128,7 @@ public sealed class ListAndPlayCommandTests
     }
 
     [Fact]
-    public void Play_command_starts_the_run_and_echoes_each_output_with_its_resolved_id_and_the_started_clock()
+    public void Play_command_starts_the_run_and_echoes_each_output_with_its_track_device_name_and_resolved_id()
     {
         var engine = Substitute.For<IAudioEngine>();
         var request = ParsePlay("play", File, "--out", "1=1", "--out", "2=2");

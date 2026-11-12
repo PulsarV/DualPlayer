@@ -33,13 +33,14 @@ public sealed class ConsoleWriteFailureTests
         var engine = new Events();
         var log = new CapturingLog();
         var writer = new GatedWriter();
-        var printer = new EventPrinter(engine, writer, log);
+        using var lines = new ConsoleLineQueue(writer, writer, log, TimeSpan.FromMilliseconds(100));
+        var printer = new EventPrinter(engine, lines);
 
         engine.Publish(Summary());
-        printer.Dispose(); // the console is stalled: the bounded flush gives up and the printer goes away
+        printer.Dispose(); // the console is stalled: the bounded flush (100 ms here) gives up and the printer goes away
         writer.Release();
         writer.AllWritten.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken).ShouldBeTrue();
-        Thread.Sleep(200);
+        Thread.Sleep(100);
 
         log.Errors.ShouldBeEmpty();
     }

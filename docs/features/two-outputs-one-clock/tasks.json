@@ -1149,7 +1149,7 @@
         "tests/DualPlayer.Console.Tests/ListAndPlayCommandTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T51-shorten-the-stalled-console-test-and-rename-the-play-test.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r3: S9, S11"
     }
   ]
