@@ -35,6 +35,20 @@ public sealed class FfmpegAudioDecoderTests
     }
 
     [Theory]
+    [InlineData("mono.wav", ChannelLayout.Mono)]
+    [InlineData("tones-2.1.wav", ChannelLayout.Other)]
+    [InlineData("tones-6.0.wav", ChannelLayout.Other)]
+    [InlineData("tones-5.1.wav", ChannelLayout.Surround51)]
+    [InlineData("tones-7.1.wav", ChannelLayout.Surround71)]
+    public void ListTracks_labels_a_source_5_1_or_7_1_only_when_it_has_an_LFE(string file, ChannelLayout layout)
+    {
+        var result = NewDecoder().ListTracks(Media(file));
+
+        result.IsSuccess.ShouldBeTrue(result.Error?.Message);
+        result.Value[0].ChannelLayout.ShouldBe(layout);
+    }
+
+    [Theory]
     [InlineData("mono.wav", 1, false)]
     [InlineData("tones-2.1.wav", 3, true)]
     [InlineData("tones-6.0.wav", 6, false)]

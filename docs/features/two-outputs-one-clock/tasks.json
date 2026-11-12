@@ -1247,7 +1247,7 @@
         "tests/DualPlayer.Console.Tests/StartLinesTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T56-label-a-source-5-1-or-7-1-only-when-it-has-an-lfe-channel.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r4: T4"
     },
     {

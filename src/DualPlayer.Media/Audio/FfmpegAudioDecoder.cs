@@ -32,14 +32,15 @@ public sealed unsafe class FfmpegAudioDecoder : IAudioDecoder
             {
                 var stream = (AVStream*)ptr;
                 var par = stream->codecpar;
+                var hasLfe = HasLfe(par->ch_layout);
                 tracks.Add(new AudioTrackInfo(
                     tracks.Count + 1,
                     LanguageOf(stream),
-                    ToLayout(par->ch_layout.nb_channels),
+                    ToLayout(par->ch_layout.nb_channels, hasLfe),
                     par->sample_rate)
                 {
                     Channels = par->ch_layout.nb_channels,
-                    HasLfe = HasLfe(par->ch_layout),
+                    HasLfe = hasLfe,
                 });
             }
 
@@ -125,12 +126,12 @@ public sealed unsafe class FfmpegAudioDecoder : IAudioDecoder
         return System.Runtime.InteropServices.Marshal.PtrToStringAnsi((IntPtr)buffer) ?? $"error {code}";
     }
 
-    internal static ChannelLayout ToLayout(int channels) => channels switch
+    internal static ChannelLayout ToLayout(int channels, bool hasLfe) => channels switch
     {
         1 => ChannelLayout.Mono,
         2 => ChannelLayout.Stereo,
-        6 => ChannelLayout.Surround51,
-        8 => ChannelLayout.Surround71,
+        6 when hasLfe => ChannelLayout.Surround51,
+        8 when hasLfe => ChannelLayout.Surround71,
         _ => ChannelLayout.Other,
     };
 
