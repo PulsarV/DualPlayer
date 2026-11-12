@@ -779,6 +779,196 @@
       "file": "docs/features/two-outputs-one-clock/tasks/T33-align-a-late-landing-first-block-after-seek-or-start.md",
       "status": "done",
       "origin": "review-2026-11-12: F4 remainder (found during T28)"
+    },
+    {
+      "id": "T34",
+      "title": "Subtract the stream start time so files whose timestamps start above 0 play and seek correctly",
+      "layer": "integration",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-09",
+        "AC-10"
+      ],
+      "dod": "start_time subtracted in Anchor/Seek/past-end; TS + offset-MKV tests: first block at 0, seek lands on the target content; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Media/Audio/FfmpegDecodeSession.cs",
+        "tests/DualPlayer.Media.Tests/Audio/FfmpegAudioDecoderTests.cs",
+        "tests/DualPlayer.Media.Tests/TestMedia/"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T34-subtract-the-stream-start-time-so-files-whose-timestamps-start-above-0.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r2: R1"
+    },
+    {
+      "id": "T35",
+      "title": "Record the clamped seek-past-end jump so the played duration stays true",
+      "layer": "app",
+      "deps": [
+        "T34"
+      ],
+      "acs": [
+        "AC-10",
+        "AC-13"
+      ],
+      "dod": "past-end seek played ≈ pre-seek play time in both branches; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "src/DualPlayer.Core/Diagnostics/RunSummaryBuilder.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineTransportTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T35-record-the-clamped-seek-past-end-jump-so-the-played-duration-stays-tru.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r2: R2"
+    },
+    {
+      "id": "T36",
+      "title": "Keep an output that hung during a seek measured and corrected after it recovers",
+      "layer": "app",
+      "deps": [
+        "T35"
+      ],
+      "acs": [
+        "AC-07",
+        "AC-09",
+        "AC-11"
+      ],
+      "dod": "hung-during-seek output aligned after recovery, records truthful, counters consistent; engine test; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "src/DualPlayer.Core/Outputs/OutputRenderSource.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineRecoveryTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T36-keep-an-output-that-hung-during-a-seek-measured-and-corrected-after-it.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r2: R3"
+    },
+    {
+      "id": "T37",
+      "title": "Recover a stalled output without seek in one correction and no underruns",
+      "layer": "app",
+      "deps": [
+        "T36"
+      ],
+      "acs": [
+        "AC-07"
+      ],
+      "dod": "stall recovery: no double skip, 0 underruns, one correction; engine test; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Outputs/OutputRenderSource.cs",
+        "src/DualPlayer.Core/Outputs/AudioRingBuffer.cs",
+        "src/DualPlayer.Core/Sync/AdaptiveResampler.cs",
+        "src/DualPlayer.Core/Playback/DecodePump.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineRecoveryTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T37-recover-a-stalled-output-without-seek-in-one-correction-and-no-underru.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r2: R4"
+    },
+    {
+      "id": "T38",
+      "title": "Measure start-to-audio to the first audio on every output",
+      "layer": "app",
+      "deps": [
+        "T37"
+      ],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "start-to-audio measured to the last output's first audio; test with delayed first audio; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "src/DualPlayer.Core/Playback/EngineEvent.cs",
+        "src/DualPlayer.Console/Commands/PlayCommand.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.Console.Tests/"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T38-measure-start-to-audio-to-the-first-audio-on-every-output.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r2: R7"
+    },
+    {
+      "id": "T39",
+      "title": "Stop ConsoleRig from spinning when the engine closes a device mid-pump",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-13"
+      ],
+      "dod": "ConsoleRig cannot spin forever on a closed device; guard test; 10 repeated runs green; gate clean",
+      "files_hint": [
+        "tests/DualPlayer.Console.Tests/E2E/ConsoleRig.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T39-stop-consolerig-from-spinning-when-the-engine-closes-a-device-mid-pump.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r2: R6"
+    },
+    {
+      "id": "T40",
+      "title": "Log console lines independently of the console write and always signal the run end",
+      "layer": "app",
+      "deps": [
+        "T39"
+      ],
+      "acs": [
+        "AC-11",
+        "AC-13"
+      ],
+      "dod": "line logged before write; run end signalled on write failure; no false failure after disposal; tests; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Console/Rendering/ConsoleLineQueue.cs",
+        "src/DualPlayer.Console/Rendering/EventPrinter.cs",
+        "src/DualPlayer.Console/Commands/PlayCommand.cs",
+        "tests/DualPlayer.Console.Tests/"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T40-log-console-lines-independently-of-the-console-write-and-always-signal.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r2: R5"
+    },
+    {
+      "id": "T41",
+      "title": "Pick the seek warning by the target's sign",
+      "layer": "app",
+      "deps": [
+        "T40"
+      ],
+      "acs": [
+        "AC-10"
+      ],
+      "dod": "warning chosen by target sign in printer and loop; tests; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Console/Rendering/EventPrinter.cs",
+        "src/DualPlayer.Console/Commands/RunCommandLoop.cs",
+        "tests/DualPlayer.Console.Tests/"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T41-pick-the-seek-warning-by-the-target-s-sign.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r2: R8"
+    },
+    {
+      "id": "T42",
+      "title": "Take the LFE-dropped note from Media's conversion",
+      "layer": "app",
+      "deps": [
+        "T34",
+        "T41",
+        "T38"
+      ],
+      "acs": [
+        "AC-12"
+      ],
+      "dod": "LFE note matches Media's conversion incl. 7.1 → 5.1; tests; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Media/Audio/MixFormatConverter.cs",
+        "src/DualPlayer.Core/Playback/EngineEvent.cs",
+        "src/DualPlayer.Console/Rendering/ConsoleFormat.cs",
+        "tests/DualPlayer.Console.Tests/",
+        "tests/DualPlayer.Media.Tests/"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T42-take-the-lfe-dropped-note-from-media-s-conversion.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r2: R9"
     }
   ]
 }

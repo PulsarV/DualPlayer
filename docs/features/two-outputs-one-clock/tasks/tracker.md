@@ -41,5 +41,14 @@
 | T31 | [Console end-to-end tests over real Core and Media with a fake backend, and a smoke test that resolves the play path](./T31-console-end-to-end-tests-over-real-core-and-media.md) | ports | Volodymyr Kravchuk | M | T29, T30 | done | COMMIT |
 | T32 | [Platform: OS-gated hardware tests, device-loss mapping only for device errors, and a logged MMCSS failure](./T32-platform-os-gated-hardware-tests-device-loss-mappi.md) | infra | Volodymyr Kravchuk | M | — | done | COMMIT |
 | T33 | [Compare the first block of each epoch with the seek target so a late-landing seek stays aligned](./T33-align-a-late-landing-first-block-after-seek-or-start.md) | app | Volodymyr Kravchuk | S | T28 | done | COMMIT |
+| T34 | [Subtract the stream start time so files whose timestamps start above 0 play and seek correctly](./T34-subtract-the-stream-start-time-so-files-whose-timestamps-start-above-0.md) | integration | Volodymyr Kravchuk | M | — | todo | SELECT |
+| T35 | [Record the clamped seek-past-end jump so the played duration stays true](./T35-record-the-clamped-seek-past-end-jump-so-the-played-duration-stays-tru.md) | app | Volodymyr Kravchuk | S | T34 | todo | SELECT |
+| T36 | [Keep an output that hung during a seek measured and corrected after it recovers](./T36-keep-an-output-that-hung-during-a-seek-measured-and-corrected-after-it.md) | app | Volodymyr Kravchuk | M | T35 | todo | SELECT |
+| T37 | [Recover a stalled output without seek in one correction and no underruns](./T37-recover-a-stalled-output-without-seek-in-one-correction-and-no-underru.md) | app | Volodymyr Kravchuk | M | T36 | todo | SELECT |
+| T38 | [Measure start-to-audio to the first audio on every output](./T38-measure-start-to-audio-to-the-first-audio-on-every-output.md) | app | Volodymyr Kravchuk | S | T37 | todo | SELECT |
+| T39 | [Stop ConsoleRig from spinning when the engine closes a device mid-pump](./T39-stop-consolerig-from-spinning-when-the-engine-closes-a-device-mid-pump.md) | test | Volodymyr Kravchuk | S | — | todo | SELECT |
+| T40 | [Log console lines independently of the console write and always signal the run end](./T40-log-console-lines-independently-of-the-console-write-and-always-signal.md) | app | Volodymyr Kravchuk | S | T39 | todo | SELECT |
+| T41 | [Pick the seek warning by the target's sign](./T41-pick-the-seek-warning-by-the-target-s-sign.md) | app | Volodymyr Kravchuk | S | T40 | todo | SELECT |
+| T42 | [Take the LFE-dropped note from Media's conversion](./T42-take-the-lfe-dropped-note-from-media-s-conversion.md) | app | Volodymyr Kravchuk | S | T34, T41, T38 | todo | SELECT |
 
-**Total:** 33 tasks (T23–T33 are follow-ups from review-2026-11-12), ~31.5 person-days (S = ½ day, M/L = 1 day; L tasks are full days with a split risk).
+**Total:** 42 tasks (T23–T33 are follow-ups from review-2026-11-12, T34–T42 from review-2026-11-12-r2), ~37 person-days (S = ½ day, M/L = 1 day; L tasks are full days with a split risk).
