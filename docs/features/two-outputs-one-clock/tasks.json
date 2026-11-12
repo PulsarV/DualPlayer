@@ -1086,7 +1086,7 @@
         "src/DualPlayer.Core/Playback/AudioEngine.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T48-decide-seek-past-the-end-from-the-decoder-not-from-the-matroska-durati.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r3: S6"
     },
     {

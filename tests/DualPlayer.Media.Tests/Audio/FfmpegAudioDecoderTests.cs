@@ -233,4 +233,43 @@ public sealed class FfmpegAudioDecoderTests
         read.Value.StartFrame.ShouldBeInRange(5L * 48000 + 24000 - 2048, 5L * 48000 + 24000 + 2048);
         (read.Value.Samples[0] * 6.0).ShouldBe(5.5, 0.1, "audio must start at the seek target, not offset early");
     }
+
+    // ramp-offset-span.mkv: 10 s mono 48 kHz ramp (value = t/10) at +3 s whose Duration element holds the span (10 s),
+    // as mkvmerge writes it, instead of the end timestamp (13 s) FFmpeg's muxer writes.
+    [Fact]
+    public void Duration_of_a_matroska_file_whose_duration_element_is_the_span_is_the_span()
+    {
+        using var session = OpenRamp("ramp-offset-span.mkv");
+
+        session.Duration.ShouldNotBeNull();
+        session.Duration.Value.TotalSeconds.ShouldBe(10.0, 0.2);
+    }
+
+    [Theory]
+    [InlineData(7.0)]
+    [InlineData(9.0)]
+    [InlineData(9.5)]
+    public void Seek_near_the_end_of_a_matroska_file_whose_duration_element_is_the_span_yields_audio_at_the_target(double seconds)
+    {
+        using var session = OpenRamp("ramp-offset-span.mkv");
+
+        session.Seek(TimeSpan.FromSeconds(seconds), 2).IsSuccess.ShouldBeTrue();
+        var read = session.Read();
+
+        read.IsSuccess.ShouldBeTrue($"a seek to {seconds} s of a 10 s file is not past the end: " + read.Error?.Message);
+        read.Value.StartFrame.ShouldBeInRange((long)(seconds * 48000) - 2048, (long)(seconds * 48000) + 2048);
+        (read.Value.Samples[0] * 10.0).ShouldBe(seconds, 0.1, "audio must start at the seek target");
+    }
+
+    [Theory]
+    [InlineData("ramp-offset.mkv", 6.5)]
+    [InlineData("ramp-offset-span.mkv", 10.5)]
+    public void Seek_past_the_end_of_a_file_yields_end_of_stream(string name, double seconds)
+    {
+        using var session = OpenRamp(name);
+
+        session.Seek(TimeSpan.FromSeconds(seconds), 2).IsSuccess.ShouldBeTrue();
+
+        session.Read().Error?.Code.ShouldBe("playback.end_of_stream");
+    }
 }

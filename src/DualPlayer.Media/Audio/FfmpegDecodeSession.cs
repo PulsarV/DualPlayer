@@ -18,6 +18,7 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
     private AVPacket* _packet;
     private AVFrame* _frame;
     private long _startTime; // container start_time (AV_TIME_BASE); content position 0 is this timestamp
+    private long? _duration;  // length of the content (AV_TIME_BASE), null when unknown
     private int _epoch;
     private bool _drained;
     private bool _disposed;
@@ -39,10 +40,11 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
         return Result<IDecodeSession>.Success(session);
     }
 
-    public TimeSpan? Duration => !_disposed && ContentDuration() is { } d ? TimeSpan.FromSeconds((double)d / ffmpeg.AV_TIME_BASE) : null;
+    public TimeSpan? Duration => !_disposed && _duration is { } d ? TimeSpan.FromSeconds((double)d / ffmpeg.AV_TIME_BASE) : null;
 
-    // Length of the content in AV_TIME_BASE units, or null when unknown. The Matroska demuxer reports the end
-    // timestamp (start offset included) as the duration, MPEG-TS the span; this returns the span.
+    // Length of the content in AV_TIME_BASE units, or null when unknown. The Matroska Duration element is the span
+    // for mkvmerge but the end timestamp (start offset included) for FFmpeg's muxer, and the demuxer reports it as is;
+    // with a start offset the two are told apart by looking for packets beyond it. MPEG-TS reports the span.
     private long? ContentDuration()
     {
         var duration = _fmt->duration;
@@ -52,12 +54,36 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
         }
 
         var name = System.Runtime.InteropServices.Marshal.PtrToStringUTF8((nint)_fmt->iformat->name) ?? "";
-        if (name.Contains("matroska", StringComparison.Ordinal))
+        if (name.Contains("matroska", StringComparison.Ordinal) && _startTime > 0 && !HasPacketsBeyond(duration))
         {
             duration -= _startTime;
         }
 
         return duration > 0 ? duration : null;
+    }
+
+    // True when a packet starts later than the timestamp (plus a tolerance): the value was a span, not an end.
+    private bool HasPacketsBeyond(long timestamp)
+    {
+        var beyond = false;
+        var tolerance = ffmpeg.AV_TIME_BASE / 10;
+        if (ffmpeg.av_seek_frame(_fmt, -1, timestamp, ffmpeg.AVSEEK_FLAG_BACKWARD) >= 0)
+        {
+            while (!beyond && ffmpeg.av_read_frame(_fmt, _packet) >= 0)
+            {
+                var pts = _packet->pts == ffmpeg.AV_NOPTS_VALUE ? _packet->dts : _packet->pts;
+                if (pts != ffmpeg.AV_NOPTS_VALUE)
+                {
+                    var stream = _fmt->streams[_packet->stream_index];
+                    beyond = ffmpeg.av_rescale_q(pts, stream->time_base, new AVRational { num = 1, den = ffmpeg.AV_TIME_BASE }) > timestamp + tolerance;
+                }
+
+                ffmpeg.av_packet_unref(_packet);
+            }
+        }
+
+        ffmpeg.av_seek_frame(_fmt, -1, _startTime, ffmpeg.AVSEEK_FLAG_BACKWARD);
+        return beyond;
     }
 
     public Result Seek(TimeSpan position, int epoch)
@@ -71,10 +97,10 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
         var rc = ffmpeg.av_seek_frame(_fmt, -1, target + _startTime, ffmpeg.AVSEEK_FLAG_BACKWARD);
         _pending.Clear();
         _epoch = epoch;
-        var pastEnd = Duration is { } length && position >= length;
-        if (rc < 0 || pastEnd)
+        if (rc < 0)
         {
-            // Seeking beyond the end of a file: nothing is left to play (the engine decides what that means).
+            // Seeking beyond the end of a file: nothing is left to play (the engine decides what that means, once the
+            // decoder delivers no audio at the target).
             _drained = true;
             return Result.Success();
         }
@@ -171,6 +197,7 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
             _outputs.Add(created.Value);
         }
 
+        _duration = ContentDuration();
         return Result.Success();
     }
 

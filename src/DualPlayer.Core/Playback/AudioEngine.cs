@@ -385,7 +385,10 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
                 return Result<bool>.Success(false);
             }
 
-            if (confirming.All(o => o.Source.HasPlayedOutOldEpoch(epoch)))
+            // Audio of the new epoch must have arrived too: an empty ring may still be the decoder reading on towards a
+            // seek past the end, which only its end of stream decides.
+            if (confirming.All(o => o.Source.HasPlayedOutOldEpoch(epoch)
+                && (o.Ring.FramesAvailable > 0 || o.Source.LastContentFrameHandedOut >= o.Source.EpochStartContentFrame)))
             {
                 return Result<bool>.Success(true);
             }

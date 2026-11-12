@@ -21,3 +21,22 @@ ffmpeg -f lavfi -i "aevalsrc=t/6:s=48000:d=6:c=mono" -c:a flac -sample_fmt s16 -
 ```
 
 Check with `ffprobe -show_entries format=start_time`.
+
+`ramp-offset-span.mkv` (10 s, 81 KB): mono 48 kHz FLAC ramp (value = t/10, so value * 10 = content seconds) with
+`start_time` 3 s whose Matroska Duration element holds the span (10 s), as mkvmerge writes it, instead of the end
+timestamp (13 s) FFmpeg's muxer writes. mkvmerge is not needed: generate with FFmpeg, then overwrite the 8-byte
+big-endian float after the Duration element id `44 89 88` (first occurrence, in the Segment Info) with 10000.0
+(Duration is in TimeCodeScale units, 1 ms):
+
+```sh
+ffmpeg -f lavfi -i "aevalsrc=t/10:s=48000:d=10:c=mono" -c:a flac -sample_fmt s16 -output_ts_offset 3 ramp-offset-span.mkv
+python3 -I - <<'PY'
+import struct
+b = bytearray(open('ramp-offset-span.mkv', 'rb').read())
+i = b.find(b'\x44\x89\x88')
+b[i+3:i+11] = struct.pack('>d', 10000.0)
+open('ramp-offset-span.mkv', 'wb').write(b)
+PY
+```
+
+Check with `ffprobe -show_entries format=start_time,duration` (3.0 and 10.0; before patching 3.0 and 13.0).

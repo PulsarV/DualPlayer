@@ -55,7 +55,7 @@
 | T45 | [Keep the recovery window to start, resume and seek](./T45-keep-the-recovery-window-to-start-resume-and-seek.md) | app | Volodymyr Kravchuk | S | T44 | done | COMMIT |
 | T46 | [Publish AudioStarted without waiting on stalled outputs and only for real audio](./T46-publish-audiostarted-without-waiting-on-stalled-outputs-and-only-for-r.md) | app | Volodymyr Kravchuk | S | T45 | done | COMMIT |
 | T47 | [Print the started line after the output lines and list the new events in the SAD](./T47-print-the-started-line-after-the-output-lines-and-list-the-new-events.md) | app | Volodymyr Kravchuk | S | T46 | done | COMMIT |
-| T48 | [Decide seek past the end from the decoder, not from the Matroska duration](./T48-decide-seek-past-the-end-from-the-decoder-not-from-the-matroska-durati.md) | integration | Volodymyr Kravchuk | S | — | todo | SELECT |
+| T48 | [Decide seek past the end from the decoder, not from the Matroska duration](./T48-decide-seek-past-the-end-from-the-decoder-not-from-the-matroska-durati.md) | integration | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T49 | [Carry Media's LFE-dropped fact to the start line](./T49-carry-media-s-lfe-dropped-fact-to-the-start-line.md) | app | Volodymyr Kravchuk | S | T47, T48 | todo | SELECT |
 | T50 | [Test the played duration of a seek past the end on both branches within 100 ms](./T50-test-the-played-duration-of-a-seek-past-the-end-on-both-branches-withi.md) | test | Volodymyr Kravchuk | S | T46 | todo | SELECT |
 | T51 | [Shorten the stalled-console test and rename the play test](./T51-shorten-the-stalled-console-test-and-rename-the-play-test.md) | test | Volodymyr Kravchuk | S | T47 | todo | SELECT |
