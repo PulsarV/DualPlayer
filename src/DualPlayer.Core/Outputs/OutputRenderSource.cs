@@ -32,6 +32,7 @@ public sealed class OutputRenderSource : IRenderSource
     private long _bufferDeviceFrame = -1;
     private long _bufferContentBits;
     private bool _awaitingFirstFrame = true; // render thread only
+    private long _skipBase; // render thread only: ring skipped-frame count when the epoch was applied
 
     public OutputRenderSource(AudioRingBuffer ring)
     {
@@ -155,7 +156,8 @@ public sealed class OutputRenderSource : IRenderSource
 
         var frames = buffer.Length / _ring.Channels;
         var produced = 0;
-        var limit = (double)(Interlocked.Read(ref _silenceFrom) - state.StartContentFrame);
+        var skippedBefore = _ring.SkippedFramesConsumed - _skipBase;
+        var limit = (double)(Interlocked.Read(ref _silenceFrom) - state.StartContentFrame - skippedBefore);
         var startPosition = _resampler.NextOutputPosition;
         var insertPending = _resampler.PendingInsertFrames != 0;
         if (startPosition < limit)
@@ -177,12 +179,13 @@ public sealed class OutputRenderSource : IRenderSource
 
         if (produced > 0)
         {
-            if (produced == frames && !insertPending && _resampler.PendingInsertFrames == 0)
+            var skipped = _ring.SkippedFramesConsumed - _skipBase;
+            if (produced == frames && !insertPending && _resampler.PendingInsertFrames == 0 && skipped == skippedBefore)
             {
-                PublishAudioBuffer(Interlocked.Read(ref _framesWritten), state.StartContentFrame + startPosition);
+                PublishAudioBuffer(Interlocked.Read(ref _framesWritten), state.StartContentFrame + skippedBefore + startPosition);
             }
 
-            var last = state.StartContentFrame + (long)Math.Floor(_resampler.LastOutputPosition);
+            var last = state.StartContentFrame + skipped + (long)Math.Floor(_resampler.LastOutputPosition);
             Interlocked.Exchange(ref _lastContentFrame, last);
         }
 
@@ -207,6 +210,7 @@ public sealed class OutputRenderSource : IRenderSource
 
         Interlocked.Exchange(ref _oldEpochEndFramesWritten, Interlocked.Read(ref _framesWritten));
         _appliedState = state;
+        _skipBase = _ring.SkippedFramesConsumed;
         _resampler.Reset();
         PublishAudioBuffer(-1, 0);
         _awaitingFirstFrame = true;

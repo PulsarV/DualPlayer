@@ -65,7 +65,7 @@ public sealed class DecodePumpTests
     }
 
     [Fact]
-    public void A_full_ring_drops_only_its_own_frames_while_another_ring_has_room()
+    public void A_full_ring_whose_output_has_stalled_drops_only_its_own_frames_while_another_ring_has_room()
     {
         var time = new FakeTimeProvider();
         var small = new AudioRingBuffer(Block, 2);
@@ -76,7 +76,15 @@ public sealed class DecodePumpTests
 
         pump.Start(epoch: 1);
 
-        ended.Wait(Timeout, TestContext.Current.CancellationToken).ShouldBeTrue();
+        // The small ring's reader never reads: once it has been silent past the threshold the pump skips its blocks.
+        var deadline = DateTime.UtcNow + Timeout;
+        while (!ended.IsSet && DateTime.UtcNow < deadline)
+        {
+            time.Advance(TimeSpan.FromMilliseconds(100));
+            Thread.Sleep(1);
+        }
+
+        ended.IsSet.ShouldBeTrue();
         large.FramesAvailable.ShouldBe(4_800);
         small.FramesAvailable.ShouldBe(Block);
     }
@@ -152,35 +160,37 @@ public sealed class DecodePumpTests
         {
             pump.Start(epoch: 1);
 
-            // Before the threshold the idle output still paces: its free room lets the decoder run ahead,
-            // so the third block for the full healthy ring is dropped.
+            // Before the threshold the idle output is alive: the decoder waits on the full healthy ring for its
+            // third block instead of dropping it, while the idle ring (with room) keeps taking its own blocks.
             session.Release(6);
-            WaitFor(() => session.Reads == 7).ShouldBeTrue();
+            WaitFor(() => session.Reads == 6).ShouldBeTrue();
+            Thread.Sleep(100);
+            session.Reads.ShouldBe(6);
             idle.FramesAvailable.ShouldBe(1_440);
             healthy.FramesAvailable.ShouldBe(960);
 
-            // The idle output has not read for over a second; the healthy one keeps reading.
-            time.Advance(DecodePump.StallThreshold + TimeSpan.FromMilliseconds(100));
+            // The idle output never reads; the healthy one keeps reading and loses nothing.
+            session.Release(6);
+            var received = new List<float>();
             var dest = new float[960 * 2];
-            healthy.Read(dest, 1, out _, time.GetTimestamp()).ShouldBe(960);
+            var deadline = DateTime.UtcNow + Timeout;
+            while ((received.Count < 6 * Block || !pump.IsStalled(0)) && DateTime.UtcNow < deadline)
+            {
+                var read = healthy.Read(dest, 1, out var discarded, time.GetTimestamp());
+                discarded.ShouldBe(0);
+                received.AddRange(Enumerable.Range(0, read).Select(n => dest[n * 2]));
+                time.Advance(TimeSpan.FromMilliseconds(100));
+                Thread.Sleep(1);
+            }
+
             pump.IsStalled(0).ShouldBeTrue();
             pump.IsStalled(1).ShouldBeFalse();
-
-            // Now the stalled ring's room no longer lets the decoder run ahead: the pump waits for the healthy ring.
-            session.Release(6);
-            WaitFor(() => session.Reads == 12).ShouldBeTrue();
-            Thread.Sleep(100);
-            session.Reads.ShouldBe(12);
-            healthy.FramesAvailable.ShouldBe(960);
-
-            healthy.Read(dest.AsSpan(0, Block * 2), 1, out _, time.GetTimestamp()).ShouldBe(Block);
-            time.Advance(TimeSpan.FromMilliseconds(10));
-            WaitFor(() => session.Reads == 13).ShouldBeTrue();
-
-            healthy.Read(dest, 1, out var discarded, time.GetTimestamp()).ShouldBe(960);
-            discarded.ShouldBe(0);
-            dest[0].ShouldBe(1.92f, 0.0001f);
-            dest[959 * 2].ShouldBe(2.879f, 0.0001f);
+            session.Reads.ShouldBe(13); // the 13th read is entered and waits at the gate
+            received.Count.ShouldBe(6 * Block);
+            for (var n = 0; n < received.Count; n++)
+            {
+                received[n].ShouldBe(n / 1000f, 0.0001f);
+            }
         }
         finally
         {
@@ -189,32 +199,84 @@ public sealed class DecodePumpTests
     }
 
     [Fact]
-    public void A_stalled_output_that_reads_again_is_flagged_once_for_re_alignment()
+    public void Mismatched_block_sizes_and_readers_at_different_rates_deliver_every_frame_to_every_non_stalled_output()
     {
+        const int total = 120_000;
         var time = new FakeTimeProvider();
-        var idle = new AudioRingBuffer(960, 2);
-        var other = new AudioRingBuffer(960, 2);
-        using var pump = NewPump(OpenSession(480_000), time, idle, other);
-        pump.Start(epoch: 1);
-        WaitFor(() => idle.FreeFrames == 0 && other.FreeFrames == 0).ShouldBeTrue();
-
-        for (var i = 0; i < 110; i++)
+        var rings = new[] { new AudioRingBuffer(24_000, 1), new AudioRingBuffer(24_000, 1) };
+        var readPerTick = new[] { 480, 441 };
+        var ended = new ManualResetEventSlim();
+        using var pump = new DecodePump(new MismatchedBlockSession([1536, 1024], total), rings, time, NullLogger<DecodePump>.Instance);
+        pump.Ended += ended.Set;
+        var received = new List<float>[] { [], [] };
+        var dest = new float[480];
+        foreach (var ring in rings)
         {
+            ring.Read(dest, 1, out _, time.GetTimestamp());
+        }
+
+        pump.Start(epoch: 1);
+        var deadline = DateTime.UtcNow + Timeout;
+        while (!(ended.IsSet && rings.All(r => r.FramesAvailable == 0)) && DateTime.UtcNow < deadline)
+        {
+            for (var i = 0; i < rings.Length; i++)
+            {
+                var read = rings[i].Read(dest.AsSpan(0, readPerTick[i]), 1, out _, time.GetTimestamp());
+                received[i].AddRange(dest.Take(read));
+            }
+
             time.Advance(TimeSpan.FromMilliseconds(10));
             Thread.Sleep(1);
         }
 
-        Thread.Sleep(20);
-        time.Advance(TimeSpan.FromMilliseconds(10));
-        Thread.Sleep(20);
-        pump.TryConsumeResumedFromStall(0).ShouldBeFalse();
+        for (var i = 0; i < rings.Length; i++)
+        {
+            pump.IsStalled(i).ShouldBeFalse();
+            received[i].Count.ShouldBe(total, $"output {i} lost {total - received[i].Count} frames");
+            var firstGap = received[i].Select((v, n) => (v, n)).FirstOrDefault(x => x.v != x.n);
+            firstGap.v.ShouldBe(firstGap.n, $"output {i} content is not contiguous at frame {firstGap.n}");
+        }
+    }
 
-        var dest = new float[Block * 2];
-        idle.Read(dest, 1, out _, time.GetTimestamp());
+    [Fact]
+    public void A_full_ring_whose_output_is_not_stalled_makes_the_pump_wait_instead_of_dropping_and_a_stalled_one_is_skipped()
+    {
+        var time = new FakeTimeProvider();
+        var idle = new AudioRingBuffer(960, 2);
+        var other = new AudioRingBuffer(48_000, 2);
+        var session = new SteppedSession(OpenSession(480_000));
+        using var pump = NewPump(session, time, idle, other);
+        try
+        {
+            pump.Start(epoch: 1);
 
-        pump.TryConsumeResumedFromStall(0).ShouldBeTrue();
-        pump.TryConsumeResumedFromStall(0).ShouldBeFalse();
-        pump.TryConsumeResumedFromStall(1).ShouldBeFalse();
+            // Reads 1-4 fill both rings' first two blocks; read 5 is the third block for the full, not stalled output 0.
+            session.Release(6);
+            WaitFor(() => session.Reads >= 5).ShouldBeTrue();
+            Thread.Sleep(100);
+            session.Reads.ShouldBe(5, "the pump must wait for output 0 instead of dropping its block");
+            idle.FramesAvailable.ShouldBe(960);
+
+            // Once output 0 has not read for over a second it is stalled: its block is skipped, the pump moves on.
+            var scratch = new float[Block * 2];
+            var otherRead = 0;
+            var deadline = DateTime.UtcNow + Timeout;
+            while (session.Reads < 7 && DateTime.UtcNow < deadline)
+            {
+                otherRead += other.Read(scratch, 1, out _, time.GetTimestamp());
+                time.Advance(TimeSpan.FromMilliseconds(100));
+                Thread.Sleep(1);
+            }
+
+            session.Reads.ShouldBe(7);
+            otherRead += other.Read(new float[6 * Block * 2], 1, out _, time.GetTimestamp());
+            idle.FramesAvailable.ShouldBe(960);
+            otherRead.ShouldBe(3 * Block);
+        }
+        finally
+        {
+            session.Open();
+        }
     }
 
     [Fact]

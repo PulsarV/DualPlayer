@@ -1,5 +1,7 @@
 using DualPlayer.Core.Outputs;
+using DualPlayer.Core.Playback;
 using DualPlayer.Core.Tests.Fakes;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 
 namespace DualPlayer.Core.Tests.Outputs;
@@ -380,5 +382,106 @@ public sealed class OutputRenderSourceTests
         allocated.ShouldBe(0);
         source.UnderrunCount.ShouldBe(1);
         source.AppliedEpoch.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Frames_the_pump_skipped_for_a_stalled_output_advance_the_content_position_once_it_reads_again()
+    {
+        var time = new FakeTimeProvider();
+        var stalled = new AudioRingBuffer(2_000, 1);
+        var healthy = new AudioRingBuffer(100_000, 1);
+        var session = new GatedSession(new MismatchedBlockSession([1536, 1536], 100_000));
+        var source = new OutputRenderSource(stalled);
+        source.BeginEpoch(1, startContentFrame: 0);
+        using var pump = new DecodePump(session, [stalled, healthy], time, NullLogger<DecodePump>.Instance);
+        try
+        {
+            // The device is open but silent for now; block 0 lands in the ring.
+            source.Render(new float[1], new DevicePosition(0, time.GetTimestamp()));
+            pump.Start(epoch: 1);
+            session.Release(2);
+            WaitFor(() => stalled.FramesAvailable >= 1_536).ShouldBeTrue();
+
+            // The reader stops for over a second: the pump skips this output's next two blocks (1536 frames each).
+            session.Release(4);
+            var scratch = new float[2_000];
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+            while (session.Reads < 7 && DateTime.UtcNow < deadline)
+            {
+                healthy.Read(scratch, 1, out _, time.GetTimestamp()); // the healthy output keeps reading
+                time.Advance(TimeSpan.FromMilliseconds(100));
+                Thread.Sleep(1);
+            }
+
+            session.Reads.ShouldBe(7);
+            stalled.FramesAvailable.ShouldBe(1_536);
+
+            // It reads again, draining block 0; the pump then delivers block 3 (content frames 4608..6143).
+            var drain = new float[1_500];
+            source.Render(drain, new DevicePosition(0, time.GetTimestamp()));
+            session.Release(2);
+            WaitFor(() => session.Reads == 9).ShouldBeTrue();
+            WaitFor(() => stalled.FramesAvailable >= 1_536).ShouldBeTrue();
+
+            var buffer = new float[1_000];
+            source.Render(buffer, new DevicePosition(1_500, time.GetTimestamp()));
+
+            var lastSample = (long)Math.Round(buffer[^1]);
+            lastSample.ShouldBeGreaterThan(4_608, "the last frame handed out must come from the block after the skipped ones");
+            source.LastContentFrameHandedOut.ShouldBe(lastSample);
+        }
+        finally
+        {
+            session.Open();
+        }
+    }
+
+    private static bool WaitFor(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (condition())
+            {
+                return true;
+            }
+
+            Thread.Sleep(2);
+        }
+
+        return condition();
+    }
+
+    /// <summary>Hands the pump one decoded block per <see cref="Release"/> permit.</summary>
+    private sealed class GatedSession(IDecodeSession inner) : IDecodeSession
+    {
+        private readonly SemaphoreSlim _gate = new(0);
+        private int _reads;
+        private bool _open;
+
+        public int Reads => Volatile.Read(ref _reads);
+
+        public void Release(int blocks) => _gate.Release(blocks);
+
+        public void Open()
+        {
+            Volatile.Write(ref _open, true);
+            _gate.Release();
+        }
+
+        public Result Seek(TimeSpan position, int epoch) => inner.Seek(position, epoch);
+
+        public Result<DecodedBlock> Read()
+        {
+            Interlocked.Increment(ref _reads);
+            if (!Volatile.Read(ref _open))
+            {
+                _gate.Wait();
+            }
+
+            return inner.Read();
+        }
+
+        public void Dispose() => inner.Dispose();
     }
 }

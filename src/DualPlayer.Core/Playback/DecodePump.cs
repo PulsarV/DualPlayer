@@ -5,8 +5,8 @@ namespace DualPlayer.Core.Playback;
 
 /// <summary>
 /// The decode thread: pulls blocks from one <see cref="IDecodeSession"/> and fans them out to one ring per
-/// output. A full ring never stalls the others: its frames are dropped while another non-stalled ring has room.
-/// An output whose ring has not been read for more than <see cref="StallThreshold"/> no longer paces the decoder.
+/// output. A full ring makes the pump wait; only an output whose ring has not been read for more than
+/// <see cref="StallThreshold"/> loses frames (and no longer paces the decoder), and the ring records how many.
 /// </summary>
 public sealed partial class DecodePump : IDisposable
 {
@@ -20,7 +20,6 @@ public sealed partial class DecodePump : IDisposable
     private readonly TimeProvider _time;
     private readonly ILogger<DecodePump> _logger;
     private readonly bool[] _detached;
-    private readonly int[] _stallLatched;
     private readonly long[] _lastDropLog;
     private readonly CancellationTokenSource _cts = new();
     private readonly Lock _seekLock = new();
@@ -40,7 +39,6 @@ public sealed partial class DecodePump : IDisposable
         _time = time;
         _logger = logger;
         _detached = new bool[_rings.Length];
-        _stallLatched = new int[_rings.Length];
         _lastDropLog = new long[_rings.Length];
     }
 
@@ -95,23 +93,8 @@ public sealed partial class DecodePump : IDisposable
         }
 
         var lastRead = Math.Max(_rings[outputIndex].LastReadTimestamp, Volatile.Read(ref _startTimestamp));
-        var stalled = _time.GetElapsedTime(lastRead) >= StallThreshold;
-        if (stalled)
-        {
-            Volatile.Write(ref _stallLatched[outputIndex], 1);
-        }
-
-        return stalled;
+        return _time.GetElapsedTime(lastRead) >= StallThreshold;
     }
-
-    /// <summary>
-    /// True once after an output that was stalled has started reading again, so its drift controller can
-    /// re-align it in one step. Consumes the flag.
-    /// </summary>
-    public bool TryConsumeResumedFromStall(int outputIndex) =>
-        Volatile.Read(ref _stallLatched[outputIndex]) == 1
-        && !IsStalled(outputIndex)
-        && Interlocked.CompareExchange(ref _stallLatched[outputIndex], 0, 1) == 1;
 
     public void Dispose()
     {
@@ -171,7 +154,6 @@ public sealed partial class DecodePump : IDisposable
                 return;
             }
 
-            ObserveStalls();
             var read = _session.Read();
             if (!read.IsSuccess)
             {
@@ -243,15 +225,6 @@ public sealed partial class DecodePump : IDisposable
         DecodeFailed?.Invoke(error);
     }
 
-    /// <summary>Latches every stall on the pump thread, so a resume is flagged even if nobody else asked.</summary>
-    private void ObserveStalls()
-    {
-        for (var i = 0; i < _rings.Length; i++)
-        {
-            _ = IsStalled(i);
-        }
-    }
-
     private void Deliver(DecodedBlock block, CancellationToken token)
     {
         var index = block.OutputIndex;
@@ -280,15 +253,17 @@ public sealed partial class DecodePump : IDisposable
                 continue;
             }
 
-            if (OtherNonStalledRingHasRoom(index, piece))
+            if (IsStalled(index))
             {
+                // Only an output whose own reader has gone away loses frames; the ring is told how many, so its
+                // content position stays true when it reads again.
+                ring.NoteSkipped(pending.Length / ring.Channels, _epoch);
                 LogDrop(index);
                 return;
             }
 
-            // Every non-stalled ring is full: wait for a reader, but let a seek restart the block.
+            // The output is alive but behind: wait for its reader, but let a seek restart the block.
             Task.Delay(WaitSlice, _time, token).Wait(token);
-            ObserveStalls();
             lock (_seekLock)
             {
                 if (_pendingSeek is not null)
@@ -297,19 +272,6 @@ public sealed partial class DecodePump : IDisposable
                 }
             }
         }
-    }
-
-    private bool OtherNonStalledRingHasRoom(int self, int frames)
-    {
-        for (var i = 0; i < _rings.Length; i++)
-        {
-            if (i != self && !Volatile.Read(ref _detached[i]) && !IsStalled(i) && _rings[i].FreeFrames >= frames)
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private void LogDrop(int index)

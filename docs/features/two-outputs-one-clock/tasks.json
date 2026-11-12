@@ -517,7 +517,7 @@
         "tests/DualPlayer.Core.Tests/Fakes/"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T23-stop-the-decode-pump-from-dropping-blocks-for-heal.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12: F3"
     },
     {

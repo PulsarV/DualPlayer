@@ -9,11 +9,15 @@ public sealed class AudioRingBuffer : DualPlayer.Core.Sync.IFrameReader
 {
     private readonly float[] _samples;
     private readonly int[] _epochs;
+    private readonly int[] _skippedBefore; // frames the writer skipped immediately before this slot's frame
     private readonly int _capacity;
     private readonly int _channels;
     private long _head; // frames consumed; written by the reader only
     private long _tail; // frames produced; written by the writer only
     private long _lastReadTimestamp;
+    private long _skippedConsumed; // skipped frames the reader has passed; written by the reader only
+    private int _pendingSkip; // writer only
+    private int _pendingSkipEpoch; // writer only
     private int _readerEpoch; // render thread only
     private long _readerTimestamp; // render thread only
 
@@ -25,6 +29,7 @@ public sealed class AudioRingBuffer : DualPlayer.Core.Sync.IFrameReader
         _channels = channels;
         _samples = new float[capacityFrames * channels];
         _epochs = new int[capacityFrames];
+        _skippedBefore = new int[capacityFrames];
     }
 
     public int Channels => _channels;
@@ -54,6 +59,24 @@ public sealed class AudioRingBuffer : DualPlayer.Core.Sync.IFrameReader
     /// <summary>The timestamp the reader passed on its most recent <see cref="Read"/>.</summary>
     public long LastReadTimestamp => Volatile.Read(ref _lastReadTimestamp);
 
+    /// <summary>Skipped frames (see <see cref="NoteSkipped"/>) the reader has passed in non-discarded frames.</summary>
+    public long SkippedFramesConsumed => Volatile.Read(ref _skippedConsumed);
+
+    /// <summary>
+    /// Decode thread. Records that <paramref name="frames"/> frames of <paramref name="epoch"/> were not written, so the
+    /// reader can keep its content position true; they are attached to the next frame written in that epoch.
+    /// </summary>
+    public void NoteSkipped(int frames, int epoch)
+    {
+        if (_pendingSkipEpoch != epoch)
+        {
+            _pendingSkip = 0;
+            _pendingSkipEpoch = epoch;
+        }
+
+        _pendingSkip += frames;
+    }
+
     /// <summary>Decode thread. Writes as many whole frames as fit and returns the count accepted; never blocks.</summary>
     public int Write(ReadOnlySpan<float> frames, int epoch)
     {
@@ -66,6 +89,12 @@ public sealed class AudioRingBuffer : DualPlayer.Core.Sync.IFrameReader
             var slot = (int)((tail + i) % _capacity);
             frames.Slice(i * _channels, _channels).CopyTo(_samples.AsSpan(slot * _channels, _channels));
             _epochs[slot] = epoch;
+            _skippedBefore[slot] = i == 0 && _pendingSkipEpoch == epoch ? _pendingSkip : 0;
+        }
+
+        if (count > 0)
+        {
+            _pendingSkip = 0;
         }
 
         Volatile.Write(ref _tail, tail + count);
@@ -85,6 +114,7 @@ public sealed class AudioRingBuffer : DualPlayer.Core.Sync.IFrameReader
         var maxFrames = dest.Length / _channels;
         var read = 0;
         var discarded = 0;
+        var skipped = 0L;
 
         while (head < tail)
         {
@@ -101,9 +131,15 @@ public sealed class AudioRingBuffer : DualPlayer.Core.Sync.IFrameReader
                 break;
             }
 
+            skipped += _skippedBefore[slot];
             _samples.AsSpan(slot * _channels, _channels).CopyTo(dest.Slice(read * _channels, _channels));
             read++;
             head++;
+        }
+
+        if (skipped != 0)
+        {
+            Volatile.Write(ref _skippedConsumed, _skippedConsumed + skipped);
         }
 
         Volatile.Write(ref _head, head);
