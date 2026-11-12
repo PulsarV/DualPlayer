@@ -82,7 +82,7 @@ internal sealed class RunCommandLoop(IAudioEngine engine, Func<TimeSpan> positio
 
         // The out-of-file warning is an engine event the EventPrinter prints, before the run summary.
         var seek = result.Value;
-        if (seek.OutsideFile && target > seek.Position)
+        if (seek.OutsideFile && target >= TimeSpan.Zero) // past the end: the run has ended
         {
             return true;
         }

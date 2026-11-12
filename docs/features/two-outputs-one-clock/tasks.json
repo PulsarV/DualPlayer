@@ -943,7 +943,7 @@
         "tests/DualPlayer.Console.Tests/"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T41-pick-the-seek-warning-by-the-target-s-sign.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r2: R8"
     },
     {

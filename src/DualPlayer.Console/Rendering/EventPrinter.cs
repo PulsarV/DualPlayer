@@ -63,7 +63,8 @@ internal sealed class EventPrinter : IObserver<EngineEvent>, IDisposable
                     $"started   clock {ConsoleFormat.Clock(a.ClockPosition)}  start-to-audio {ConsoleFormat.Seconds(a.StartToAudio)}"));
                 break;
             case SeekTargetOutsideFile o:
-                Write(o.Target > o.Position
+                // Before the start is a negative target (playing on from 0); anything else is past the end.
+                Write(o.Target >= TimeSpan.Zero
                     ? "warning: target was outside the file"
                     : $"warning: target was outside the file, playing from {ConsoleFormat.Clock(o.Position)}");
                 break;

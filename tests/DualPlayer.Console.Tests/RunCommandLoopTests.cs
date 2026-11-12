@@ -140,6 +140,17 @@ public sealed class RunCommandLoopTests
     }
 
     [Fact]
+    public void Seek_past_the_audio_end_but_inside_the_container_duration_also_ends_the_loop()
+    {
+        _engine.AudioEndsAt = TimeSpan.FromMinutes(9); // the engine reports the target itself as the end position
+
+        var exit = Run("seek 00:09:30", "pause", "stop");
+
+        exit.ShouldBe(0);
+        _engine.Calls.ShouldBe(["Seek"]);
+    }
+
+    [Fact]
     public void Stop_ends_the_run_and_returns_exit_0()
     {
         var exit = Run("stop", "pause");
@@ -179,6 +190,9 @@ public sealed class RunCommandLoopTests
 
         public bool Paused { get; private set; }
 
+        /// <summary>Audio shorter than the container: a seek between the two ends the run with the target as position.</summary>
+        public TimeSpan? AudioEndsAt { get; set; }
+
         public List<string> Calls { get; } = [];
 
         public List<TimeSpan> SeekTargets { get; } = [];
@@ -209,6 +223,12 @@ public sealed class RunCommandLoopTests
             Calls.Add("Seek");
             SeekTargets.Add(target);
             OutputWhenSeekCalled = console.ToString();
+            if (AudioEndsAt is { } audioEnd && target > audioEnd && target <= Duration)
+            {
+                Position = target;
+                return Result<SeekResult>.Success(new SeekResult(Position, true, Paused));
+            }
+
             var outside = target < TimeSpan.Zero || target > Duration;
             Position = target < TimeSpan.Zero ? TimeSpan.Zero : target > Duration ? Duration : target;
             return Result<SeekResult>.Success(new SeekResult(Position, outside, Paused));

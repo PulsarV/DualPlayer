@@ -64,6 +64,16 @@ public sealed class EventPrinterTests
     }
 
     [Fact]
+    public void A_seek_past_the_audio_end_reported_at_the_target_itself_prints_the_past_the_end_warning()
+    {
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
+
+        _engine.Publish(new SeekTargetOutsideFile(TimeSpan.FromMinutes(9.5), TimeSpan.FromMinutes(9.5)));
+
+        Lines().ShouldBe(["warning: target was outside the file"]);
+    }
+
+    [Fact]
     public void A_seek_target_past_the_end_prints_the_warning_line()
     {
         using var printer = Track(new EventPrinter(_engine.Events, _out));
