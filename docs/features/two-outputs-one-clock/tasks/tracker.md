@@ -29,6 +29,6 @@
 | T19 | [Console: list devices and tracks, and start a run from command-line arguments](./T19-console-list-and-play.md) | ports | Volodymyr Kravchuk | L | T2, T11 | done | COMMIT |
 | T20 | [Console: pause, resume, seek and stop a running run from standard input](./T20-console-transport-commands.md) | ports | Volodymyr Kravchuk | M | T19, T12 | done | COMMIT |
 | T21 | [Console: print sync records, excursions, device loss and the run summary, also on Ctrl+C and window close](./T21-console-live-output-and-shutdown.md) | ports | Volodymyr Kravchuk | M | T19, T13 | done | COMMIT |
-| T22 | [Record the ≥ 3 h evidence run on the target Windows PC and commit its run summary](./T22-record-target-pc-evidence-run.md) | docs | Volodymyr Kravchuk | M | T15, T17, T20, T21 | todo | — |
+| T22 | [Record the ≥ 3 h evidence run on the target Windows PC and commit its run summary](./T22-record-target-pc-evidence-run.md) | docs | Volodymyr Kravchuk | M | T15, T17, T20, T21 | blocked | manual — needs the ≥ 3 h run on the target Windows PC |
 
 **Total:** 22 tasks, ~21.5 person-days (S = ½ day, M/L = 1 day; L tasks are full days with a split risk).

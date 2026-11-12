@@ -495,7 +495,7 @@
         "docs/features/two-outputs-one-clock/evidence/"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T22-record-target-pc-evidence-run.md",
-      "status": "todo"
+      "status": "blocked"
     }
   ]
 }
