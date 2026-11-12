@@ -923,7 +923,7 @@
         "tests/DualPlayer.Console.Tests/"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T40-log-console-lines-independently-of-the-console-write-and-always-signal.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r2: R5"
     },
     {

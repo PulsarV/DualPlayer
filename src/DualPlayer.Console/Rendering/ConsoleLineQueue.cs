@@ -19,6 +19,7 @@ internal sealed class ConsoleLineQueue : IDisposable
     private readonly Thread _thread;
     private int _pending;
     private bool _completed;
+    private bool _writeFailureLogged; // writer thread only
 
     public ConsoleLineQueue(TextWriter output, TextWriter error, ILogger? log = null)
     {
@@ -109,18 +110,33 @@ internal sealed class ConsoleLineQueue : IDisposable
                 entry = _queue.Dequeue();
             }
 
+            // The log never depends on the console: the line is logged first, whatever the write does next.
+            _log?.LogInformation("{Line}", entry.Line);
             try
             {
                 var target = entry.ToError ? _error : _output;
                 target.WriteLine(entry.Line);
                 target.Flush();
-                _log?.LogInformation("{Line}", entry.Line);
+            }
+            catch (Exception ex)
+            {
+                // A console that cannot be written must not kill the loop or strand callers waiting for the queue to
+                // drain; the failure is logged once, not for every line after it.
+                if (!_writeFailureLogged)
+                {
+                    _writeFailureLogged = true;
+                    _log?.LogError(ex, "Writing a console line failed");
+                }
+            }
+
+            try
+            {
+                // Whoever waits on this line (the run's end) is told it is done, written or not.
                 entry.Written?.Invoke();
             }
             catch (Exception ex)
             {
-                // A console that cannot be written must not kill the loop or strand callers waiting for the queue to drain.
-                _log?.LogError(ex, "Writing a console line failed");
+                _log?.LogError(ex, "Signalling a written console line failed");
             }
             finally
             {

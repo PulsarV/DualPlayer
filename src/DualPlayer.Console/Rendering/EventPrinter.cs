@@ -82,7 +82,7 @@ internal sealed class EventPrinter : IObserver<EngineEvent>, IDisposable
                 var summary = RunSummaryPrinter.Lines(s).ToList();
                 for (var i = 0; i < summary.Count; i++)
                 {
-                    _lines.Enqueue(summary[i], written: i == summary.Count - 1 ? _runEnded.Cancel : null);
+                    _lines.Enqueue(summary[i], written: i == summary.Count - 1 ? SignalRunEnded : null);
                 }
 
                 break;
@@ -97,6 +97,18 @@ internal sealed class EventPrinter : IObserver<EngineEvent>, IDisposable
 
     public void OnCompleted()
     {
+    }
+
+    // The last summary line may be written after Dispose gave up waiting on a stalled console; the run has ended either way.
+    private void SignalRunEnded()
+    {
+        try
+        {
+            _runEnded.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
     }
 
     /// <summary>Waits (bounded) until every line published so far has been written.</summary>
