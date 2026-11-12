@@ -92,7 +92,7 @@ internal sealed partial class WasapiRenderThread : IDisposable
         _stop.Dispose();
     }
 
-    [LibraryImport("avrt.dll", EntryPoint = "AvSetMmThreadCharacteristicsW", StringMarshalling = StringMarshalling.Utf16)]
+    [LibraryImport("avrt.dll", EntryPoint = "AvSetMmThreadCharacteristicsW", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
     private static partial IntPtr AvSetMmThreadCharacteristics(string taskName, ref uint taskIndex);
 
     [LibraryImport("avrt.dll")]
@@ -103,6 +103,7 @@ internal sealed partial class WasapiRenderThread : IDisposable
     {
         uint taskIndex = 0;
         var mmcss = AvSetMmThreadCharacteristics("Pro Audio", ref taskIndex);
+        MmcssLog.WarnIfNotRaised(mmcss, Marshal.GetLastPInvokeError(), _logger, _deviceName);
         var lost = false;
         try
         {
@@ -129,7 +130,7 @@ internal sealed partial class WasapiRenderThread : IDisposable
                 FillAvailable();
             }
         }
-        catch (Exception ex) when (WasapiErrorMapper.IsDeviceFailure(ex))
+        catch (Exception ex) when (WasapiErrorMapper.IsRenderDeviceFailure(ex))
         {
             _logger.LogWarning(ex, "Render device {Device} failed; treating it as lost", _deviceName);
             lost = true;

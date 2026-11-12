@@ -80,7 +80,7 @@ public sealed class WasapiAudioBackendTests
         WasapiAudioDevice.IsFloat32(new WaveFormatExtensible(48000, 16, 2)).ShouldBeFalse();
     }
 
-    [HardwareFact]
+    [HardwareFact(HardwareOs.Windows)]
     public void Listing_returns_devices_sorted_by_endpoint_id_with_names_and_ids()
     {
         var devices = new WasapiAudioBackend().ListDevices();
@@ -90,7 +90,7 @@ public sealed class WasapiAudioBackendTests
         devices.Select(d => d.Id).ShouldBe(devices.Select(d => d.Id).OrderBy(i => i, StringComparer.Ordinal));
     }
 
-    [HardwareFact]
+    [HardwareFact(HardwareOs.Windows)]
     public void Opening_an_unknown_endpoint_id_reports_device_not_found()
     {
         var result = new WasapiAudioBackend().Open("{0.0.0.00000000}.{no-such-device}", TimeSpan.FromMilliseconds(40), null!);
@@ -99,7 +99,7 @@ public sealed class WasapiAudioBackendTests
         result.Error!.Code.ShouldBe("outputs.device_not_found");
     }
 
-    [HardwareFact]
+    [HardwareFact(HardwareOs.Windows)]
     public void Opening_the_default_device_in_shared_mode_reports_its_mix_format_and_granted_buffer()
     {
         using var enumerator = new MMDeviceEnumerator();

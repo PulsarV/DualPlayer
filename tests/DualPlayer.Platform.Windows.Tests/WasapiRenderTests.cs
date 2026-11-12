@@ -35,7 +35,7 @@ public sealed class WasapiRenderTests
         b.ShouldBeGreaterThanOrEqualTo(a);
     }
 
-    [HardwareFact]
+    [HardwareFact(HardwareOs.Windows)]
     public void Ten_seconds_of_silence_render_with_monotonic_device_positions_on_the_time_provider_base()
     {
         var backend = new WasapiAudioBackend();
@@ -68,7 +68,7 @@ public sealed class WasapiRenderTests
     /// <c>ListDevices</c>); within <see cref="LossWindow"/> of the test starting, disable that endpoint
     /// (Sound settings → device → Disable) or unplug / switch it off. Skipped when the variable is not set.
     /// </summary>
-    [HardwareFact]
+    [HardwareFact(HardwareOs.Windows)]
     public async Task Disabling_a_rendering_device_raises_device_lost_exactly_once()
     {
         var deviceId = Environment.GetEnvironmentVariable(LossDeviceVariable);
@@ -104,7 +104,7 @@ public sealed class WasapiRenderTests
         }
     }
 
-    [HardwareFact]
+    [HardwareFact(HardwareOs.Windows)]
     public async Task Starting_twice_or_after_close_neither_throws_nor_raises_device_lost()
     {
         var backend = new WasapiAudioBackend();

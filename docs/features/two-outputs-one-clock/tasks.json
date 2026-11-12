@@ -755,7 +755,7 @@
         "src/DualPlayer.Platform.Windows/Audio/WasapiAudioDevice.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T32-platform-os-gated-hardware-tests-device-loss-mappi.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12: F17, F18, F23"
     }
   ]

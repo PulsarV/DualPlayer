@@ -32,6 +32,13 @@ internal static class WasapiErrorMapper
     public static bool IsDeviceFailure(Exception ex) =>
         ex is COMException or UnauthorizedAccessException or ArgumentException;
 
+    /// <summary>
+    /// The narrower rule for inside the render loop: only COM/HRESULT errors and access denial are a device loss.
+    /// An <see cref="ArgumentException"/> there (e.g. a Span bug in Render) is a defect, not a device problem.
+    /// </summary>
+    public static bool IsRenderDeviceFailure(Exception ex) =>
+        ex is not ArgumentException && ex is COMException or UnauthorizedAccessException;
+
     /// <summary>Maps a device failure to its domain error, or to <paramref name="fallbackCode"/> naming the device.</summary>
     public static Error Map(Exception ex, string deviceName, string fallbackCode) =>
         Map(ex.HResult, deviceName)

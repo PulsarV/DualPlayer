@@ -19,14 +19,11 @@ public sealed class AudioQueueBackendTests
         return services.BuildServiceProvider().GetRequiredService<IAudioBackend>();
     }
 
-    [Fact]
+    public static bool IsMacOS => OperatingSystem.IsMacOS();
+
+    [Fact(SkipUnless = nameof(IsMacOS), SkipType = typeof(AudioQueueBackendTests), Skip = "Needs macOS.")]
     public void AddMacOSPlatform_registers_the_audio_backend_port()
     {
-        if (!OperatingSystem.IsMacOS())
-        {
-            return;
-        }
-
         ResolveBackend().ShouldNotBeNull();
     }
 
@@ -47,7 +44,7 @@ public sealed class AudioQueueBackendTests
         actual.ShouldBe(expected);
     }
 
-    [HardwareFact]
+    [HardwareFact(HardwareOs.MacOS)]
     public void The_default_output_device_is_among_the_listed_devices()
     {
         var defaultUid = CoreAudioInterop.GetDefaultOutputDeviceUid();
@@ -56,7 +53,7 @@ public sealed class AudioQueueBackendTests
         ResolveBackend().ListDevices().Select(d => d.Id).ShouldContain(defaultUid);
     }
 
-    [HardwareFact]
+    [HardwareFact(HardwareOs.MacOS)]
     public void ListDevices_returns_output_devices_with_names_and_ids()
     {
         var devices = ResolveBackend().ListDevices();
@@ -66,7 +63,7 @@ public sealed class AudioQueueBackendTests
         devices.Select(d => d.Id).Distinct().Count().ShouldBe(devices.Count);
     }
 
-    [HardwareFact]
+    [HardwareFact(HardwareOs.MacOS)]
     public void Open_with_an_unknown_device_id_fails_with_device_not_found()
     {
         var result = ResolveBackend().Open("no-such-device-uid", TimeSpan.FromMilliseconds(50), new ToneSource());
@@ -75,7 +72,7 @@ public sealed class AudioQueueBackendTests
         result.Error!.Code.ShouldBe("outputs.device_not_found");
     }
 
-    [HardwareFact]
+    [HardwareFact(HardwareOs.MacOS)]
     public void Playing_for_two_seconds_on_the_default_device_pulls_frames_with_an_advancing_device_position()
     {
         var backend = ResolveBackend();
@@ -136,5 +133,19 @@ public sealed class AudioQueueBackendTests
             Interlocked.Exchange(ref LastTimestamp, position.Timestamp);
             Interlocked.Add(ref FramesRendered, frames);
         }
+    }
+}
+
+/// <summary>F17: the registration fact must be skipped, not silently pass, on an OS it cannot exercise.</summary>
+public sealed class AudioQueueRegistrationFactGateTests
+{
+    [Fact]
+    public void The_macOS_registration_fact_is_skipped_rather_than_returning_early_on_other_systems()
+    {
+        var method = typeof(AudioQueueBackendTests).GetMethod(nameof(AudioQueueBackendTests.AddMacOSPlatform_registers_the_audio_backend_port));
+        method.ShouldNotBeNull();
+        var fact = (FactAttribute)Attribute.GetCustomAttribute(method, typeof(FactAttribute))!;
+
+        fact.SkipUnless.ShouldNotBeNull();
     }
 }
