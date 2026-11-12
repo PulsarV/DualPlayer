@@ -1345,7 +1345,7 @@
         "src/DualPlayer.Media/Audio/FfmpegAudioDecoder.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T61-pin-the-restore-reopen-and-its-unreadable-branch-with-tests.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r6: V1"
     },
     {

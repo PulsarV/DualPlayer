@@ -35,3 +35,7 @@ See [spec.md](../spec.md) §5 AC-01, AC-09.
 - [ ] The test seam can make every rewind attempt fail; a test using it asserts playback from content 0 (first block StartFrame ≈ 0, ramp sample ≈ 0) or `playback.file_unreadable`, and fails on the current code (silent end of stream).
 - [ ] `ramp-offset-nocues.mkv` and its test are removed, or replaced by an asset that really makes the restore fail; README corrected either way (no false claim, regex fixed if kept).
 - [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+
+## Note (re-review 6, V1)
+
+The DoD item "fails on the current code" was not met: the old ranged retry was a real `av_seek_frame`, which succeeds on the cue-indexed `ramp-offset.mkv`, so the old code cannot be failed through the one-seek seam. The restore tests now assert `IsSuccess` unconditionally and a reopen-failure test pins `playback.file_unreadable` (T61); both are proven by mutation.

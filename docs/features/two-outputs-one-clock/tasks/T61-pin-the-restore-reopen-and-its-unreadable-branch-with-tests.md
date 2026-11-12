@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-12-r6 (V1)"
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from re-review 6. Work from what is inlined here; the source always wins.
@@ -29,8 +29,8 @@ See [spec.md](../spec.md) §5 AC-01, AC-09.
 
 ## Definition of Done
 
-- [ ] Both restore-seek tests assert `opened.IsSuccess` unconditionally (with the error message), then keep the content-0 (StartFrame ≈ 0, ramp ≈ 0) and duration checks; no early return.
-- [ ] A new test makes the reopen fail (e.g. a temp copy of the asset deleted inside `RewindSeekHook`, which then returns -1) and asserts `playback.file_unreadable`; no temp file left behind.
-- [ ] Mutation check: breaking the reopen path makes the tests red.
-- [ ] The comment above the end-of-file test is corrected (the seam models a failed seek, not a seek that reports success without rewinding); T58's note records that the old code cannot be failed through the one-seek seam.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Both restore-seek tests assert `opened.IsSuccess` unconditionally (with the error message), then keep the content-0 (StartFrame ≈ 0, ramp ≈ 0) and duration checks; no early return.
+- [x] A new test makes the reopen fail (e.g. a temp copy of the asset deleted inside `RewindSeekHook`, which then returns -1) and asserts `playback.file_unreadable`; no temp file left behind.
+- [x] Mutation check: breaking the reopen path makes the tests red.
+- [x] The comment above the end-of-file test is corrected (the seam models a failed seek, not a seek that reports success without rewinding); T58's note records that the old code cannot be failed through the one-seek seam.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

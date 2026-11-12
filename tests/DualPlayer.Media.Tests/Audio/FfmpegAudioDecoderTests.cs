@@ -303,16 +303,12 @@ public sealed class FfmpegAudioDecoderTests
     }
 
     [Fact]
-    public void Open_when_the_restore_seek_after_the_duration_probe_fails_plays_from_the_start_or_fails_as_unreadable()
+    public void Open_when_the_restore_seek_after_the_duration_probe_fails_plays_from_the_start()
     {
         var decoder = new FfmpegAudioDecoder { RewindSeekHook = () => -1 };
         var opened = decoder.Open(Media("ramp-offset-span.mkv"), [new DecodeRequest(1, Mono48)]);
 
-        if (!opened.IsSuccess)
-        {
-            opened.Error?.Code.ShouldBe("playback.file_unreadable");
-            return;
-        }
+        opened.IsSuccess.ShouldBeTrue(opened.Error?.Message);
 
         using var session = opened.Value;
         var read = session.Read();
@@ -323,19 +319,15 @@ public sealed class FfmpegAudioDecoderTests
     }
 
     // RewindSeekHook = -1 fails every seek back to the start (none is made). ramp-offset.mkv's Duration is its end
-    // timestamp, so the duration probe reads to end of file: the demuxer sits at EOF, where any seek or byte-seek
-    // fallback that reports success without rewinding leaves the first Read at end of stream.
+    // timestamp, so the duration probe reads to end of file and the demuxer sits at EOF. The seam models a failed
+    // seek (nothing is rewound); the reopen must put the demuxer back at the start so the first Read is not EOF.
     [Fact]
-    public void Open_when_every_rewind_seek_fails_with_the_demuxer_at_end_of_file_plays_from_content_zero_or_fails_as_unreadable()
+    public void Open_when_every_rewind_seek_fails_with_the_demuxer_at_end_of_file_plays_from_content_zero()
     {
         var decoder = new FfmpegAudioDecoder { RewindSeekHook = () => -1 };
         var opened = decoder.Open(Media("ramp-offset.mkv"), [new DecodeRequest(1, Mono48)]);
 
-        if (!opened.IsSuccess)
-        {
-            opened.Error?.Code.ShouldBe("playback.file_unreadable");
-            return;
-        }
+        opened.IsSuccess.ShouldBeTrue(opened.Error?.Message);
 
         using var session = opened.Value;
         var read = session.Read();
@@ -344,5 +336,34 @@ public sealed class FfmpegAudioDecoderTests
         read.Value.StartFrame.ShouldBeInRange(0L, 2048L);
         (read.Value.Samples[0] * 6.0).ShouldBe(0.0, 0.1, "the first block must carry content from time 0");
         session.Duration.ShouldNotBeNull().TotalSeconds.ShouldBe(6.0, 0.1);
+    }
+
+    // The reopen itself fails: the hook fails the rewind seek and empties the file (truncation, not deletion, so it also
+    // works on Windows where an open file cannot be deleted), so the reopen finds no streams.
+    [Fact]
+    public void Open_when_the_restore_seek_fails_and_the_file_cannot_be_reopened_fails_as_file_unreadable()
+    {
+        var tmp = Path.Combine(Path.GetTempPath(), $"dualplayer-{Guid.NewGuid():N}.mkv");
+        File.Copy(Media("ramp-offset-span.mkv"), tmp);
+        try
+        {
+            var decoder = new FfmpegAudioDecoder
+            {
+                RewindSeekHook = () =>
+                {
+                    using var fs = new FileStream(tmp, FileMode.Truncate, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
+                    return -1;
+                },
+            };
+
+            var opened = decoder.Open(tmp, [new DecodeRequest(1, Mono48)]);
+
+            opened.IsSuccess.ShouldBeFalse();
+            opened.Error?.Code.ShouldBe("playback.file_unreadable");
+        }
+        finally
+        {
+            File.Delete(tmp);
+        }
     }
 }
