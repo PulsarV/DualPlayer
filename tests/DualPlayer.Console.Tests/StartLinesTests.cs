@@ -40,8 +40,7 @@ public sealed class StartLinesTests
     {
         var lines = PlayLines(new RunStarted(
             [new StartedOutput(1, IdA, "Test Headset A", Stereo48()) { Source = new AudioTrackInfo(1, "eng", ChannelLayout.Stereo, 48000) }],
-            TimeSpan.Zero)
-        { StartToAudio = TimeSpan.FromMilliseconds(800) });
+            TimeSpan.Zero));
 
         lines[0].ShouldBe($"output 1  track 1 (eng stereo)  device Test Headset A  id {IdA}");
     }
@@ -51,8 +50,7 @@ public sealed class StartLinesTests
     {
         var lines = PlayLines(new RunStarted(
             [new StartedOutput(1, IdA, "Test Headset A", Stereo48()) { Source = new AudioTrackInfo(1, "ukr", ChannelLayout.Surround51, 48000) }],
-            TimeSpan.Zero)
-        { StartToAudio = TimeSpan.FromMilliseconds(800) });
+            TimeSpan.Zero));
 
         lines[0].ShouldBe($"output 1  track 1 (ukr 5.1 -> stereo, LFE dropped)  device Test Headset A  id {IdA}");
     }
@@ -66,27 +64,12 @@ public sealed class StartLinesTests
                     new StartedOutput(1, IdA, "Test Headset A", Stereo48()) { Source = new AudioTrackInfo(1, "ukr", ChannelLayout.Surround51, 48000) },
                     new StartedOutput(2, IdB, "Test Headset B", Stereo48()) { Source = new AudioTrackInfo(2, "eng", ChannelLayout.Stereo, 44100) },
                 ],
-                TimeSpan.Zero)
-            { StartToAudio = TimeSpan.FromMilliseconds(800) },
+                TimeSpan.Zero),
             outputs: 2);
 
         lines[0].ShouldBe($"output 1  track 1 (ukr 5.1 -> stereo, LFE dropped)  device Test Headset A  id {IdA}");
         lines[1].ShouldBe($"output 2  track 2 (eng stereo 44100 -> 48000)  device Test Headset B  id {IdB}");
-        lines[2].ShouldBe("started   clock 00:00:00.000  start-to-audio 0.8 s");
-    }
-
-    [Theory]
-    [InlineData(800, "0.8")]
-    [InlineData(1240, "1.2")]
-    [InlineData(0, "0.0")]
-    public void The_started_line_prints_the_start_to_audio_time_in_seconds_with_one_decimal(int milliseconds, string expected)
-    {
-        var lines = PlayLines(new RunStarted(
-            [new StartedOutput(1, IdA, "Test Headset A", Stereo48()) { Source = new AudioTrackInfo(1, "eng", ChannelLayout.Stereo, 48000) }],
-            TimeSpan.FromMilliseconds(1500))
-        { StartToAudio = TimeSpan.FromMilliseconds(milliseconds) });
-
-        lines[1].ShouldBe($"started   clock 00:00:01.500  start-to-audio {expected} s");
+        lines.Length.ShouldBe(2, "the started line now comes from the event printer on AudioStarted");
     }
 
     [Fact]
@@ -100,7 +83,6 @@ public sealed class StartLinesTests
         result.IsSuccess.ShouldBeTrue(result.Error?.Message);
         result.Value.Outputs[0].Source.ShouldBe(new AudioTrackInfo(1, "eng", ChannelLayout.Stereo, 48_000));
         result.Value.Outputs[1].Source.ShouldBe(new AudioTrackInfo(2, "ukr", ChannelLayout.Stereo, 48_000));
-        result.Value.StartToAudio.ShouldBeGreaterThanOrEqualTo(TimeSpan.Zero);
     }
 
     // ---- F25 ------------------------------------------------------------------------------------------------------

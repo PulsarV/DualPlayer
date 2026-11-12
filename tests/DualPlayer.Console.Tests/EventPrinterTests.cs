@@ -50,6 +50,19 @@ public sealed class EventPrinterTests
         Lines().ShouldBe([$"record  clock 00:12:34.000  device {Dev1}  drift_ms +1.4  correction_ppm -35  underruns 0"]);
     }
 
+    [Theory]
+    [InlineData(800, "0.8")]
+    [InlineData(1240, "1.2")]
+    [InlineData(0, "0.0")]
+    public void Audio_started_prints_the_started_line_with_the_start_to_audio_time_in_seconds_with_one_decimal(int milliseconds, string expected)
+    {
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
+
+        _engine.Publish(new AudioStarted(TimeSpan.FromMilliseconds(1500), TimeSpan.FromMilliseconds(milliseconds)));
+
+        Lines().ShouldBe([$"started   clock 00:00:01.500  start-to-audio {expected} s"]);
+    }
+
     [Fact]
     public void A_seek_target_past_the_end_prints_the_warning_line()
     {

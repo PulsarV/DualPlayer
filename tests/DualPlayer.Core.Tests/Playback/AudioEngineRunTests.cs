@@ -384,6 +384,30 @@ public sealed class AudioEngineRunTests
     }
 
     [Fact]
+    public void Audio_started_is_published_once_when_the_last_output_renders_its_first_audio_with_that_start_to_audio()
+    {
+        using var rig = new Rig(2);
+        rig.Engine.StartRun("film.mkv", [Assign(1, 1), Assign(2, 2)], new EngineOptions()).IsSuccess.ShouldBeTrue();
+
+        rig.Time.Advance(TimeSpan.FromMilliseconds(10));
+        rig.Backend.Devices["dev-1"].PumpRender(480);
+        Thread.Sleep(50);
+        rig.Events.OfType<AudioStarted>().ShouldBeEmpty("device 2 has not rendered yet");
+
+        rig.Time.Advance(TimeSpan.FromMilliseconds(290));
+        rig.Render(5);
+
+        rig.WaitFor(() => rig.Events.OfType<AudioStarted>().Any()).ShouldBeTrue();
+        var started = rig.Events.OfType<AudioStarted>().Single();
+        started.StartToAudio.ShouldBeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(300));
+        started.StartToAudio.ShouldBeLessThanOrEqualTo(TimeSpan.FromMilliseconds(360));
+        rig.Stop(RunEndReason.Stop);
+        rig.Events.OfType<AudioStarted>().Count().ShouldBe(1);
+        var events = rig.Events.ToList();
+        events.FindIndex(e => e is AudioStarted).ShouldBeLessThan(events.FindIndex(e => e is RunSummary));
+    }
+
+    [Fact]
     public void Start_to_audio_is_logged_for_every_device_and_is_at_most_two_seconds_on_the_fake_clock()
     {
         using var rig = new Rig(2);

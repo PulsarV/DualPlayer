@@ -57,6 +57,11 @@ internal sealed class EventPrinter : IObserver<EngineEvent>, IDisposable
                     CultureInfo.InvariantCulture,
                     $"device-lost  output {d.OutputIndex + 1}  device {d.DeviceId}  clock {ConsoleFormat.Clock(d.ClockPosition)}  {(d.OthersContinue ? "others continue" : "last output, run ends")}"));
                 break;
+            case AudioStarted a:
+                Write(string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"started   clock {ConsoleFormat.Clock(a.ClockPosition)}  start-to-audio {ConsoleFormat.Seconds(a.StartToAudio)}"));
+                break;
             case SeekTargetOutsideFile o:
                 Write(o.Target > o.Position
                     ? "warning: target was outside the file"

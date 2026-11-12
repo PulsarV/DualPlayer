@@ -196,17 +196,14 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         _run = run;
         run.SyncTimer = _time.CreateTimer(_ => _loop.Post(() => OnSyncSample(run)), null, SyncSampleInterval, SyncSampleInterval);
         _loop.Polling = true; // until every output's first audio is logged
-        var startToAudio = _time.GetElapsedTime(startTimestamp, now);
-        LogRunStarted(run.Outputs.Count, startToAudio.TotalMilliseconds);
+        run.StartClockPosition = run.Clock.PositionAt(now);
+        LogRunStarted(run.Outputs.Count, _time.GetElapsedTime(startTimestamp, now).TotalMilliseconds);
         return Result<RunStarted>.Success(new RunStarted(
             [.. run.Outputs.Select(o => new StartedOutput(o.TrackNumber, o.DeviceId, o.DeviceName, o.Format)
             {
                 Source = tracks.Value.FirstOrDefault(t => t.Number == o.TrackNumber),
             })],
-            run.Clock.PositionAt(now))
-        {
-            StartToAudio = startToAudio,
-        });
+            run.StartClockPosition));
     }
 
     private Result<TimeSpan> PauseCore()
@@ -734,7 +731,16 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             }
 
             output.FirstAudioLogged = true;
+            run.LatestFirstAudio = run.LatestFirstAudio is { } previous ? Math.Max(previous, timestamp) : timestamp;
             LogFirstAudio(output.DeviceId, _time.GetElapsedTime(run.StartTimestamp, timestamp).TotalMilliseconds);
+        }
+
+        // Once per run, when no non-lost output still waits; an output lost before its first audio is not waited for,
+        // and a run that ends first (or loses every output) publishes nothing.
+        if (!awaiting && !run.AudioStartedPublished && run.LatestFirstAudio is { } latest)
+        {
+            run.AudioStartedPublished = true;
+            _events.Publish(new AudioStarted(run.StartClockPosition, _time.GetElapsedTime(run.StartTimestamp, latest)));
         }
 
         return awaiting;
@@ -859,6 +865,14 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
         /// <summary>When the start command arrived, on the injected clock.</summary>
         public long StartTimestamp { get; } = startTimestamp;
+
+        /// <summary>Master-clock position at the start of the run.</summary>
+        public TimeSpan StartClockPosition { get; set; }
+
+        /// <summary>Latest first-audio timestamp over the outputs that rendered one.</summary>
+        public long? LatestFirstAudio { get; set; }
+
+        public bool AudioStartedPublished { get; set; }
 
         public List<Output> Outputs { get; } = [];
 

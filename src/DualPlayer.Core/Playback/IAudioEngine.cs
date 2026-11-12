@@ -11,11 +11,7 @@ public sealed record StartedOutput(int TrackNumber, string DeviceId, string Devi
 }
 
 /// <summary>Result of a successful start: every output and the master-clock position at the start.</summary>
-public sealed record RunStarted(IReadOnlyList<StartedOutput> Outputs, TimeSpan ClockPosition)
-{
-    /// <summary>Time from the start request until audio reached the devices.</summary>
-    public TimeSpan StartToAudio { get; init; }
-}
+public sealed record RunStarted(IReadOnlyList<StartedOutput> Outputs, TimeSpan ClockPosition);
 
 /// <summary>Outcome of a seek: where playback is now, whether the target was outside the file and whether playback is paused.</summary>
 public sealed record SeekResult(TimeSpan Position, bool OutsideFile, bool Paused);

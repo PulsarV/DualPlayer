@@ -328,13 +328,16 @@ public sealed class ConsoleRunTests
 
         public IObservable<EngineEvent> Events => new Source(this);
 
-        public Result<RunStarted> StartRun(string file, IReadOnlyList<OutputAssignment> assignments, EngineOptions options) =>
-            Result<RunStarted>.Success(new RunStarted(
+        public Result<RunStarted> StartRun(string file, IReadOnlyList<OutputAssignment> assignments, EngineOptions options)
+        {
+            Publish(new AudioStarted(TimeSpan.Zero, TimeSpan.FromMilliseconds(500)));
+            return Result<RunStarted>.Success(new RunStarted(
                 [
                     new StartedOutput(1, "dev-1", "Device 1", new MixFormat(48000, 2, ChannelLayout.Stereo)),
                     new StartedOutput(2, "dev-2", "Device 2", new MixFormat(48000, 2, ChannelLayout.Stereo)),
                 ],
                 TimeSpan.Zero));
+        }
 
         public Result<TimeSpan> Pause() => Result<TimeSpan>.Success(_position);
 

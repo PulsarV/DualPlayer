@@ -144,7 +144,6 @@ public sealed class ListAndPlayCommandTests
         var lines = _out.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         lines.ShouldContain(l => l.StartsWith("output 1") && l.Contains("track 1") && l.Contains("Test Headset A") && l.Contains(IdA));
         lines.ShouldContain(l => l.StartsWith("output 2") && l.Contains("track 2") && l.Contains("Test Headset B") && l.Contains(IdB));
-        lines.ShouldContain(l => l.StartsWith("started") && l.Contains("clock 00:00:00.000"));
         _err.ToString().ShouldBeEmpty();
     }
 

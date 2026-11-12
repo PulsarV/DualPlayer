@@ -40,8 +40,6 @@ internal sealed class PlayCommand(IAudioEngine engine, TimeProvider? time = null
             console.WriteLine($"output {index++}  track {o.TrackNumber} ({ConsoleFormat.TrackConversion(o)})  device {o.DeviceName}  id {o.DeviceId}");
         }
 
-        console.WriteLine($"started   clock {ConsoleFormat.Clock(started.Value.ClockPosition)}  start-to-audio {ConsoleFormat.Seconds(started.Value.StartToAudio)}");
-
         signals.RunStarted();
         if (input is null)
         {

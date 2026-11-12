@@ -45,7 +45,7 @@
 | T35 | [Record the clamped seek-past-end jump so the played duration stays true](./T35-record-the-clamped-seek-past-end-jump-so-the-played-duration-stays-tru.md) | app | Volodymyr Kravchuk | S | T34 | done | COMMIT |
 | T36 | [Keep an output that hung during a seek measured and corrected after it recovers](./T36-keep-an-output-that-hung-during-a-seek-measured-and-corrected-after-it.md) | app | Volodymyr Kravchuk | M | T35 | done | COMMIT |
 | T37 | [Recover a stalled output without seek in one correction and no underruns](./T37-recover-a-stalled-output-without-seek-in-one-correction-and-no-underru.md) | app | Volodymyr Kravchuk | M | T36 | done | COMMIT |
-| T38 | [Measure start-to-audio to the first audio on every output](./T38-measure-start-to-audio-to-the-first-audio-on-every-output.md) | app | Volodymyr Kravchuk | S | T37 | todo | SELECT |
+| T38 | [Measure start-to-audio to the first audio on every output](./T38-measure-start-to-audio-to-the-first-audio-on-every-output.md) | app | Volodymyr Kravchuk | S | T37 | done | COMMIT |
 | T39 | [Stop ConsoleRig from spinning when the engine closes a device mid-pump](./T39-stop-consolerig-from-spinning-when-the-engine-closes-a-device-mid-pump.md) | test | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T40 | [Log console lines independently of the console write and always signal the run end](./T40-log-console-lines-independently-of-the-console-write-and-always-signal.md) | app | Volodymyr Kravchuk | S | T39 | todo | SELECT |
 | T41 | [Pick the seek warning by the target's sign](./T41-pick-the-seek-warning-by-the-target-s-sign.md) | app | Volodymyr Kravchuk | S | T40 | todo | SELECT |
