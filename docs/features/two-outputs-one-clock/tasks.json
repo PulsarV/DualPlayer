@@ -1151,6 +1151,124 @@
       "file": "docs/features/two-outputs-one-clock/tasks/T51-shorten-the-stalled-console-test-and-rename-the-play-test.md",
       "status": "done",
       "origin": "review-2026-11-12-r3: S9, S11"
+    },
+    {
+      "id": "T52",
+      "title": "Bound the stop wait in polls the test can set",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-08"
+      ],
+      "dod": "poll bound injectable; stop test small bound + Windows-safe limit; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineStopBoundTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T52-bound-the-stop-wait-in-polls-the-test-can-set.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r4: T1"
+    },
+    {
+      "id": "T53",
+      "title": "Confirm a seek without waiting on outputs whose track has no audio at the target, counting only new-epoch frames",
+      "layer": "app",
+      "deps": [
+        "T52"
+      ],
+      "acs": [
+        "AC-09",
+        "AC-10",
+        "AC-01"
+      ],
+      "dod": "no wait on outputs with no audio at target; new-epoch frames only; both tests + T46 test asserts seek success; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "src/DualPlayer.Core/Playback/DecodePump.cs",
+        "src/DualPlayer.Core/Outputs/AudioRingBuffer.cs",
+        "src/DualPlayer.Core/Outputs/OutputRenderSource.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.Core.Tests/Fakes/"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T53-confirm-a-seek-without-waiting-on-outputs-whose-track-has-no-audio-at-th.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r4: T2, T3, T7"
+    },
+    {
+      "id": "T54",
+      "title": "Log first audio for every output that starts late and fix the handed-out doc comments",
+      "layer": "app",
+      "deps": [
+        "T53"
+      ],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "late first audio logged; test; doc comments fixed; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "src/DualPlayer.Core/Outputs/OutputRenderSource.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T54-log-first-audio-for-every-output-that-starts-late-and-fix-the-handed-out.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r4: T5, T9"
+    },
+    {
+      "id": "T55",
+      "title": "Assert the race test writes after Join instead of on the writer thread",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-07"
+      ],
+      "dod": "no assertion on raw thread; asserted after Join; gate clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Outputs/AudioRingBufferReclaimRaceTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T55-assert-the-race-test-writes-after-join-instead-of-on-the-writer-thread.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r4: T8"
+    },
+    {
+      "id": "T56",
+      "title": "Label a source 5.1 or 7.1 only when it has an LFE channel",
+      "layer": "integration",
+      "deps": [],
+      "acs": [
+        "AC-02",
+        "AC-12"
+      ],
+      "dod": "5.1/7.1 only with LFE; Media test on tones-6.0; README + console test aligned; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Media/Audio/FfmpegAudioDecoder.cs",
+        "tests/DualPlayer.Media.Tests/Audio/FfmpegAudioDecoderTests.cs",
+        "tests/DualPlayer.Media.Tests/TestMedia/README.md",
+        "tests/DualPlayer.Console.Tests/StartLinesTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T56-label-a-source-5-1-or-7-1-only-when-it-has-an-lfe-channel.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r4: T4"
+    },
+    {
+      "id": "T57",
+      "title": "Check the restore seek after the Matroska duration probe",
+      "layer": "integration",
+      "deps": [
+        "T56"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-09"
+      ],
+      "dod": "restore seek checked with fallback or Failure; failure-path test; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Media/Audio/FfmpegDecodeSession.cs",
+        "tests/DualPlayer.Media.Tests/Audio/FfmpegAudioDecoderTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T57-check-the-restore-seek-after-the-matroska-duration-probe.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r4: T6"
     }
   ]
 }
