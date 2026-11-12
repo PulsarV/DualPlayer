@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DualPlayer.Media\DualPlayer.Media.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="TestMedia/**" CopyToOutputDirectory="PreserveNewest" LinkBase="TestMedia" />
+  </ItemGroup>
+</Project>

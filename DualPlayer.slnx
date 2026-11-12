@@ -5,10 +5,14 @@
     <Project Path="src/DualPlayer.Platform.Windows/DualPlayer.Platform.Windows.csproj" />
     <Project Path="src/DualPlayer.Platform.MacOS/DualPlayer.Platform.MacOS.csproj" />
     <Project Path="src/DualPlayer.App/DualPlayer.App.csproj" />
+    <Project Path="src/DualPlayer.Console/DualPlayer.Console.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/DualPlayer.Core.Tests/DualPlayer.Core.Tests.csproj" />
+    <Project Path="tests/DualPlayer.Console.Tests/DualPlayer.Console.Tests.csproj" />
+    <Project Path="tests/DualPlayer.Media.Tests/DualPlayer.Media.Tests.csproj" />
     <Project Path="tests/DualPlayer.App.Tests/DualPlayer.App.Tests.csproj" />
     <Project Path="tests/DualPlayer.Platform.Windows.Tests/DualPlayer.Platform.Windows.Tests.csproj" />
+    <Project Path="tests/DualPlayer.Platform.MacOS.Tests/DualPlayer.Platform.MacOS.Tests.csproj" />
   </Folder>
 </Solution>

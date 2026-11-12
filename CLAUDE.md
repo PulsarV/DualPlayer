@@ -27,14 +27,15 @@ Hardware tests run only with `DUALPLAYER_HARDWARE=1`.
 | `src/DualPlayer.Media` | FFmpeg audio decoder, libmpv video renderer adapters | Core |
 | `src/DualPlayer.Platform.Windows` | WASAPI render loop, device enumeration/hotplug, BT diagnostics; `[SupportedOSPlatform("windows")]` | Core |
 | `src/DualPlayer.Platform.MacOS` | Dev-only AudioQueue backend — never shipped, not held to sync targets; `[SupportedOSPlatform("macos")]` | Core |
-| `src/DualPlayer.App` | Avalonia app: `Views/`, `ViewModels/`, `Controls/`, `Themes/`; the **only composition root** | everything |
+| `src/DualPlayer.App` | Avalonia app: `Views/`, `ViewModels/`, `Controls/`, `Themes/`; the composition root for the UI | everything |
+| `src/DualPlayer.Console` | Developer console executable (no Avalonia): command loop, own Serilog setup; the second composition root (ADR-0001) | everything but App |
 
 - Ports live in Core (`IAudioBackend`, `IAudioDecoder`, `IVideoRenderer`, `IDeviceWatcher`, `IStateStore`); adapters implement them.
 - Where things go: new playback/audio capability → domain + port in `Core/<Area>/`, OS part as an adapter in `Platform.Windows/` (dev stub in `Platform.MacOS/` if needed); codec/media concern → `Media/`; screen/component → View + ViewModel in `App/`, composed from `Controls/` and `Themes/Tokens.axaml`.
 
 ## Conventions
 
-- **Module wiring:** each module exposes `IServiceCollection Add<Module>(this IServiceCollection)`; only `src/DualPlayer.App/CompositionRoot.cs` calls them.
+- **Module wiring:** each module exposes `IServiceCollection Add<Module>(this IServiceCollection)`; only `src/DualPlayer.App/CompositionRoot.cs` and `src/DualPlayer.Console/ConsoleCompositionRoot.cs` (the only two composition roots) call them.
 - **Platform selection:** runtime `OperatingSystem.IsWindows()` / `IsMacOS()` in the composition root. All projects target plain `net10.0` so the solution builds on macOS; the CA1416 analyzer enforces the guards.
 - **Errors:** expected runtime failures (device lost, file unreadable, decoder error) return `Result` / `Result<T>` (`src/DualPlayer.Core/Result.cs`) or raise a domain event — never thrown across module boundaries. Exceptions mean bugs; log them at the top of each background loop.
 - **Time and clocks:** no `DateTime.Now` / `Stopwatch` in Core. Time comes from an injected `TimeProvider` or the audio master clock, so sync logic is testable with fakes.

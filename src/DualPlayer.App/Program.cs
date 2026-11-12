@@ -1,4 +1,5 @@
 using Avalonia;
+using DualPlayer.Core;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Extensions.Logging;
@@ -10,7 +11,7 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
-        var paths = AppPaths.ForCurrentUser();
+        var paths = CompositionRoot.PathsForCurrentUser();
         using var serilog = CreateSerilog(paths);
         using var loggerFactory = new SerilogLoggerFactory(serilog);
         var log = loggerFactory.CreateLogger(typeof(Program));
@@ -50,7 +51,9 @@ internal static class Program
             .WriteTo.File(
                 Path.Combine(paths.LogDirectory, "dualplayer-.log"),
                 rollingInterval: RollingInterval.Day,
-                retainedFileCountLimit: 14,
+                fileSizeLimitBytes: 20 * 1024 * 1024,
+                rollOnFileSizeLimit: true,
+                retainedFileCountLimit: 10,
                 formatProvider: System.Globalization.CultureInfo.InvariantCulture)
             .CreateLogger();
 }

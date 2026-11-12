@@ -9,8 +9,8 @@ files_hint: ["docs/features/two-outputs-one-clock/evidence/"]
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "blocked"
+step: "manual — needs the ≥ 3 h run on the target Windows PC"
 ---
 
 <!-- Self-contained task: work from what is inlined here. Every quoted chunk ends with its provenance
@@ -106,6 +106,7 @@ No DB changes.
 - [ ] Build `win-x64`, run `build/fetch-ffmpeg.ps1`; on the target PC run `devices`, then `play` a feature-length file with both Bluetooth headsets (plus one wired output if available, spec §8 default) for ≥ 3 h with no action
 - [ ] During the run: one manual disconnect of a third/spare output or a separate short run for AC-06; a pause/resume and ±60 s seek in a separate short run so the long run stays untouched
 - [ ] Collect from the log: run summary, largest steady-state drift, underruns, clock mismatch ppm per headset, start-to-audio, CPU average from the OS performance counter
+- Start-to-audio evidence is the `started` line value and the per-device "First audio on ..." log lines, both measured to the first audio actually rendered.
 - [ ] Write `docs/features/two-outputs-one-clock/evidence/<date>-target-pc-run.md` with the summary table, the measurements vs spec §6 targets, and the hardware list; review device names before committing (spec §6.1)
 
 ## Edge cases

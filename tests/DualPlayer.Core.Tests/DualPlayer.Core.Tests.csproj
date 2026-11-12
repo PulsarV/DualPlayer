@@ -1,5 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\src\DualPlayer.Core\DualPlayer.Core.csproj" />
   </ItemGroup>
 </Project>

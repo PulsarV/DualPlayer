@@ -1,0 +1,391 @@
+using DualPlayer.Core.Outputs;
+using Microsoft.Extensions.Logging;
+
+namespace DualPlayer.Core.Playback;
+
+/// <summary>
+/// The decode thread: pulls blocks from one <see cref="IDecodeSession"/> and fans them out to one ring per
+/// output. A full ring makes the pump wait; only an output whose ring has not been read for more than
+/// <see cref="StallThreshold"/> loses frames — its oldest ones, so it comes back with the newest audio — and no
+/// longer paces the decoder; the ring records how many.
+/// </summary>
+public sealed partial class DecodePump : IDisposable
+{
+    public static readonly TimeSpan StallThreshold = TimeSpan.FromSeconds(1);
+
+    private const int DefaultSampleRate = 48_000;
+
+    private static readonly TimeSpan WaitSlice = TimeSpan.FromMilliseconds(10);
+    private static readonly TimeSpan DropLogInterval = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// How far another output's track must have been decoded past the epoch's start, with no block for an output, before
+    /// that output's track counts as having no audio there (it ended earlier). Capped at half that output's ring, so a
+    /// paused output whose ring fills still decides it.
+    /// </summary>
+    private static readonly TimeSpan NoAudioLead = TimeSpan.FromSeconds(1);
+
+    private readonly IDecodeSession _session;
+    private readonly AudioRingBuffer[] _rings;
+    private readonly TimeProvider _time;
+    private readonly ILogger<DecodePump> _logger;
+    private readonly bool[] _detached;
+    private readonly long[] _lastDropLog;
+    private readonly int[] _sampleRates;
+    private readonly long[] _expectedNext; // per output: content frame the next block must start at; seeded with the epoch's start frame
+    private readonly long[] _epochStart; // per output: the seed of _expectedNext; pump thread only
+    private readonly int[] _noBlocksEpoch; // per output: epoch in which its track has no more blocks; -1 when none
+    private readonly CancellationTokenSource _cts = new();
+    private readonly Lock _seekLock = new();
+    private readonly ManualResetEventSlim _seekRequested = new();
+    private (TimeSpan Position, int Epoch)? _pendingSeek;
+    private Thread? _thread;
+    private long _startTimestamp;
+    private int _epoch;
+    private int _endedEpoch = -1;
+    private int _disposed;
+    private bool _releaseOnExit; // pump thread only
+
+    public DecodePump(IDecodeSession session, IReadOnlyList<AudioRingBuffer> rings, TimeProvider time, ILogger<DecodePump> logger, IReadOnlyList<int>? sampleRates = null)
+    {
+        _session = session;
+        _rings = [.. rings];
+        _time = time;
+        _logger = logger;
+        _detached = new bool[_rings.Length];
+        _lastDropLog = new long[_rings.Length];
+        _expectedNext = new long[_rings.Length];
+        _epochStart = new long[_rings.Length];
+        _noBlocksEpoch = [.. Enumerable.Repeat(-1, _rings.Length)];
+        _sampleRates = sampleRates is null ? [.. Enumerable.Repeat(DefaultSampleRate, _rings.Length)] : [.. sampleRates];
+        SeedExpected(TimeSpan.Zero);
+    }
+
+    /// <summary>Each block must start where the epoch does (the seek target in the output's rate), so a late or early first block is a gap or overlap too.</summary>
+    private void SeedExpected(TimeSpan epochStart)
+    {
+        for (var i = 0; i < _expectedNext.Length; i++)
+        {
+            _expectedNext[i] = (long)Math.Round(epochStart.TotalSeconds * _sampleRates[i]);
+            _epochStart[i] = _expectedNext[i];
+        }
+    }
+
+    /// <summary>
+    /// End of file reached; all blocks of the epoch in <see cref="EndedEpoch"/> were delivered. The pump thread then
+    /// waits for a seek, so a later <see cref="Seek"/> still decodes.
+    /// </summary>
+    public event Action? Ended;
+
+    /// <summary>Epoch whose blocks reached the end of the file; -1 while no epoch has.</summary>
+    public int EndedEpoch => Volatile.Read(ref _endedEpoch);
+
+    /// <summary>
+    /// True when the decoder has no more blocks for the output's track in <paramref name="epoch"/> and delivered none:
+    /// the file ended, or another output's track was decoded <see cref="NoAudioLead"/> past the epoch's start while this
+    /// one got nothing (its track ended earlier than the file). Stays true for the epoch.
+    /// </summary>
+    public bool HasNoBlocksInEpoch(int outputIndex, int epoch) => Volatile.Read(ref _noBlocksEpoch[outputIndex]) == epoch;
+
+    /// <summary>An unexpected decode failure (a bug); the pump thread ends after raising this once.</summary>
+    public event Action<Exception>? Faulted;
+
+    /// <summary>An expected decoder failure (read or seek); the pump thread ends after raising this once.</summary>
+    public event Action<Error>? DecodeFailed;
+
+    public void Start(int epoch)
+    {
+        _epoch = epoch;
+        _startTimestamp = _time.GetTimestamp();
+        _thread = new Thread(Run) { Name = "DecodePump", IsBackground = true };
+        _thread.Start();
+    }
+
+    /// <summary>
+    /// Stops writing to the output's ring for good (device lost). A block already being written when this is
+    /// called may still land; nothing after it does.
+    /// </summary>
+    public void Detach(int outputIndex) => Volatile.Write(ref _detached[outputIndex], true);
+
+    /// <summary>
+    /// Re-seeks the decoder on the pump thread (also after the end of the file); frames decoded afterwards carry
+    /// <paramref name="epoch"/>.
+    /// </summary>
+    public void Seek(TimeSpan position, int epoch)
+    {
+        lock (_seekLock)
+        {
+            _pendingSeek = (position, epoch);
+            _seekRequested.Set();
+        }
+    }
+
+    /// <summary>True when the output is attached and its ring has not been read for more than one second.</summary>
+    public bool IsStalled(int outputIndex)
+    {
+        if (Volatile.Read(ref _detached[outputIndex]))
+        {
+            return false;
+        }
+
+        var lastRead = Math.Max(_rings[outputIndex].LastReadTimestamp, Volatile.Read(ref _startTimestamp));
+        return _time.GetElapsedTime(lastRead) >= StallThreshold;
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
+        _cts.Cancel();
+        if (_thread == Thread.CurrentThread)
+        {
+            _releaseOnExit = true; // disposed from an event handler: the pump thread releases on its way out
+            return;
+        }
+
+        _thread?.Join();
+        Release();
+    }
+
+    private void Run()
+    {
+        try
+        {
+            Pump();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            LogDecodeFault(ex);
+            Faulted?.Invoke(ex);
+        }
+        finally
+        {
+            if (_releaseOnExit)
+            {
+                Release();
+            }
+        }
+    }
+
+    private void Release()
+    {
+        _cts.Dispose();
+        _seekRequested.Dispose();
+        _session.Dispose();
+    }
+
+    private void Pump()
+    {
+        var token = _cts.Token;
+        while (!token.IsCancellationRequested)
+        {
+            if (!ApplyPendingSeek())
+            {
+                return;
+            }
+
+            var read = _session.Read();
+            if (!read.IsSuccess)
+            {
+                if (read.Error.Code != "playback.end_of_stream")
+                {
+                    ReportDecodeFailure(read.Error);
+                    return;
+                }
+
+                MarkOutputsWithoutBlocks(endOfFile: true);
+                Volatile.Write(ref _endedEpoch, _epoch);
+                Ended?.Invoke();
+                WaitForSeek(token);
+                continue;
+            }
+
+            Deliver(read.Value, token);
+            MarkOutputsWithoutBlocks(endOfFile: false);
+        }
+    }
+
+    /// <summary>Marks the outputs that got no block in this epoch as having none (see <see cref="HasNoBlocksInEpoch"/>).</summary>
+    private void MarkOutputsWithoutBlocks(bool endOfFile)
+    {
+        var decided = endOfFile;
+        for (var i = 0; i < _rings.Length && !decided; i++)
+        {
+            var lead = Math.Min((long)(NoAudioLead.TotalSeconds * _sampleRates[i]), _rings[i].CapacityFrames / 2);
+            decided = _expectedNext[i] - _epochStart[i] >= lead;
+        }
+
+        if (!decided)
+        {
+            return;
+        }
+
+        for (var i = 0; i < _rings.Length; i++)
+        {
+            if (_expectedNext[i] == _epochStart[i] && _noBlocksEpoch[i] != _epoch)
+            {
+                Volatile.Write(ref _noBlocksEpoch[i], _epoch);
+            }
+        }
+    }
+
+    /// <summary>Blocks the pump thread after the end of the file until a seek is requested or the pump is disposed.</summary>
+    private void WaitForSeek(CancellationToken token)
+    {
+        while (true)
+        {
+            token.ThrowIfCancellationRequested();
+            lock (_seekLock)
+            {
+                if (_pendingSeek is not null)
+                {
+                    return;
+                }
+
+                _seekRequested.Reset();
+            }
+
+            _seekRequested.Wait(token);
+        }
+    }
+
+    /// <summary>Applies a requested seek; false when the decoder failed to seek (already reported).</summary>
+    private bool ApplyPendingSeek()
+    {
+        (TimeSpan Position, int Epoch)? seek;
+        lock (_seekLock)
+        {
+            seek = _pendingSeek;
+            _pendingSeek = null;
+        }
+
+        if (seek is not { } s)
+        {
+            return true;
+        }
+
+        var result = _session.Seek(s.Position, s.Epoch);
+        if (!result.IsSuccess)
+        {
+            ReportDecodeFailure(result.Error);
+            return false;
+        }
+
+        _epoch = s.Epoch;
+        SeedExpected(s.Position);
+        return true;
+    }
+
+    private void ReportDecodeFailure(Error error)
+    {
+        LogDecodeFailed(error.Code, error.Message);
+        DecodeFailed?.Invoke(error);
+    }
+
+    private void Deliver(DecodedBlock block, CancellationToken token)
+    {
+        var index = block.OutputIndex;
+        var ring = _rings[index];
+        ReadOnlySpan<float> pending = block.Samples;
+
+        // Keep the content timeline true: a hole (skipped corrupt packets) is reported to the ring, overlapping
+        // frames (already delivered) are dropped.
+        var blockFrames = pending.Length / ring.Channels;
+        var expected = _expectedNext[index];
+        var gap = block.StartFrame - expected;
+        if (gap > 0)
+        {
+            ring.NoteSkipped((int)Math.Min(gap, int.MaxValue), _epoch);
+        }
+        else if (gap < 0)
+        {
+            var overlap = -gap;
+            if (overlap >= blockFrames)
+            {
+                return;
+            }
+
+            pending = pending[((int)overlap * ring.Channels)..];
+        }
+
+        _expectedNext[index] = Math.Max(expected, block.StartFrame + blockFrames);
+
+        while (!Volatile.Read(ref _detached[index]))
+        {
+            var frames = pending.Length / ring.Channels;
+            if (frames == 0)
+            {
+                return;
+            }
+
+            // A block larger than the ring goes in ring-sized pieces.
+            var piece = Math.Min(frames, ring.CapacityFrames);
+            if (ring.FreeFrames >= piece)
+            {
+                if (Volatile.Read(ref _detached[index]))
+                {
+                    return;
+                }
+
+                var written = ring.Write(pending, _epoch);
+                pending = pending[(written * ring.Channels)..];
+                continue;
+            }
+
+            if (IsStalled(index))
+            {
+                // A stalled output loses its oldest frames, so it comes back with the newest audio (the part the
+                // master clock is playing) instead of a hole after the stale part.
+                if (ring.TryReclaimOldest(piece, _epoch))
+                {
+                    LogDrop(index);
+                    continue;
+                }
+
+                // Nothing was dropped because the reader is reading again (it is back): write once it has made room,
+                // waiting a slice like for any live reader, so this never spins.
+                if (ring.FreeFrames >= piece)
+                {
+                    continue;
+                }
+            }
+
+            // The output is alive but behind: wait for its reader, but let a seek restart the block.
+            Task.Delay(WaitSlice, _time, token).Wait(token);
+            lock (_seekLock)
+            {
+                if (_pendingSeek is not null)
+                {
+                    return;
+                }
+            }
+        }
+    }
+
+    private void LogDrop(int index)
+    {
+        var now = _time.GetTimestamp();
+        if (_lastDropLog[index] != 0 && _time.GetElapsedTime(_lastDropLog[index], now) < DropLogInterval)
+        {
+            return;
+        }
+
+        _lastDropLog[index] = now;
+        LogDroppedFrames(index);
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Output {OutputIndex} ring is full; dropping its decoded frames")]
+    private partial void LogDroppedFrames(int outputIndex);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Decoder failed ({ErrorCode}): {ErrorMessage}")]
+    private partial void LogDecodeFailed(string errorCode, string errorMessage);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Decode pump failed")]
+    private partial void LogDecodeFault(Exception ex);
+}

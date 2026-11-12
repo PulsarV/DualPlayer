@@ -9,8 +9,8 @@ files_hint: ["src/DualPlayer.Console/DualPlayer.Console.csproj", "src/DualPlayer
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "S"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Self-contained task: work from what is inlined here. Every quoted chunk ends with its provenance

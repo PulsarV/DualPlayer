@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DualPlayer.Console\DualPlayer.Console.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Real test media for the end-to-end tests. -->
+    <None Include="..\DualPlayer.Media.Tests\TestMedia\**" CopyToOutputDirectory="PreserveNewest" LinkBase="TestMedia" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The Core fakes and the engine rig, so the console is tested against the real AudioEngine. -->
+    <Compile Include="..\DualPlayer.Core.Tests\Fakes\*.cs" Exclude="..\DualPlayer.Core.Tests\Fakes\FakeAudioDeviceTests.cs" LinkBase="CoreFakes" />
+  </ItemGroup>
+</Project>

@@ -10,3 +10,6 @@ obj/
 .idea/
 TestResults/
 *.binlog
+
+# Fetched FFmpeg (build/fetch-ffmpeg.ps1)
+build/ffmpeg/

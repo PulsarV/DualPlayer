@@ -1,5 +1,7 @@
 using DualPlayer.App;
 using DualPlayer.App.ViewModels;
+using DualPlayer.Core;
+using DualPlayer.Core.Playback;
 using DualPlayer.Core.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -17,5 +19,6 @@ public sealed class CompositionRootSmokeTests
 
         services.GetRequiredService<MainWindowViewModel>().Title.ShouldBe("DualPlayer");
         services.GetRequiredService<IStateStore>().ShouldNotBeNull();
+        services.GetRequiredService<IAudioEngine>().ShouldNotBeNull();
     }
 }
