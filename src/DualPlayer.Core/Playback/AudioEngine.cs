@@ -175,6 +175,11 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
         var now = _time.GetTimestamp();
         BeginRecovery(run, now);
+        foreach (var output in run.Outputs)
+        {
+            BeginAlignment(output, now); // one re-align step per output, whenever its position starts moving
+        }
+
         run.Publisher = new SyncRecordPublisher(
             _events.Publish,
             (ILogger?)_loggerFactory?.CreateLogger<SyncRecordPublisher>() ?? _logger);
@@ -270,12 +275,19 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         var now = _time.GetTimestamp();
         run.Clock!.JumpTo(target);
         run.StopTimestamp = long.MinValue; // a pause instant before the seek no longer applies
+        var startFrames = new Dictionary<Output, long>();
+        foreach (var output in active)
+        {
+            var startFrame = (long)Math.Round(target.TotalSeconds * output.Format.SampleRate);
+            startFrames[output] = startFrame;
+            output.Source.BeginEpoch(epoch, startFrame); // before the pump can deliver anything of the new epoch
+        }
+
         run.Pump!.Seek(target, epoch);
         BeginRecovery(run, now);
         foreach (var output in active)
         {
-            var startFrame = (long)Math.Round(target.TotalSeconds * output.Format.SampleRate);
-            output.Source.BeginEpoch(epoch, startFrame);
+            var startFrame = startFrames[output];
             if (run.Paused)
             {
                 output.Source.SetSilenceFrom(startFrame); // stays silent until resume, which aligns
@@ -290,6 +302,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         var confirmed = WaitForSeek(run, active, epoch);
         if (!confirmed.IsSuccess)
         {
+            _loop.Polling = true; // keep aligning, so the outputs that did render resume their rate correction
             return Result<SeekResult>.Failure(confirmed.Error);
         }
 
@@ -322,14 +335,21 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
                 return Result<bool>.Failure(error);
             }
 
-            if (active.All(o => o.Source.AppliedEpoch >= epoch)
+            // A hung output never plays past the old epoch; only the outputs still rendering confirm the seek.
+            var confirming = active.Where(o => !run.Pump!.IsStalled(o.Index)).ToArray();
+            if (confirming.Length == 0)
+            {
+                confirming = active;
+            }
+
+            if (confirming.All(o => o.Source.AppliedEpoch >= epoch)
                 && run.DecodeEnded
-                && active.All(o => o.Ring.FramesAvailable == 0 && o.Source.LastContentFrameHandedOut < o.Source.EpochStartContentFrame))
+                && confirming.All(o => o.Ring.FramesAvailable == 0 && o.Source.LastContentFrameHandedOut < o.Source.EpochStartContentFrame))
             {
                 return Result<bool>.Success(false);
             }
 
-            if (active.All(o => o.Source.HasPlayedOutOldEpoch(epoch)))
+            if (confirming.All(o => o.Source.HasPlayedOutOldEpoch(epoch)))
             {
                 return Result<bool>.Success(true);
             }

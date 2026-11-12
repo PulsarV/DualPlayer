@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
 origin: "review-2026-11-12 (F5, F7, F20)"
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from the independent review. Work from what is inlined here; the source always wins.

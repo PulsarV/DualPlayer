@@ -8,6 +8,7 @@ internal sealed class FakeAudioDevice(TimeProvider time, MixFormat format, TimeS
     private bool _started;
     private bool _lost;
     private bool _closed;
+    private long? _frozenPlayed;
 
     public bool IsStarted => _started;
 
@@ -25,9 +26,20 @@ internal sealed class FakeAudioDevice(TimeProvider time, MixFormat format, TimeS
     /// <summary>Frames handed to the device so far.</summary>
     public long WrittenFrames => _rendered.Count;
 
+    /// <summary>The device reports position 0 (plays nothing) for this long after <see cref="Start"/>.</summary>
+    public TimeSpan StartLatency { get; set; }
+
+    /// <summary>True after <see cref="Hang"/>: the device no longer renders and its position is frozen.</summary>
+    public bool IsHung => _frozenPlayed is not null;
+
     /// <summary>Frames the device has played at the current time.</summary>
-    public long PlayedFramesNow =>
-        (long)Math.Round(time.GetElapsedTime(_startTimestamp, time.GetTimestamp()).TotalSeconds * format.SampleRate * (1 + (ppm * 1e-6)));
+    public long PlayedFramesNow => _frozenPlayed ?? PlayedAt(time.GetTimestamp());
+
+    /// <summary>
+    /// The device stops rendering and its reported position freezes, without raising <see cref="DeviceLost"/>
+    /// (a stuck driver, not a removed device).
+    /// </summary>
+    public void Hang() => _frozenPlayed ??= PlayedFramesNow;
 
     public event EventHandler? DeviceLost;
 
@@ -54,19 +66,24 @@ internal sealed class FakeAudioDevice(TimeProvider time, MixFormat format, TimeS
     /// <summary>Calls the source once with <paramref name="frames"/> frames and the current device position.</summary>
     public void PumpRender(int frames)
     {
-        if (!_started || _lost || _closed)
+        if (!_started || _lost || _closed || IsHung)
         {
             return;
         }
 
         var now = time.GetTimestamp();
-        var elapsed = time.GetElapsedTime(_startTimestamp, now).TotalSeconds;
-        var played = (long)Math.Round(elapsed * format.SampleRate * (1 + (ppm * 1e-6)));
+        var played = PlayedAt(now);
         var buffer = new float[frames * format.Channels];
         source.Render(buffer, new DevicePosition(played, now));
         for (var i = 0; i < frames; i++)
         {
             _rendered.Add(buffer[i * format.Channels]);
         }
+    }
+
+    private long PlayedAt(long timestamp)
+    {
+        var elapsed = time.GetElapsedTime(_startTimestamp, timestamp) - StartLatency;
+        return elapsed <= TimeSpan.Zero ? 0 : (long)Math.Round(elapsed.TotalSeconds * format.SampleRate * (1 + (ppm * 1e-6)));
     }
 }

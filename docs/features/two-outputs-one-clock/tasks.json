@@ -566,7 +566,7 @@
         "tests/DualPlayer.Core.Tests/Fakes/FakeAudioDevice.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T25-align-every-output-in-one-step-at-start-and-keep-s.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12: F5, F7, F20"
     },
     {
