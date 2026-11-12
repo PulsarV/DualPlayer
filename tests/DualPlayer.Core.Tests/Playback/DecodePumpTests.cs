@@ -104,28 +104,87 @@ public sealed class DecodePumpTests
         ring.SkippedFramesConsumed.ShouldBe(0);
     }
 
-    /// <summary>Emits 480-frame blocks of the ramp (frame / 1000) at the given content start frames, then end of stream.</summary>
-    private sealed class ScriptedSession(long[] startFrames) : IDecodeSession
+    /// <summary>
+    /// Runs a pump that starts with an empty script, seeks to <paramref name="target"/> (epoch 2) and then delivers blocks at
+    /// <paramref name="afterSeek"/>; returns the ring once the decoder reached the end of the file in epoch 2.
+    /// </summary>
+    private static AudioRingBuffer RunScriptedAfterSeek(TimeSpan target, params long[] afterSeek)
     {
+        var ring = new AudioRingBuffer(10_000, 2);
+        using var pump = NewPump(new ScriptedSession([], afterSeek), new FakeTimeProvider(), ring);
+        pump.Start(epoch: 1);
+        WaitFor(() => pump.EndedEpoch == 1).ShouldBeTrue();
+        pump.Seek(target, epoch: 2);
+        WaitFor(() => pump.EndedEpoch == 2).ShouldBeTrue();
+        return ring;
+    }
+
+    [Fact]
+    public void A_first_block_after_a_seek_that_starts_later_than_the_target_records_the_gap_as_skipped_frames()
+    {
+        // Target 5 s = frame 240 000 at 48 kHz; the decoder's first block starts 480 frames (10 ms) late.
+        var ring = RunScriptedAfterSeek(TimeSpan.FromSeconds(5), 240_480, 240_960);
+
+        var dest = new float[960 * 2];
+        ring.Read(dest, 2, out _).ShouldBe(960);
+
+        ring.SkippedFramesConsumed.ShouldBe(480, "the first block starts 480 frames after the seek target");
+    }
+
+    [Fact]
+    public void A_first_block_after_a_seek_that_starts_before_the_target_has_its_leading_frames_trimmed()
+    {
+        // The first block covers frames 239 760..240 239: its first 240 frames are before the 240 000 target.
+        var ring = RunScriptedAfterSeek(TimeSpan.FromSeconds(5), 239_760, 240_240);
+
+        ring.FramesAvailable.ShouldBe(240 + 480, "240 frames of the first block are before the target");
+        var dest = new float[720 * 2];
+        ring.Read(dest, 2, out _).ShouldBe(720);
+        dest[0].ShouldBe(240f, 0.0001f);
+        ring.SkippedFramesConsumed.ShouldBe(0);
+    }
+
+    [Fact]
+    public void A_first_block_at_start_that_starts_later_than_frame_zero_records_the_gap_as_skipped_frames()
+    {
+        var (ring, _) = RunScripted(480, 960);
+
+        var dest = new float[960 * 2];
+        ring.Read(dest, 1, out _).ShouldBe(960);
+
+        ring.SkippedFramesConsumed.ShouldBe(480, "the first block starts 480 frames after the start of the file");
+    }
+
+    /// <summary>Emits 480-frame blocks of the ramp (frame / 1000) at the given content start frames, then end of stream; a seek switches to <paramref name="afterSeek"/>.</summary>
+    private sealed class ScriptedSession(long[] startFrames, long[]? afterSeek = null) : IDecodeSession
+    {
+        private long[] _script = startFrames;
+        private int _epoch = 1;
         private int _next;
 
-        public Result Seek(TimeSpan position, int epoch) => Result.Success();
+        public Result Seek(TimeSpan position, int epoch)
+        {
+            _script = afterSeek ?? _script;
+            _epoch = epoch;
+            _next = 0;
+            return Result.Success();
+        }
 
         public Result<DecodedBlock> Read()
         {
-            if (_next >= startFrames.Length)
+            if (_next >= _script.Length)
             {
                 return Result<DecodedBlock>.Failure("playback.end_of_stream", "End of file.");
             }
 
-            var start = startFrames[_next++];
+            var start = _script[_next++];
             var samples = new float[Block * 2];
             for (var i = 0; i < Block; i++)
             {
                 samples[i * 2] = samples[(i * 2) + 1] = (start + i) / 1000f;
             }
 
-            return Result<DecodedBlock>.Success(new DecodedBlock(0, 1, start, samples));
+            return Result<DecodedBlock>.Success(new DecodedBlock(0, _epoch, start, samples));
         }
 
         public void Dispose()

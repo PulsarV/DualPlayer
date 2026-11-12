@@ -16,7 +16,8 @@ internal sealed class RealisticAudioDecoder(
     double totalSeconds,
     int[] blockFrames,
     TimeSpan[]? seekLandsEarly = null,
-    TimeSpan[]? seekLandsLate = null) : IAudioDecoder
+    TimeSpan[]? seekLandsLate = null,
+    TimeSpan[]? startLandsLate = null) : IAudioDecoder
 {
     private Session? _session;
 
@@ -30,7 +31,7 @@ internal sealed class RealisticAudioDecoder(
 
     public Result<IDecodeSession> Open(string path, IReadOnlyList<DecodeRequest> outputs)
     {
-        var session = new Session(outputs, totalSeconds, blockFrames, seekLandsEarly ?? [], seekLandsLate ?? []);
+        var session = new Session(outputs, totalSeconds, blockFrames, seekLandsEarly ?? [], seekLandsLate ?? [], startLandsLate ?? []);
         _session = session;
         return Result<IDecodeSession>.Success(session);
     }
@@ -46,7 +47,7 @@ internal sealed class RealisticAudioDecoder(
         private readonly long[] _target;
         private int _epoch;
 
-        public Session(IReadOnlyList<DecodeRequest> outputs, double total, int[] blockFrames, TimeSpan[] early, TimeSpan[] late)
+        public Session(IReadOnlyList<DecodeRequest> outputs, double total, int[] blockFrames, TimeSpan[] early, TimeSpan[] late, TimeSpan[] startLate)
         {
             _outputs = outputs;
             _total = total;
@@ -55,6 +56,11 @@ internal sealed class RealisticAudioDecoder(
             _late = late;
             _position = new long[outputs.Count];
             _target = new long[outputs.Count];
+            for (var i = 0; i < outputs.Count; i++)
+            {
+                // Stream start: no seek yet, the first block starts where the file's audio starts (possibly late).
+                _position[i] = i < startLate.Length ? (long)Math.Round(startLate[i].TotalSeconds * outputs[i].Target.SampleRate) : 0;
+            }
         }
 
         public TimeSpan? Duration => TimeSpan.FromSeconds(_total);

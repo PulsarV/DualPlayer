@@ -12,6 +12,8 @@ public sealed partial class DecodePump : IDisposable
 {
     public static readonly TimeSpan StallThreshold = TimeSpan.FromSeconds(1);
 
+    private const int DefaultSampleRate = 48_000;
+
     private static readonly TimeSpan WaitSlice = TimeSpan.FromMilliseconds(10);
     private static readonly TimeSpan DropLogInterval = TimeSpan.FromSeconds(1);
 
@@ -21,7 +23,8 @@ public sealed partial class DecodePump : IDisposable
     private readonly ILogger<DecodePump> _logger;
     private readonly bool[] _detached;
     private readonly long[] _lastDropLog;
-    private readonly long[] _expectedNext; // per output: content frame the next block must start at; -1 until the first block of an epoch
+    private readonly int[] _sampleRates;
+    private readonly long[] _expectedNext; // per output: content frame the next block must start at; seeded with the epoch's start frame
     private readonly CancellationTokenSource _cts = new();
     private readonly Lock _seekLock = new();
     private readonly ManualResetEventSlim _seekRequested = new();
@@ -33,7 +36,7 @@ public sealed partial class DecodePump : IDisposable
     private int _disposed;
     private bool _releaseOnExit; // pump thread only
 
-    public DecodePump(IDecodeSession session, IReadOnlyList<AudioRingBuffer> rings, TimeProvider time, ILogger<DecodePump> logger)
+    public DecodePump(IDecodeSession session, IReadOnlyList<AudioRingBuffer> rings, TimeProvider time, ILogger<DecodePump> logger, IReadOnlyList<int>? sampleRates = null)
     {
         _session = session;
         _rings = [.. rings];
@@ -42,7 +45,17 @@ public sealed partial class DecodePump : IDisposable
         _detached = new bool[_rings.Length];
         _lastDropLog = new long[_rings.Length];
         _expectedNext = new long[_rings.Length];
-        Array.Fill(_expectedNext, -1L);
+        _sampleRates = sampleRates is null ? [.. Enumerable.Repeat(DefaultSampleRate, _rings.Length)] : [.. sampleRates];
+        SeedExpected(TimeSpan.Zero);
+    }
+
+    /// <summary>Each block must start where the epoch does (the seek target in the output's rate), so a late or early first block is a gap or overlap too.</summary>
+    private void SeedExpected(TimeSpan epochStart)
+    {
+        for (var i = 0; i < _expectedNext.Length; i++)
+        {
+            _expectedNext[i] = (long)Math.Round(epochStart.TotalSeconds * _sampleRates[i]);
+        }
     }
 
     /// <summary>
@@ -219,7 +232,7 @@ public sealed partial class DecodePump : IDisposable
         }
 
         _epoch = s.Epoch;
-        Array.Fill(_expectedNext, -1L);
+        SeedExpected(s.Position);
         return true;
     }
 
@@ -239,23 +252,20 @@ public sealed partial class DecodePump : IDisposable
         // frames (already delivered) are dropped.
         var blockFrames = pending.Length / ring.Channels;
         var expected = _expectedNext[index];
-        if (expected >= 0)
+        var gap = block.StartFrame - expected;
+        if (gap > 0)
         {
-            var gap = block.StartFrame - expected;
-            if (gap > 0)
+            ring.NoteSkipped((int)Math.Min(gap, int.MaxValue), _epoch);
+        }
+        else if (gap < 0)
+        {
+            var overlap = -gap;
+            if (overlap >= blockFrames)
             {
-                ring.NoteSkipped((int)Math.Min(gap, int.MaxValue), _epoch);
+                return;
             }
-            else if (gap < 0)
-            {
-                var overlap = -gap;
-                if (overlap >= blockFrames)
-                {
-                    return;
-                }
 
-                pending = pending[((int)overlap * ring.Channels)..];
-            }
+            pending = pending[((int)overlap * ring.Channels)..];
         }
 
         _expectedNext[index] = Math.Max(expected, block.StartFrame + blockFrames);

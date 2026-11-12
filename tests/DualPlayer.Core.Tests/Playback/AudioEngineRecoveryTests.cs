@@ -86,4 +86,40 @@ public sealed class AudioEngineRecoveryTests
 
         AssertWithinToleranceFromRecoveryOn(rig, commandAt, target);
     }
+
+    [Theory]
+    [InlineData(300)]
+    [InlineData(-300)]
+    public void After_a_seek_whose_first_block_lands_45_ms_after_the_target_the_played_audio_stays_within_tolerance(double ppm)
+    {
+        using var rig = new EngineRig(
+            [new RigDevice(48_000, ppm), new RigDevice(44_100, -ppm)],
+            seekLandsLate: [TimeSpan.FromMilliseconds(45), TimeSpan.Zero],
+            observe: true);
+        rig.Start();
+        rig.Render(7_000);
+        var target = TimeSpan.FromSeconds(130);
+        var commandAt = rig.Elapsed;
+
+        rig.Seek(target);
+        rig.Render(3_300);
+
+        AssertWithinToleranceFromRecoveryOn(rig, commandAt, target);
+    }
+
+    [Theory]
+    [InlineData(300)]
+    [InlineData(-300)]
+    public void After_a_start_whose_stream_begins_45_ms_into_the_file_the_played_audio_stays_within_tolerance(double ppm)
+    {
+        using var rig = new EngineRig(
+            [new RigDevice(48_000, ppm), new RigDevice(44_100, -ppm)],
+            startLandsLate: [TimeSpan.FromMilliseconds(45), TimeSpan.Zero],
+            observe: true);
+
+        rig.Start();
+        rig.Render(3_200);
+
+        AssertWithinToleranceFromRecoveryOn(rig, TimeSpan.Zero, TimeSpan.Zero);
+    }
 }

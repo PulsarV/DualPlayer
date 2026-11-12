@@ -151,7 +151,8 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             session.Value,
             [.. run.Outputs.Select(o => o.Ring)],
             _time,
-            _loggerFactory?.CreateLogger<DecodePump>() ?? NullLogger<DecodePump>.Instance);
+            _loggerFactory?.CreateLogger<DecodePump>() ?? NullLogger<DecodePump>.Instance,
+            [.. run.Outputs.Select(o => o.Format.SampleRate)]);
         run.Pump.Ended += () =>
         {
             foreach (var output in run.Outputs)

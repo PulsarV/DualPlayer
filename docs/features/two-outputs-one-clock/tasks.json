@@ -757,6 +757,28 @@
       "file": "docs/features/two-outputs-one-clock/tasks/T32-platform-os-gated-hardware-tests-device-loss-mappi.md",
       "status": "done",
       "origin": "review-2026-11-12: F17, F18, F23"
+    },
+    {
+      "id": "T33",
+      "title": "Compare the first block of each epoch with the seek target so a late-landing seek stays aligned",
+      "layer": "app",
+      "deps": [
+        "T28"
+      ],
+      "acs": [
+        "AC-09",
+        "AC-01"
+      ],
+      "dod": "the first block of each epoch is compared with the epoch start frame (gap → NoteSkipped, overlap → trimmed); engine-level late-landing seek and start tests stay within 10 ms from 1 s after the command; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/DecodePump.cs",
+        "tests/DualPlayer.Core.Tests/Playback/DecodePumpTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineRecoveryTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T33-align-a-late-landing-first-block-after-seek-or-start.md",
+      "status": "done",
+      "origin": "review-2026-11-12: F4 remainder (found during T28)"
     }
   ]
 }

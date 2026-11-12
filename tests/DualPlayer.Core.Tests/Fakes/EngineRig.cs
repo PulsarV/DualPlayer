@@ -49,6 +49,7 @@ internal sealed class EngineRig : IDisposable
         int[]? blockFrames = null,
         TimeSpan[]? seekLandsEarly = null,
         TimeSpan[]? seekLandsLate = null,
+        TimeSpan[]? startLandsLate = null,
         bool keepRendered = true,
         bool observe = false,
         int barrierEvery = 1)
@@ -67,7 +68,7 @@ internal sealed class EngineRig : IDisposable
             backend.SetStartLatency(id, devices[i].StartLatency);
         }
 
-        _decoder = new RealisticAudioDecoder(Tracks, totalSeconds, blockFrames ?? [1536, 1024], seekLandsEarly, seekLandsLate);
+        _decoder = new RealisticAudioDecoder(Tracks, totalSeconds, blockFrames ?? [1536, 1024], seekLandsEarly, seekLandsLate, startLandsLate);
         Engine = new AudioEngine(new CapturingBackend(backend, _devices), _decoder, Time, NullLogger<AudioEngine>.Instance);
         Engine.Events.Subscribe(new Collector(this));
         _origin = Time.GetUtcNow();
