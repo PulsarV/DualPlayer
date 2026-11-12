@@ -52,6 +52,9 @@ public sealed unsafe class FfmpegAudioDecoder : IAudioDecoder
         }
     }
 
+    // Test seam: forces the result code of the seek back to the start after the duration probe.
+    internal Func<int>? RestoreSeekHook { get; init; }
+
     public Result<IDecodeSession> Open(string path, IReadOnlyList<DecodeRequest> outputs)
     {
         var loaded = FfmpegLibrary.Load();
@@ -60,7 +63,7 @@ public sealed unsafe class FfmpegAudioDecoder : IAudioDecoder
             return Result<IDecodeSession>.Failure(Unreadable, loaded.Error.Message);
         }
 
-        return FfmpegDecodeSession.Create(path, outputs);
+        return FfmpegDecodeSession.Create(path, outputs, RestoreSeekHook);
     }
 
     internal static Result OpenInput(string path, AVFormatContext** fmt)

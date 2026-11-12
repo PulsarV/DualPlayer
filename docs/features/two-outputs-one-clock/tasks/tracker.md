@@ -64,6 +64,6 @@
 | T54 | [Log first audio for every output that starts late and fix the handed-out doc comments](./T54-log-first-audio-for-every-output-that-starts-late-and-fix-the-handed-out.md) | app | Volodymyr Kravchuk | S | T53 | done | COMMIT |
 | T55 | [Assert the race test writes after Join instead of on the writer thread](./T55-assert-the-race-test-writes-after-join-instead-of-on-the-writer-thread.md) | test | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T56 | [Label a source 5.1 or 7.1 only when it has an LFE channel](./T56-label-a-source-5-1-or-7-1-only-when-it-has-an-lfe-channel.md) | integration | Volodymyr Kravchuk | S | — | done | COMMIT |
-| T57 | [Check the restore seek after the Matroska duration probe](./T57-check-the-restore-seek-after-the-matroska-duration-probe.md) | integration | Volodymyr Kravchuk | S | T56 | blocked | implement — stage failed (RED not GOOD or agent error) |
+| T57 | [Check the restore seek after the Matroska duration probe](./T57-check-the-restore-seek-after-the-matroska-duration-probe.md) | integration | Volodymyr Kravchuk | S | T56 | done | COMMIT |
 
 **Total:** 57 tasks (T23–T33 are follow-ups from review-2026-11-12, T34–T42 from review-2026-11-12-r2, T43–T51 from review-2026-11-12-r3, T52–T57 from review-2026-11-12-r4), ~46 person-days (S = ½ day, M/L = 1 day; L tasks are full days with a split risk).

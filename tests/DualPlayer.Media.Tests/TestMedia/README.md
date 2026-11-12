@@ -48,3 +48,18 @@ used to check that track info reports the real channel count and LFE presence (b
 ffmpeg -f lavfi -i "sine=f=440:d=0.2:r=48000" -af "aformat=channel_layouts=2.1" -c:a pcm_s16le tones-2.1.wav
 ffmpeg -f lavfi -i "sine=f=440:d=0.2:r=48000" -af "aformat=channel_layouts=hexagonal" -c:a pcm_s16le tones-6.0.wav
 ```
+
+`ramp-offset-nocues.mkv`: `ramp-offset-span.mkv` with every CueTime (`B3 82 xx xx`) inside the Cues element set to 32752 ms,
+past the end of the 10 s file, so the cue index is useless and the seek back to the start after the Matroska duration
+probe fails. It guards that such a file plays from the start or opens as unreadable:
+
+```sh
+python3 -I - <<'PY'
+import re
+b = bytearray(open('ramp-offset-span.mkv', 'rb').read())
+i = b.find(b'\x1c\x53\xbb\x6b')
+for m in re.finditer(rb'\xb3\x82..', bytes(b[i:])):
+    b[i+m.start()+2:i+m.start()+4] = b'\x7f\xf0'
+open('ramp-offset-nocues.mkv', 'wb').write(b)
+PY
+```

@@ -7,6 +7,9 @@
     <PackageReference Include="FFmpeg.AutoGen" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="DualPlayer.Media.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\DualPlayer.Core\DualPlayer.Core.csproj" />
   </ItemGroup>
   <!-- LGPL FFmpeg DLLs fetched by build/fetch-ffmpeg.ps1 (Windows); flow beside every referencing exe. -->

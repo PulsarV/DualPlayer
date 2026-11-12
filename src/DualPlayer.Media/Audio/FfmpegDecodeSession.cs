@@ -21,15 +21,21 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
     private long? _duration;  // length of the content (AV_TIME_BASE), null when unknown
     private int _epoch;
     private bool _drained;
+    private bool _restoreFailed;
     private bool _disposed;
 
-    private FfmpegDecodeSession()
+    private readonly Func<int>? _restoreSeekHook;
+
+    private FfmpegDecodeSession(Func<int>? restoreSeekHook)
     {
+        _restoreSeekHook = restoreSeekHook;
     }
 
-    public static Result<IDecodeSession> Create(string path, IReadOnlyList<DecodeRequest> requests)
+    // restoreSeekHook is a test seam: when set it replaces the seek back to the start after the duration probe and
+    // returns that seek's result code (negative = failed), so a failing restore can be forced.
+    public static Result<IDecodeSession> Create(string path, IReadOnlyList<DecodeRequest> requests, Func<int>? restoreSeekHook = null)
     {
-        var session = new FfmpegDecodeSession();
+        var session = new FfmpegDecodeSession(restoreSeekHook);
         var opened = session.Init(path, requests);
         if (!opened.IsSuccess)
         {
@@ -82,7 +88,7 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
             }
         }
 
-        ffmpeg.av_seek_frame(_fmt, -1, _startTime, ffmpeg.AVSEEK_FLAG_BACKWARD);
+        _restoreFailed = (_restoreSeekHook?.Invoke() ?? ffmpeg.av_seek_frame(_fmt, -1, _startTime, ffmpeg.AVSEEK_FLAG_BACKWARD)) < 0;
         return beyond;
     }
 
@@ -198,7 +204,25 @@ internal sealed unsafe class FfmpegDecodeSession : IDecodeSession
         }
 
         _duration = ContentDuration();
-        return Result.Success();
+        return _restoreFailed ? RestoreStart() : Result.Success();
+    }
+
+    // The seek back to the start after the duration probe failed (no index to serve it): retry as a ranged seek, then
+    // as a plain byte seek to the start of the file; if neither works the stream position is unknown, so the file is
+    // unusable.
+    private Result RestoreStart()
+    {
+        if (ffmpeg.avformat_seek_file(_fmt, -1, long.MinValue, _startTime, _startTime, 0) >= 0)
+        {
+            return Result.Success();
+        }
+
+        if (_fmt->pb != null && ffmpeg.avio_seek(_fmt->pb, 0, 0) >= 0 && ffmpeg.avformat_seek_file(_fmt, -1, long.MinValue, _startTime, long.MaxValue, ffmpeg.AVSEEK_FLAG_BYTE) >= 0)
+        {
+            return Result.Success();
+        }
+
+        return Result.Failure(FfmpegAudioDecoder.Unreadable, "The file could not be rewound to its start after reading its duration.");
     }
 
     // Reads one packet (or drains at end of file) and queues whatever blocks it yields.

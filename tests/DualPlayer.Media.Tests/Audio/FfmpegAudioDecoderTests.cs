@@ -301,4 +301,45 @@ public sealed class FfmpegAudioDecoderTests
 
         session.Read().Error?.Code.ShouldBe("playback.end_of_stream");
     }
+
+    // ramp-offset-nocues.mkv: ramp-offset-span.mkv with every CueTime pushed past the end of the file, so the cue index is useless
+    // and the seek back to the start (after the Duration probe) cannot be served from cues.
+    [Fact]
+    public void Open_of_a_cueless_matroska_file_with_a_start_offset_plays_from_the_start_or_fails_as_unreadable()
+    {
+        var opened = NewDecoder().Open(Media("ramp-offset-nocues.mkv"), [new DecodeRequest(1, Mono48)]);
+
+        if (!opened.IsSuccess)
+        {
+            opened.Error?.Code.ShouldBe("playback.file_unreadable");
+            return;
+        }
+
+        using var session = opened.Value;
+        var read = session.Read();
+
+        read.IsSuccess.ShouldBeTrue("a failed restore seek must not end the stream before playing: " + read.Error?.Message);
+        read.Value.StartFrame.ShouldBeInRange(0L, 2048L);
+        (read.Value.Samples[0] * 10.0).ShouldBe(0.0, 0.1, "the first block must carry content from time 0");
+    }
+
+    [Fact]
+    public void Open_when_the_restore_seek_after_the_duration_probe_fails_plays_from_the_start_or_fails_as_unreadable()
+    {
+        var decoder = new FfmpegAudioDecoder { RestoreSeekHook = () => -1 };
+        var opened = decoder.Open(Media("ramp-offset-span.mkv"), [new DecodeRequest(1, Mono48)]);
+
+        if (!opened.IsSuccess)
+        {
+            opened.Error?.Code.ShouldBe("playback.file_unreadable");
+            return;
+        }
+
+        using var session = opened.Value;
+        var read = session.Read();
+
+        read.IsSuccess.ShouldBeTrue("a failed restore seek must not end the stream before playing: " + read.Error?.Message);
+        read.Value.StartFrame.ShouldBeInRange(0L, 2048L);
+        (read.Value.Samples[0] * 10.0).ShouldBe(0.0, 0.1, "the first block must carry content from time 0");
+    }
 }
