@@ -841,7 +841,7 @@
         "tests/DualPlayer.Core.Tests/Fakes/"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T36-keep-an-output-that-hung-during-a-seek-measured-and-corrected-after-it.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r2: R3"
     },
     {

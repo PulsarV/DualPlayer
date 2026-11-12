@@ -14,11 +14,12 @@ public sealed class AudioRingBuffer : DualPlayer.Core.Sync.IFrameReader
     private readonly int _channels;
     private long _head; // frames consumed; written by the reader only
     private long _tail; // frames produced; written by the writer only
+    private long _floor; // frames before this position are dead, whatever _head says; written by the writer only
     private long _lastReadTimestamp;
     private long _skippedConsumed; // skipped frames the reader has passed; written by the reader only
     private int _pendingSkip; // writer only
     private int _pendingSkipEpoch; // writer only
-    private int _readerEpoch; // render thread only
+    private int _readerEpoch; // written by the render thread only
     private long _readerTimestamp; // render thread only
 
     public AudioRingBuffer(int capacityFrames, int channels)
@@ -41,18 +42,18 @@ public sealed class AudioRingBuffer : DualPlayer.Core.Sync.IFrameReader
     /// </summary>
     public int BeginRead(int currentEpoch, long readTimestamp)
     {
-        _readerEpoch = currentEpoch;
+        Volatile.Write(ref _readerEpoch, currentEpoch);
         _readerTimestamp = readTimestamp;
         _ = Read([], currentEpoch, out var discarded, readTimestamp);
         return discarded;
     }
 
     /// <summary>Reads frames with the epoch and timestamp of the last <see cref="BeginRead"/>; the resampler's input.</summary>
-    public int Read(Span<float> destination) => Read(destination, _readerEpoch, out _, _readerTimestamp);
+    public int Read(Span<float> destination) => Read(destination, Volatile.Read(ref _readerEpoch), out _, _readerTimestamp);
 
     public int CapacityFrames => _capacity;
 
-    public int FramesAvailable => (int)(Volatile.Read(ref _tail) - Volatile.Read(ref _head));
+    public int FramesAvailable => (int)(Volatile.Read(ref _tail) - Math.Max(Volatile.Read(ref _head), Volatile.Read(ref _floor)));
 
     public int FreeFrames => _capacity - FramesAvailable;
 
@@ -77,11 +78,60 @@ public sealed class AudioRingBuffer : DualPlayer.Core.Sync.IFrameReader
         _pendingSkip += frames;
     }
 
+    /// <summary>
+    /// Decode thread, for a reader that has stopped reading and has not yet adopted <paramref name="epoch"/> (it hung
+    /// before a seek): frees room for <paramref name="frames"/> more frames by dropping the oldest ones instead of the
+    /// new ones, so when the reader returns it plays the newest audio. Returns false, dropping nothing, when the
+    /// reader already reads in <paramref name="epoch"/>. Dropped frames of <paramref name="epoch"/> are counted as
+    /// skipped, so the content position stays true.
+    /// </summary>
+    public bool TryReclaimOldest(int frames, int epoch)
+    {
+        if (Volatile.Read(ref _readerEpoch) >= epoch)
+        {
+            return false;
+        }
+
+        var tail = Volatile.Read(ref _tail);
+        var floor = Math.Max(Volatile.Read(ref _head), Volatile.Read(ref _floor));
+        var drop = Math.Min(tail - floor, tail - floor + frames - _capacity);
+        if (drop <= 0)
+        {
+            return false;
+        }
+
+        var newFloor = floor + drop;
+        long dropped = 0;
+        for (var position = floor; position < newFloor; position++)
+        {
+            var slot = (int)(position % _capacity);
+            if (_epochs[slot] == epoch)
+            {
+                dropped += 1 + _skippedBefore[slot];
+            }
+        }
+
+        if (dropped > 0)
+        {
+            if (newFloor < tail)
+            {
+                _skippedBefore[(int)(newFloor % _capacity)] += (int)dropped;
+            }
+            else
+            {
+                NoteSkipped((int)dropped, epoch);
+            }
+        }
+
+        Volatile.Write(ref _floor, newFloor);
+        return true;
+    }
+
     /// <summary>Decode thread. Writes as many whole frames as fit and returns the count accepted; never blocks.</summary>
     public int Write(ReadOnlySpan<float> frames, int epoch)
     {
         var tail = Volatile.Read(ref _tail);
-        var free = _capacity - (int)(tail - Volatile.Read(ref _head));
+        var free = _capacity - (int)(tail - Math.Max(Volatile.Read(ref _head), Volatile.Read(ref _floor)));
         var count = Math.Min(frames.Length / _channels, free);
 
         for (var i = 0; i < count; i++)
@@ -109,7 +159,7 @@ public sealed class AudioRingBuffer : DualPlayer.Core.Sync.IFrameReader
     {
         Volatile.Write(ref _lastReadTimestamp, readTimestamp);
 
-        var head = Volatile.Read(ref _head);
+        var head = Math.Max(Volatile.Read(ref _head), Volatile.Read(ref _floor));
         var tail = Volatile.Read(ref _tail);
         var maxFrames = dest.Length / _channels;
         var read = 0;

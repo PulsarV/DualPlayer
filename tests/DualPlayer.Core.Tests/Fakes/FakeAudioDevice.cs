@@ -53,6 +53,18 @@ internal sealed class FakeAudioDevice(TimeProvider time, MixFormat format, TimeS
     /// </summary>
     public void Hang() => _frozenPlayed ??= PlayedFramesNow;
 
+    /// <summary>The driver recovers: the position resumes moving from where it froze and rendering starts again.</summary>
+    public void Unhang()
+    {
+        if (_frozenPlayed is not { } frozen)
+        {
+            return;
+        }
+
+        _frozenPlayed = null;
+        _positionStep -= PlayedAt(time.GetTimestamp()) - frozen;
+    }
+
     public event EventHandler? DeviceLost;
 
     public void Start()

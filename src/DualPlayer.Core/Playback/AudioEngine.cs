@@ -262,6 +262,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         foreach (var output in run.Outputs.Where(o => !o.Lost))
         {
             output.Source.ClearSilence();
+            output.AlignAfterRecovery = false;
             BeginAlignment(output, now);
         }
 
@@ -313,9 +314,18 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             {
                 output.Source.SetSilenceFrom(startFrame); // stays silent until resume, which aligns
                 output.AlignPending = false;
+                output.AlignAfterRecovery = false;
+            }
+            else if (run.Pump.IsStalled(output.Index))
+            {
+                // A hung device does not render, so it cannot be measured yet: align it once, from where it
+                // really is, when it applies this epoch again.
+                output.AlignPending = false;
+                output.AlignAfterRecovery = true;
             }
             else
             {
+                output.AlignAfterRecovery = false;
                 BeginAlignment(output, now);
             }
         }
@@ -532,10 +542,21 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
         var pending = false;
         var now = _time.GetTimestamp();
-        foreach (var output in run.Outputs.Where(o => !o.Lost && o.AlignPending))
+        foreach (var output in run.Outputs.Where(o => !o.Lost))
         {
+            if (output.AlignAfterRecovery)
+            {
+                pending = true;
+                StartAlignmentIfRecovered(run, output, now);
+            }
+
+            if (!output.AlignPending)
+            {
+                continue;
+            }
+
             var source = output.Source;
-            if (!TryMeasureHeardContent(output, out var content, out var heardAt))
+            if (!TryMeasureHeardContent(run, output, out var content, out var heardAt))
             {
                 pending = true; // the last correction or the first audio is still on its way, or a render moved while reading
                 continue;
@@ -556,6 +577,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             }
 
             // A hole in the audio (the decoder not keeping up) shows up as drift later: remove it and measure again.
+            output.Sync!.AddReading(content, heardAt, SyncSampleInterval, correct: false); // the record tells what was played before the correction
             source.RequestRealign(DriftController.ResamplerRealignFrames(drift, output.Format.SampleRate));
             output.RealignsRequested++;
             output.AlignRounds++;
@@ -569,11 +591,12 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
     /// when the device reaches its first frame. False while a re-alignment or the first audio is still on its way, or
     /// a render moved while reading.
     /// </summary>
-    private bool TryMeasureHeardContent(Output output, out TimeSpan content, out long heardAt)
+    private bool TryMeasureHeardContent(Run run, Output output, out TimeSpan content, out long heardAt)
     {
         var source = output.Source;
         var rate = output.Format.SampleRate;
-        if (source.RealignsApplied < output.RealignsRequested
+        if (source.AppliedEpoch != run.Epoch // a hung device still shows the pre-seek reading
+            || source.RealignsApplied < output.RealignsRequested
             || !source.TryGetLatestPosition(out var played, out var timestamp)
             || !source.TryGetLatestAudioBuffer(out var bufferFrame, out var bufferContent))
         {
@@ -585,6 +608,29 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         heardAt = timestamp + (long)((double)(bufferFrame - played) / rate * _time.TimestampFrequency);
         content = TimeSpan.FromSeconds(bufferContent / rate);
         return true;
+    }
+
+    /// <summary>
+    /// An output that hung during a seek is aligned once it renders in the current epoch: its measurement then comes
+    /// from audio of the new position.
+    /// </summary>
+    private void StartAlignmentIfRecovered(Run run, Output output, long now)
+    {
+        if (output.Source.AppliedEpoch != run.Epoch)
+        {
+            return;
+        }
+
+        output.AlignAfterRecovery = false;
+        BeginAlignment(output, now);
+        BeginRecovery(run, now);
+
+        // What the device was still playing when it came back is the audio from before the seek: the record says so.
+        var staleFrame = output.Source.PreviousEpochLastContentFrame;
+        if (staleFrame >= 0)
+        {
+            output.Sync!.AddReading(TimeSpan.FromSeconds((double)staleFrame / output.Format.SampleRate), now, SyncSampleInterval, correct: false);
+        }
     }
 
     /// <summary>Starts the recovery window (start, resume, seek): records in it are not held to the drift tolerance.</summary>
@@ -609,7 +655,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         run.IntervalInRecovery |= now < run.RecoveryUntil;
         foreach (var output in run.Outputs.Where(o => !o.Lost))
         {
-            SampleOutput(output);
+            SampleOutput(run, output);
         }
 
         if (++run.SamplesInInterval < SamplesPerRecord)
@@ -622,7 +668,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         run.IntervalInRecovery = now < run.RecoveryUntil;
     }
 
-    private void SampleOutput(Output output)
+    private void SampleOutput(Run run, Output output)
     {
         var source = output.Source;
         if (source.TryGetLatestPosition(out var played, out var timestamp))
@@ -630,7 +676,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             output.Mismatch!.AddReading(timestamp, TimeSpan.FromSeconds((double)played / output.Format.SampleRate));
         }
 
-        if (!TryMeasureHeardContent(output, out var content, out var heardAt))
+        if (!TryMeasureHeardContent(run, output, out var content, out var heardAt))
         {
             return;
         }
@@ -900,6 +946,9 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
         /// <summary>The output's audio must still be re-aligned to the master clock (after a seek or resume).</summary>
         public bool AlignPending { get; set; }
+
+        /// <summary>The output hung during a seek: it is aligned once it applies the new epoch.</summary>
+        public bool AlignAfterRecovery { get; set; }
 
         public int AlignRounds { get; set; }
 

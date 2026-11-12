@@ -122,4 +122,45 @@ public sealed class AudioEngineRecoveryTests
 
         AssertWithinToleranceFromRecoveryOn(rig, TimeSpan.Zero, TimeSpan.Zero);
     }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(300)]
+    public void After_an_output_that_hung_during_a_seek_recovers_it_plays_within_tolerance_and_its_records_tell_the_truth(double ppm)
+    {
+        using var rig = new EngineRig([new RigDevice(48_000, ppm), new RigDevice(44_100, -ppm)], observe: true);
+        rig.Start();
+        rig.Render(1_000);
+        rig.Devices[1].Hang();
+        rig.Render(300); // past the one second after which an output counts as stalled
+        rig.Seek(TimeSpan.FromSeconds(120));
+        rig.Render(100);
+
+        rig.Devices[1].Unhang();
+        var recoveredAt = rig.Elapsed;
+        var position = rig.Position;
+        var recordsBefore = rig.RecordsOf("dev-2").Count;
+        rig.Render(3_200);
+
+        // what the hung output actually plays, from its rendered samples, not from the engine's own records
+        rig.MaxDriftMs(1, recoveredAt, position, Recovery, Settled)
+            .ShouldBeLessThanOrEqualTo(ToleranceMs, "dev-2 played drift after it recovered");
+        rig.MaxDriftMs(0, recoveredAt, position, TimeSpan.Zero, Settled)
+            .ShouldBeLessThanOrEqualTo(ToleranceMs, "dev-1 must be unaffected");
+
+        // the records published after recovery agree with the played audio: no 0 ms while the output is off
+        var after = rig.RecordsOf("dev-2").Skip(recordsBefore).ToArray();
+        after.ShouldNotBeEmpty();
+        var late = after.Where(r => r.ClockPosition >= position + Recovery).ToArray();
+        late.ShouldNotBeEmpty();
+        late.ShouldAllBe(r => Math.Abs(r.DriftMs) <= ToleranceMs);
+        var real = rig.MaxDriftMs(1, recoveredAt, position, TimeSpan.Zero, Recovery);
+        var reported = after.Where(r => r.ClockPosition < position + Recovery).Select(r => Math.Abs(r.DriftMs)).DefaultIfEmpty(0).Max();
+        if (real > 100)
+        {
+            reported.ShouldBeGreaterThan(ToleranceMs, $"the output played {real:F0} ms off right after recovery but its records reported at most {reported:F2} ms");
+        }
+
+        rig.Summary.ShouldBeNull();
+    }
 }
