@@ -534,7 +534,9 @@ public sealed class AudioEngineRunTests
         using var rig = new Rig(2);
         rig.Engine.StartRun("film.mkv", [Assign(1, 1), Assign(2, 2)], new EngineOptions()).IsSuccess.ShouldBeTrue();
         rig.Backend.Devices["dev-2"].Hang();
-        rig.Render(150);
+        rig.Render(1);
+        rig.Time.Advance(TimeSpan.FromSeconds(5)); // past the start deadline after which a never-rendered output is no longer awaited
+        rig.Render(2);
         rig.WaitFor(() =>
         {
             rig.Render(1);
@@ -585,7 +587,8 @@ public sealed class AudioEngineRunTests
         rig.Backend.Devices["dev-2"].Hang();
         rig.Render(1); // dev-1 renders its first audio
         rig.Time.Advance(TimeSpan.FromMilliseconds(2_350)); // dev-2 has never rendered and is now past the two-second budget
-        rig.Render(2);
+        rig.Render(20); // still under the start deadline, and long enough in real time for several control-loop polls
+        rig.Events.OfType<AudioStarted>().ShouldBeEmpty("dev-2 has never rendered and is still awaited 2.5 s after the start");
         rig.Backend.Devices["dev-2"].Unhang();
 
         rig.WaitFor(() =>

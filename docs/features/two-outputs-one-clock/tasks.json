@@ -1379,7 +1379,7 @@
         "src/DualPlayer.Core/Playback/AudioEngine.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T63-step-the-start-deadline-tests-on-the-fake-clock-and-fix-the-deadline-comment.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r7: W1, W2, W3"
     }
   ]

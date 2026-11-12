@@ -758,8 +758,9 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             LogFirstAudio(output.DeviceId, _time.GetElapsedTime(run.StartTimestamp, timestamp).TotalMilliseconds);
         }
 
-        // Once per run, when no non-lost output still waits; an output lost before its first audio, or still silent and stalled past
-        // FirstAudioDeadline, is not waited for, and a run that ends first (or loses every output) publishes nothing.
+        // Once per run, when no non-lost output still waits; an output lost before its first audio, one that rendered only silence
+        // and then stalled, or one that never rendered and is stalled past FirstAudioDeadline is not waited for, and a run that ends
+        // first (or loses every output) publishes nothing.
         if (!awaiting && !run.AudioStartedPublished && run.LatestFirstAudio is { } latest)
         {
             run.AudioStartedPublished = true;

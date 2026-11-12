@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-12-r7 (W1, W2, W3)"
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from re-review 7. Work from what is inlined here; the source always wins.
@@ -31,7 +31,7 @@ See [spec.md](../spec.md) §5 AC-01.
 
 ## Definition of Done
 
-- [ ] W1: the stalled-at-start test jumps the fake clock past the deadline (as `:461-463` does) instead of stepping 350 renders; assertions unchanged.
-- [ ] W2: the T62 test keeps dev-2 hung long enough in real time for several polls after the advance and asserts `AudioStarted` is still empty before `Unhang()`; it fails deterministically against the 2 s deadline.
-- [ ] W3: the comment describes the three cases (lost before first audio; rendered only silence then stalled; never rendered and stalled past `FirstAudioDeadline`).
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] W1: the stalled-at-start test jumps the fake clock past the deadline (as `:461-463` does) instead of stepping 350 renders; assertions unchanged.
+- [x] W2: the T62 test keeps dev-2 hung long enough in real time for several polls after the advance and asserts `AudioStarted` is still empty before `Unhang()`; it fails deterministically against the 2 s deadline.
+- [x] W3: the comment describes the three cases (lost before first audio; rendered only silence then stalled; never rendered and stalled past `FirstAudioDeadline`).
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
