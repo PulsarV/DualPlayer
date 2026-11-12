@@ -1328,6 +1328,42 @@
       "file": "docs/features/two-outputs-one-clock/tasks/T60-include-a-late-first-render-in-audiostarted-and-trim-the-late-start-test.md",
       "status": "done",
       "origin": "review-2026-11-12-r5: U4, U5"
+    },
+    {
+      "id": "T61",
+      "title": "Pin the restore reopen and its unreadable branch with tests",
+      "layer": "integration",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-09"
+      ],
+      "dod": "both restore tests assert IsSuccess unconditionally; reopen-failure test asserts file_unreadable; breaking the reopen turns tests red; comment + T58 note corrected; gate clean",
+      "files_hint": [
+        "tests/DualPlayer.Media.Tests/Audio/FfmpegAudioDecoderTests.cs",
+        "src/DualPlayer.Media/Audio/FfmpegDecodeSession.cs",
+        "src/DualPlayer.Media/Audio/FfmpegAudioDecoder.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T61-pin-the-restore-reopen-and-its-unreadable-branch-with-tests.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r6: V1"
+    },
+    {
+      "id": "T62",
+      "title": "Await a late first render past the start-to-audio budget",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "first-audio deadline above the 2 s budget; test with a 2.4 s first render asserts StartToAudio >= 2 s; never-rendered output still not awaited forever; comments fixed; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T62-await-a-late-first-render-past-the-start-to-audio-budget.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r6: V2"
     }
   ]
 }
