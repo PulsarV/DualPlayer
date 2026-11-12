@@ -126,10 +126,7 @@ public sealed class AudioEngineTransportTests
                     continue; // a closed device no longer renders; topping it up would never finish
                 }
 
-                while (_devices[d].WrittenFrames < _devices[d].PlayedFramesNow + depth)
-                {
-                    _devices[d].PumpRender(chunk);
-                }
+                RigLoops.FillQueue(_devices[d], depth, chunk);
             }
         }
 

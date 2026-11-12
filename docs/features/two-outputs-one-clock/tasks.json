@@ -985,7 +985,7 @@
         "src/DualPlayer.Core/Playback/AudioEngine.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T43-make-core-test-rigs-fail-instead-of-spinning-and-bound-the-stop-wait-i.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r3: S2"
     },
     {

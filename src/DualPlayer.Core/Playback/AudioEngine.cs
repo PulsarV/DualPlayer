@@ -18,6 +18,12 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
     private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(2);
     private const int MaxAlignRounds = 16;
 
+    /// <summary>
+    /// Real-time bound of the stop wait, counted in poll sleeps (Core has no real clock): twice the fake-time
+    /// <see cref="StopTimeout"/>, so on real hardware the timestamp deadline still ends the wait first.
+    /// </summary>
+    private const int StopWaitMaxPolls = 2 * 1000;
+
     /// <summary>How long after a seek or resume each output keeps being re-measured, so a later hole is corrected too.</summary>
     private static readonly TimeSpan AlignWindow = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan StartLevelPollInterval = TimeSpan.FromMilliseconds(2);
@@ -807,9 +813,10 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
     private void WaitForDevicesToPassStop(Run run)
     {
         var deadline = _time.GetTimestamp() + (long)(StopTimeout.TotalSeconds * _time.TimestampFrequency);
+        var polls = 0;
         while (run.Outputs.Any(o => !o.Lost && !run.Pump!.IsStalled(o.Index) && o.Source.LatestFramesPlayed < o.StopDeviceFrame))
         {
-            if (_time.GetTimestamp() >= deadline || Volatile.Read(ref _disposed) != 0)
+            if (_time.GetTimestamp() >= deadline || ++polls > StopWaitMaxPolls || Volatile.Read(ref _disposed) != 0)
             {
                 return;
             }

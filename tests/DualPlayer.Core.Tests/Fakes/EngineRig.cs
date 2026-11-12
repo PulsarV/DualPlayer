@@ -268,12 +268,8 @@ internal sealed class EngineRig : IDisposable
                 continue;
             }
 
-            var rate = device.MixFormat.SampleRate;
-            var chunk = rate / 100;
-            while (device.WrittenFrames < device.PlayedFramesNow + (2 * chunk))
-            {
-                device.PumpRender(chunk);
-            }
+            var chunk = device.MixFormat.SampleRate / 100;
+            RigLoops.FillQueue(device, 2 * chunk, chunk);
         }
     }
 
@@ -287,11 +283,8 @@ internal sealed class EngineRig : IDisposable
                 continue;
             }
 
-            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-            while (_decoder.DecodedSeconds(i) < wanted && DateTime.UtcNow < deadline)
-            {
-                Thread.Yield();
-            }
+            var index = i;
+            RigLoops.WaitOrFail(() => _decoder.DecodedSeconds(index) >= wanted, TimeSpan.FromSeconds(10), $"the decoder to reach {wanted:F2} s on output {index}");
         }
     }
 
@@ -329,4 +322,39 @@ internal sealed class EngineRig : IDisposable
             }
         }
     }
+}
+
+/// <summary>Loops shared by the Core test rigs; each ends on its own instead of spinning or waiting without a limit.</summary>
+internal static class RigLoops
+{
+    /// <summary>Keeps <paramref name="depth"/> frames queued ahead of the device's position, written in <paramref name="chunk"/> frames.</summary>
+    public static void FillQueue(FakeAudioDevice device, long depth, int chunk)
+    {
+        while (device.WrittenFrames < device.PlayedFramesNow + depth)
+        {
+            // A closed, lost or hung device renders nothing; the engine may close it between two pumps.
+            var before = device.WrittenFrames;
+            device.PumpRender(chunk);
+            if (device.WrittenFrames == before)
+            {
+                return;
+            }
+        }
+    }
+
+    /// <summary>Waits until <paramref name="condition"/> holds; fails the test when it does not within <paramref name="timeout"/>.</summary>
+    public static void WaitOrFail(Func<bool> condition, TimeSpan timeout, string what)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (!condition() && DateTime.UtcNow < deadline)
+        {
+            Thread.Yield();
+        }
+
+        condition().ShouldBeTrue($"timed out after {timeout.TotalSeconds:F0} s waiting for {what}");
+    }
+
+    /// <summary>True when <paramref name="task"/> finished within <paramref name="timeout"/>; never blocks the calling thread.</summary>
+    public static async Task<bool> CompletesWithin(Task task, TimeSpan timeout) =>
+        await Task.WhenAny(task, Task.Delay(timeout, TestContext.Current.CancellationToken)) == task;
 }
