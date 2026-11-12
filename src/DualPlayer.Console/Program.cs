@@ -26,6 +26,7 @@ internal static class Program
                 formatProvider: System.Globalization.CultureInfo.InvariantCulture)
             .CreateLogger();
         using var loggerFactory = new SerilogLoggerFactory(serilog);
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => serilog.Dispose();
         var log = loggerFactory.CreateLogger(typeof(Program));
 
         try

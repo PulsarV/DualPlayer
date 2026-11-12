@@ -474,7 +474,7 @@
         "tests/DualPlayer.Console.Tests/EventPrinterTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T21-console-live-output-and-shutdown.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T22",

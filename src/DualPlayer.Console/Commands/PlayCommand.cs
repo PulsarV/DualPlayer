@@ -3,11 +3,12 @@ using DualPlayer.Core;
 using DualPlayer.Core.Diagnostics;
 using DualPlayer.Core.Outputs;
 using DualPlayer.Core.Playback;
+using Microsoft.Extensions.Logging;
 
 namespace DualPlayer.Console.Commands;
 
 /// <summary>Starts a run and prints each output with the device id it resolved to.</summary>
-internal sealed class PlayCommand(IAudioEngine engine, TimeProvider? time = null)
+internal sealed class PlayCommand(IAudioEngine engine, TimeProvider? time = null, ILogger<PlayCommand>? log = null)
 {
     public int Run(PlayRequest request, TextWriter output, TextWriter error, TextReader? input = null)
     {
@@ -15,6 +16,10 @@ internal sealed class PlayCommand(IAudioEngine engine, TimeProvider? time = null
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(error);
 
+        using var printer = new EventPrinter(engine.Events, output, log);
+        using var signals = new ShutdownSignals(engine, () => Environment.Exit(printer.ExitCode));
+        signals.DeferUntilRunStarts();
+        signals.Register();
         var started = engine.StartRun(request.File, request.Outputs, request.Options);
         if (!started.IsSuccess)
         {
@@ -30,13 +35,39 @@ internal sealed class PlayCommand(IAudioEngine engine, TimeProvider? time = null
 
         output.WriteLine($"started   clock {ConsoleFormat.Clock(started.Value.ClockPosition)}");
 
+        signals.RunStarted();
         if (input is null)
         {
             return 0;
         }
 
         var tracker = new PositionTracker(engine, time ?? TimeProvider.System, started.Value.ClockPosition);
-        return new RunCommandLoop(tracker, tracker.Current).Run(input, output, error);
+        var loopExit = new RunCommandLoop(tracker, tracker.Current).Run(new UntilRunEnds(input, printer.RunEnded), output, error);
+        return loopExit != 0 ? loopExit : printer.ExitCode;
+    }
+
+    /// <summary>Reads standard input until the run ends on its own (file end, last device lost), then reports end of input.</summary>
+    private sealed class UntilRunEnds(TextReader inner, CancellationToken runEnded) : TextReader
+    {
+        public override string? ReadLine()
+        {
+            if (runEnded.IsCancellationRequested)
+            {
+                return null;
+            }
+
+            var read = Task.Run(inner.ReadLine, CancellationToken.None);
+            try
+            {
+                Task.WaitAny([read], runEnded);
+            }
+            catch (OperationCanceledException)
+            {
+                return null;
+            }
+
+            return read.GetAwaiter().GetResult();
+        }
     }
 
     /// <summary>Wraps the engine and follows the master-clock position from the positions its replies report.</summary>
