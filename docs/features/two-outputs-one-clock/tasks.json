@@ -901,7 +901,7 @@
         "tests/DualPlayer.Console.Tests/E2E/ConsoleRig.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T39-stop-consolerig-from-spinning-when-the-engine-closes-a-device-mid-pump.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r2: R6"
     },
     {

@@ -46,7 +46,7 @@
 | T36 | [Keep an output that hung during a seek measured and corrected after it recovers](./T36-keep-an-output-that-hung-during-a-seek-measured-and-corrected-after-it.md) | app | Volodymyr Kravchuk | M | T35 | todo | SELECT |
 | T37 | [Recover a stalled output without seek in one correction and no underruns](./T37-recover-a-stalled-output-without-seek-in-one-correction-and-no-underru.md) | app | Volodymyr Kravchuk | M | T36 | todo | SELECT |
 | T38 | [Measure start-to-audio to the first audio on every output](./T38-measure-start-to-audio-to-the-first-audio-on-every-output.md) | app | Volodymyr Kravchuk | S | T37 | todo | SELECT |
-| T39 | [Stop ConsoleRig from spinning when the engine closes a device mid-pump](./T39-stop-consolerig-from-spinning-when-the-engine-closes-a-device-mid-pump.md) | test | Volodymyr Kravchuk | S | — | todo | SELECT |
+| T39 | [Stop ConsoleRig from spinning when the engine closes a device mid-pump](./T39-stop-consolerig-from-spinning-when-the-engine-closes-a-device-mid-pump.md) | test | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T40 | [Log console lines independently of the console write and always signal the run end](./T40-log-console-lines-independently-of-the-console-write-and-always-signal.md) | app | Volodymyr Kravchuk | S | T39 | todo | SELECT |
 | T41 | [Pick the seek warning by the target's sign](./T41-pick-the-seek-warning-by-the-target-s-sign.md) | app | Volodymyr Kravchuk | S | T40 | todo | SELECT |
 | T42 | [Take the LFE-dropped note from Media's conversion](./T42-take-the-lfe-dropped-note-from-media-s-conversion.md) | app | Volodymyr Kravchuk | S | T34, T41, T38 | todo | SELECT |

@@ -144,15 +144,16 @@ internal sealed class ConsoleRig : IDisposable
         Time.Advance(Step);
         foreach (var device in Devices)
         {
-            if (device.IsClosed || !device.IsStarted)
-            {
-                continue;
-            }
-
             var chunk = device.MixFormat.SampleRate / 100;
             while (device.WrittenFrames < device.PlayedFramesNow + (2 * chunk))
             {
+                // A closed, lost or hung device renders nothing; the engine may close it between two pumps.
+                var before = device.WrittenFrames;
                 device.PumpRender(chunk);
+                if (device.WrittenFrames == before)
+                {
+                    break;
+                }
             }
         }
     }
