@@ -333,6 +333,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             LogSeekOutsideFile("past the end");
             var end = run.FileDuration is { } duration ? (duration < target ? duration : target) : heardBefore;
             _events.Publish(new SeekTargetOutsideFile(target, end));
+            run.Summary.RecordClockJump(end - target); // the clock moves back from the target to the end: not played time either
             run.Clock.JumpTo(end);
             run.Clock.StopAt(_time.GetTimestamp());
             EndRun(run, RunEndReason.SeekPastEnd);

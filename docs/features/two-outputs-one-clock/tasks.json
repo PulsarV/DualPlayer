@@ -818,7 +818,7 @@
         "tests/DualPlayer.Core.Tests/Playback/AudioEngineTransportTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T35-record-the-clamped-seek-past-end-jump-so-the-played-duration-stays-tru.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r2: R2"
     },
     {

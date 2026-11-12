@@ -22,7 +22,8 @@ internal static class RunSummaryPrinter
             yield return Row(
                 (index++).ToString(CultureInfo.InvariantCulture),
                 o.DeviceId,
-                o.Played.ToString(@"hh\:mm\:ss\.f", CultureInfo.InvariantCulture),
+                // A negative duration is an engine bug; keep its sign visible instead of printing a plausible time.
+                (o.Played < TimeSpan.Zero ? "-" : "") + o.Played.Duration().ToString(@"hh\:mm\:ss\.f", CultureInfo.InvariantCulture),
                 o.MaxDriftMs.ToString("0.0", CultureInfo.InvariantCulture),
                 o.ClockMismatchPpm.ToString("+0.0;-0.0;0.0", CultureInfo.InvariantCulture),
                 o.Corrections.ToString(CultureInfo.InvariantCulture),

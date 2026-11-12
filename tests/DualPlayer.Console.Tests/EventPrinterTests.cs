@@ -145,6 +145,16 @@ public sealed class EventPrinterTests
         Tokens(lines[3]).ShouldBe(["2", Dev2, "00:40:12.3", "9.1", "-18.5", "0", "0", "00:40:12.300"]);
     }
 
+    [Fact]
+    public void A_negative_played_duration_is_printed_with_its_sign_so_the_bug_shows()
+    {
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
+
+        _engine.Publish(Summary(RunEndReason.SeekPastEnd, new OutputSummary(Dev1, -new TimeSpan(2, 36, 37), 0, 0, 0, 0, [])));
+
+        Tokens(Lines()[2])[2].ShouldBe("-02:36:37.0");
+    }
+
     [Theory]
     [InlineData(RunEndReason.FileEnd, "file-end")]
     [InlineData(RunEndReason.Stop, "stop")]

@@ -492,6 +492,20 @@ public sealed class AudioEngineTransportTests
     }
 
     [Fact]
+    public void Played_duration_after_a_seek_past_the_end_is_the_real_running_time()
+    {
+        using var rig = new Rig([(120, 120), (120, 120)], totalFrames: (long)Rate * 60);
+        rig.Render(300);
+
+        rig.Call(() => rig.Engine.Seek(TimeSpan.FromMinutes(100))).IsSuccess.ShouldBeTrue();
+        rig.Render(20);
+
+        var summary = rig.Events.OfType<RunSummary>().Single();
+        summary.EndReason.ShouldBe(RunEndReason.SeekPastEnd);
+        summary.Outputs.ShouldAllBe(o => Math.Abs(o.Played.TotalSeconds - rig.Elapsed.TotalSeconds) < 1.5);
+    }
+
+    [Fact]
     public void Seeking_before_the_start_plays_from_the_beginning_and_reports_the_target_was_outside_the_file()
     {
         using var rig = SmallQueues();
