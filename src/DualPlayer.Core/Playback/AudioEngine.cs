@@ -18,12 +18,6 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
     private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(2);
     private const int MaxAlignRounds = 16;
 
-    /// <summary>
-    /// Real-time bound of the stop wait, counted in poll sleeps (Core has no real clock): twice the fake-time
-    /// <see cref="StopTimeout"/>, so on real hardware the timestamp deadline still ends the wait first.
-    /// </summary>
-    private const int StopWaitMaxPolls = 2 * 1000;
-
     /// <summary>How long after a seek or resume each output keeps being re-measured, so a later hole is corrected too.</summary>
     private static readonly TimeSpan AlignWindow = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan StartLevelPollInterval = TimeSpan.FromMilliseconds(2);
@@ -132,7 +126,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             return Result<RunStarted>.Failure(resolved.Error);
         }
 
-        var run = new Run(startTimestamp);
+        var run = new Run(startTimestamp) { StopWaitMaxPolls = options.StopWaitMaxPolls };
         foreach (var output in resolved.Value)
         {
             var name = catalog.Devices.First(d => string.Equals(d.Id, output.DeviceId, StringComparison.Ordinal)).Name;
@@ -819,7 +813,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         var polls = 0;
         while (run.Outputs.Any(o => !o.Lost && !run.Pump!.IsStalled(o.Index) && o.Source.LatestFramesPlayed < o.StopDeviceFrame))
         {
-            if (_time.GetTimestamp() >= deadline || ++polls > StopWaitMaxPolls || Volatile.Read(ref _disposed) != 0)
+            if (_time.GetTimestamp() >= deadline || ++polls > run.StopWaitMaxPolls || Volatile.Read(ref _disposed) != 0)
             {
                 return;
             }
@@ -875,6 +869,8 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
         /// <summary>When the start command arrived, on the injected clock.</summary>
         public long StartTimestamp { get; } = startTimestamp;
+
+        public int StopWaitMaxPolls { get; init; }
 
         /// <summary>Master-clock position at the start of the run.</summary>
         public TimeSpan StartClockPosition { get; set; }

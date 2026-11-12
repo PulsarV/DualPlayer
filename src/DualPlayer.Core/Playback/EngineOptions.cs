@@ -11,4 +11,10 @@ public sealed record EngineOptions
 
     /// <summary>Spec target, not a tuning knob: no console flag.</summary>
     internal TimeSpan DriftTolerance { get; init; } = TimeSpan.FromMilliseconds(10);
+
+    /// <summary>
+    /// Real-time bound of the stop wait, counted in poll sleeps (Core has no real clock): twice the fake-time
+    /// stop timeout, so on real hardware the timestamp deadline still ends the wait first.
+    /// </summary>
+    internal int StopWaitMaxPolls { get; init; } = 2 * 1000;
 }

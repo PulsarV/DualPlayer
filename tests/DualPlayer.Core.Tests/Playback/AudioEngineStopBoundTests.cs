@@ -19,7 +19,7 @@ public sealed class AudioEngineStopBoundTests
         var devices = new List<FakeAudioDevice>();
         var tracks = new List<AudioTrackInfo> { new(1, "eng", ChannelLayout.Stereo, 48_000) };
         using var engine = new AudioEngine(new Capture(backend, devices), new FakeAudioDecoder(tracks, 48_000L * 600), time, NullLogger<AudioEngine>.Instance);
-        engine.StartRun("film.mkv", [new OutputAssignment(1, DeviceRef.ByNumber(1))], new EngineOptions()).IsSuccess.ShouldBeTrue();
+        engine.StartRun("film.mkv", [new OutputAssignment(1, DeviceRef.ByNumber(1))], new EngineOptions { StopWaitMaxPolls = 50 }).IsSuccess.ShouldBeTrue();
         var device = devices.Single();
         time.Advance(TimeSpan.FromMilliseconds(10));
         RigLoops.FillQueue(device, 960, 480);
@@ -27,7 +27,7 @@ public sealed class AudioEngineStopBoundTests
 
         var stop = Task.Run(() => engine.Stop(RunEndReason.Stop), TestContext.Current.CancellationToken);
 
-        (await RigLoops.CompletesWithin(stop, TimeSpan.FromSeconds(20))).ShouldBeTrue("Stop never returned although the device stopped rendering");
+        (await RigLoops.CompletesWithin(stop, TimeSpan.FromSeconds(5))).ShouldBeTrue("Stop never returned although the device stopped rendering");
     }
 
     private sealed class Capture(IAudioBackend inner, List<FakeAudioDevice> devices) : IAudioBackend

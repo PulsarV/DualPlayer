@@ -1166,7 +1166,7 @@
         "tests/DualPlayer.Core.Tests/Playback/AudioEngineStopBoundTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T52-bound-the-stop-wait-in-polls-the-test-can-set.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r4: T1"
     },
     {

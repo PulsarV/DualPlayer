@@ -59,7 +59,7 @@
 | T49 | [Carry Media's LFE-dropped fact to the start line](./T49-carry-media-s-lfe-dropped-fact-to-the-start-line.md) | app | Volodymyr Kravchuk | S | T47, T48 | done | COMMIT |
 | T50 | [Test the played duration of a seek past the end on both branches within 100 ms](./T50-test-the-played-duration-of-a-seek-past-the-end-on-both-branches-withi.md) | test | Volodymyr Kravchuk | S | T46 | done | COMMIT |
 | T51 | [Shorten the stalled-console test and rename the play test](./T51-shorten-the-stalled-console-test-and-rename-the-play-test.md) | test | Volodymyr Kravchuk | S | T47 | done | COMMIT |
-| T52 | [Bound the stop wait in polls the test can set](./T52-bound-the-stop-wait-in-polls-the-test-can-set.md) | test | Volodymyr Kravchuk | S | — | todo | SELECT |
+| T52 | [Bound the stop wait in polls the test can set](./T52-bound-the-stop-wait-in-polls-the-test-can-set.md) | test | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T53 | [Confirm a seek without waiting on outputs whose track has no audio at the target, counting only new-epoch frames](./T53-confirm-a-seek-without-waiting-on-outputs-whose-track-has-no-audio-at-th.md) | app | Volodymyr Kravchuk | M | T52 | todo | SELECT |
 | T54 | [Log first audio for every output that starts late and fix the handed-out doc comments](./T54-log-first-audio-for-every-output-that-starts-late-and-fix-the-handed-out.md) | app | Volodymyr Kravchuk | S | T53 | todo | SELECT |
 | T55 | [Assert the race test writes after Join instead of on the writer thread](./T55-assert-the-race-test-writes-after-join-instead-of-on-the-writer-thread.md) | test | Volodymyr Kravchuk | S | — | todo | SELECT |
