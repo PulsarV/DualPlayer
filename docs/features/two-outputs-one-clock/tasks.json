@@ -678,7 +678,7 @@
         "tests/DualPlayer.Console.Tests/"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T29-console-one-output-writer-off-the-control-loop-tha.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12: F1, F8, F11, F19"
     },
     {

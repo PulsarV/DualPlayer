@@ -16,24 +16,32 @@ internal sealed class PlayCommand(IAudioEngine engine, TimeProvider? time = null
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(error);
 
-        using var printer = new EventPrinter(engine.Events, output, log);
-        using var signals = new ShutdownSignals(engine, () => Environment.Exit(printer.ExitCode));
+        using var lines = new ConsoleLineQueue(output, error, log);
+        var console = lines.Writer(toError: false);
+        var errors = lines.Writer(toError: true);
+        using var printer = new EventPrinter(engine.Events, lines);
+        using var signals = new ShutdownSignals(engine, () =>
+        {
+            WaitForSummary(printer);
+            lines.Flush();
+            Environment.Exit(printer.ExitCode);
+        });
         signals.DeferUntilRunStarts();
         signals.Register();
         var started = engine.StartRun(request.File, request.Outputs, request.Options);
         if (!started.IsSuccess)
         {
-            return ExitCodes.Report(started.Error, error);
+            return ExitCodes.Report(started.Error, errors);
         }
 
         var index = 1;
         foreach (var o in started.Value.Outputs)
         {
-            output.WriteLine(
+            console.WriteLine(
                 $"output {index++}  track {o.TrackNumber} (-> {ConsoleFormat.Layout(o.Format.ChannelLayout)} {o.Format.SampleRate})  device {o.DeviceName}  id {o.DeviceId}");
         }
 
-        output.WriteLine($"started   clock {ConsoleFormat.Clock(started.Value.ClockPosition)}");
+        console.WriteLine($"started   clock {ConsoleFormat.Clock(started.Value.ClockPosition)}");
 
         signals.RunStarted();
         if (input is null)
@@ -42,8 +50,28 @@ internal sealed class PlayCommand(IAudioEngine engine, TimeProvider? time = null
         }
 
         var tracker = new PositionTracker(engine, time ?? TimeProvider.System, started.Value.ClockPosition);
-        var loopExit = new RunCommandLoop(tracker, tracker.Current).Run(new UntilRunEnds(input, printer.RunEnded), output, error);
+        var loopExit = new RunCommandLoop(tracker, tracker.Current).Run(new UntilRunEnds(input, printer.RunEnded), console, errors);
+
+        // End of input while the run is still going: stop it as an interrupt and keep its summary (contracts/cli.md §1.3).
+        if (!tracker.Stopped && !printer.RunEnded.IsCancellationRequested)
+        {
+            tracker.Stop(RunEndReason.Interrupt);
+        }
+
+        WaitForSummary(printer);
         return loopExit != 0 ? loopExit : printer.ExitCode;
+    }
+
+    private static void WaitForSummary(EventPrinter printer)
+    {
+        try
+        {
+            printer.RunEnded.WaitHandle.WaitOne(TimeSpan.FromSeconds(5));
+        }
+        catch (ObjectDisposedException)
+        {
+            // The printer is already disposed: the run is over.
+        }
     }
 
     /// <summary>Reads standard input until the run ends on its own (file end, last device lost), then reports end of input.</summary>
@@ -77,6 +105,9 @@ internal sealed class PlayCommand(IAudioEngine engine, TimeProvider? time = null
         private TimeSpan _anchor = start;
         private long _anchorStamp = time.GetTimestamp();
         private bool _paused;
+        private volatile bool _stopped;
+
+        public bool Stopped => _stopped;
 
         public IObservable<EngineEvent> Events => inner.Events;
 
@@ -106,7 +137,11 @@ internal sealed class PlayCommand(IAudioEngine engine, TimeProvider? time = null
             return result;
         }
 
-        public void Stop(RunEndReason reason) => inner.Stop(reason);
+        public void Stop(RunEndReason reason)
+        {
+            _stopped = true;
+            inner.Stop(reason);
+        }
 
         private Result<TimeSpan> Track(Result<TimeSpan> result, bool paused)
         {

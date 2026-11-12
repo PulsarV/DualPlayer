@@ -4,21 +4,31 @@ using Microsoft.Extensions.Logging;
 
 namespace DualPlayer.Console.Rendering;
 
-/// <summary>Prints every engine event live (contracts/cli.md §2) and mirrors each line to the log.</summary>
+/// <summary>Prints every engine event live (contracts/cli.md §2) through the console line queue, which also logs each line. Output numbers are 1-based.</summary>
 internal sealed class EventPrinter : IObserver<EngineEvent>, IDisposable
 {
-    private readonly TextWriter _output;
-    private readonly ILogger? _log;
-    private readonly Lock _gate = new();
+    private readonly ConsoleLineQueue _lines;
+    private readonly bool _ownsLines;
+    private bool _summarized;
     private readonly IDisposable _subscription;
     private readonly CancellationTokenSource _runEnded = new();
 
     public EventPrinter(IObservable<EngineEvent> events, TextWriter output, ILogger? log = null)
+        : this(events, new ConsoleLineQueue(output, output, log), ownsLines: true)
+    {
+    }
+
+    /// <summary>Prints through a shared queue so its lines stay in order with the command's own lines.</summary>
+    public EventPrinter(IObservable<EngineEvent> events, ConsoleLineQueue lines)
+        : this(events, lines, ownsLines: false)
+    {
+    }
+
+    private EventPrinter(IObservable<EngineEvent> events, ConsoleLineQueue lines, bool ownsLines)
     {
         ArgumentNullException.ThrowIfNull(events);
-        ArgumentNullException.ThrowIfNull(output);
-        _output = output;
-        _log = log;
+        _lines = lines;
+        _ownsLines = ownsLines;
         _subscription = events.Subscribe(this);
     }
 
@@ -45,7 +55,7 @@ internal sealed class EventPrinter : IObserver<EngineEvent>, IDisposable
             case DeviceLost d:
                 Write(string.Create(
                     CultureInfo.InvariantCulture,
-                    $"device-lost  output {d.OutputIndex}  device {d.DeviceId}  clock {ConsoleFormat.Clock(d.ClockPosition)}  {(d.OthersContinue ? "others continue" : "last output, run ends")}"));
+                    $"device-lost  output {d.OutputIndex + 1}  device {d.DeviceId}  clock {ConsoleFormat.Clock(d.ClockPosition)}  {(d.OthersContinue ? "others continue" : "last output, run ends")}"));
                 break;
             case SeekTargetOutsideFile o:
                 Write(o.Target > o.Position
@@ -53,13 +63,23 @@ internal sealed class EventPrinter : IObserver<EngineEvent>, IDisposable
                     : $"warning: target was outside the file, playing from {ConsoleFormat.Clock(o.Position)}");
                 break;
             case RunSummary s:
-                ExitCode = s.EndReason == RunEndReason.AllDevicesLost ? 3 : 0;
-                foreach (var line in RunSummaryPrinter.Lines(s))
+                lock (_runEnded)
                 {
-                    Write(line);
+                    if (_summarized)
+                    {
+                        break;
+                    }
+
+                    _summarized = true;
                 }
 
-                _runEnded.Cancel();
+                ExitCode = s.EndReason == RunEndReason.AllDevicesLost ? 3 : 0;
+                var summary = RunSummaryPrinter.Lines(s).ToList();
+                for (var i = 0; i < summary.Count; i++)
+                {
+                    _lines.Enqueue(summary[i], written: i == summary.Count - 1 ? _runEnded.Cancel : null);
+                }
+
                 break;
             default:
                 break;
@@ -74,22 +94,22 @@ internal sealed class EventPrinter : IObserver<EngineEvent>, IDisposable
     {
     }
 
+    /// <summary>Waits (bounded) until every line published so far has been written.</summary>
+    public void Flush() => _lines.Flush();
+
     public void Dispose()
     {
         _subscription.Dispose();
+        _lines.Flush();
+        if (_ownsLines)
+        {
+            _lines.Dispose();
+        }
+
         _runEnded.Dispose();
     }
 
     private static string Signed(double value) => value.ToString("+0.0;-0.0;0.0", CultureInfo.InvariantCulture);
 
-    private void Write(string line)
-    {
-        lock (_gate)
-        {
-            _output.WriteLine(line);
-            _output.Flush();
-        }
-
-        _log?.LogInformation("{Line}", line);
-    }
+    private void Write(string line) => _lines.Enqueue(line);
 }

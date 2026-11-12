@@ -20,6 +20,7 @@ public sealed record Excursion(string DeviceId, TimeSpan Start, TimeSpan Duratio
 /// <summary>A seek target lay before the start or past the end of the file; <paramref name="Position"/> is where playback went instead.</summary>
 public sealed record SeekTargetOutsideFile(TimeSpan Target, TimeSpan Position) : EngineEvent;
 
+/// <summary>An output's device was lost. <paramref name="OutputIndex"/> is 0-based (the position in the run's outputs); the console prints it 1-based like the start lines.</summary>
 public sealed record DeviceLost(int OutputIndex, string DeviceId, TimeSpan ClockPosition, bool OthersContinue) : EngineEvent;
 
 public sealed record OutputSummary(

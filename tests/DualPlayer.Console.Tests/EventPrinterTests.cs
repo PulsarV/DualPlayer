@@ -16,7 +16,22 @@ public sealed class EventPrinterTests
     private readonly StringWriter _out = new();
     private readonly FakeEngine _engine = new();
 
-    private string[] Lines() =>
+    private readonly List<EventPrinter> _printers = [];
+
+    private EventPrinter Track(EventPrinter printer)
+    {
+        _printers.Add(printer);
+        return printer;
+    }
+
+    // The console writer runs on its own thread: wait for it to catch up before reading what it wrote.
+    private string[] Lines()
+    {
+        _printers.ForEach(p => p.Flush());
+        return ReadOut();
+    }
+
+    private string[] ReadOut() =>
         _out.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     private static string[] Tokens(string line) =>
@@ -28,7 +43,7 @@ public sealed class EventPrinterTests
     [Fact]
     public void A_sync_record_prints_one_record_line_with_clock_device_drift_correction_and_underruns()
     {
-        using var printer = new EventPrinter(_engine.Events, _out);
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
 
         _engine.Publish(new SyncRecord(Dev1, new TimeSpan(0, 12, 34), 1.4, -35, 0));
 
@@ -38,7 +53,7 @@ public sealed class EventPrinterTests
     [Fact]
     public void A_seek_target_past_the_end_prints_the_warning_line()
     {
-        using var printer = new EventPrinter(_engine.Events, _out);
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
 
         _engine.Publish(new SeekTargetOutsideFile(TimeSpan.FromMinutes(20), TimeSpan.FromMinutes(10)));
 
@@ -48,7 +63,7 @@ public sealed class EventPrinterTests
     [Fact]
     public void A_seek_target_before_the_start_prints_the_warning_with_the_position_playing_from()
     {
-        using var printer = new EventPrinter(_engine.Events, _out);
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
 
         _engine.Publish(new SeekTargetOutsideFile(TimeSpan.FromSeconds(-60), TimeSpan.Zero));
 
@@ -58,7 +73,7 @@ public sealed class EventPrinterTests
     [Fact]
     public void Records_of_two_devices_print_separate_lines_keyed_by_device()
     {
-        using var printer = new EventPrinter(_engine.Events, _out);
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
 
         _engine.Publish(new SyncRecord(Dev1, TimeSpan.FromSeconds(1), -0.5, 10, 2));
         _engine.Publish(new SyncRecord(Dev2, TimeSpan.FromSeconds(1), 3.0, 0, 7));
@@ -74,7 +89,7 @@ public sealed class EventPrinterTests
     [Fact]
     public void An_excursion_prints_start_duration_and_signed_peak()
     {
-        using var printer = new EventPrinter(_engine.Events, _out);
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
 
         _engine.Publish(new Excursion(Dev2, new TimeSpan(0, 1, 2, 3), TimeSpan.FromMilliseconds(850), 14.2));
 
@@ -84,7 +99,7 @@ public sealed class EventPrinterTests
     [Fact]
     public void An_excursion_of_an_output_behind_prints_a_negative_peak()
     {
-        using var printer = new EventPrinter(_engine.Events, _out);
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
 
         _engine.Publish(new Excursion(Dev2, new TimeSpan(0, 1, 2, 3), TimeSpan.FromMilliseconds(850), -14.2));
 
@@ -94,9 +109,9 @@ public sealed class EventPrinterTests
     [Fact]
     public void A_device_loss_with_other_outputs_playing_says_others_continue()
     {
-        using var printer = new EventPrinter(_engine.Events, _out);
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
 
-        _engine.Publish(new DeviceLost(2, Dev2, new TimeSpan(0, 0, 40, 12, 300), OthersContinue: true));
+        _engine.Publish(new DeviceLost(1, Dev2, new TimeSpan(0, 0, 40, 12, 300), OthersContinue: true));
 
         Lines().ShouldBe([$"device-lost  output 2  device {Dev2}  clock 00:40:12.300  others continue"]);
     }
@@ -104,9 +119,9 @@ public sealed class EventPrinterTests
     [Fact]
     public void Losing_the_last_output_says_the_run_ends()
     {
-        using var printer = new EventPrinter(_engine.Events, _out);
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
 
-        _engine.Publish(new DeviceLost(1, Dev1, new TimeSpan(0, 0, 40, 12, 300), OthersContinue: false));
+        _engine.Publish(new DeviceLost(0, Dev1, new TimeSpan(0, 0, 40, 12, 300), OthersContinue: false));
 
         Lines().ShouldBe([$"device-lost  output 1  device {Dev1}  clock 00:40:12.300  last output, run ends"]);
     }
@@ -114,8 +129,8 @@ public sealed class EventPrinterTests
     [Fact]
     public void The_run_summary_prints_the_reason_and_one_row_per_output_with_its_device_lost_clock()
     {
-        using var printer = new EventPrinter(_engine.Events, _out);
-        var lost = new DeviceLost(2, Dev2, new TimeSpan(0, 0, 40, 12, 300), true);
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
+        var lost = new DeviceLost(1, Dev2, new TimeSpan(0, 0, 40, 12, 300), true);
 
         _engine.Publish(Summary(
             RunEndReason.FileEnd,
@@ -138,7 +153,7 @@ public sealed class EventPrinterTests
     [InlineData(RunEndReason.AllDevicesLost, "all-devices-lost")]
     public void The_summary_names_every_end_reason_as_in_the_contract(RunEndReason reason, string text)
     {
-        using var printer = new EventPrinter(_engine.Events, _out);
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
 
         _engine.Publish(Summary(reason));
 
@@ -148,8 +163,8 @@ public sealed class EventPrinterTests
     [Fact]
     public void The_summary_lists_every_device_lost_event_of_an_output()
     {
-        using var printer = new EventPrinter(_engine.Events, _out);
-        var lost = new DeviceLost(1, Dev1, new TimeSpan(0, 0, 5, 0, 100), false);
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
+        var lost = new DeviceLost(0, Dev1, new TimeSpan(0, 0, 5, 0, 100), false);
 
         _engine.Publish(Summary(RunEndReason.AllDevicesLost, new OutputSummary(Dev1, TimeSpan.FromMinutes(5), 1, 0, 0, 0, [lost])));
 
@@ -164,7 +179,7 @@ public sealed class EventPrinterTests
     [InlineData(RunEndReason.SeekPastEnd, 0)]
     public void The_exit_code_follows_the_summary_and_is_three_only_when_all_devices_were_lost(RunEndReason reason, int exit)
     {
-        using var printer = new EventPrinter(_engine.Events, _out);
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
 
         _engine.Publish(Summary(reason));
 
@@ -174,7 +189,7 @@ public sealed class EventPrinterTests
     [Fact]
     public void After_disposal_no_further_events_are_printed()
     {
-        var printer = new EventPrinter(_engine.Events, _out);
+        var printer = Track(new EventPrinter(_engine.Events, _out));
         printer.Dispose();
 
         _engine.Publish(new SyncRecord(Dev1, TimeSpan.Zero, 0, 0, 0));
@@ -185,7 +200,7 @@ public sealed class EventPrinterTests
     [Fact]
     public void Ctrl_C_stops_the_run_as_interrupt_and_the_summary_is_printed_with_exit_zero()
     {
-        using var printer = new EventPrinter(_engine.Events, _out);
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
         var signals = new ShutdownSignals(_engine);
 
         signals.Interrupt();
@@ -198,7 +213,7 @@ public sealed class EventPrinterTests
     [Fact]
     public void A_second_interrupt_while_stopping_is_ignored()
     {
-        using var printer = new EventPrinter(_engine.Events, _out);
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
         var signals = new ShutdownSignals(_engine);
 
         signals.Interrupt();
@@ -210,7 +225,7 @@ public sealed class EventPrinterTests
     [Fact]
     public void An_interrupt_runs_the_exit_step_once_after_the_summary_is_written_with_exit_zero()
     {
-        using var printer = new EventPrinter(_engine.Events, _out);
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
         var exits = new List<(string[] Lines, int ExitCode)>();
         var signals = new ShutdownSignals(_engine, () => exits.Add((Lines(), printer.ExitCode)));
 
@@ -225,7 +240,7 @@ public sealed class EventPrinterTests
     [Fact]
     public void An_interrupt_before_the_run_starts_stops_the_run_as_soon_as_it_has_started()
     {
-        using var printer = new EventPrinter(_engine.Events, _out);
+        using var printer = Track(new EventPrinter(_engine.Events, _out));
         var exits = 0;
         var signals = new ShutdownSignals(_engine, () => exits++);
         signals.DeferUntilRunStarts();
@@ -268,7 +283,7 @@ public sealed class EventPrinterTests
 
         var run = Task.Run(() => new PlayCommand(engine).Run(request, _out, TextWriter.Null, stdin), ct);
         stdin.Reading.Wait(TimeSpan.FromSeconds(10), ct).ShouldBeTrue();
-        engine.Publish(new DeviceLost(1, Dev1, new TimeSpan(0, 0, 40, 12, 300), OthersContinue: false));
+        engine.Publish(new DeviceLost(0, Dev1, new TimeSpan(0, 0, 40, 12, 300), OthersContinue: false));
         engine.Publish(Summary(RunEndReason.AllDevicesLost));
 
         (await run.WaitAsync(TimeSpan.FromSeconds(10), ct)).ShouldBe(3);
