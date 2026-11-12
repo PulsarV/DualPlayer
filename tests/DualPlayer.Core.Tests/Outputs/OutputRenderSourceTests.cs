@@ -484,4 +484,24 @@ public sealed class OutputRenderSourceTests
 
         public void Dispose() => inner.Dispose();
     }
+
+    [Fact]
+    public void No_device_position_is_available_before_the_first_render()
+    {
+        var (source, _) = Create();
+
+        source.TryGetLatestPosition(out _, out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void The_device_position_is_available_once_a_render_has_published_it()
+    {
+        var (source, _) = Create();
+
+        source.Render(new float[10], new DevicePosition(480, 12345));
+
+        source.TryGetLatestPosition(out var played, out var timestamp).ShouldBeTrue();
+        played.ShouldBe(480);
+        timestamp.ShouldBe(12345);
+    }
 }

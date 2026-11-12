@@ -17,7 +17,11 @@ public sealed class ExcursionTracker(string deviceId, double toleranceMs = 10.0)
         if (magnitude > toleranceMs)
         {
             _start ??= clockPosition;
-            _peakMs = Math.Max(_peakMs, magnitude);
+            if (magnitude > Math.Abs(_peakMs))
+            {
+                _peakMs = driftMs; // signed: negative when the output is behind the clock
+            }
+
             return null;
         }
 

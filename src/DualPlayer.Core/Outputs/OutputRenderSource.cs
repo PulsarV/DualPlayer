@@ -28,6 +28,7 @@ public sealed class OutputRenderSource : IRenderSource
     private long _previousEpochLastContentFrame = -1;
     private long _oldEpochEndFramesWritten;
     private int _positionVersion; // odd while the position pair is being written
+    private bool _hasPosition; // set after the first render published a position
     private int _bufferVersion; // odd while the audio-buffer pair below is being written
     private long _bufferDeviceFrame = -1;
     private long _bufferContentBits;
@@ -54,7 +55,7 @@ public sealed class OutputRenderSource : IRenderSource
         var before = Volatile.Read(ref _positionVersion);
         framesPlayed = Interlocked.Read(ref _framesPlayed);
         timestamp = Interlocked.Read(ref _timestamp);
-        return before % 2 == 0 && before == Volatile.Read(ref _positionVersion);
+        return Volatile.Read(ref _hasPosition) && before % 2 == 0 && before == Volatile.Read(ref _positionVersion);
     }
 
     /// <summary>Frames written to the device and not yet played (never understated by a torn read).</summary>
@@ -131,6 +132,7 @@ public sealed class OutputRenderSource : IRenderSource
         Interlocked.Exchange(ref _framesPlayed, position.FramesPlayed);
         Interlocked.Exchange(ref _timestamp, position.Timestamp);
         Interlocked.Increment(ref _positionVersion);
+        Volatile.Write(ref _hasPosition, true);
 
         var state = Volatile.Read(ref _epochState);
         var epochChanged = !ReferenceEquals(state, _appliedState);

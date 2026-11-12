@@ -36,6 +36,15 @@ public sealed partial class SyncRecordPublisher(Action<EngineEvent> publish, ILo
         }
     }
 
+    /// <summary>A seek is starting: close every open excursion at its pre-seek end, before the clock jumps.</summary>
+    public void SeekStarting(TimeSpan clockPosition)
+    {
+        foreach (var tracker in _trackers.Values)
+        {
+            Emit(tracker.Finish(clockPosition));
+        }
+    }
+
     public void Finish(TimeSpan clockPosition)
     {
         foreach (var tracker in _trackers.Values)

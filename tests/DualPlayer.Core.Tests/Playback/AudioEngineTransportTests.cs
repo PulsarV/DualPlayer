@@ -359,6 +359,36 @@ public sealed class AudioEngineTransportTests
     }
 
     [Fact]
+    public void Played_duration_after_a_forward_seek_is_the_real_running_time()
+    {
+        using var rig = new Rig([(120, 120), (120, 120)]);
+        rig.Render(300);
+        rig.Call(() => rig.Engine.Seek(TimeSpan.FromSeconds(63))).IsSuccess.ShouldBeTrue();
+        rig.Render(200);
+
+        rig.Engine.Stop(RunEndReason.Stop);
+
+        var summary = rig.Events.OfType<RunSummary>().Single();
+        summary.Outputs.ShouldAllBe(o => Math.Abs(o.Played.TotalSeconds - rig.Elapsed.TotalSeconds) < 1.5);
+    }
+
+    [Fact]
+    public void Played_duration_after_a_forward_and_a_backward_seek_is_the_real_running_time()
+    {
+        using var rig = new Rig([(120, 120), (120, 120)]);
+        rig.Render(300);
+        rig.Call(() => rig.Engine.Seek(TimeSpan.FromSeconds(100))).IsSuccess.ShouldBeTrue();
+        rig.Render(200);
+        rig.Call(() => rig.Engine.Seek(TimeSpan.FromSeconds(20))).IsSuccess.ShouldBeTrue();
+        rig.Render(200);
+
+        rig.Engine.Stop(RunEndReason.Stop);
+
+        var summary = rig.Events.OfType<RunSummary>().Single();
+        summary.Outputs.ShouldAllBe(o => Math.Abs(o.Played.TotalSeconds - rig.Elapsed.TotalSeconds) < 1.5);
+    }
+
+    [Fact]
     public void Seeking_before_the_start_plays_from_the_beginning_and_reports_the_target_was_outside_the_file()
     {
         using var rig = SmallQueues();

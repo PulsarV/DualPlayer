@@ -299,4 +299,60 @@ public sealed class AudioEngineSyncRecordTests
         excursion.PeakMs.ShouldBeGreaterThan(10);
         rig.RecordsOf("dev-1")[^1].DriftMs.ShouldBe(0, 2);
     }
+
+#pragma warning disable xUnit1031 // the fake clock is driven from this thread, so the seek has to be awaited synchronously
+    [Theory]
+    [InlineData(60)]
+    [InlineData(1)]
+    public void An_excursion_open_when_a_seek_starts_is_closed_at_its_pre_seek_end_with_a_non_negative_duration(int targetSeconds)
+    {
+        using var rig = new Rig(0, 0);
+        rig.Start(2);
+        rig.Render(450);
+        rig.Backend.Devices["dev-1"].StepPosition(2880); // 60 ms: the next record opens an excursion
+        for (var i = 0; i < 300 && !rig.RecordsOf("dev-1").Any(r => Math.Abs(r.DriftMs) > 10); i++)
+        {
+            rig.Render(1);
+        }
+
+        rig.RecordsOf("dev-1").Any(r => Math.Abs(r.DriftMs) > 10).ShouldBeTrue("the step never showed as drift");
+        var preSeek = rig.RecordsOf("dev-1")[^1].ClockPosition;
+
+        var seek = Task.Run(() => rig.Engine.Seek(TimeSpan.FromSeconds(targetSeconds)), TestContext.Current.CancellationToken);
+        for (var i = 0; i < 3_000 && !seek.IsCompleted; i++)
+        {
+            rig.Render(1);
+        }
+
+        seek.IsCompleted.ShouldBeTrue();
+        rig.Render(500);
+        rig.Engine.Stop(RunEndReason.Stop);
+
+        var excursion = rig.Events.OfType<Excursion>().First(e => e.DeviceId == "dev-1");
+        excursion.Duration.ShouldBeGreaterThanOrEqualTo(TimeSpan.Zero);
+        excursion.Start.ShouldBeLessThanOrEqualTo(preSeek);
+        (excursion.Start + excursion.Duration).ShouldBeLessThanOrEqualTo(preSeek + TimeSpan.FromSeconds(1), "closed at its pre-seek end, not after the seek");
+        excursion.Duration.ShouldBeLessThanOrEqualTo(TimeSpan.FromSeconds(3));
+    }
+
+#pragma warning restore xUnit1031
+
+    [Fact]
+    public void A_sample_taken_before_the_first_render_does_not_skew_the_clock_mismatch_estimate()
+    {
+        using var rig = new Rig(200, 0);
+        rig.Start(2);
+        for (var i = 0; i < 30; i++)
+        {
+            rig.Time.Advance(Step); // control loop samples while no device has rendered yet
+            Thread.Sleep(1);
+        }
+
+        rig.Render(2000);
+        rig.Engine.Stop(RunEndReason.Stop);
+
+        var summary = rig.Summary.ShouldNotBeNull();
+        summary.Outputs.Single(o => o.DeviceId == "dev-1").ClockMismatchPpm.ShouldBe(200, 50);
+        summary.Outputs.Single(o => o.DeviceId == "dev-2").ClockMismatchPpm.ShouldBe(0, 50);
+    }
 }

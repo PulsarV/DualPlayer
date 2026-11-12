@@ -34,7 +34,7 @@ public class ExcursionTrackerTests
         excursion.DeviceId.ShouldBe("dev-A");
         excursion.Start.ShouldBe(At(2));
         excursion.Duration.ShouldBe(At(3));
-        excursion.PeakMs.ShouldBe(14.5, 0.001);
+        excursion.PeakMs.ShouldBe(-14.5, 0.001); // signed drift of largest magnitude: + = ahead, - = behind
         tracker.Observe(At(6), 3, false).ShouldBeNull();
         tracker.Finish(At(7)).ShouldBeNull();
     }
@@ -79,5 +79,41 @@ public class ExcursionTrackerTests
         excursion.Duration.ShouldBe(At(5));
         excursion.PeakMs.ShouldBe(18, 0.001);
         tracker.Finish(At(106)).ShouldBeNull();
+    }
+
+    [Fact]
+    public void An_output_behind_beyond_tolerance_has_a_negative_peak()
+    {
+        var tracker = new ExcursionTracker("dev-A");
+        tracker.Observe(At(1), -12, false).ShouldBeNull();
+        tracker.Observe(At(2), -14.2, false).ShouldBeNull();
+        tracker.Observe(At(3), -11, false).ShouldBeNull();
+
+        var excursion = tracker.Observe(At(4), 0, false);
+
+        excursion.ShouldNotBeNull();
+        excursion.PeakMs.ShouldBe(-14.2, 0.001);
+    }
+
+    [Fact]
+    public void An_output_ahead_beyond_tolerance_keeps_a_positive_peak()
+    {
+        var tracker = new ExcursionTracker("dev-A");
+        tracker.Observe(At(1), 12, false);
+        tracker.Observe(At(2), 14.2, false);
+
+        var excursion = tracker.Observe(At(3), 0, false);
+
+        excursion.ShouldNotBeNull();
+        excursion.PeakMs.ShouldBe(14.2, 0.001);
+    }
+
+    [Fact]
+    public void An_excursion_still_open_at_the_end_reports_a_negative_peak_when_the_output_was_behind()
+    {
+        var tracker = new ExcursionTracker("dev-A");
+        tracker.Observe(At(1), -25, false);
+
+        tracker.Finish(At(2))!.PeakMs.ShouldBe(-25, 0.001);
     }
 }

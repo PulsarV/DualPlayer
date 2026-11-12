@@ -620,7 +620,7 @@
         "tests/DualPlayer.Console.Tests/EventPrinterTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T27-keep-the-excursion-peak-signed-measure-played-and.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12: F9, F10, F22"
     },
     {

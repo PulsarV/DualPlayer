@@ -273,7 +273,10 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             : active.Max(o => TimeSpan.FromSeconds((double)(o.Source.LastContentFrameHandedOut + 1) / o.Format.SampleRate));
         var epoch = ++run.Epoch; // a new epoch is not ended until the pump reports it so
         var now = _time.GetTimestamp();
-        run.Clock!.JumpTo(target);
+        var preSeek = run.Clock!.PositionAt(now);
+        run.Publisher?.SeekStarting(preSeek);
+        run.Summary.RecordClockJump(target - preSeek);
+        run.Clock.JumpTo(target);
         run.StopTimestamp = long.MinValue; // a pause instant before the seek no longer applies
         var startFrames = new Dictionary<Output, long>();
         foreach (var output in active)

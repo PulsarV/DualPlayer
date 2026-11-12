@@ -42,6 +42,12 @@ Fallback: [spec.md](../spec.md) · [sad.md](../sad.md) · [cli.md](../contracts/
 >
 > — `_review/review-2026-11-12.md, F16, verbatim`
 
+### Flake observed during implement (2026-11-12)
+
+> `AudioEngineSyncRecordTests.An_injected_step_error_is_re_aligned_in_one_step_counted_once_and_recorded_as_one_excursion` failed once in ~15 full-suite runs at line 295 (`dev-2 Corrections.ShouldBe(0)`), passing on every rerun. It waits on the real-time Rig loop — make it deterministic while moving these tests onto the realistic engine fakes.
+>
+> — implement run, T25 escalation report
+
 ## Acceptance criteria
 
 > ### AC-06 (US-05) — domain invariant

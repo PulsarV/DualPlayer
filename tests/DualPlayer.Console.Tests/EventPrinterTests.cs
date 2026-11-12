@@ -62,6 +62,16 @@ public sealed class EventPrinterTests
     }
 
     [Fact]
+    public void An_excursion_of_an_output_behind_prints_a_negative_peak()
+    {
+        using var printer = new EventPrinter(_engine.Events, _out);
+
+        _engine.Publish(new Excursion(Dev2, new TimeSpan(0, 1, 2, 3), TimeSpan.FromMilliseconds(850), -14.2));
+
+        Lines().ShouldBe([$"excursion  device {Dev2}  start 01:02:03.000  duration_ms 850  peak_ms -14.2"]);
+    }
+
+    [Fact]
     public void A_device_loss_with_other_outputs_playing_says_others_continue()
     {
         using var printer = new EventPrinter(_engine.Events, _out);

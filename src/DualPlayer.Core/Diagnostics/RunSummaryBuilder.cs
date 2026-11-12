@@ -40,6 +40,15 @@ public sealed class RunSummaryBuilder
         }
     }
 
+    /// <summary>The clock was moved by <paramref name="delta"/> without time passing (a seek); not played time.</summary>
+    public void RecordClockJump(TimeSpan delta)
+    {
+        foreach (var s in _outputs.Values.Where(o => o.EndedAt is null))
+        {
+            s.Jumped += delta;
+        }
+    }
+
     public void RecordDeviceLost(DeviceLost lost)
     {
         if (_outputs.TryGetValue(lost.DeviceId, out var s))
@@ -54,7 +63,7 @@ public sealed class RunSummaryBuilder
         var outputs = _outputs
             .Select(kv => new OutputSummary(
                 kv.Key,
-                (kv.Value.EndedAt ?? clockPosition) - kv.Value.StartedAt,
+                (kv.Value.EndedAt ?? clockPosition) - kv.Value.StartedAt - kv.Value.Jumped,
                 kv.Value.MaxDriftMs,
                 kv.Value.MismatchPpm,
                 kv.Value.Corrections,
@@ -68,6 +77,7 @@ public sealed class RunSummaryBuilder
     {
         public TimeSpan StartedAt { get; } = startedAt;
         public TimeSpan? EndedAt { get; set; }
+        public TimeSpan Jumped { get; set; }
         public double MaxDriftMs { get; set; }
         public double MismatchPpm { get; set; }
         public int Corrections { get; set; }
