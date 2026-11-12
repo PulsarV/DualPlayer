@@ -374,7 +374,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
             if (confirming.All(o => o.Source.AppliedEpoch >= epoch)
                 && run.DecodeEnded
-                && !confirming.Any(o => HasAudioOfEpoch(o, epoch)))
+                && !active.Any(o => HasAudioOfEpoch(o, epoch)))
             {
                 return Result<bool>.Success(false);
             }
@@ -384,7 +384,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             // epoch (it ended before the target, inside the file) is not waited for, as long as another output has audio.
             if (confirming.All(o => o.Source.HasPlayedOutOldEpoch(epoch)
                     && (HasAudioOfEpoch(o, epoch) || run.Pump!.HasNoBlocksInEpoch(o.Index, epoch)))
-                && confirming.Any(o => HasAudioOfEpoch(o, epoch)))
+                && active.Any(o => HasAudioOfEpoch(o, epoch)))
             {
                 return Result<bool>.Success(true);
             }

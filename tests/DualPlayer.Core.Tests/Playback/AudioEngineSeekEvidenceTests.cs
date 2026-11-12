@@ -231,4 +231,26 @@ public sealed class AudioEngineSeekEvidenceTests
         rig.Events.OfType<SeekTargetOutsideFile>().Count().ShouldBe(1);
         rig.Events.OfType<RunSummary>().Single().EndReason.ShouldBe(RunEndReason.SeekPastEnd);
     }
+
+    [Fact]
+    public void Seeking_inside_the_file_succeeds_when_the_only_output_with_audio_at_the_target_is_hung_and_the_live_one_ended_earlier()
+    {
+        var decoder = new PerTrackLengthDecoder(Tracks, new Dictionary<int, TimeSpan>
+        {
+            [1] = TimeSpan.FromSeconds(10),
+            [2] = TimeSpan.FromSeconds(60),
+        });
+        using var rig = new Rig(2, decoder);
+        rig.Render(100);
+
+        rig.Devices[1].Hang(); // the longer track's device stops rendering
+        rig.Render(200); // long enough for the pump to see it stalled
+
+        var seek = rig.Finish(rig.Start(() => rig.Engine.Seek(TimeSpan.FromSeconds(20))));
+
+        seek.IsSuccess.ShouldBeTrue(seek.Error?.Message);
+        seek.Value.OutsideFile.ShouldBeFalse("20 s is inside the 60 s file; the hung output's track has audio there");
+        rig.Events.OfType<SeekTargetOutsideFile>().ShouldBeEmpty();
+        rig.Events.OfType<RunSummary>().ShouldBeEmpty("the run goes on");
+    }
 }

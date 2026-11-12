@@ -1307,7 +1307,7 @@
         "tests/DualPlayer.Core.Tests/Fakes/"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T59-decide-a-seek-target-is-inside-the-file-from-every-active-output.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r5: U2"
     },
     {
