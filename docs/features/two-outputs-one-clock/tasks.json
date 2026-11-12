@@ -969,6 +969,188 @@
       "file": "docs/features/two-outputs-one-clock/tasks/T42-take-the-lfe-dropped-note-from-media-s-conversion.md",
       "status": "done",
       "origin": "review-2026-11-12-r2: R9"
+    },
+    {
+      "id": "T43",
+      "title": "Make Core test rigs fail instead of spinning and bound the stop wait in real time",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-08"
+      ],
+      "dod": "rigs break on no progress; WaitForDecoder fails on timeout; stop wait bounded in real time; guard tests; 5 runs no hang; gate clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineTransportTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs",
+        "src/DualPlayer.Core/Playback/AudioEngine.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T43-make-core-test-rigs-fail-instead-of-spinning-and-bound-the-stop-wait-i.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r3: S2"
+    },
+    {
+      "id": "T44",
+      "title": "Make reclaiming a stalled ring exclusive so skipped frames are never counted twice",
+      "layer": "app",
+      "deps": [
+        "T43"
+      ],
+      "acs": [
+        "AC-07",
+        "AC-11"
+      ],
+      "dod": "exclusive reclaim; stress test 0 violations; no block dropped on failed reclaim; stalled test pinned; recovery tests 15× green; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Outputs/AudioRingBuffer.cs",
+        "src/DualPlayer.Core/Playback/DecodePump.cs",
+        "tests/DualPlayer.Core.Tests/Outputs/",
+        "tests/DualPlayer.Core.Tests/Outputs/OutputRenderSourceTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T44-make-reclaiming-a-stalled-ring-exclusive-so-skipped-frames-are-never-c.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r3: S1, S8, S11"
+    },
+    {
+      "id": "T45",
+      "title": "Keep the recovery window to start, resume and seek",
+      "layer": "app",
+      "deps": [
+        "T44"
+      ],
+      "acs": [
+        "AC-07"
+      ],
+      "dod": "no recovery window on hung-output recovery; test; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineRecoveryTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T45-keep-the-recovery-window-to-start-resume-and-seek.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r3: S5"
+    },
+    {
+      "id": "T46",
+      "title": "Publish AudioStarted without waiting on stalled outputs and only for real audio",
+      "layer": "app",
+      "deps": [
+        "T45"
+      ],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "AudioStarted not blocked by a stalled output; first audio = real audio; tests; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "src/DualPlayer.Core/Outputs/OutputRenderSource.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T46-publish-audiostarted-without-waiting-on-stalled-outputs-and-only-for-r.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r3: S3"
+    },
+    {
+      "id": "T47",
+      "title": "Print the started line after the output lines and list the new events in the SAD",
+      "layer": "app",
+      "deps": [
+        "T46"
+      ],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "started line always after output lines; order test; sad.md updated; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Console/Rendering/EventPrinter.cs",
+        "src/DualPlayer.Console/Commands/PlayCommand.cs",
+        "tests/DualPlayer.Console.Tests/",
+        "docs/features/two-outputs-one-clock/sad.md"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T47-print-the-started-line-after-the-output-lines-and-list-the-new-events.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r3: S4"
+    },
+    {
+      "id": "T48",
+      "title": "Decide seek past the end from the decoder, not from the Matroska duration",
+      "layer": "integration",
+      "deps": [],
+      "acs": [
+        "AC-09",
+        "AC-10"
+      ],
+      "dod": "past-end decided by decoder; mkvmerge-style MKV test; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Media/Audio/FfmpegDecodeSession.cs",
+        "tests/DualPlayer.Media.Tests/",
+        "src/DualPlayer.Core/Playback/AudioEngine.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T48-decide-seek-past-the-end-from-the-decoder-not-from-the-matroska-durati.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r3: S6"
+    },
+    {
+      "id": "T49",
+      "title": "Carry Media's LFE-dropped fact to the start line",
+      "layer": "app",
+      "deps": [
+        "T47",
+        "T48"
+      ],
+      "acs": [
+        "AC-12"
+      ],
+      "dod": "LFE note from Media's facts; tests incl. 2.1 and 6.0; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Media/",
+        "src/DualPlayer.Core/Playback/AudioTrackInfo.cs",
+        "src/DualPlayer.Console/Rendering/ConsoleFormat.cs",
+        "tests/DualPlayer.Console.Tests/",
+        "tests/DualPlayer.Media.Tests/"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T49-carry-media-s-lfe-dropped-fact-to-the-start-line.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r3: S7"
+    },
+    {
+      "id": "T50",
+      "title": "Test the played duration of a seek past the end on both branches within 100 ms",
+      "layer": "test",
+      "deps": [
+        "T46"
+      ],
+      "acs": [
+        "AC-10",
+        "AC-13"
+      ],
+      "dod": "both past-end branches tested at ±0.1 s; gate clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineTransportTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T50-test-the-played-duration-of-a-seek-past-the-end-on-both-branches-withi.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r3: S10"
+    },
+    {
+      "id": "T51",
+      "title": "Shorten the stalled-console test and rename the play test",
+      "layer": "test",
+      "deps": [
+        "T47"
+      ],
+      "acs": [
+        "AC-13"
+      ],
+      "dod": "drain limit injectable; test < 1 s; rename; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Console/Rendering/ConsoleLineQueue.cs",
+        "tests/DualPlayer.Console.Tests/ConsoleWriteFailureTests.cs",
+        "tests/DualPlayer.Console.Tests/ListAndPlayCommandTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T51-shorten-the-stalled-console-test-and-rename-the-play-test.md",
+      "status": "todo",
+      "origin": "review-2026-11-12-r3: S9, S11"
     }
   ]
 }

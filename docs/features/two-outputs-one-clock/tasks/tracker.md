@@ -50,5 +50,14 @@
 | T40 | [Log console lines independently of the console write and always signal the run end](./T40-log-console-lines-independently-of-the-console-write-and-always-signal.md) | app | Volodymyr Kravchuk | S | T39 | done | COMMIT |
 | T41 | [Pick the seek warning by the target's sign](./T41-pick-the-seek-warning-by-the-target-s-sign.md) | app | Volodymyr Kravchuk | S | T40 | done | COMMIT |
 | T42 | [Take the LFE-dropped note from Media's conversion](./T42-take-the-lfe-dropped-note-from-media-s-conversion.md) | app | Volodymyr Kravchuk | S | T34, T41, T38 | done | COMMIT |
+| T43 | [Make Core test rigs fail instead of spinning and bound the stop wait in real time](./T43-make-core-test-rigs-fail-instead-of-spinning-and-bound-the-stop-wait-i.md) | test | Volodymyr Kravchuk | S | — | todo | SELECT |
+| T44 | [Make reclaiming a stalled ring exclusive so skipped frames are never counted twice](./T44-make-reclaiming-a-stalled-ring-exclusive-so-skipped-frames-are-never-c.md) | app | Volodymyr Kravchuk | M | T43 | todo | SELECT |
+| T45 | [Keep the recovery window to start, resume and seek](./T45-keep-the-recovery-window-to-start-resume-and-seek.md) | app | Volodymyr Kravchuk | S | T44 | todo | SELECT |
+| T46 | [Publish AudioStarted without waiting on stalled outputs and only for real audio](./T46-publish-audiostarted-without-waiting-on-stalled-outputs-and-only-for-r.md) | app | Volodymyr Kravchuk | S | T45 | todo | SELECT |
+| T47 | [Print the started line after the output lines and list the new events in the SAD](./T47-print-the-started-line-after-the-output-lines-and-list-the-new-events.md) | app | Volodymyr Kravchuk | S | T46 | todo | SELECT |
+| T48 | [Decide seek past the end from the decoder, not from the Matroska duration](./T48-decide-seek-past-the-end-from-the-decoder-not-from-the-matroska-durati.md) | integration | Volodymyr Kravchuk | S | — | todo | SELECT |
+| T49 | [Carry Media's LFE-dropped fact to the start line](./T49-carry-media-s-lfe-dropped-fact-to-the-start-line.md) | app | Volodymyr Kravchuk | S | T47, T48 | todo | SELECT |
+| T50 | [Test the played duration of a seek past the end on both branches within 100 ms](./T50-test-the-played-duration-of-a-seek-past-the-end-on-both-branches-withi.md) | test | Volodymyr Kravchuk | S | T46 | todo | SELECT |
+| T51 | [Shorten the stalled-console test and rename the play test](./T51-shorten-the-stalled-console-test-and-rename-the-play-test.md) | test | Volodymyr Kravchuk | S | T47 | todo | SELECT |
 
-**Total:** 42 tasks (T23–T33 are follow-ups from review-2026-11-12, T34–T42 from review-2026-11-12-r2), ~37 person-days (S = ½ day, M/L = 1 day; L tasks are full days with a split risk).
+**Total:** 51 tasks (T23–T33 are follow-ups from review-2026-11-12, T34–T42 from review-2026-11-12-r2, T43–T51 from review-2026-11-12-r3), ~42 person-days (S = ½ day, M/L = 1 day; L tasks are full days with a split risk).
