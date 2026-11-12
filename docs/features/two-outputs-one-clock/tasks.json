@@ -1326,7 +1326,7 @@
         "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T60-include-a-late-first-render-in-audiostarted-and-trim-the-late-start-test.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r5: U4, U5"
     }
   ]

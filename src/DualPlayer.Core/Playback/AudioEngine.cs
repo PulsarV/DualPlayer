@@ -731,6 +731,9 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         run.Publisher!.Publish(run.Clock!.PositionAt(now), samples);
     }
 
+    /// <summary>How long after the start an output that has never rendered is still awaited by <see cref="AudioStarted"/>.</summary>
+    private static readonly TimeSpan FirstAudioDeadline = TimeSpan.FromSeconds(2);
+
     /// <summary>Logs start-to-audio for every output that has rendered its first audio; true while some still have not.</summary>
     private bool LogFirstAudio(Run run)
     {
@@ -740,7 +743,9 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             if (output.Gate.FirstAudioTimestamp is not { } timestamp)
             {
                 // A hung output is not waited for, as a seek or stop does not wait for it; it is logged if it recovers.
-                awaiting |= !run.Pump!.IsStalled(output.Index);
+                // One that has never rendered is awaited until the start deadline, so a late first render is covered.
+                var neverRendered = output.Ring.LastReadTimestamp == 0 && _time.GetElapsedTime(run.StartTimestamp) < FirstAudioDeadline;
+                awaiting |= neverRendered || !run.Pump!.IsStalled(output.Index);
                 continue;
             }
 

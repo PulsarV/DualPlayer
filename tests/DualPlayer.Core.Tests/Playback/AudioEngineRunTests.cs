@@ -458,7 +458,7 @@ public sealed class AudioEngineRunTests
         rig.Engine.StartRun("film.mkv", [Assign(1, 1), Assign(2, 2)], new EngineOptions()).IsSuccess.ShouldBeTrue();
         rig.Backend.Devices["dev-2"].Hang();
 
-        rig.Render(150); // well past the one second after which an output counts as stalled
+        rig.Render(250); // past the two-second start deadline after which a never-rendered output is no longer awaited
 
         rig.WaitFor(() => rig.Events.OfType<AudioStarted>().Any()).ShouldBeTrue("AudioStarted waited for the hung output");
         var started = rig.Events.OfType<AudioStarted>().Single();
@@ -533,9 +533,15 @@ public sealed class AudioEngineRunTests
         rig.Engine.StartRun("film.mkv", [Assign(1, 1), Assign(2, 2)], new EngineOptions()).IsSuccess.ShouldBeTrue();
         rig.Backend.Devices["dev-2"].Hang();
         rig.Render(150);
-        rig.WaitFor(() => rig.Events.OfType<AudioStarted>().Any()).ShouldBeTrue();
+        rig.WaitFor(() =>
+        {
+            rig.Render(1);
+            return rig.Events.OfType<AudioStarted>().Any();
+        }).ShouldBeTrue();
 
-        rig.Render(400);
+        // Paused, no alignment keeps the poll going (a hung output stays pending while playing): only the unlogged output does.
+        rig.Engine.Pause().IsSuccess.ShouldBeTrue();
+        rig.Render(25);
         rig.Log.With("DeviceId", "StartToAudioMs").Count.ShouldBe(1, "precondition: only dev-1 logged before recovery");
         rig.Backend.Devices["dev-2"].Unhang();
         rig.Render(20);
@@ -547,6 +553,25 @@ public sealed class AudioEngineRunTests
         }).ShouldBeTrue("the recovered output never got its start-to-audio log line");
         var late = rig.Log.With("DeviceId", "StartToAudioMs").Single(e => (string)e["DeviceId"]! == "dev-2");
         ((double)late["StartToAudioMs"]!).ShouldBeGreaterThanOrEqualTo(1_000);
+        rig.Stop(RunEndReason.Stop);
+    }
+
+    [Fact]
+    public void Audio_started_waits_for_an_output_whose_first_render_is_over_a_second_late()
+    {
+        using var rig = new Rig(2);
+        rig.Engine.StartRun("film.mkv", [Assign(1, 1), Assign(2, 2)], new EngineOptions()).IsSuccess.ShouldBeTrue();
+        rig.Backend.Devices["dev-2"].Hang();
+        rig.Render(130); // dev-2 has never rendered and is now over a second past the start
+        rig.Backend.Devices["dev-2"].Unhang();
+
+        rig.WaitFor(() =>
+        {
+            rig.Render(1);
+            return rig.Events.OfType<AudioStarted>().Any();
+        }).ShouldBeTrue();
+
+        rig.Events.OfType<AudioStarted>().Single().StartToAudio.ShouldBeGreaterThanOrEqualTo(TimeSpan.FromSeconds(1));
         rig.Stop(RunEndReason.Stop);
     }
 
