@@ -1129,7 +1129,7 @@
         "tests/DualPlayer.Core.Tests/Fakes/"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T50-test-the-played-duration-of-a-seek-past-the-end-on-both-branches-withi.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r3: S10"
     },
     {

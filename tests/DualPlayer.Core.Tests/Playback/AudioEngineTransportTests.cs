@@ -38,7 +38,7 @@ public sealed class AudioEngineTransportTests
         private readonly (int Depth, int Chunk)[] _queues;
         private readonly DateTimeOffset _start;
 
-        public Rig((int Depth, int Chunk)[] queues, long totalFrames = (long)Rate * 600)
+        public Rig((int Depth, int Chunk)[] queues, long totalFrames = (long)Rate * 600, bool reportsDuration = true)
         {
             _queues = queues;
             Time = new FakeTimeProvider();
@@ -48,7 +48,7 @@ public sealed class AudioEngineTransportTests
                 backend.AddDevice(new AudioDeviceInfo($"Device {i}", null, $"dev-{i}"));
             }
 
-            Engine = new AudioEngine(new CapturingBackend(backend, _devices), new FakeAudioDecoder(Tracks, totalFrames), Time, NullLogger<AudioEngine>.Instance);
+            Engine = new AudioEngine(new CapturingBackend(backend, _devices), new FakeAudioDecoder(Tracks, totalFrames, reportsDuration), Time, NullLogger<AudioEngine>.Instance);
             Engine.Events.Subscribe(new Collector(this));
             var assignments = queues.Select((_, i) => new OutputAssignment(i + 1, DeviceRef.ByNumber(i + 1))).ToArray();
             Engine.StartRun("film.mkv", assignments, new EngineOptions()).IsSuccess.ShouldBeTrue();
@@ -488,18 +488,21 @@ public sealed class AudioEngineTransportTests
         summary.Outputs.ShouldAllBe(o => Math.Abs(o.Played.TotalSeconds - rig.Elapsed.TotalSeconds) < 1.5);
     }
 
-    [Fact]
-    public void Played_duration_after_a_seek_past_the_end_is_the_real_running_time()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Played_duration_after_a_seek_past_the_end_is_the_real_running_time(bool durationKnown)
     {
-        using var rig = new Rig([(120, 120), (120, 120)], totalFrames: (long)Rate * 60);
+        using var rig = new Rig([(120, 120), (120, 120)], totalFrames: (long)Rate * 60, reportsDuration: durationKnown);
         rig.Render(300);
+        var playTimeBeforeSeek = rig.Elapsed;
 
         rig.Call(() => rig.Engine.Seek(TimeSpan.FromMinutes(100))).IsSuccess.ShouldBeTrue();
         rig.Render(20);
 
         var summary = rig.Events.OfType<RunSummary>().Single();
         summary.EndReason.ShouldBe(RunEndReason.SeekPastEnd);
-        summary.Outputs.ShouldAllBe(o => Math.Abs(o.Played.TotalSeconds - rig.Elapsed.TotalSeconds) < 1.5);
+        summary.Outputs.ShouldAllBe(o => Math.Abs(o.Played.TotalSeconds - playTimeBeforeSeek.TotalSeconds) <= 0.1);
     }
 
     [Fact]

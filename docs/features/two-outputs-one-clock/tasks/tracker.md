@@ -57,7 +57,7 @@
 | T47 | [Print the started line after the output lines and list the new events in the SAD](./T47-print-the-started-line-after-the-output-lines-and-list-the-new-events.md) | app | Volodymyr Kravchuk | S | T46 | done | COMMIT |
 | T48 | [Decide seek past the end from the decoder, not from the Matroska duration](./T48-decide-seek-past-the-end-from-the-decoder-not-from-the-matroska-durati.md) | integration | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T49 | [Carry Media's LFE-dropped fact to the start line](./T49-carry-media-s-lfe-dropped-fact-to-the-start-line.md) | app | Volodymyr Kravchuk | S | T47, T48 | done | COMMIT |
-| T50 | [Test the played duration of a seek past the end on both branches within 100 ms](./T50-test-the-played-duration-of-a-seek-past-the-end-on-both-branches-withi.md) | test | Volodymyr Kravchuk | S | T46 | todo | SELECT |
+| T50 | [Test the played duration of a seek past the end on both branches within 100 ms](./T50-test-the-played-duration-of-a-seek-past-the-end-on-both-branches-withi.md) | test | Volodymyr Kravchuk | S | T46 | done | COMMIT |
 | T51 | [Shorten the stalled-console test and rename the play test](./T51-shorten-the-stalled-console-test-and-rename-the-play-test.md) | test | Volodymyr Kravchuk | S | T47 | todo | SELECT |
 
 **Total:** 51 tasks (T23–T33 are follow-ups from review-2026-11-12, T34–T42 from review-2026-11-12-r2, T43–T51 from review-2026-11-12-r3), ~42 person-days (S = ½ day, M/L = 1 day; L tasks are full days with a split risk).

@@ -3,8 +3,8 @@ using DualPlayer.Core.Playback;
 
 namespace DualPlayer.Core.Tests.Fakes;
 
-/// <summary>Deterministic decoder: every output gets a ramp (frame index / 1000) in blocks of 480 frames.</summary>
-internal sealed class FakeAudioDecoder(IReadOnlyList<AudioTrackInfo> tracks, long totalFrames = 48_000) : IAudioDecoder
+/// <summary>Deterministic decoder (reportsDuration false: a container without a known duration): every output gets a ramp (frame index / 1000) in blocks of 480 frames.</summary>
+internal sealed class FakeAudioDecoder(IReadOnlyList<AudioTrackInfo> tracks, long totalFrames = 48_000, bool reportsDuration = true) : IAudioDecoder
 {
     public Result<IReadOnlyList<AudioTrackInfo>> ListTracks(string path) => Result<IReadOnlyList<AudioTrackInfo>>.Success(tracks);
 
@@ -18,17 +18,17 @@ internal sealed class FakeAudioDecoder(IReadOnlyList<AudioTrackInfo> tracks, lon
             }
         }
 
-        return Result<IDecodeSession>.Success(new Session(outputs, totalFrames));
+        return Result<IDecodeSession>.Success(new Session(outputs, totalFrames, reportsDuration));
     }
 
-    private sealed class Session(IReadOnlyList<DecodeRequest> outputs, long totalFrames) : IDecodeSession
+    private sealed class Session(IReadOnlyList<DecodeRequest> outputs, long totalFrames, bool reportsDuration) : IDecodeSession
     {
         private const int BlockFrames = 480;
         private long _position;
         private int _epoch;
         private int _next;
 
-        public TimeSpan? Duration => TimeSpan.FromSeconds((double)totalFrames / outputs[0].Target.SampleRate);
+        public TimeSpan? Duration => !reportsDuration ? null : TimeSpan.FromSeconds((double)totalFrames / outputs[0].Target.SampleRate);
 
         public Result Seek(TimeSpan position, int epoch)
         {
