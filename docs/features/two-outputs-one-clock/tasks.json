@@ -967,7 +967,7 @@
         "tests/DualPlayer.Media.Tests/"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T42-take-the-lfe-dropped-note-from-media-s-conversion.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r2: R9"
     }
   ]
