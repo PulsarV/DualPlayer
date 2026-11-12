@@ -19,40 +19,52 @@ public sealed class AudioRingBufferReclaimRaceTests
         // then one-frame reads as the resampler pulls them).
         var ring = new AudioRingBuffer(Capacity, Channels);
         var writerDone = false;
-        long reclaims = 0, readsChecked = 0, violations = 0, torn = 0, maxError = 0;
+        long reclaims = 0, readsChecked = 0, violations = 0, torn = 0, maxError = 0, shortWrites = 0;
+        Exception? writerFault = null;
         var deadline = DateTime.UtcNow + RunFor;
 
         var writer = new Thread(() =>
         {
-            var block = new float[Piece * Channels];
-            long next = 0;
-            var blocks = 0;
-            while (next + Piece < TotalFrames && DateTime.UtcNow < deadline)
+            try
             {
-                if (ring.FreeFrames < Piece)
+                var block = new float[Piece * Channels];
+                long next = 0;
+                var blocks = 0;
+                while (next + Piece < TotalFrames && DateTime.UtcNow < deadline)
                 {
-                    if (ring.TryReclaimOldest(Piece, epoch: 0))
+                    if (ring.FreeFrames < Piece)
                     {
-                        reclaims++;
+                        if (ring.TryReclaimOldest(Piece, epoch: 0))
+                        {
+                            reclaims++;
+                        }
+
+                        continue;
                     }
 
-                    continue;
-                }
+                    if (++blocks % 7 == 0)
+                    {
+                        ring.NoteSkipped(100, epoch: 0); // a hole in the decoded content
+                        next += 100;
+                    }
 
-                if (++blocks % 7 == 0)
-                {
-                    ring.NoteSkipped(100, epoch: 0); // a hole in the decoded content
-                    next += 100;
-                }
+                    for (var i = 0; i < Piece; i++)
+                    {
+                        block[2 * i] = next + i;
+                        block[(2 * i) + 1] = next + i;
+                    }
 
-                for (var i = 0; i < Piece; i++)
-                {
-                    block[2 * i] = next + i;
-                    block[(2 * i) + 1] = next + i;
-                }
+                    if (ring.Write(block, epoch: 0) != Piece)
+                    {
+                        shortWrites++;
+                    }
 
-                ring.Write(block, epoch: 0).ShouldBe(Piece);
-                next += Piece;
+                    next += Piece;
+                }
+            }
+            catch (Exception ex)
+            {
+                writerFault = ex;
             }
 
             Volatile.Write(ref writerDone, true);
@@ -107,6 +119,8 @@ public sealed class AudioRingBufferReclaimRaceTests
         writer.Join(RunFor + TimeSpan.FromSeconds(10)).ShouldBeTrue("the writer must finish");
         reader.Join(TimeSpan.FromSeconds(10)).ShouldBeTrue("the reader must drain and finish");
 
+        writerFault.ShouldBeNull();
+        shortWrites.ShouldBe(0, "every write after a reclaim must be accepted in full");
         reclaims.ShouldBeGreaterThan(0, "the run must exercise reclaim");
         readsChecked.ShouldBeGreaterThan(0);
         torn.ShouldBe(0);
