@@ -30,5 +30,15 @@
 | T20 | [Console: pause, resume, seek and stop a running run from standard input](./T20-console-transport-commands.md) | ports | Volodymyr Kravchuk | M | T19, T12 | done | COMMIT |
 | T21 | [Console: print sync records, excursions, device loss and the run summary, also on Ctrl+C and window close](./T21-console-live-output-and-shutdown.md) | ports | Volodymyr Kravchuk | M | T19, T13 | done | COMMIT |
 | T22 | [Record the ≥ 3 h evidence run on the target Windows PC and commit its run summary](./T22-record-target-pc-evidence-run.md) | docs | Volodymyr Kravchuk | M | T15, T17, T20, T21 | blocked | manual — needs the ≥ 3 h run on the target Windows PC |
+| T23 | [Stop the decode pump from dropping blocks for healthy outputs and keep content position true](./T23-stop-the-decode-pump-from-dropping-blocks-for-heal.md) | app | Volodymyr Kravchuk | M | — | todo | — |
+| T24 | [Start audio exactly at the seek target and honour block start positions from the decoder](./T24-start-audio-exactly-at-the-seek-target-and-honour.md) | infra | Volodymyr Kravchuk | M | T23, T27 | todo | — |
+| T25 | [Align every output in one step at start, and keep seek confirmation and correction alive when a device hangs](./T25-align-every-output-in-one-step-at-start-and-keep-s.md) | app | Volodymyr Kravchuk | M | T23 | todo | — |
+| T26 | [Silence all outputs at the stop instant, count no underrun at file end, and warn before the summary on a seek past the end](./T26-silence-all-outputs-at-the-stop-instant-count-no-u.md) | app | Volodymyr Kravchuk | M | T25, T23, T24 | todo | — |
+| T27 | [Keep the excursion peak signed, measure played and excursion durations on running time, and ignore positions before the first render](./T27-keep-the-excursion-peak-signed-measure-played-and.md) | domain | Volodymyr Kravchuk | M | T23 | todo | — |
+| T28 | [Make the long-run, recovery and device-loss tests drive the real engine with realistic fakes](./T28-make-the-long-run-recovery-and-device-loss-tests-d.md) | app | Volodymyr Kravchuk | M | T23, T24, T25, T26, T27 | todo | — |
+| T29 | [Console: one output writer off the control loop that logs every line, keeps the summary on end of input and Ctrl+C, and numbers outputs from 1](./T29-console-one-output-writer-off-the-control-loop-tha.md) | ports | Volodymyr Kravchuk | M | T26, T27 | todo | — |
+| T30 | [Console: full start lines with source track, conversion and start-to-audio, and the FFmpeg version and license in the log](./T30-console-full-start-lines-with-source-track-convers.md) | ports | Volodymyr Kravchuk | M | T24, T29 | todo | — |
+| T31 | [Console end-to-end tests over real Core and Media with a fake backend, and a smoke test that resolves the play path](./T31-console-end-to-end-tests-over-real-core-and-media.md) | ports | Volodymyr Kravchuk | M | T29, T30 | todo | — |
+| T32 | [Platform: OS-gated hardware tests, device-loss mapping only for device errors, and a logged MMCSS failure](./T32-platform-os-gated-hardware-tests-device-loss-mappi.md) | infra | Volodymyr Kravchuk | M | — | todo | — |
 
-**Total:** 22 tasks, ~21.5 person-days (S = ½ day, M/L = 1 day; L tasks are full days with a split risk).
+**Total:** 32 tasks (T23–T32 are follow-ups from review-2026-11-12), ~31.5 person-days (S = ½ day, M/L = 1 day; L tasks are full days with a split risk).

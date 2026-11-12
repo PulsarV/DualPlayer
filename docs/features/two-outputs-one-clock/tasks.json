@@ -496,6 +496,267 @@
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T22-record-target-pc-evidence-run.md",
       "status": "blocked"
+    },
+    {
+      "id": "T23",
+      "title": "Stop the decode pump from dropping blocks for healthy outputs and keep content position true",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-07",
+        "AC-09"
+      ],
+      "dod": "a DecodePump test with mismatched block sizes (1536/1024 frames) and readers at different rates drops 0 blocks for non-stalled outputs; a block is dropped only for an output whose own ring is stalled; when frames are skipped the render source's content position advances by the skipped amount (test asserts it); `TryConsumeResumedFromStall` is used or removed",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/DecodePump.cs",
+        "src/DualPlayer.Core/Outputs/OutputRenderSource.cs",
+        "src/DualPlayer.Core/Outputs/AudioRingBuffer.cs",
+        "src/DualPlayer.Core/Playback/IAudioDecoder.cs",
+        "tests/DualPlayer.Core.Tests/Playback/DecodePumpTests.cs",
+        "tests/DualPlayer.Core.Tests/Outputs/OutputRenderSourceTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T23-stop-the-decode-pump-from-dropping-blocks-for-heal.md",
+      "status": "todo",
+      "origin": "review-2026-11-12: F3"
+    },
+    {
+      "id": "T24",
+      "title": "Start audio exactly at the seek target and honour block start positions from the decoder",
+      "layer": "infra",
+      "deps": [
+        "T23",
+        "T27"
+      ],
+      "acs": [
+        "AC-09",
+        "AC-01"
+      ],
+      "dod": "a Media test on a file whose video GOP is longer than the seek distance asserts the first decoded audio after `seek` starts at the target (± 1 audio frame duration), not at the keyframe; `StartFrame` of each block is derived from pts; Core detects a gap/overlap between consecutive blocks and keeps content position true (unit test)",
+      "files_hint": [
+        "src/DualPlayer.Media/Audio/FfmpegDecodeSession.cs",
+        "src/DualPlayer.Media/Audio/FfmpegAudioDecoder.cs",
+        "src/DualPlayer.Core/Playback/DecodePump.cs",
+        "src/DualPlayer.Core/Outputs/OutputRenderSource.cs",
+        "tests/DualPlayer.Media.Tests/Audio/FfmpegAudioDecoderTests.cs",
+        "tests/DualPlayer.Media.Tests/TestMedia/",
+        "tests/DualPlayer.Core.Tests/Playback/DecodePumpTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T24-start-audio-exactly-at-the-seek-target-and-honour.md",
+      "status": "todo",
+      "origin": "review-2026-11-12: F4"
+    },
+    {
+      "id": "T25",
+      "title": "Align every output in one step at start, and keep seek confirmation and correction alive when a device hangs",
+      "layer": "app",
+      "deps": [
+        "T23"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-06",
+        "AC-09"
+      ],
+      "dod": "with a fake device that starts reporting position 50 ms late, every output is within 10 ms of the master clock ≤ 1 s after start (engine-level test); a seek with one hung output confirms on the rendering outputs without blocking 10 s and the surviving outputs keep rate correction afterwards; `BeginEpoch` runs on every source before `Pump.Seek`",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineTransportTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/FakeAudioDevice.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T25-align-every-output-in-one-step-at-start-and-keep-s.md",
+      "status": "todo",
+      "origin": "review-2026-11-12: F5, F7, F20"
+    },
+    {
+      "id": "T26",
+      "title": "Silence all outputs at the stop instant, count no underrun at file end, and warn before the summary on a seek past the end",
+      "layer": "app",
+      "deps": [
+        "T25",
+        "T23",
+        "T24"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-10",
+        "AC-13"
+      ],
+      "dod": "on `stop` every output falls silent at the chosen stop instant within 10 ms of each other by device position before devices close (test mirrors the pause-alignment test); stop while paused plays no audio after the pause instant; a run to end of file reports `Underruns == 0` per output; on a seek past the end the console prints the out-of-file warning before the run summary",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "src/DualPlayer.Core/Outputs/OutputRenderSource.cs",
+        "src/DualPlayer.Core/Playback/EngineEvents.cs",
+        "src/DualPlayer.Console/Commands/RunCommandLoop.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineTransportTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs",
+        "tests/DualPlayer.Console.Tests/RunCommandLoopTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T26-silence-all-outputs-at-the-stop-instant-count-no-u.md",
+      "status": "todo",
+      "origin": "review-2026-11-12: F2, F6, F13"
+    },
+    {
+      "id": "T27",
+      "title": "Keep the excursion peak signed, measure played and excursion durations on running time, and ignore positions before the first render",
+      "layer": "domain",
+      "deps": [
+        "T23"
+      ],
+      "acs": [
+        "AC-07",
+        "AC-13"
+      ],
+      "dod": "a behind output's excursion prints a negative `peak_ms`; played duration after `seek +60` equals the real running time; an excursion open at a seek is closed with its pre-seek end and a non-negative duration; `TryGetLatestPosition` returns false before the first render and the clock-mismatch estimate is never anchored at timestamp 0",
+      "files_hint": [
+        "src/DualPlayer.Core/Diagnostics/ExcursionTracker.cs",
+        "src/DualPlayer.Core/Diagnostics/RunSummaryBuilder.cs",
+        "src/DualPlayer.Core/Outputs/OutputRenderSource.cs",
+        "src/DualPlayer.Core/Sync/ClockMismatchEstimator.cs",
+        "src/DualPlayer.Console/Rendering/EventPrinter.cs",
+        "tests/DualPlayer.Core.Tests/Diagnostics/",
+        "tests/DualPlayer.Core.Tests/Outputs/OutputRenderSourceTests.cs",
+        "tests/DualPlayer.Console.Tests/EventPrinterTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T27-keep-the-excursion-peak-signed-measure-played-and.md",
+      "status": "todo",
+      "origin": "review-2026-11-12: F9, F10, F22"
+    },
+    {
+      "id": "T28",
+      "title": "Make the long-run, recovery and device-loss tests drive the real engine with realistic fakes",
+      "layer": "app",
+      "deps": [
+        "T23",
+        "T24",
+        "T25",
+        "T26",
+        "T27"
+      ],
+      "acs": [
+        "AC-06",
+        "AC-07",
+        "AC-09"
+      ],
+      "dod": "the 3 h simulation runs through `AudioEngine` with fake devices at ±200 ppm on `FakeTimeProvider` at the engine's real sampling cadence and asserts max steady-state drift ≤ 10 ms and 0 underruns; recovery-after-start/resume/seek tests go through the engine; `DriftController.PendingRealignment` is removed if unused; fakes support mismatched block sizes, per-output rates, start latency and an early-landing seek; a three-output test loses two devices in turn and the third keeps 0 underruns",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/LongRunSimulationTests.cs",
+        "tests/DualPlayer.Core.Tests/Sync/DriftControllerTests.cs",
+        "src/DualPlayer.Core/Sync/DriftController.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineSyncRecordTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T28-make-the-long-run-recovery-and-device-loss-tests-d.md",
+      "status": "todo",
+      "origin": "review-2026-11-12: F14, F16"
+    },
+    {
+      "id": "T29",
+      "title": "Console: one output writer off the control loop that logs every line, keeps the summary on end of input and Ctrl+C, and numbers outputs from 1",
+      "layer": "ports",
+      "deps": [
+        "T26",
+        "T27"
+      ],
+      "acs": [
+        "AC-06",
+        "AC-08",
+        "AC-09",
+        "AC-10",
+        "AC-13"
+      ],
+      "dod": "end of standard input during a run stops the run and the run summary is printed to the console before the process exits (test with stdin returning null mid-run); the Ctrl+C path and end of input cannot race to drop the summary; engine events are written by a dedicated writer (a blocked writer does not block the publishing thread — test); every console line during a run (start lines, paused/resumed/seek confirmed, warnings, unknown command) is also written to the log; `device-lost` prints the same 1-based output number as the start lines",
+      "files_hint": [
+        "src/DualPlayer.Console/Rendering/EventPrinter.cs",
+        "src/DualPlayer.Console/Rendering/",
+        "src/DualPlayer.Console/Commands/RunCommandLoop.cs",
+        "src/DualPlayer.Console/Commands/PlayCommand.cs",
+        "src/DualPlayer.Console/ShutdownSignals.cs",
+        "src/DualPlayer.Console/Program.cs",
+        "tests/DualPlayer.Console.Tests/"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T29-console-one-output-writer-off-the-control-loop-tha.md",
+      "status": "todo",
+      "origin": "review-2026-11-12: F1, F8, F11, F19"
+    },
+    {
+      "id": "T30",
+      "title": "Console: full start lines with source track, conversion and start-to-audio, and the FFmpeg version and license in the log",
+      "layer": "ports",
+      "deps": [
+        "T24",
+        "T29"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-12"
+      ],
+      "dod": "the `play` start lines match cli.md §1.3 exactly (e.g. `track 1 (ukr 5.1 -> stereo, LFE dropped)` and `started   clock … start-to-audio 0.8 s`) asserted by exact-format tests; the console logs the FFmpeg version and license once at start and warns when the license is not LGPL",
+      "files_hint": [
+        "src/DualPlayer.Console/Commands/PlayCommand.cs",
+        "src/DualPlayer.Core/Playback/EngineEvents.cs",
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "src/DualPlayer.Media/Audio/MixFormatConverter.cs",
+        "src/DualPlayer.Media/Audio/FfmpegAudioDecoder.cs",
+        "src/DualPlayer.Media/Audio/FfmpegLibrary.cs",
+        "src/DualPlayer.Console/Program.cs",
+        "tests/DualPlayer.Console.Tests/ListAndPlayCommandTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T30-console-full-start-lines-with-source-track-convers.md",
+      "status": "todo",
+      "origin": "review-2026-11-12: F12, F25"
+    },
+    {
+      "id": "T31",
+      "title": "Console end-to-end tests over real Core and Media with a fake backend, and a smoke test that resolves the play path",
+      "layer": "ports",
+      "deps": [
+        "T29",
+        "T30"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-03",
+        "AC-05",
+        "AC-08",
+        "AC-09",
+        "AC-10",
+        "AC-13"
+      ],
+      "dod": "an E2E test class drives `play` through the console entry point (arguments + scripted stdin) with real `AudioEngine`, real `FfmpegAudioDecoder` on `TestMedia`, and a fake audio backend, covering the test-plan E2E rows for AC-01/02/03/05/08/09/10/13; the console smoke test resolves `PlayCommand`, `DevicesCommand`, `TracksCommand` and `IAudioEngine`",
+      "files_hint": [
+        "tests/DualPlayer.Console.Tests/E2E/",
+        "tests/DualPlayer.Console.Tests/ConsoleCompositionRootSmokeTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T31-console-end-to-end-tests-over-real-core-and-media.md",
+      "status": "todo",
+      "origin": "review-2026-11-12: F15, F27"
+    },
+    {
+      "id": "T32",
+      "title": "Platform: OS-gated hardware tests, device-loss mapping only for device errors, and a logged MMCSS failure",
+      "layer": "infra",
+      "deps": [],
+      "acs": [
+        "AC-06",
+        "AC-07"
+      ],
+      "dod": "with `DUALPLAYER_HARDWARE=1` Windows-only hardware tests are skipped on macOS and macOS-only ones on Windows (`HardwareFact` takes an OS); the vacuous macOS registration fact skips instead of passing on Windows; an `ArgumentOutOfRangeException` from `Render` is logged as a render-loop bug (Error), not a device loss, while COM/HRESULT device errors still raise device-lost (unit test on the mapper); a failed `AvSetMmThreadCharacteristics` logs a warning with the Win32 error",
+      "files_hint": [
+        "tests/Shared/HardwareFactAttribute.cs",
+        "tests/DualPlayer.Platform.Windows.Tests/",
+        "tests/DualPlayer.Platform.MacOS.Tests/",
+        "src/DualPlayer.Platform.Windows/Audio/WasapiErrorMapper.cs",
+        "src/DualPlayer.Platform.Windows/Audio/WasapiRenderThread.cs",
+        "src/DualPlayer.Platform.Windows/Audio/WasapiAudioDevice.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T32-platform-os-gated-hardware-tests-device-loss-mappi.md",
+      "status": "todo",
+      "origin": "review-2026-11-12: F17, F18, F23"
     }
   ]
 }
