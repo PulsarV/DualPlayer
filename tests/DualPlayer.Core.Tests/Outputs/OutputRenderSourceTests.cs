@@ -402,7 +402,8 @@ public sealed class OutputRenderSourceTests
             session.Release(2);
             WaitFor(() => stalled.FramesAvailable >= 1_536).ShouldBeTrue();
 
-            // The reader stops for over a second: the pump skips this output's next two blocks (1536 frames each).
+            // The reader stops for over a second: to fit this output's next two blocks (1536 frames each) the pump drops
+            // the ring's oldest frames, so the ring stays full with the newest ones (content frames 2608..4607).
             session.Release(4);
             var scratch = new float[2_000];
             var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
@@ -414,9 +415,9 @@ public sealed class OutputRenderSourceTests
             }
 
             session.Reads.ShouldBe(7);
-            stalled.FramesAvailable.ShouldBeGreaterThanOrEqualTo(1_536); // the pump keeps the newest frames of a stalled ring
+            stalled.FramesAvailable.ShouldBe(2_000); // the pump keeps the newest frames of a stalled ring
 
-            // It reads again, draining block 0; the pump then delivers block 3 (content frames 4608..6143).
+            // It reads again, draining those newest frames; the pump then delivers block 3 (content frames 4608..6143).
             var drain = new float[2_000];
             source.Render(drain, new DevicePosition(0, time.GetTimestamp()));
             session.Release(2);
@@ -427,7 +428,7 @@ public sealed class OutputRenderSourceTests
             source.Render(buffer, new DevicePosition(1_500, time.GetTimestamp()));
 
             var lastSample = (long)Math.Round(buffer[^1]);
-            lastSample.ShouldBeGreaterThan(4_608, "the last frame handed out must come from the block after the skipped ones");
+            lastSample.ShouldBeGreaterThan(4_608, "the last frame handed out must come from the block after the dropped ones");
             source.LastContentFrameHandedOut.ShouldBe(lastSample);
         }
         finally

@@ -1007,7 +1007,7 @@
         "tests/DualPlayer.Core.Tests/Outputs/OutputRenderSourceTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T44-make-reclaiming-a-stalled-ring-exclusive-so-skipped-frames-are-never-c.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12-r3: S1, S8, S11"
     },
     {

@@ -6,7 +6,8 @@ namespace DualPlayer.Core.Playback;
 /// <summary>
 /// The decode thread: pulls blocks from one <see cref="IDecodeSession"/> and fans them out to one ring per
 /// output. A full ring makes the pump wait; only an output whose ring has not been read for more than
-/// <see cref="StallThreshold"/> loses frames (and no longer paces the decoder), and the ring records how many.
+/// <see cref="StallThreshold"/> loses frames — its oldest ones, so it comes back with the newest audio — and no
+/// longer paces the decoder; the ring records how many.
 /// </summary>
 public sealed partial class DecodePump : IDisposable
 {
@@ -302,11 +303,12 @@ public sealed partial class DecodePump : IDisposable
                     continue;
                 }
 
-                // Nothing older to drop: this output loses the new frames; the ring is told how many, so its content
-                // position stays true when it reads again.
-                ring.NoteSkipped(pending.Length / ring.Channels, _epoch);
-                LogDrop(index);
-                return;
+                // Nothing was dropped because the reader is reading again (it is back): write once it has made room,
+                // waiting a slice like for any live reader, so this never spins.
+                if (ring.FreeFrames >= piece)
+                {
+                    continue;
+                }
             }
 
             // The output is alive but behind: wait for its reader, but let a seek restart the block.
