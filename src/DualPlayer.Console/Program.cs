@@ -44,7 +44,7 @@ internal static class Program
             {
                 DevicesRequest => services.GetRequiredService<DevicesCommand>().Run(stdout, stderr),
                 TracksRequest t => services.GetRequiredService<TracksCommand>().Run(t, stdout, stderr),
-                PlayRequest p => services.GetRequiredService<PlayCommand>().Run(p, stdout, stderr),
+                PlayRequest p => services.GetRequiredService<PlayCommand>().Run(p, stdout, stderr, global::System.Console.In),
                 _ => ExitUsage,
             };
         }

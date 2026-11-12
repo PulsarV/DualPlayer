@@ -449,7 +449,7 @@
         "tests/DualPlayer.Console.Tests/RunCommandLoopTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T20-console-transport-commands.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T21",
