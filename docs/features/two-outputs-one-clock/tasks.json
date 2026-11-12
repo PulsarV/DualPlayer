@@ -288,7 +288,7 @@
         "tests/DualPlayer.Core.Tests/Playback/LongRunSimulationTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T13-publish-sync-records.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T14",

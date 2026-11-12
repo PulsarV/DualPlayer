@@ -21,6 +21,12 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
     private static readonly TimeSpan AlignWindow = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan StartLevelPollInterval = TimeSpan.FromMilliseconds(2);
 
+    /// <summary>How often the control loop takes a drift reading from every output and updates its rate correction.</summary>
+    private static readonly TimeSpan SyncSampleInterval = TimeSpan.FromMilliseconds(100);
+
+    /// <summary>Readings per sync record: one record per device per second (AC-11).</summary>
+    private const int SamplesPerRecord = 10;
+
     private readonly IAudioBackend _backend;
     private readonly IAudioDecoder _decoder;
     private readonly TimeProvider _time;
@@ -161,12 +167,19 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         run.Clock.Start();
         foreach (var output in run.Outputs)
         {
+            output.Sync = new OutputSync(run.Clock, options.DriftTolerance);
+            output.Mismatch = new ClockMismatchEstimator(_time);
             output.Device.Start();
             run.Summary.OutputStarted(output.DeviceId, TimeSpan.Zero);
         }
 
         var now = _time.GetTimestamp();
+        BeginRecovery(run, now);
+        run.Publisher = new SyncRecordPublisher(
+            _events.Publish,
+            (ILogger?)_loggerFactory?.CreateLogger<SyncRecordPublisher>() ?? _logger);
         _run = run;
+        run.SyncTimer = _time.CreateTimer(_ => _loop.Post(() => OnSyncSample(run)), null, SyncSampleInterval, SyncSampleInterval);
         _loop.Polling = true; // until every output's first audio is logged
         LogRunStarted(run.Outputs.Count, _time.GetElapsedTime(startTimestamp, now).TotalMilliseconds);
         return Result<RunStarted>.Success(new RunStarted(
@@ -223,6 +236,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         var position = clock.PositionAt(now);
         run.StopTimestamp = long.MinValue;
         clock.Start();
+        BeginRecovery(run, now);
         foreach (var output in run.Outputs.Where(o => !o.Lost))
         {
             output.Source.ClearSilence();
@@ -257,6 +271,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         run.Clock!.JumpTo(target);
         run.StopTimestamp = long.MinValue; // a pause instant before the seek no longer applies
         run.Pump!.Seek(target, epoch);
+        BeginRecovery(run, now);
         foreach (var output in active)
         {
             var startFrame = (long)Math.Round(target.TotalSeconds * output.Format.SampleRate);
@@ -351,6 +366,8 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
     private void BeginAlignment(Output output, long now)
     {
+        output.Sync?.Reset();
+        output.Source.SetResamplerRatio(1.0);
         output.AlignPending = true;
         output.AlignRounds = 0;
         output.AlignUntil = now + (long)(AlignWindow.TotalSeconds * _time.TimestampFrequency);
@@ -474,19 +491,13 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         foreach (var output in run.Outputs.Where(o => !o.Lost && o.AlignPending))
         {
             var source = output.Source;
-            var rate = output.Format.SampleRate;
-            if (source.RealignsApplied < output.RealignsRequested
-                || !source.TryGetLatestPosition(out var played, out var timestamp)
-                || !source.TryGetLatestAudioBuffer(out var bufferFrame, out var bufferContent))
+            if (!TryMeasureHeardContent(output, out var content, out var heardAt))
             {
                 pending = true; // the last correction or the first audio is still on its way, or a render moved while reading
                 continue;
             }
 
-            // A device buffer is heard when the device reaches its first frame; the content it carries should be
-            // what the master clock says at that moment.
-            var heardAt = timestamp + (long)((double)(bufferFrame - played) / rate * _time.TimestampFrequency);
-            var drift = TimeSpan.FromSeconds(bufferContent / rate) - run.Clock!.PositionAt(heardAt);
+            var drift = content - run.Clock!.PositionAt(heardAt);
             var inTolerance = Math.Abs(drift.TotalMilliseconds) <= AlignTolerance.TotalMilliseconds;
             if (output.AlignRounds >= MaxAlignRounds || (inTolerance && now >= output.AlignUntil))
             {
@@ -501,12 +512,123 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             }
 
             // A hole in the audio (the decoder not keeping up) shows up as drift later: remove it and measure again.
-            source.RequestRealign(DriftController.ResamplerRealignFrames(drift, rate));
+            source.RequestRealign(DriftController.ResamplerRealignFrames(drift, output.Format.SampleRate));
             output.RealignsRequested++;
             output.AlignRounds++;
         }
 
         return pending;
+    }
+
+    /// <summary>
+    /// The content of the latest full audio buffer and the timestamp the device plays it at: a device buffer is heard
+    /// when the device reaches its first frame. False while a re-alignment or the first audio is still on its way, or
+    /// a render moved while reading.
+    /// </summary>
+    private bool TryMeasureHeardContent(Output output, out TimeSpan content, out long heardAt)
+    {
+        var source = output.Source;
+        var rate = output.Format.SampleRate;
+        if (source.RealignsApplied < output.RealignsRequested
+            || !source.TryGetLatestPosition(out var played, out var timestamp)
+            || !source.TryGetLatestAudioBuffer(out var bufferFrame, out var bufferContent))
+        {
+            content = TimeSpan.Zero;
+            heardAt = 0;
+            return false;
+        }
+
+        heardAt = timestamp + (long)((double)(bufferFrame - played) / rate * _time.TimestampFrequency);
+        content = TimeSpan.FromSeconds(bufferContent / rate);
+        return true;
+    }
+
+    /// <summary>Starts the recovery window (start, resume, seek): records in it are not held to the drift tolerance.</summary>
+    private void BeginRecovery(Run run, long now)
+    {
+        run.RecoveryUntil = now + (long)(OutputSync.RecoveryTime.TotalSeconds * _time.TimestampFrequency);
+        run.IntervalInRecovery = true;
+    }
+
+    /// <summary>
+    /// Every <see cref="SyncSampleInterval"/> on the control loop: takes a drift reading from every playing output and
+    /// updates its rate correction; every <see cref="SamplesPerRecord"/> readings publishes the sync records.
+    /// </summary>
+    private void OnSyncSample(Run run)
+    {
+        if (_run != run || run.Paused)
+        {
+            return;
+        }
+
+        var now = _time.GetTimestamp();
+        run.IntervalInRecovery |= now < run.RecoveryUntil;
+        foreach (var output in run.Outputs.Where(o => !o.Lost))
+        {
+            SampleOutput(output);
+        }
+
+        if (++run.SamplesInInterval < SamplesPerRecord)
+        {
+            return;
+        }
+
+        PublishSyncRecords(run, now);
+        run.SamplesInInterval = 0;
+        run.IntervalInRecovery = now < run.RecoveryUntil;
+    }
+
+    private void SampleOutput(Output output)
+    {
+        var source = output.Source;
+        if (source.TryGetLatestPosition(out var played, out var timestamp))
+        {
+            output.Mismatch!.AddReading(timestamp, TimeSpan.FromSeconds((double)played / output.Format.SampleRate));
+        }
+
+        if (!TryMeasureHeardContent(output, out var content, out var heardAt))
+        {
+            return;
+        }
+
+        // While a seek or resume is being aligned in steps, the rate stays at unity so the two do not fight.
+        var sync = output.Sync!;
+        sync.AddReading(content, heardAt, SyncSampleInterval, correct: !output.AlignPending);
+        if (!output.AlignPending)
+        {
+            source.SetResamplerRatio(sync.ResamplerRatio);
+        }
+    }
+
+    /// <summary>
+    /// Once per second: closes every output's record interval, re-aligns in one step an output whose drift is too
+    /// large for the rate adjustment (counting a correction), and publishes and logs one sync record per device.
+    /// </summary>
+    private void PublishSyncRecords(Run run, long now)
+    {
+        var inRecovery = run.IntervalInRecovery;
+        var samples = new List<OutputSample>(run.Outputs.Count);
+        foreach (var output in run.Outputs.Where(o => !o.Lost))
+        {
+            var source = output.Source;
+            var mayRealign = !inRecovery && !output.AlignPending && source.RealignsApplied >= output.RealignsRequested;
+            var interval = output.Sync!.CloseInterval(mayRealign);
+            if (interval.Realignment != TimeSpan.Zero)
+            {
+                source.RequestRealign(DriftController.ResamplerRealignFrames(interval.Realignment, output.Format.SampleRate));
+                output.RealignsRequested++;
+                run.Summary.RecordCorrection(output.DeviceId);
+            }
+
+            var driftMs = interval.AverageDrift.TotalMilliseconds;
+            var underruns = source.UnderrunCount;
+            run.Summary.RecordDrift(output.DeviceId, driftMs, inRecovery);
+            run.Summary.RecordClockMismatch(output.DeviceId, output.Mismatch!.EstimatedPpm);
+            run.Summary.RecordUnderruns(output.DeviceId, underruns);
+            samples.Add(new OutputSample(output.DeviceId, interval.AverageDrift, output.Sync.CorrectionPpm, underruns, inRecovery));
+        }
+
+        run.Publisher!.Publish(run.Clock!.PositionAt(now), samples);
     }
 
     /// <summary>Logs start-to-audio for every output that has rendered its first audio; true while some still have not.</summary>
@@ -541,6 +663,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         var position = run.Clock!.PositionAt(_time.GetTimestamp());
         var lost = new DeviceLost(output.Index, output.DeviceId, position, run.Outputs.Any(o => !o.Lost));
         run.Summary.RecordDeviceLost(lost);
+        run.Publisher?.OutputLost(output.DeviceId, position);
         LogDeviceLost(output.DeviceId, position.TotalSeconds, lost.OthersContinue);
         _events.Publish(lost);
 
@@ -554,8 +677,10 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
     {
         var clock = run.Clock!;
         var now = _time.GetTimestamp();
+        run.SyncTimer?.Dispose();
         StopBeyondQueue(run, now);
         run.Pump!.Dispose();
+        run.Publisher?.Finish(clock.PositionAt(now));
         foreach (var output in run.Outputs)
         {
             run.Summary.RecordUnderruns(output.DeviceId, output.Source.UnderrunCount);
@@ -576,6 +701,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
     private static void Teardown(Run run)
     {
+        run.SyncTimer?.Dispose();
         run.Pump?.Dispose();
         foreach (var output in run.Outputs)
         {
@@ -643,6 +769,19 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
         public bool Paused { get; set; }
 
+        /// <summary>Fires every sync sample interval and posts the sample to the control loop.</summary>
+        public ITimer? SyncTimer { get; set; }
+
+        public SyncRecordPublisher? Publisher { get; set; }
+
+        /// <summary>Timestamp the current recovery window (after start, resume or seek) closes at.</summary>
+        public long RecoveryUntil { get; set; }
+
+        /// <summary>Some reading of the current record interval fell inside a recovery window.</summary>
+        public bool IntervalInRecovery { get; set; }
+
+        public int SamplesInInterval { get; set; }
+
         /// <summary>Set from the decode thread when the decoder reports a failure.</summary>
         public Error? DecodeError
         {
@@ -699,6 +838,11 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
         /// <summary>Re-alignments requested so far, counted on the same scale as <see cref="OutputRenderSource.RealignsApplied"/>.</summary>
         public int RealignsRequested { get; set; }
+
+        /// <summary>Drift readings, rate correction and the one-step re-alignment decision (set when the clock starts).</summary>
+        public OutputSync? Sync { get; set; }
+
+        public ClockMismatchEstimator? Mismatch { get; set; }
     }
 
     /// <summary>
