@@ -80,26 +80,21 @@ internal sealed class RunCommandLoop(IAudioEngine engine, Func<TimeSpan> positio
             return false;
         }
 
+        // The out-of-file warning is an engine event the EventPrinter prints, before the run summary.
         var seek = result.Value;
         if (seek.OutsideFile && target > seek.Position)
         {
-            output.WriteLine("warning: target was outside the file");
             return true;
         }
 
         if (seek.OutsideFile)
         {
-            output.WriteLine($"warning: target was outside the file, playing from {ConsoleFormat.Clock(seek.Position)}");
-        }
-        else if (seek.Paused)
-        {
-            output.WriteLine($"position moved to {ConsoleFormat.Clock(seek.Position)}, still paused");
-        }
-        else
-        {
-            output.WriteLine($"seek confirmed at {ConsoleFormat.Clock(seek.Position)}");
+            return false;
         }
 
+        output.WriteLine(seek.Paused
+            ? $"position moved to {ConsoleFormat.Clock(seek.Position)}, still paused"
+            : $"seek confirmed at {ConsoleFormat.Clock(seek.Position)}");
         return false;
     }
 

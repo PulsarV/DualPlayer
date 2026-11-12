@@ -84,6 +84,25 @@ public sealed class AudioEngineRunTests
             }
         }
 
+        /// <summary>
+        /// Stops the run from its own thread while rendering on, since a stop waits until every device has played past the
+        /// stop instant and the fake devices only advance when rendered.
+        /// </summary>
+        public void Stop(RunEndReason reason)
+        {
+            var task = Task.Factory.StartNew(
+                () => Engine.Stop(reason),
+                CancellationToken.None,
+                TaskCreationOptions.LongRunning,
+                TaskScheduler.Default);
+            for (var i = 0; i < 3_000 && !task.IsCompleted; i++)
+            {
+                Render(1);
+            }
+
+            task.Wait(TimeSpan.FromSeconds(10)).ShouldBeTrue("the stop did not complete");
+        }
+
         public bool WaitFor(Func<bool> condition)
         {
             var deadline = DateTime.UtcNow + Timeout;
@@ -225,7 +244,7 @@ public sealed class AudioEngineRunTests
         result.Value.Outputs.Select(o => o.TrackNumber).ShouldBe([1, 2]);
         result.Value.ClockPosition.ShouldBe(TimeSpan.Zero);
         rig.Backend.Devices.Values.ShouldAllBe(d => d.IsStarted);
-        rig.Engine.Stop(RunEndReason.Stop);
+        rig.Stop(RunEndReason.Stop);
     }
 
     [Fact]
@@ -239,7 +258,7 @@ public sealed class AudioEngineRunTests
         result.Value.Outputs.Count.ShouldBe(3);
         result.Value.ClockPosition.ShouldBe(TimeSpan.Zero);
         rig.Backend.Devices.Values.ShouldAllBe(d => d.IsStarted);
-        rig.Engine.Stop(RunEndReason.Stop);
+        rig.Stop(RunEndReason.Stop);
     }
 
     [Fact]
@@ -285,7 +304,7 @@ public sealed class AudioEngineRunTests
         rig.Render(500);
         rig.Summary.ShouldBeNull();
 
-        rig.Engine.Stop(RunEndReason.Stop);
+        rig.Stop(RunEndReason.Stop);
         var survivor = rig.Summary!.Outputs.Single(o => o.DeviceId == "dev-1");
         survivor.Underruns.ShouldBe(0);
         survivor.Played.ShouldBeGreaterThanOrEqualTo(TimeSpan.FromSeconds(10));
@@ -317,7 +336,7 @@ public sealed class AudioEngineRunTests
         rig.Engine.StartRun("film.mkv", [Assign(1, 1), Assign(2, 2)], new EngineOptions()).IsSuccess.ShouldBeTrue();
         rig.Render(100);
 
-        rig.Engine.Stop(RunEndReason.Stop);
+        rig.Stop(RunEndReason.Stop);
 
         var summary = rig.Summary;
         summary.ShouldNotBeNull();
@@ -345,6 +364,26 @@ public sealed class AudioEngineRunTests
     }
 
     [Fact]
+    public void A_run_played_to_the_end_of_the_file_counts_no_underrun_on_any_output_even_when_the_render_buffer_does_not_divide_the_rest()
+    {
+        using var rig = new Rig(2, totalFrames: (48_000 * 2) + 137);
+        rig.Engine.StartRun("film.mkv", [Assign(1, 1), Assign(2, 2)], new EngineOptions()).IsSuccess.ShouldBeTrue();
+
+        for (var i = 0; i < 100 && rig.Summary is null; i++)
+        {
+            rig.Render(10);
+        }
+
+        rig.WaitFor(() => rig.Summary is not null).ShouldBeTrue();
+        rig.Summary!.EndReason.ShouldBe(RunEndReason.FileEnd);
+        rig.Summary.Outputs.Count.ShouldBe(2);
+        foreach (var output in rig.Summary.Outputs)
+        {
+            output.Underruns.ShouldBe(0, $"{output.DeviceId} counted an underrun at the end of the file");
+        }
+    }
+
+    [Fact]
     public void Start_to_audio_is_logged_for_every_device_and_is_at_most_two_seconds_on_the_fake_clock()
     {
         using var rig = new Rig(2);
@@ -356,7 +395,7 @@ public sealed class AudioEngineRunTests
         var entries = rig.Log.With("DeviceId", "StartToAudioMs");
         entries.Select(e => (string)e["DeviceId"]!).ShouldBe(["dev-1", "dev-2"], ignoreOrder: true);
         entries.ShouldAllBe(e => (double)e["StartToAudioMs"]! > 0 && (double)e["StartToAudioMs"]! <= 2_000);
-        rig.Engine.Stop(RunEndReason.Stop);
+        rig.Stop(RunEndReason.Stop);
     }
 
     [Fact]

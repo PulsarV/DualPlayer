@@ -85,6 +85,25 @@ public sealed class AudioEngineSyncRecordTests
             }
         }
 
+        /// <summary>
+        /// Stops the run from its own thread while rendering on, since a stop waits until every device has played past the
+        /// stop instant and the fake devices only advance when rendered.
+        /// </summary>
+        public void Stop(RunEndReason reason)
+        {
+            var task = Task.Factory.StartNew(
+                () => Engine.Stop(reason),
+                CancellationToken.None,
+                TaskCreationOptions.LongRunning,
+                TaskScheduler.Default);
+            for (var i = 0; i < 3_000 && !task.IsCompleted; i++)
+            {
+                Render(1);
+            }
+
+            task.Wait(TimeSpan.FromSeconds(10)).ShouldBeTrue("the stop did not complete");
+        }
+
         public bool WaitFor(Func<bool> condition)
         {
             var deadline = DateTime.UtcNow + Timeout;
@@ -240,7 +259,7 @@ public sealed class AudioEngineSyncRecordTests
         }
 
         rig.Log.With("DeviceId", "ClockPosition", "DriftMs", "CorrectionPpm", "Underruns").Count.ShouldBe(15);
-        rig.Engine.Stop(RunEndReason.Stop);
+        rig.Stop(RunEndReason.Stop);
     }
 
     [Fact]
@@ -255,7 +274,7 @@ public sealed class AudioEngineSyncRecordTests
 
         rig.WaitFor(() => rig.RecordsOf("dev-1").Count == 6 && rig.RecordsOf("dev-3").Count == 6).ShouldBeTrue();
         rig.RecordsOf("dev-2").Count.ShouldBe(3);
-        rig.Engine.Stop(RunEndReason.Stop);
+        rig.Stop(RunEndReason.Stop);
     }
 
     [Fact]
@@ -266,7 +285,7 @@ public sealed class AudioEngineSyncRecordTests
 
         rig.Render(2000);
         rig.WaitFor(() => rig.Records.Count == 60).ShouldBeTrue($"records: {rig.Records.Count}");
-        rig.Engine.Stop(RunEndReason.Stop);
+        rig.Stop(RunEndReason.Stop);
 
         rig.Records.Where(r => r.ClockPosition > TimeSpan.FromSeconds(2)).Max(r => Math.Abs(r.DriftMs)).ShouldBeLessThanOrEqualTo(10);
         rig.Events.OfType<Excursion>().ShouldBeEmpty();
@@ -289,7 +308,7 @@ public sealed class AudioEngineSyncRecordTests
         rig.Backend.Devices["dev-1"].StepPosition(2880); // 60 ms
         rig.Render(600);
         rig.WaitFor(() => rig.Records.Count == 2 * 10).ShouldBeTrue($"records: {rig.Records.Count}");
-        rig.Engine.Stop(RunEndReason.Stop);
+        rig.Stop(RunEndReason.Stop);
 
         var summary = rig.Summary.ShouldNotBeNull();
         summary.Outputs.Single(o => o.DeviceId == "dev-1").Corrections.ShouldBe(1);
@@ -326,7 +345,7 @@ public sealed class AudioEngineSyncRecordTests
 
         seek.IsCompleted.ShouldBeTrue();
         rig.Render(500);
-        rig.Engine.Stop(RunEndReason.Stop);
+        rig.Stop(RunEndReason.Stop);
 
         var excursion = rig.Events.OfType<Excursion>().First(e => e.DeviceId == "dev-1");
         excursion.Duration.ShouldBeGreaterThanOrEqualTo(TimeSpan.Zero);
@@ -349,7 +368,7 @@ public sealed class AudioEngineSyncRecordTests
         }
 
         rig.Render(2000);
-        rig.Engine.Stop(RunEndReason.Stop);
+        rig.Stop(RunEndReason.Stop);
 
         var summary = rig.Summary.ShouldNotBeNull();
         summary.Outputs.Single(o => o.DeviceId == "dev-1").ClockMismatchPpm.ShouldBe(200, 50);

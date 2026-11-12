@@ -21,6 +21,7 @@ public sealed class OutputRenderSource : IRenderSource
     private int _pendingRealign;
     private int _realignsApplied;
     private long _underruns;
+    private int _endedEpoch = -1;
     private long _framesPlayed;
     private long _timestamp;
     private long _framesWritten;
@@ -110,6 +111,12 @@ public sealed class OutputRenderSource : IRenderSource
         return before % 2 == 0 && deviceFrame >= 0 && before == Volatile.Read(ref _bufferVersion);
     }
 
+    /// <summary>
+    /// The decoder delivered the last frame of <paramref name="epoch"/>: once the ring is drained in that epoch a short
+    /// read is the end of the file, not an underrun.
+    /// </summary>
+    public void MarkEndOfStream(int epoch) => Volatile.Write(ref _endedEpoch, epoch);
+
     public void SetSilenceFrom(long contentFrame) => Interlocked.Exchange(ref _silenceFrom, contentFrame);
 
     public void ClearSilence()
@@ -171,7 +178,7 @@ public sealed class OutputRenderSource : IRenderSource
 
             // Underrun: the ring ran dry while the whole buffer should have been audio.
             var lastNeeded = startPosition + ((frames - 1) / ratio);
-            if (produced < frames && lastNeeded < limit && !_awaitingFirstFrame)
+            if (produced < frames && lastNeeded < limit && !_awaitingFirstFrame && Volatile.Read(ref _endedEpoch) != state.Epoch)
             {
                 Interlocked.Increment(ref _underruns);
             }

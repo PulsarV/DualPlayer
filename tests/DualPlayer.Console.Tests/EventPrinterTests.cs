@@ -36,6 +36,26 @@ public sealed class EventPrinterTests
     }
 
     [Fact]
+    public void A_seek_target_past_the_end_prints_the_warning_line()
+    {
+        using var printer = new EventPrinter(_engine.Events, _out);
+
+        _engine.Publish(new SeekTargetOutsideFile(TimeSpan.FromMinutes(20), TimeSpan.FromMinutes(10)));
+
+        Lines().ShouldBe(["warning: target was outside the file"]);
+    }
+
+    [Fact]
+    public void A_seek_target_before_the_start_prints_the_warning_with_the_position_playing_from()
+    {
+        using var printer = new EventPrinter(_engine.Events, _out);
+
+        _engine.Publish(new SeekTargetOutsideFile(TimeSpan.FromSeconds(-60), TimeSpan.Zero));
+
+        Lines().ShouldBe(["warning: target was outside the file, playing from 00:00:00.000"]);
+    }
+
+    [Fact]
     public void Records_of_two_devices_print_separate_lines_keyed_by_device()
     {
         using var printer = new EventPrinter(_engine.Events, _out);

@@ -594,7 +594,7 @@
         "tests/DualPlayer.Console.Tests/RunCommandLoopTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T26-silence-all-outputs-at-the-stop-instant-count-no-u.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-12: F2, F6, F13"
     },
     {

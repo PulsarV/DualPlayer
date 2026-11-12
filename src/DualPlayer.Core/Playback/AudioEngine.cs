@@ -15,6 +15,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 {
     private static readonly TimeSpan StartLevelTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan AlignTolerance = TimeSpan.FromMilliseconds(1);
+    private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(2);
     private const int MaxAlignRounds = 16;
 
     /// <summary>How long after a seek or resume each output keeps being re-measured, so a later hole is corrected too.</summary>
@@ -151,7 +152,15 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             [.. run.Outputs.Select(o => o.Ring)],
             _time,
             _loggerFactory?.CreateLogger<DecodePump>() ?? NullLogger<DecodePump>.Instance);
-        run.Pump.Ended += () => OnPumpEnded(run);
+        run.Pump.Ended += () =>
+        {
+            foreach (var output in run.Outputs)
+            {
+                output.Source.MarkEndOfStream(run.Pump.EndedEpoch);
+            }
+
+            OnPumpEnded(run);
+        };
         run.Pump.DecodeFailed += error => OnDecodeFailed(run, error);
         run.Pump.Faulted += _ => OnDecodeFailed(run, new Error("playback.decoder_fault", "The decoder failed unexpectedly."));
         run.Pump.Start(0);
@@ -263,6 +272,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         var outsideFile = target < TimeSpan.Zero;
         if (outsideFile)
         {
+            _events.Publish(new SeekTargetOutsideFile(target, TimeSpan.Zero));
             target = TimeSpan.Zero;
             LogSeekOutsideFile("before the start");
         }
@@ -314,6 +324,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             // The end is the container's duration; without one, the furthest audio heard before the seek.
             LogSeekOutsideFile("past the end");
             var end = run.FileDuration is { } duration ? (duration < target ? duration : target) : heardBefore;
+            _events.Publish(new SeekTargetOutsideFile(target, end));
             run.Clock.JumpTo(end);
             run.Clock.StopAt(_time.GetTimestamp());
             EndRun(run, RunEndReason.SeekPastEnd);
@@ -381,6 +392,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         foreach (var output in active)
         {
             output.Source.SetSilenceFrom((long)Math.Ceiling(stopInstant.TotalSeconds * output.Format.SampleRate));
+            output.StopDeviceFrame = output.Source.LatestFramesPlayed + (long)Math.Ceiling(queued.TotalSeconds * output.Format.SampleRate);
         }
 
         run.StopTimestamp = now + (long)(queued.TotalSeconds * _time.TimestampFrequency);
@@ -701,7 +713,12 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         var clock = run.Clock!;
         var now = _time.GetTimestamp();
         run.SyncTimer?.Dispose();
-        StopBeyondQueue(run, now);
+        if (!run.Paused)
+        {
+            StopBeyondQueue(run, now); // paused: already silent from the pause instant, which must not move later
+        }
+
+        WaitForDevicesToPassStop(run);
         run.Pump!.Dispose();
         run.Publisher?.Finish(clock.PositionAt(now));
         foreach (var output in run.Outputs)
@@ -720,6 +737,24 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         _loop.Polling = false;
         _events.Publish(summary);
         Teardown(run);
+    }
+
+    /// <summary>
+    /// Blocks the loop until every output's device has played past the stop instant, so no device closes (and cuts its
+    /// queued audio) while another is still audible. Hung and lost outputs are not waited for; bounded by <see cref="StopTimeout"/>.
+    /// </summary>
+    private void WaitForDevicesToPassStop(Run run)
+    {
+        var deadline = _time.GetTimestamp() + (long)(StopTimeout.TotalSeconds * _time.TimestampFrequency);
+        while (run.Outputs.Any(o => !o.Lost && !run.Pump!.IsStalled(o.Index) && o.Source.LatestFramesPlayed < o.StopDeviceFrame))
+        {
+            if (_time.GetTimestamp() >= deadline || Volatile.Read(ref _disposed) != 0)
+            {
+                return;
+            }
+
+            Thread.Sleep(StartLevelPollInterval);
+        }
     }
 
     private static void Teardown(Run run)
@@ -850,6 +885,9 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         public EventHandler LostHandler { get; set; } = static (_, _) => { };
 
         public bool Lost { get; set; }
+
+        /// <summary>Device position at which the output has played everything up to the last stop or pause instant.</summary>
+        public long StopDeviceFrame { get; set; }
 
         /// <summary>The output's audio must still be re-aligned to the master clock (after a seek or resume).</summary>
         public bool AlignPending { get; set; }

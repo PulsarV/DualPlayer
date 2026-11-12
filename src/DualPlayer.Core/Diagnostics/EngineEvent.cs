@@ -17,6 +17,9 @@ public sealed record SyncRecord(string DeviceId, TimeSpan ClockPosition, double 
 
 public sealed record Excursion(string DeviceId, TimeSpan Start, TimeSpan Duration, double PeakMs) : EngineEvent;
 
+/// <summary>A seek target lay before the start or past the end of the file; <paramref name="Position"/> is where playback went instead.</summary>
+public sealed record SeekTargetOutsideFile(TimeSpan Target, TimeSpan Position) : EngineEvent;
+
 public sealed record DeviceLost(int OutputIndex, string DeviceId, TimeSpan ClockPosition, bool OthersContinue) : EngineEvent;
 
 public sealed record OutputSummary(

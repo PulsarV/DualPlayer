@@ -115,26 +115,26 @@ public sealed class RunCommandLoopTests
     }
 
     [Fact]
-    public void Seek_before_the_start_warns_and_plays_from_the_beginning()
+    public void Seek_before_the_start_plays_from_the_beginning_and_leaves_the_warning_to_the_event_printer()
     {
         _engine.Position = TimeSpan.FromSeconds(5);
 
         Run("seek -60", "stop");
 
-        OutLines().ShouldContain("warning: target was outside the file, playing from 00:00:00.000");
+        OutLines().ShouldNotContain(l => l.StartsWith("warning:", StringComparison.Ordinal), "the warning is an engine event printed once by the EventPrinter");
         _engine.Position.ShouldBe(TimeSpan.Zero);
         _engine.Paused.ShouldBeFalse();
     }
 
     [Fact]
-    public void Seek_past_the_end_warns_and_the_loop_returns_with_exit_0_without_reading_further_commands()
+    public void Seek_past_the_end_leaves_the_warning_to_the_event_printer_and_the_loop_returns_with_exit_0_without_reading_further_commands()
     {
         _engine.Position = TimeSpan.FromMinutes(9);
 
         var exit = Run("seek +600", "pause", "seek +1", "stop");
 
         exit.ShouldBe(0);
-        OutLines().ShouldContain("warning: target was outside the file");
+        OutLines().ShouldNotContain(l => l.StartsWith("warning:", StringComparison.Ordinal), "the warning is an engine event printed once by the EventPrinter");
         _engine.Position.ShouldBe(Duration);
         _engine.Calls.ShouldBe(["Seek"]);
     }

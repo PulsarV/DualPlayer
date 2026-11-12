@@ -232,6 +232,101 @@ public sealed class AudioEngineTransportTests
     }
 
     [Fact]
+    public void Stop_silences_devices_with_different_queue_depths_within_ten_ms_of_each_other_and_closes_them_only_after_every_device_passed_the_stop_instant()
+    {
+        using var rig = new Rig([(480, 480), (1_920, 480)]);
+        rig.Render(100);
+
+        rig.Call(() =>
+        {
+            rig.Engine.Stop(RunEndReason.Stop);
+            return 0;
+        });
+
+        var first = SilentFrom(rig.Devices[0]);
+        var second = SilentFrom(rig.Devices[1]);
+        (Math.Abs(first - second) / (double)Rate).ShouldBeLessThanOrEqualTo(ToleranceSeconds, $"silent from device frame {first} vs {second}");
+        for (var d = 0; d < rig.Devices.Count; d++)
+        {
+            var device = rig.Devices[d];
+            device.IsClosed.ShouldBeTrue();
+            device.PlayedFramesNow.ShouldBeGreaterThanOrEqualTo(SilentFrom(device), $"device {d + 1} was closed before it played up to the stop instant");
+        }
+
+        rig.Events.OfType<RunSummary>().Single().EndReason.ShouldBe(RunEndReason.Stop);
+    }
+
+    [Fact]
+    public void Stop_while_paused_plays_no_audio_after_the_pause_instant()
+    {
+        using var rig = new Rig([(480, 480), (1_920, 480)]);
+        rig.Render(100);
+        rig.Call(rig.Engine.Pause).IsSuccess.ShouldBeTrue();
+        rig.Render(20);
+        var audibleUntil = rig.Devices.Select(SilentFrom).ToArray();
+
+        rig.Call(() =>
+        {
+            rig.Engine.Stop(RunEndReason.Stop);
+            return 0;
+        });
+        rig.Render(20);
+
+        for (var d = 0; d < rig.Devices.Count; d++)
+        {
+            SilentFrom(rig.Devices[d]).ShouldBe(audibleUntil[d], $"device {d + 1} played audio after the pause instant");
+        }
+    }
+
+    [Fact]
+    public void Seeking_past_the_end_publishes_the_out_of_file_notice_before_the_run_summary()
+    {
+        using var rig = new Rig([(120, 120), (120, 120)], totalFrames: (long)Rate * 60);
+        rig.Render(100);
+        var seekReturned = false;
+        SeekTargetOutsideFile? notice = null;
+        var noticeBeforeSummary = false;
+        var summarySeenAfterSeekReturned = false;
+        using var probe = rig.Engine.Events.Subscribe(new Probe(e =>
+        {
+            if (e is RunSummary)
+            {
+                summarySeenAfterSeekReturned = Volatile.Read(ref seekReturned);
+                noticeBeforeSummary = rig.Events.OfType<SeekTargetOutsideFile>().Any();
+            }
+        }));
+        using var noticeProbe = rig.Engine.Events.Subscribe(new Probe(e => notice ??= e as SeekTargetOutsideFile));
+
+        rig.Call(() =>
+        {
+            var result = rig.Engine.Seek(TimeSpan.FromMinutes(10));
+            Volatile.Write(ref seekReturned, true);
+            return result;
+        }).IsSuccess.ShouldBeTrue();
+        rig.Render(20);
+
+        rig.Events.OfType<RunSummary>().Count().ShouldBe(1);
+        rig.Events.OfType<SeekTargetOutsideFile>().Count().ShouldBe(1);
+        noticeBeforeSummary.ShouldBeTrue("the run summary was published with no SeekTargetOutsideFile before it (cli.md 1.4: warning first, then summary)");
+        summarySeenAfterSeekReturned.ShouldBeFalse("the summary is published inside Seek, after the notice");
+        notice!.Target.ShouldBe(TimeSpan.FromMinutes(10));
+        notice.Position.ShouldBeLessThan(notice.Target);
+    }
+
+    private sealed class Probe(Action<EngineEvent> onNext) : IObserver<EngineEvent>
+    {
+        public void OnCompleted()
+        {
+        }
+
+        public void OnError(Exception error)
+        {
+        }
+
+        public void OnNext(EngineEvent value) => onNext(value);
+    }
+
+    [Fact]
     public void Pausing_while_already_paused_replies_with_the_current_position()
     {
         using var rig = SmallQueues();
@@ -366,7 +461,11 @@ public sealed class AudioEngineTransportTests
         rig.Call(() => rig.Engine.Seek(TimeSpan.FromSeconds(63))).IsSuccess.ShouldBeTrue();
         rig.Render(200);
 
-        rig.Engine.Stop(RunEndReason.Stop);
+        rig.Call(() =>
+        {
+            rig.Engine.Stop(RunEndReason.Stop);
+            return 0;
+        });
 
         var summary = rig.Events.OfType<RunSummary>().Single();
         summary.Outputs.ShouldAllBe(o => Math.Abs(o.Played.TotalSeconds - rig.Elapsed.TotalSeconds) < 1.5);
@@ -382,7 +481,11 @@ public sealed class AudioEngineTransportTests
         rig.Call(() => rig.Engine.Seek(TimeSpan.FromSeconds(20))).IsSuccess.ShouldBeTrue();
         rig.Render(200);
 
-        rig.Engine.Stop(RunEndReason.Stop);
+        rig.Call(() =>
+        {
+            rig.Engine.Stop(RunEndReason.Stop);
+            return 0;
+        });
 
         var summary = rig.Events.OfType<RunSummary>().Single();
         summary.Outputs.ShouldAllBe(o => Math.Abs(o.Played.TotalSeconds - rig.Elapsed.TotalSeconds) < 1.5);

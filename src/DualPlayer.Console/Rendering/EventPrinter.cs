@@ -47,6 +47,11 @@ internal sealed class EventPrinter : IObserver<EngineEvent>, IDisposable
                     CultureInfo.InvariantCulture,
                     $"device-lost  output {d.OutputIndex}  device {d.DeviceId}  clock {ConsoleFormat.Clock(d.ClockPosition)}  {(d.OthersContinue ? "others continue" : "last output, run ends")}"));
                 break;
+            case SeekTargetOutsideFile o:
+                Write(o.Target > o.Position
+                    ? "warning: target was outside the file"
+                    : $"warning: target was outside the file, playing from {ConsoleFormat.Clock(o.Position)}");
+                break;
             case RunSummary s:
                 ExitCode = s.EndReason == RunEndReason.AllDevicesLost ? 3 : 0;
                 foreach (var line in RunSummaryPrinter.Lines(s))
