@@ -458,7 +458,7 @@ public sealed class AudioEngineRunTests
         rig.Engine.StartRun("film.mkv", [Assign(1, 1), Assign(2, 2)], new EngineOptions()).IsSuccess.ShouldBeTrue();
         rig.Backend.Devices["dev-2"].Hang();
 
-        rig.Render(1);
+        rig.Render(150); // 10 ms steps: the hung output stops holding the release once it counts as stalled (~1 s)
         rig.Time.Advance(TimeSpan.FromSeconds(5)); // past the start deadline after which a never-rendered output is no longer awaited
         rig.Render(2);
 
@@ -469,8 +469,8 @@ public sealed class AudioEngineRunTests
         }).ShouldBeTrue("AudioStarted waited for the hung output");
         var started = rig.Events.OfType<AudioStarted>().Single();
 
-        // The film is released only when every output moved or the first-audio deadline passed (ADR-0008).
-        started.StartToAudio.ShouldBeLessThanOrEqualTo(TimeSpan.FromSeconds(5.1), "the hung output held the start past the first-audio deadline");
+        // The film is released once every output moved or is stalled, not held to the first-audio deadline (ADR-0008).
+        started.StartToAudio.ShouldBeInRange(TimeSpan.FromSeconds(1.0), TimeSpan.FromSeconds(1.2), "the hung output held the release past its stall");
         rig.Stop(RunEndReason.Stop);
         rig.Events.OfType<AudioStarted>().Count().ShouldBe(1);
     }

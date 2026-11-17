@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-17: N1, N2"
-status: "todo"
-step: "SELECT"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-17. Work from what is inlined here; the source always wins.
@@ -30,6 +30,6 @@ See [spec.md](../spec.md) §5 AC-01; [ADR-0008](../adr/0008-start-the-master-clo
 
 ## Definition of Done
 
-- [ ] The three comments describe what the code does.
-- [ ] The test advances the fake clock in ~10 ms steps and asserts `StartToAudio` within ~1.0–1.2 s; it fails if the release waits for `FirstAudioDeadline`.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The three comments describe what the code does.
+- [x] The test advances the fake clock in ~10 ms steps and asserts `StartToAudio` within ~1.0–1.2 s; it fails if the release waits for `FirstAudioDeadline`.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

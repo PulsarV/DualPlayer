@@ -18,7 +18,10 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
     private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(2);
     private const int MaxAlignRounds = 16;
 
-    /// <summary>Lead between the release and the clock start, so every output still gets its first film frame on time.</summary>
+    /// <summary>
+    /// Added after the moment the slowest output hears the next frame it is handed (so the clock starts ≈ L_max + this after
+    /// the release), so every output still gets its first film frame on time.
+    /// </summary>
     private static readonly TimeSpan StartMargin = TimeSpan.FromMilliseconds(30);
 
     /// <summary>How long after a seek or resume each output keeps being re-measured, so a later hole is corrected too.</summary>
@@ -370,7 +373,8 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
     /// <summary>
     /// A command given during the start's pre-roll waits on the loop until the master clock has started, then runs as
-    /// it would afterwards: no film plays while paused and the start is not broken. Bounded by the first-audio deadline.
+    /// it would afterwards: no film plays while paused and the start is not broken. Bounded by
+    /// <see cref="FirstAudioDeadline"/> + <see cref="StartLevelTimeout"/> after the start.
     /// </summary>
     private Result WaitForClockStart(Run run)
     {
@@ -860,9 +864,10 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
     }
 
     /// <summary>
-    /// How long after the start an output whose position has not moved holds the film's release, and an output that has never
-    /// rendered is still awaited by <see cref="AudioStarted"/>: above the 3 s start-to-audio budget, so a first render that
-    /// misses the budget is reported, not hidden behind a faster output.
+    /// How long after the start an output whose position has not moved can hold the film's release (only while it keeps
+    /// rendering: one that stops counts as stalled after <see cref="DecodePump.StallThreshold"/> and no longer holds it),
+    /// and an output that has never rendered is still awaited by <see cref="AudioStarted"/>: above the 3 s start-to-audio
+    /// budget, so a first render that misses the budget is reported, not hidden behind a faster output.
     /// </summary>
     private static readonly TimeSpan FirstAudioDeadline = TimeSpan.FromSeconds(5);
 
