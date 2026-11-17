@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "L"
 context_budget: "L"
 origin: "target-PC diagnosis 2026-11-17; ADR-0008"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from the target-PC diagnosis. Work from what is inlined here; the source always wins.
@@ -35,7 +35,7 @@ Measuring later does not help: the first ~1 s of film is already queued in the h
 4. **Release**: give each output a silence insert of `(L_max − L_i)` frames before film frame 0 (negative `RequestRealign` before any film is consumed), then `ClearSilence()` on all outputs together.
 5. Start the master clock at 00:00 when the slowest output hears film frame 0 (≈ release + `L_max`); then `BeginRecovery` and the existing one-step `BeginAlignment` as today (measurements are valid now, so it only trims a residual of about one device period).
 6. Resume and seek are unchanged (ADR-0006: streams keep running, no stall).
-7. Commands during the pre-roll (pause, seek) must not play film while paused or break the start. Simplest acceptable rule: refuse them with a plain-language "the run is still starting" error, or queue them. Pick one and test it.
+7. Commands during the pre-roll (chosen: queued — pause, resume and seek wait on the loop until the clock has started, then run as usual) (pause, seek) must not play film while paused or break the start. Simplest acceptable rule: refuse them with a plain-language "the run is still starting" error, or queue them. Pick one and test it.
 
 ## Pinning test (already written, RED on the current engine)
 
@@ -108,10 +108,10 @@ See [spec.md](../spec.md) §5 AC-01 (outputs start together from the beginning) 
 
 ## Definition of Done
 
-- [ ] With one zero-latency output and one output that takes audio while reading position 0 for 980 ms, both hear content = master clock within 10 ms from 1 s after the clock starts; no one-step correction is counted at start; no film is rendered on any output before the release.
-- [ ] Three or more outputs with different start lags (0, 600, 980 ms) align the same way.
-- [ ] An output whose position never moves does not hold the clock past `FirstAudioDeadline`; the others start.
-- [ ] Pause / seek during the pre-roll follow the rule chosen in Decision step 7, with a test.
-- [ ] Existing test rigs (`EngineRig`, `AudioEngineStartAndHangTests.Rig`, Console tests) take the clock start from the engine instead of assuming it is the start command; no test weakened.
-- [ ] Console `start-to-audio` still means "until film is heard on every output" and includes the pre-roll.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean.
+- [x] With one zero-latency output and one output that takes audio while reading position 0 for 980 ms, both hear content = master clock within 10 ms from 1 s after the clock starts; no one-step correction is counted at start; no film is rendered on any output before the release.
+- [x] Three or more outputs with different start lags (0, 600, 980 ms) align the same way.
+- [x] An output whose position never moves does not hold the clock past `FirstAudioDeadline`; the others start.
+- [x] Pause / seek during the pre-roll follow the rule chosen in Decision step 7, with a test.
+- [x] Existing test rigs (`EngineRig`, `AudioEngineStartAndHangTests.Rig`, Console tests) take the clock start from the engine instead of assuming it is the start command; no test weakened.
+- [x] Console `start-to-audio` still means "until film is heard on every output" and includes the pre-roll.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean.

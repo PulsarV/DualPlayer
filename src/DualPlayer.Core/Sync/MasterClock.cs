@@ -36,6 +36,21 @@ public sealed class MasterClock(TimeProvider time)
         }
     }
 
+    /// <summary>Starts the clock as if it had started at <paramref name="timestamp"/> (a moment that has already passed).</summary>
+    public void StartAt(long timestamp)
+    {
+        lock (_gate)
+        {
+            if (_running)
+            {
+                return;
+            }
+
+            _baseTimestamp = timestamp;
+            _running = true;
+        }
+    }
+
     public void StopAt(long timestamp)
     {
         lock (_gate)

@@ -82,6 +82,9 @@ internal sealed class EngineRig : IDisposable
 
     public TimeSpan Elapsed => Time.GetUtcNow() - _origin;
 
+    /// <summary>When the master clock read 00:00 (rig time): the start command plus the engine's start-to-audio (ADR-0008).</summary>
+    public TimeSpan ClockStart { get; private set; }
+
     /// <summary>Where the master clock should read now, as the test knows it from the commands it gave.</summary>
     public TimeSpan Position => _paused ? _positionBase : _positionBase + (Elapsed - _positionSince);
 
@@ -107,10 +110,23 @@ internal sealed class EngineRig : IDisposable
         var assignments = Enumerable.Range(0, _specs.Length)
             .Select(i => new OutputAssignment((i % 2) + 1, DeviceRef.ByNumber(i + 1)))
             .ToArray();
+        var commandAt = Elapsed;
         Engine.StartRun("film.mkv", assignments, new EngineOptions()).IsSuccess.ShouldBeTrue();
         _positionBase = TimeSpan.Zero;
-        _positionSince = Elapsed;
+        _paused = true; // the clock holds 00:00 through the silent pre-roll
         Fill();
+
+        // The engine starts the clock when the slowest output hears film frame 0; the rig takes that instant from it.
+        for (var i = 0; i < 700 && !Events.OfType<AudioStarted>().Any(); i++)
+        {
+            Advance(barrier: true);
+        }
+
+        var started = Events.OfType<AudioStarted>().FirstOrDefault();
+        started.ShouldNotBeNull("the master clock never started");
+        ClockStart = commandAt + started.StartToAudio;
+        _positionSince = ClockStart;
+        _paused = false;
     }
 
     /// <summary>Advances fake time by <paramref name="steps"/> x 10 ms.</summary>

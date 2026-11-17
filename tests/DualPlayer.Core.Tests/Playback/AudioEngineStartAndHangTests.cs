@@ -35,11 +35,17 @@ public sealed class AudioEngineStartAndHangTests
         private readonly DateTimeOffset _start;
         private readonly int _depth;
         private readonly int _chunk;
+        private readonly bool _pullsDuringStartLatency;
 
-        public Rig(TimeSpan[] latencies, double ppm = 0, long totalFrames = (long)Rate * 600, int depth = 120, int chunk = 120)
+        /// <param name="pullsDuringStartLatency">
+        /// The device takes audio at its rate from the start while its position still reads 0, as a Bluetooth headset
+        /// does (measured on the target PC: position 0 for ~0.6–1 s, then <c>elapsed − position</c> stays constant).
+        /// </param>
+        public Rig(TimeSpan[] latencies, double ppm = 0, long totalFrames = (long)Rate * 600, int depth = 120, int chunk = 120, bool pullsDuringStartLatency = false)
         {
             _depth = depth;
             _chunk = chunk;
+            _pullsDuringStartLatency = pullsDuringStartLatency;
             Time = new FakeTimeProvider();
             var backend = new FakeAudioBackend(Time, Stereo) { PpmOffset = ppm };
             for (var i = 1; i <= latencies.Length; i++)
@@ -63,6 +69,20 @@ public sealed class AudioEngineStartAndHangTests
         public IReadOnlyList<FakeAudioDevice> Devices => _devices;
 
         public TimeSpan Elapsed => Time.GetUtcNow() - _start;
+
+        /// <summary>When the master clock started at 00:00, after the start command (read from the engine's AudioStarted).</summary>
+        public TimeSpan ClockStart => Events.OfType<AudioStarted>().Single().StartToAudio;
+
+        /// <summary>Renders until the master clock has started; fails when it does not within <paramref name="steps"/> steps.</summary>
+        public void RenderUntilClockStarts(int steps = 700)
+        {
+            for (var i = 0; i < steps && !Events.OfType<AudioStarted>().Any(); i++)
+            {
+                Render(1);
+            }
+
+            Events.OfType<AudioStarted>().ShouldNotBeEmpty("the master clock never started");
+        }
 
         public IReadOnlyList<SyncRecord> RecordsOf(string deviceId)
         {
@@ -128,7 +148,15 @@ public sealed class AudioEngineStartAndHangTests
                     continue;
                 }
 
-                while (device.WrittenFrames < device.PlayedFramesNow + _depth)
+                var target = _pullsDuringStartLatency
+                    ? device.PlayedFramesNow + (long)(device.StartLatency.TotalSeconds * Rate) + _depth
+                    : device.PlayedFramesNow + _depth;
+                if (_pullsDuringStartLatency && device.PlayedFramesNow == 0)
+                {
+                    target = (long)(Elapsed.TotalSeconds * Rate) + _depth; // still silent: the device takes audio at its rate
+                }
+
+                while (device.WrittenFrames < target)
                 {
                     device.PumpRender(_chunk);
                 }
@@ -193,11 +221,121 @@ public sealed class AudioEngineStartAndHangTests
     {
         using var rig = new Rig([TimeSpan.Zero, TimeSpan.FromMilliseconds(50)]);
 
+        rig.RenderUntilClockStarts();
         rig.Render(160);
 
         foreach (var device in rig.Devices)
         {
-            AssertInSync(device, TimeSpan.Zero, TimeSpan.Zero, 1.0, 1.5);
+            AssertInSync(device, rig.ClockStart, TimeSpan.Zero, 1.0, 1.5);
+        }
+    }
+
+    /// <summary>No film is heard on <paramref name="device"/> before <paramref name="clockStart"/>: its first content frame is heard then.</summary>
+    private static void AssertFilmFirstHeardAt(FakeAudioDevice device, TimeSpan clockStart)
+    {
+        var first = -1;
+        for (var i = 0; i < device.Rendered.Count && first < 0; i++)
+        {
+            first = device.Rendered[i] != 0f ? i : -1;
+        }
+
+        first.ShouldBeGreaterThan(0, "the device never heard film");
+        var heardAt = device.StartLatency.TotalSeconds + ((first - 1.0) / Rate); // content frame 0 carries 0, so frame 1 marks the film
+        Math.Abs(heardAt - clockStart.TotalSeconds).ShouldBeLessThanOrEqualTo(ToleranceSeconds, $"film frame 0 heard at {heardAt:F3} s, clock started at {clockStart.TotalSeconds:F3} s");
+    }
+
+    private static RunSummary StopAndSummarize(Rig rig)
+    {
+        rig.Call(() =>
+        {
+            rig.Engine.Stop(RunEndReason.Stop);
+            return 0;
+        });
+        return rig.Events.OfType<RunSummary>().Single();
+    }
+
+    [Fact]
+    public void A_bluetooth_output_that_takes_audio_while_its_position_reads_zero_for_a_second_is_aligned_once_it_plays()
+    {
+        using var rig = new Rig([TimeSpan.Zero, TimeSpan.FromMilliseconds(980)], depth: 1_920, chunk: 480, pullsDuringStartLatency: true);
+
+        rig.RenderUntilClockStarts();
+        rig.Render(320);
+
+        var clockStart = rig.ClockStart;
+        foreach (var device in rig.Devices)
+        {
+            AssertFilmFirstHeardAt(device, clockStart);
+            AssertInSync(device, clockStart, TimeSpan.Zero, 1.0, 2.9);
+        }
+
+        StopAndSummarize(rig).Outputs.ShouldAllBe(o => o.Corrections == 0, "no one-step correction at start");
+    }
+
+    [Fact]
+    public void Three_outputs_with_start_lags_of_zero_six_hundred_and_nine_hundred_eighty_ms_hear_film_frame_zero_together()
+    {
+        using var rig = new Rig([TimeSpan.Zero, TimeSpan.FromMilliseconds(600), TimeSpan.FromMilliseconds(980)], depth: 1_920, chunk: 480, pullsDuringStartLatency: true);
+
+        rig.RenderUntilClockStarts();
+        rig.Render(320);
+
+        var clockStart = rig.ClockStart;
+        clockStart.ShouldBeLessThanOrEqualTo(TimeSpan.FromSeconds(3), "start command to audio on every output");
+        foreach (var device in rig.Devices)
+        {
+            AssertFilmFirstHeardAt(device, clockStart);
+            AssertInSync(device, clockStart, TimeSpan.Zero, 1.0, 2.9);
+        }
+
+        StopAndSummarize(rig).Outputs.ShouldAllBe(o => o.Corrections == 0, "no one-step correction at start");
+    }
+
+    [Fact]
+    public void An_output_whose_position_never_moves_does_not_hold_the_clock_past_the_first_audio_deadline()
+    {
+        using var rig = new Rig([TimeSpan.Zero, TimeSpan.FromHours(1)], depth: 1_920, chunk: 480, pullsDuringStartLatency: true);
+
+        rig.RenderUntilClockStarts();
+        rig.Render(200);
+
+        rig.ClockStart.ShouldBeLessThanOrEqualTo(TimeSpan.FromSeconds(5.1), "the never-moving output held the clock");
+        rig.ClockStart.ShouldBeGreaterThanOrEqualTo(TimeSpan.FromSeconds(4.9), "it is awaited until the first-audio deadline");
+        AssertInSync(rig.Devices[0], rig.ClockStart, TimeSpan.Zero, 1.0, 1.9);
+    }
+
+    [Fact]
+    public void A_pause_during_the_pre_roll_waits_for_the_start_and_then_plays_no_film_past_its_instant()
+    {
+        using var rig = new Rig([TimeSpan.Zero, TimeSpan.FromMilliseconds(980)], depth: 1_920, chunk: 480, pullsDuringStartLatency: true);
+
+        var paused = rig.Call(rig.Engine.Pause);
+        rig.Render(300);
+
+        paused.IsSuccess.ShouldBeTrue(paused.Error?.Message);
+        rig.Events.OfType<AudioStarted>().ShouldNotBeEmpty("the pause waited for the start");
+        foreach (var device in rig.Devices)
+        {
+            var furthest = device.Rendered.Max(ContentSeconds);
+            furthest.ShouldBeLessThanOrEqualTo(paused.Value.TotalSeconds + ToleranceSeconds, "film was played past the pause instant");
+        }
+    }
+
+    [Fact]
+    public void A_seek_during_the_pre_roll_waits_for_the_start_and_then_plays_the_target_on_every_output_together()
+    {
+        using var rig = new Rig([TimeSpan.Zero, TimeSpan.FromMilliseconds(980)], depth: 1_920, chunk: 480, pullsDuringStartLatency: true);
+
+        var seek = rig.Call(() => rig.Engine.Seek(TimeSpan.FromSeconds(60)));
+        rig.Render(300);
+
+        seek.IsSuccess.ShouldBeTrue(seek.Error?.Message);
+        rig.Events.OfType<AudioStarted>().ShouldNotBeEmpty("the seek waited for the start");
+        for (var t = rig.Elapsed.TotalSeconds - 1.0; t <= rig.Elapsed.TotalSeconds - 0.1; t += 0.05)
+        {
+            var heard = rig.Devices.Select(d => ContentSeconds(d.Rendered[(int)Math.Round((t - d.StartLatency.TotalSeconds) * Rate)])).ToArray();
+            heard.Min().ShouldBeGreaterThanOrEqualTo(60.0, $"at {t:F2} s an output still plays from before the seek");
+            (heard.Max() - heard.Min()).ShouldBeLessThanOrEqualTo(ToleranceSeconds + Epsilon, $"at {t:F2} s the outputs hear {string.Join(", ", heard.Select(h => h.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)))}");
         }
     }
 

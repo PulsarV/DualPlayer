@@ -36,6 +36,13 @@ public sealed class OutputRenderSource : IRenderSource
     private long _bufferContentBits;
     private bool _awaitingFirstFrame = true; // render thread only
     private long _skipBase; // render thread only: ring skipped-frame count when the epoch was applied
+    private long _startDeviceFrame = long.MinValue;
+    private long _startHeardAt = long.MinValue; // a pending StartWhenHeardAt, resolved by the next render
+    private long _startFramesPerTickBits;
+    private int _queueVersion; // odd while the queue triple below is being written
+    private long _queuePlayed = -1;
+    private long _queueTimestamp;
+    private long _queueWritten;
 
     public OutputRenderSource(AudioRingBuffer ring)
     {
@@ -58,6 +65,40 @@ public sealed class OutputRenderSource : IRenderSource
         framesPlayed = Interlocked.Read(ref _framesPlayed);
         timestamp = Interlocked.Read(ref _timestamp);
         return Volatile.Read(ref _hasPosition) && before % 2 == 0 && before == Volatile.Read(ref _positionVersion);
+    }
+
+    /// <summary>
+    /// One consistent reading from the last render: the device position it saw, the time it was read and the frames
+    /// written to the device once that render finished. The frame at <paramref name="framesWritten"/> is heard at
+    /// <c>timestamp + (framesWritten − framesPlayed) / rate</c>. False before the first render or while a render is updating it.
+    /// </summary>
+    public bool TryGetLatestQueue(out long framesPlayed, out long timestamp, out long framesWritten)
+    {
+        var before = Volatile.Read(ref _queueVersion);
+        framesPlayed = Interlocked.Read(ref _queuePlayed);
+        timestamp = Interlocked.Read(ref _queueTimestamp);
+        framesWritten = Interlocked.Read(ref _queueWritten);
+        return before % 2 == 0 && framesPlayed >= 0 && before == Volatile.Read(ref _queueVersion);
+    }
+
+    /// <summary>
+    /// The device gets silence until it has been written <paramref name="deviceFrame"/> frames, and the audio from that
+    /// device frame on (the start's pre-roll: <see cref="long.MaxValue"/> holds the audio back until the release).
+    /// </summary>
+    public void StartAtDeviceFrame(long deviceFrame)
+    {
+        Interlocked.Exchange(ref _startHeardAt, long.MinValue);
+        Interlocked.Exchange(ref _startDeviceFrame, deviceFrame);
+    }
+
+    /// <summary>
+    /// The audio starts at the device frame heard at <paramref name="timestamp"/>; silence before it. The next render
+    /// picks that frame from its own position reading, so no render between the request and the release can move it.
+    /// </summary>
+    public void StartWhenHeardAt(long timestamp, double framesPerTick)
+    {
+        Interlocked.Exchange(ref _startFramesPerTickBits, BitConverter.DoubleToInt64Bits(framesPerTick));
+        Interlocked.Exchange(ref _startHeardAt, timestamp);
     }
 
     /// <summary>Frames written to the device and not yet played (never understated by a torn read).</summary>
@@ -167,13 +208,29 @@ public sealed class OutputRenderSource : IRenderSource
             Interlocked.Increment(ref _realignsApplied);
         }
 
-        var frames = buffer.Length / _ring.Channels;
+        var written = Interlocked.Read(ref _framesWritten);
+        var all = buffer.Length / _ring.Channels;
+        var heardTarget = Interlocked.Exchange(ref _startHeardAt, long.MinValue);
+        if (heardTarget != long.MinValue)
+        {
+            // The frame written next is heard after the frames still queued (none queued: at once).
+            var framesPerTick = BitConverter.Int64BitsToDouble(Interlocked.Read(ref _startFramesPerTickBits));
+            var heardNext = position.Timestamp + (Math.Max(0, written - position.FramesPlayed) / framesPerTick);
+            var silent = Math.Max(0, Math.Round((heardTarget - heardNext) * framesPerTick));
+            Interlocked.Exchange(ref _startDeviceFrame, written + (long)silent);
+        }
+
+        var startAt = Interlocked.Read(ref _startDeviceFrame);
+        var lead = startAt <= written ? 0 : (int)Math.Min(all, startAt - written); // silent frames before the audio starts
+        buffer[..(lead * _ring.Channels)].Clear();
+        buffer = buffer[(lead * _ring.Channels)..];
+        var frames = all - lead;
         var produced = 0;
         var skippedBefore = _ring.SkippedFramesConsumed - _skipBase;
         var limit = (double)(Interlocked.Read(ref _silenceFrom) - state.StartContentFrame - skippedBefore);
         var startPosition = _resampler.NextOutputPosition;
         var insertPending = _resampler.PendingInsertFrames != 0;
-        if (startPosition < limit)
+        if (frames > 0 && startPosition < limit)
         {
             var ratio = BitConverter.Int64BitsToDouble(Interlocked.Read(ref _ratioBits));
             _reader.FramesRead = 0;
@@ -193,9 +250,9 @@ public sealed class OutputRenderSource : IRenderSource
         if (produced > 0)
         {
             var skipped = _ring.SkippedFramesConsumed - _skipBase;
-            if (produced == frames && !insertPending && _resampler.PendingInsertFrames == 0 && skipped == skippedBefore)
+            if (lead == 0 && produced == frames && !insertPending && _resampler.PendingInsertFrames == 0 && skipped == skippedBefore)
             {
-                PublishAudioBuffer(Interlocked.Read(ref _framesWritten), state.StartContentFrame + skippedBefore + startPosition);
+                PublishAudioBuffer(written, state.StartContentFrame + skippedBefore + startPosition);
             }
 
             var last = state.StartContentFrame + skipped + (long)Math.Floor(_resampler.LastOutputPosition);
@@ -203,7 +260,12 @@ public sealed class OutputRenderSource : IRenderSource
             Volatile.Write(ref _audioHandedOut, true);
         }
 
-        Interlocked.Add(ref _framesWritten, frames);
+        Interlocked.Add(ref _framesWritten, all);
+        Interlocked.Increment(ref _queueVersion);
+        Interlocked.Exchange(ref _queuePlayed, position.FramesPlayed);
+        Interlocked.Exchange(ref _queueTimestamp, position.Timestamp);
+        Interlocked.Exchange(ref _queueWritten, written + all);
+        Interlocked.Increment(ref _queueVersion);
     }
 
     private void PublishAudioBuffer(long deviceFrame, double contentPosition)
