@@ -31,7 +31,7 @@ feature_size: "L"
 | play.--device-buffer-ms | sad §7 `EngineOptions` (40 ms) | high |
 | play.start line resolved id | spec AC-02 (echo resolved id) | high |
 | play.start line clock | spec AC-01 | high |
-| play.start line start-to-audio | spec §6 (≤ 2 s, log timestamps) | medium |
+| play.start line start-to-audio | spec §6 (≤ 3 s, log timestamps) | medium |
 | pause / resume | spec AC-08, AC-09b; sad flow 5 | high |
 | seek ±seconds / hh:mm:ss | spec AC-09, AC-10; sad flows 2, 6 | high |
 | stop | spec AC-13; sad flow 9 | high |

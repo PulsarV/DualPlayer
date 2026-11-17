@@ -21,7 +21,7 @@ On the target PC, a Bluetooth headset takes audio from the moment its stream sta
 
 - QG-1 / spec §6: every output within the 10 ms drift tolerance ≤ 1 s after start; steady-state drift ≤ 10 ms.
 - AC-01: both audio outputs start together from the beginning of the file.
-- Spec §6: start command to audio on all outputs ≤ 2 s.
+- Spec §6: start command to audio on all outputs ≤ 2 s at the time of the decision (relaxed to ≤ 3 s, see Consequences).
 - A device's latency is only observable once its reported position moves, and audio already handed to a Bluetooth device cannot be recalled.
 - Resume and seek do not have this problem: device streams keep running (ADR-0006), so positions keep moving.
 
@@ -54,7 +54,7 @@ On the target PC, a Bluetooth headset takes audio from the moment its stream sta
 
 ## Links
 
-- Spec: [spec.md](../spec.md) §5 AC-01, §6 (drift tolerance, recovery ≤ 1 s, start-to-audio ≤ 2 s)
+- Spec: [spec.md](../spec.md) §5 AC-01, §6 (drift tolerance, recovery ≤ 1 s, start-to-audio ≤ 3 s)
 - SAD: [sad.md](../sad.md) §6 flow 1, §10 QG-1
 - Related ADR: [0006](0006-coordinate-pause-and-seek-with-playback-epochs-while-device-streams-keep-running.md) (streams keep running across pause and seek)
 - Evidence: target-PC position probe and runs, 2026-11-17 ([_fixes/2026-11-17-clock-mismatch-start-stall.md](../_fixes/2026-11-17-clock-mismatch-start-stall.md))

@@ -1465,7 +1465,7 @@
         "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T67-bring-the-start-to-audio-budget-and-the-start-recovery-window-in-line-wi.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-17: S1, S2"
     },
     {

@@ -12,6 +12,7 @@
 - [ADR-0005](./adr/0005-convert-tracks-to-the-device-mix-format-with-ffmpeg-swresample-in-media.md) — tracks are converted to the device mix format with FFmpeg swresample (basic fold-down, LFE dropped).
 - [ADR-0006](./adr/0006-coordinate-pause-and-seek-with-playback-epochs-while-device-streams-keep-running.md) — pause and seek use playback epochs while device streams keep running.
 - [ADR-0007](./adr/0007-publish-engine-events-as-an-observable-stream-from-the-engine-control-loop.md) — engine events are an observable stream, so step 6 can subscribe without engine changes.
+- [ADR-0008](./adr/0008-start-the-master-clock-when-the-slowest-output-hears-the-first-frame.md) — the master clock starts when the slowest output hears the first film frame, after a silent pre-roll; start-to-audio relaxed to ≤ 3 s.
 
 **How to use** (full contract: [cli.md](./contracts/cli.md)):
 
@@ -28,6 +29,6 @@ dotnet run --project src/DualPlayer.Console -- play movie.mkv --out 1=1 --out 2=
 - Native libraries: FFmpeg (LGPL build, dynamically linked) must be present — Homebrew on the dev Mac; shipped beside the exe on Windows. Its version and license are written to the log at start.
 - Logs: Serilog rolling file in `<app-data>/DualPlayer/logs/` with a size cap that holds at least one ≥ 3 h run.
 - Rollback: revert the merge; nothing persisted needs cleaning.
-- **Pending acceptance:** the step counts as done only after the ≥ 3 h evidence run on the target Windows PC with both Bluetooth headsets (task T22, still blocked). The spec's §6 targets (drift ≤ 10 ms, 0 underruns, start ≤ 2 s, CPU ≤ 5 %) apply to that PC and are not yet measured there; the macOS backend is dev-only and not held to them.
+- **Pending acceptance:** the step counts as done only after the ≥ 3 h evidence run on the target Windows PC with both Bluetooth headsets (task T22, still blocked). The spec's §6 targets (drift ≤ 10 ms, 0 underruns, start ≤ 3 s, CPU ≤ 5 %) apply to that PC and are not yet measured there; the macOS backend is dev-only and not held to them.
 
 **Acceptance criteria delivered:** AC-01 – AC-13 (incl. AC-06b, AC-09b) are implemented and covered by tests with a fake clock and fake devices. AC-07 (≥ 3 h drift tolerance) and the §6 targets on the target PC still need T22.

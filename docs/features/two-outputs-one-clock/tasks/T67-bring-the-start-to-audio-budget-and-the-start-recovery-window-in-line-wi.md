@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-17: S1, S2"
-status: "todo"
-step: "SELECT"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-17. Work from what is inlined here; the source always wins.
@@ -30,8 +30,8 @@ See [spec.md](../spec.md) §5 AC-01, AC-07; [ADR-0008](../adr/0008-start-the-mas
 
 ## Definition of Done
 
-- [ ] All listed "≤ 2 s" start-to-audio mentions read ≤ 3 s; CHANGELOG key decisions list ADR-0008.
-- [ ] The T62 test moves the late first render to ~3.4 s (still under the 5 s `FirstAudioDeadline`), is renamed to say three seconds, and still fails against a 3 s deadline.
-- [ ] sad.md §… and test-plan.md say "first film frame heard".
-- [ ] spec §6 rows (drift recovery windows + recovery row) and QG-1 say that for a start the window opens when the master clock starts (ADR-0008); mark each change `<!-- changed-by-fix: 2026-11-17 -->` like the existing row.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] All listed "≤ 2 s" start-to-audio mentions read ≤ 3 s; CHANGELOG key decisions list ADR-0008.
+- [x] The T62 test moves the late first render to ~3.4 s (still under the 5 s `FirstAudioDeadline`), is renamed to say three seconds, and still fails against a 3 s deadline.
+- [x] sad.md §8 / §10 and test-plan.md say "first film frame heard".
+- [x] spec §6 rows (drift recovery windows + recovery row) and QG-1 say that for a start the window opens when the master clock starts (ADR-0008); mark each change `<!-- changed-by-fix: 2026-11-17 -->` like the existing row.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

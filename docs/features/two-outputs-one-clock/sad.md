@@ -458,7 +458,7 @@ One process, `DualPlayer.Console`, runs on one PC: the target Windows 11 x64 PC 
 - Per-device sync record once per second (drift, current correction in ppm, cumulative underruns, device id, master-clock position) — console line + structured log event (AC-11).
 - Excursion events (device, peak, duration, start position) when an output leaves the 10 ms tolerance (AC-07); device-lost events (AC-06).
 - Run summary per output at the end of the run (AC-13).
-- Start-to-audio timing: timestamps of the start command and of the first rendered frame per device in the log (spec §6, ≤ 3 s).
+- Start-to-audio timing: timestamps of the start command and of the first film frame heard per device in the log (ADR-0008: the first rendered frames are pre-roll silence) (spec §6, ≤ 3 s).
 - Actual shared-mode device buffer and mix format per device logged when each stream opens (the OS may grant a larger buffer than requested).
 - CPU: the OS performance counter for the console process, averaged over the run (spec §6, ≤ 5 %).
 
@@ -504,7 +504,7 @@ All numbers are spec §6 targets on the target Windows 11 PC; the macOS dev back
 
 **QG-1. Sync accuracy over a feature-length run**
 - **When:** two audio outputs play on both Bluetooth headsets for a ≥ 3 h run on the target PC, with no action from the Developer.
-- **Then:** steady-state drift of each audio output from the master clock ≤ 10 ms (absolute) — each record's drift is the average of the device-position readings over its 1 s interval; the largest value outside the recovery windows (the 1 s after start, resume or seek) counts. After start, resume or seek, every output is within the drift tolerance ≤ 1 s after the command.
+- **Then:** steady-state drift of each audio output from the master clock ≤ 10 ms (absolute) — each record's drift is the average of the device-position readings over its 1 s interval; the largest value outside the recovery windows (the 1 s after the master clock starts, after resume or after seek) counts. After resume or seek, every output is within the drift tolerance ≤ 1 s after the command; after a start, ≤ 1 s after the master clock starts (ADR-0008).
 - **How verify:** (a) unit tests in `tests/DualPlayer.Core.Tests/Sync/` drive the drift controller and adaptive resampler with a fake `TimeProvider` and fake devices whose clocks run fast or slow by a fixed ppm, asserting |drift| ≤ 10 ms in steady state and recovery ≤ 1 s after start, resume and seek; (b) the recorded target-PC evidence run: largest steady-state drift from the AC-11 records and the AC-13 run summary ≤ 10 ms.
 
 **QG-2. Fault isolation between outputs**
@@ -518,7 +518,7 @@ All numbers are spec §6 targets on the target Windows 11 PC; the macOS dev back
 - **How verify:** underrun counts from the AC-13 run summary of the evidence run; CPU from the OS performance counter for the console process, averaged over the run.
 
 **Supporting scenarios (spec §6):**
-- **Start latency** — start command to audio on all outputs ≤ 3 s; verified from log timestamps of the start command and each device's first rendered frame.
+- **Start latency** — start command to audio on all outputs ≤ 3 s; verified from log timestamps of the start command and the first film frame heard on each device (ADR-0008).
 - **Output count** — ≥ 3 outputs simultaneously within the drift tolerance; verified by a Core test with three fake devices (no third physical device required).
 
 ## 11. Risks and technical debt
