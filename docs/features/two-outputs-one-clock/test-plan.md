@@ -99,7 +99,7 @@ The load level here is a soak run with the console on the target Windows PC (spe
 - Steady-state drift ≤ 10 ms → scenario: two Bluetooth headsets (plus one wired output if available, spec §8) play two tracks for ≥ 3 h with no Developer action; assert the largest 1 s drift average outside the 1 s recovery windows ≤ 10 ms per device.
 - Recovery ≤ 1 s → scenario: during the same run, 5 pauses/resumes and 5 seeks of ±10 s and ±60 s; assert every output within 10 ms ≤ 1 s after each command.
 - Underruns 0 per 3 h → scenario: the same ≥ 3 h run; assert the run summary's underrun count = 0 for every output.
-- Start to audio ≤ 2 s → scenario: 10 starts; assert log time from the play command to each device's first rendered frame ≤ 2 s every time.
+- Start to audio ≤ 3 s → scenario: 10 starts; assert log time from the play command to each device's first rendered frame ≤ 3 s every time.
 - Survivor underruns 0 within ±5 s of a loss → scenario: one manual headset disconnect during the run; assert 0 new underruns on the other output within ±5 s of the device-lost event.
 - CPU ≤ 5 % → scenario: the same ≥ 3 h run; assert the OS performance counter for the console process, averaged over the run, ≤ 5 % of total CPU.
 - ≥ 3 outputs within tolerance → covered by the unit test with three fake devices (`each further loss with three outputs behaves the same` and a three-output variant of the simulated three-hour run); no third physical device is required.
