@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-17-r2: R1, R6"
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-17-r2. Work from what is inlined here; the source always wins.
@@ -30,8 +30,8 @@ See [spec.md](../spec.md) §5 AC-08, AC-13, AC-07; [ADR-0008](../adr/0008-start-
 
 ## Definition of Done
 
-- [ ] sad.md §11 has a risk row for the pre-roll stop (film already queued on a device may still be heard after the close; mitigation: target-PC check) and flow 9 shows the pre-roll branch.
-- [ ] The `EndRun` comment states the assumption correctly.
-- [ ] test-plan.md NFR validation has a target-PC scenario: stop within ~1 s of `play` on the Bluetooth pair, every output falls silent together.
-- [ ] `sad.md:18` and `:508` say the start window opens at the master-clock start.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] sad.md §11 has a risk row for the pre-roll stop (film already queued on a device may still be heard after the close; mitigation: target-PC check) and flow 9 shows the pre-roll branch.
+- [x] The `EndRun` comment states the assumption correctly.
+- [x] test-plan.md NFR validation has a target-PC scenario: stop within ~1 s of `play` on the Bluetooth pair, every output falls silent together.
+- [x] `sad.md:18` and `:508` say the start window opens at the master-clock start.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

@@ -973,9 +973,10 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
                 output.Source.SetSilenceFrom(0); // no film after a stop during the pre-roll; nothing to wait for
             }
 
-            // Past the release the slowest output may already hold up to L_max of film in its device queue while the
-            // faster ones hold only silence. Nothing waits for it to play out: closing the device (WASAPI Stop + release)
-            // discards that queue, so every output falls silent together at the close.
+            // Past the release each output may already hold film in its device queue (the slowest up to L_max, another
+            // one from clockStart − L_i on). Nothing waits for it to play out: this assumes closing the device (WASAPI
+            // Stop + release) discards that queue. A Bluetooth headset may still play a short tail (ADR-0008: audio
+            // handed over cannot be recalled); sad.md §11 records it and the target-PC run checks it.
         }
         else if (!run.Paused)
         {

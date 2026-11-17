@@ -1560,7 +1560,7 @@
         "docs/features/two-outputs-one-clock/test-plan.md"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T72-record-the-pre-roll-stop-close-assumption-and-the-start-window-wording.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-17-r2: R1, R6"
     }
   ]
