@@ -454,7 +454,9 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
         var margin = (long)(StartMargin.TotalSeconds * _time.TimestampFrequency);
         var clockStart = moved.Count == 0 ? now : Math.Max(now, moved.Max(m => m.HeardAt)) + margin;
-        foreach (var output in run.Outputs.Where(o => !o.Lost))
+        // A moved output keeps its pre-roll hold until its heard target is set: resetting it first would let a
+        // render in between hand out film frame 0 at once, ~L_max before the clock starts.
+        foreach (var output in run.Outputs.Where(o => !o.Lost && !moved.Exists(m => m.Output == o)))
         {
             output.Source.StartAtDeviceFrame(long.MinValue);
         }

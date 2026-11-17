@@ -37,16 +37,28 @@ public sealed class AudioEngineStartAndHangTests
         private readonly int _chunk;
         private readonly bool _pullsDuringStartLatency;
 
+        // 1 ms per hook: the release reads the frequency several times, and a real render thread queues far less than
+        // StartMargin in that time — a whole chunk per read would push the queue past the margin on its own.
+        private const int HookFrames = Rate / 1_000;
+
+        private readonly Lock _deviceGate = new();
+        private bool _inHook;
+
+        /// <param name="rendersWhenTheEngineReadsTheTimestampFrequency">
+        /// Every output renders 1 ms each time the engine's control loop reads the timestamp frequency before the clock has
+        /// started: the release reads it once per output between resetting the start targets and handing out the film, so a
+        /// render thread that runs there (a deterministic stand-in for that race) is part of the scenario.
+        /// </param>
         /// <param name="pullsDuringStartLatency">
         /// The device takes audio at its rate from the start while its position still reads 0, as a Bluetooth headset
         /// does (measured on the target PC: position 0 for ~0.6–1 s, then <c>elapsed − position</c> stays constant).
         /// </param>
-        public Rig(TimeSpan[] latencies, double ppm = 0, long totalFrames = (long)Rate * 600, int depth = 120, int chunk = 120, bool pullsDuringStartLatency = false)
+        public Rig(TimeSpan[] latencies, double ppm = 0, long totalFrames = (long)Rate * 600, int depth = 120, int chunk = 120, bool pullsDuringStartLatency = false, bool rendersWhenTheEngineReadsTheTimestampFrequency = false)
         {
             _depth = depth;
             _chunk = chunk;
             _pullsDuringStartLatency = pullsDuringStartLatency;
-            Time = new FakeTimeProvider();
+            Time = rendersWhenTheEngineReadsTheTimestampFrequency ? new RenderingTime(this) : new FakeTimeProvider();
             var backend = new FakeAudioBackend(Time, Stereo) { PpmOffset = ppm };
             for (var i = 1; i <= latencies.Length; i++)
             {
@@ -139,7 +151,39 @@ public sealed class AudioEngineStartAndHangTests
 
         public void Dispose() => Engine.Dispose();
 
+        private void RenderOnEngineThread()
+        {
+            // Only the control loop runs the release; other threads (the decode pump, the fake clock's own timers) read the
+            // frequency too, and blocking them here could deadlock against Fill. Never wait for the gate: skip when busy.
+            if (_inHook || Thread.CurrentThread.Name != "EngineControlLoop" || Events.OfType<AudioStarted>().Any() || !_deviceGate.TryEnter())
+            {
+                return;
+            }
+
+            _inHook = true;
+            try
+            {
+                foreach (var device in _devices.ToArray())
+                {
+                    device.PumpRender(HookFrames);
+                }
+            }
+            finally
+            {
+                _inHook = false;
+                _deviceGate.Exit();
+            }
+        }
+
         private void Fill()
+        {
+            lock (_deviceGate)
+            {
+                FillLocked();
+            }
+        }
+
+        private void FillLocked()
         {
             foreach (var device in _devices)
             {
@@ -176,6 +220,18 @@ public sealed class AudioEngineStartAndHangTests
                 }
 
                 return result;
+            }
+        }
+
+        private sealed class RenderingTime(Rig rig) : FakeTimeProvider
+        {
+            public override long TimestampFrequency
+            {
+                get
+                {
+                    rig.RenderOnEngineThread();
+                    return base.TimestampFrequency;
+                }
             }
         }
 
@@ -289,6 +345,21 @@ public sealed class AudioEngineStartAndHangTests
         }
 
         StopAndSummarize(rig).Outputs.ShouldAllBe(o => o.Corrections == 0, "no one-step correction at start");
+    }
+
+    [Fact]
+    public void An_output_that_renders_while_the_film_is_being_released_still_hears_film_frame_zero_at_the_clock_start()
+    {
+        using var rig = new Rig([TimeSpan.Zero, TimeSpan.FromMilliseconds(600), TimeSpan.FromMilliseconds(980)], depth: 1_920, chunk: 480, pullsDuringStartLatency: true, rendersWhenTheEngineReadsTheTimestampFrequency: true);
+
+        rig.RenderUntilClockStarts();
+        rig.Render(320);
+
+        var clockStart = rig.ClockStart;
+        foreach (var device in rig.Devices)
+        {
+            AssertFilmFirstHeardAt(device, clockStart);
+        }
     }
 
     [Fact]

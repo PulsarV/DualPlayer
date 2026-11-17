@@ -1418,7 +1418,7 @@
         "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T65-hand-out-film-only-after-the-start-target-is-set-on-every-moved-output.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-17: B1"
     },
     {

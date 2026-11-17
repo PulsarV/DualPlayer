@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
 origin: "review-2026-11-17: B1"
-status: "todo"
-step: "SELECT"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-17. Work from what is inlined here; the source always wins.
@@ -30,7 +30,7 @@ See [spec.md](../spec.md) §5 AC-01; [ADR-0008](../adr/0008-start-the-master-clo
 
 ## Definition of Done
 
-- [ ] A moved output never has a window where its start target is `MinValue` without a heard target: only non-moved outputs get `StartAtDeviceFrame(long.MinValue)`.
-- [ ] A deterministic test (e.g. a seam/hook that renders between the reset and the target, or a rig that renders a moved output on release) fails against the old order and passes after; assert film frame 0 heard at the clock start (±10 ms) on every output.
-- [ ] The three-output start scenario stays green under repetition (state the count run).
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] A moved output never has a window where its start target is `MinValue` without a heard target: only non-moved outputs get `StartAtDeviceFrame(long.MinValue)`.
+- [x] A deterministic test (e.g. a seam/hook that renders between the reset and the target, or a rig that renders a moved output on release) fails against the old order and passes after; assert film frame 0 heard at the clock start (±10 ms) on every output.
+- [x] The three-output start scenario stays green under repetition (20/20 runs of `AudioEngineStartAndHangTests`; the new test red 5/5 on the old order).
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

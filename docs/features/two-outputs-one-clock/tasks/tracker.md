@@ -72,7 +72,7 @@
 | T62 | [Await a late first render past the start-to-audio budget](./T62-await-a-late-first-render-past-the-start-to-audio-budget.md) | app | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T63 | [Step the start-deadline tests on the fake clock and fix the deadline comment](./T63-step-the-start-deadline-tests-on-the-fake-clock-and-fix-the-deadline-comment.md) | app | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T64 | [Start the master clock when the slowest output hears the first frame, after a silent pre-roll](./T64-start-the-master-clock-when-the-slowest-output-hears-the-first-frame.md) | app | Volodymyr Kravchuk | L | — | done | COMMIT |
-| T65 | [Hand out film only after the start target is set on every moved output](./T65-hand-out-film-only-after-the-start-target-is-set-on-every-moved-output.md) | app | Volodymyr Kravchuk | M | — | todo | SELECT |
+| T65 | [Hand out film only after the start target is set on every moved output](./T65-hand-out-film-only-after-the-start-target-is-set-on-every-moved-output.md) | app | Volodymyr Kravchuk | M | — | done | COMMIT |
 | T66 | [Test a stop and the loss of the last device during the start pre-roll](./T66-test-a-stop-and-the-loss-of-the-last-device-during-the-start-pre-roll.md) | app | Volodymyr Kravchuk | M | T65 | todo | SELECT |
 | T67 | [Bring the start-to-audio budget and the start recovery window in line with ADR-0008 everywhere](./T67-bring-the-start-to-audio-budget-and-the-start-recovery-window-in-line-wi.md) | app | Volodymyr Kravchuk | S | T66 | todo | SELECT |
 | T68 | [Fix the pre-roll comments and pin the stalled-output release time](./T68-fix-the-pre-roll-comments-and-pin-the-stalled-output-release-time.md) | app | Volodymyr Kravchuk | S | T67 | todo | SELECT |
