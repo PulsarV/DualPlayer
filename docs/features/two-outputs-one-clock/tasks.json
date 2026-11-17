@@ -1401,6 +1401,91 @@
       "file": "docs/features/two-outputs-one-clock/tasks/T64-start-the-master-clock-when-the-slowest-output-hears-the-first-frame.md",
       "status": "done",
       "origin": "target-PC diagnosis 2026-11-17; ADR-0008"
+    },
+    {
+      "id": "T65",
+      "title": "Hand out film only after the start target is set on every moved output",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "TryRelease never leaves a moved output with startDeviceFrame=MinValue and no heard target; a deterministic test forces a render between the reset and the target and fails on the old order; repeated three-output start scenario green; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "src/DualPlayer.Core/Outputs/OutputRenderSource.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineStartAndHangTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T65-hand-out-film-only-after-the-start-target-is-set-on-every-moved-output.md",
+      "status": "todo",
+      "origin": "review-2026-11-17: B1"
+    },
+    {
+      "id": "T66",
+      "title": "Test a stop and the loss of the last device during the start pre-roll",
+      "layer": "app",
+      "deps": [
+        "T65"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-06b",
+        "AC-13"
+      ],
+      "dod": "stop and last-device-lost tested before and after the release (summary produced, no film after stop); deleting the run.Starting branch of EndRun turns a test red; the reliance on Close discarding queued film is documented or handled; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineStartAndHangTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T66-test-a-stop-and-the-loss-of-the-last-device-during-the-start-pre-roll.md",
+      "status": "todo",
+      "origin": "review-2026-11-17: S3"
+    },
+    {
+      "id": "T67",
+      "title": "Bring the start-to-audio budget and the start recovery window in line with ADR-0008 everywhere",
+      "layer": "app",
+      "deps": [
+        "T66"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-07"
+      ],
+      "dod": "no stale ≤ 2 s start-to-audio; CHANGELOG lists ADR-0008; T62 test uses a first render past 3 s (under 5 s) and is renamed; sad/test-plan say first film frame heard; spec §6 + QG-1 say the start recovery window opens at the master-clock start; gate clean",
+      "files_hint": [
+        "docs/features/two-outputs-one-clock/spec.md",
+        "docs/features/two-outputs-one-clock/sad.md",
+        "docs/features/two-outputs-one-clock/test-plan.md",
+        "docs/features/two-outputs-one-clock/adr/0008-start-the-master-clock-when-the-slowest-output-hears-the-first-frame.md",
+        "docs/features/two-outputs-one-clock/CHANGELOG.md",
+        "docs/features/two-outputs-one-clock/contracts/api-sync-report.md",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T67-bring-the-start-to-audio-budget-and-the-start-recovery-window-in-line-wi.md",
+      "status": "todo",
+      "origin": "review-2026-11-17: S1, S2"
+    },
+    {
+      "id": "T68",
+      "title": "Fix the pre-roll comments and pin the stalled-output release time",
+      "layer": "app",
+      "deps": [
+        "T67"
+      ],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "StartMargin, wait-bound and hold comments match code; the stalled-output test steps the fake clock and asserts StartToAudio ≈ 1.0–1.2 s, red against holding to the 5 s deadline; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T68-fix-the-pre-roll-comments-and-pin-the-stalled-output-release-time.md",
+      "status": "todo",
+      "origin": "review-2026-11-17: N1, N2"
     }
   ]
 }
