@@ -190,7 +190,7 @@ All targets apply to the target Windows 11 PC; the macOS development backend is 
 | Steady-state drift of each audio output from the master clock | ≤ 10 ms (absolute) | per-device records (AC-11) over a ≥ 3 h run on the target PC with both Bluetooth headsets; each record's drift is the average of the device-position readings over its 1 s interval; largest value outside the recovery windows (the 1 s after start, resume or seek — nothing else is excluded). Measured against the device-reported playback position only; acoustic verification is roadmap step 12 |
 | Recovery after start, resume or seek | every output within the drift tolerance ≤ 1 s after the command | per-device records (AC-11); unit tests with a fake clock and fake devices |
 | Underruns on the target PC | 0 per 3 h run with two Bluetooth headsets | run summary (AC-13) |
-| Start command to audio on all outputs | ≤ 2 s | timestamps in the log |
+| Start command to audio on all outputs | ≤ 3 s (a Bluetooth headset lags ~0.6–1 s; the silent pre-roll of ADR-0008 roughly doubles that) <!-- changed-by-fix: 2026-11-17, was ≤ 2 s --> | timestamps in the log |
 | Surviving output during another device's loss | 0 underruns within ±5 s of the device-lost event | fake-device test + manual disconnect on the target PC |
 | CPU while playing two tracks | ≤ 5 % of total CPU on the target PC | operating-system performance counter, average over the run |
 | Number of outputs | ≥ 3 outputs simultaneously within the drift tolerance | test with fake devices (no third physical device is required) |
