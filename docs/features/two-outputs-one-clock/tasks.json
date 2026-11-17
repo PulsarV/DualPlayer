@@ -1486,6 +1486,82 @@
       "file": "docs/features/two-outputs-one-clock/tasks/T68-fix-the-pre-roll-comments-and-pin-the-stalled-output-release-time.md",
       "status": "done",
       "origin": "review-2026-11-17: N1, N2"
+    },
+    {
+      "id": "T69",
+      "title": "Retry the release when a moved output's queue read is torn",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "a torn queue read of an output that has a position and is not stalled makes the release wait for the next poll, also past FirstAudioDeadline; unit-tested; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineReleaseTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T69-retry-the-release-when-a-moved-outputs-queue-read-is-torn.md",
+      "status": "todo",
+      "origin": "review-2026-11-17-r2: R5"
+    },
+    {
+      "id": "T70",
+      "title": "Exercise the pre-roll stop silence and reword the pre-roll loss tests",
+      "layer": "app",
+      "deps": [
+        "T69"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-06b"
+      ],
+      "dod": "a device renders during EndRun of a pre-roll stop and no new film appears; removing SetSilenceFrom(0) turns it red; the loss tests no longer assert film the fake cannot render; gate clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineStartAndHangTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T70-exercise-the-pre-roll-stop-silence-and-reword-the-pre-roll-loss-tests.md",
+      "status": "todo",
+      "origin": "review-2026-11-17-r2: R2, R3"
+    },
+    {
+      "id": "T71",
+      "title": "Assert the release-race hook rendered inside the release",
+      "layer": "app",
+      "deps": [
+        "T70"
+      ],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "the race test asserts its hook rendered inside TryRelease at least once; gate clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineStartAndHangTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T71-assert-the-release-race-hook-rendered-inside-the-release.md",
+      "status": "todo",
+      "origin": "review-2026-11-17-r2: R4"
+    },
+    {
+      "id": "T72",
+      "title": "Record the pre-roll stop close assumption and the start recovery wording in sad.md",
+      "layer": "app",
+      "deps": [
+        "T71"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-13",
+        "AC-07"
+      ],
+      "dod": "sad.md §11 and flow 9 record the pre-roll stop assumption; the EndRun comment is correct; test-plan.md has a target-PC check for a stop right after play; sad.md:18 and :508 carry the master-clock-start qualifier; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "docs/features/two-outputs-one-clock/sad.md",
+        "docs/features/two-outputs-one-clock/test-plan.md"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T72-record-the-pre-roll-stop-close-assumption-and-the-start-window-wording.md",
+      "status": "todo",
+      "origin": "review-2026-11-17-r2: R1, R6"
     }
   ]
 }
