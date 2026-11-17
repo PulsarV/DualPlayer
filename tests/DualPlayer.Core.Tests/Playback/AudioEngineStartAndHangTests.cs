@@ -44,17 +44,22 @@ public sealed class AudioEngineStartAndHangTests
         private readonly Lock _deviceGate = new();
         private readonly Dictionary<string, (int Renders, int Film)> _hookRenders = [];
         private bool _inHook;
+        private int _releaseStepRenders;
 
         /// <param name="rendersWhenTheEngineReadsTheTimestampFrequency">
         /// Every output renders 1 ms each time the engine's control loop reads the timestamp frequency before the clock has
-        /// started: the release reads it once per output between resetting the start targets and handing out the film, so a
-        /// render thread that runs there (a deterministic stand-in for that race) is part of the scenario.
+        /// started, as a render thread that runs while the control loop works would (the stop reads it between the silence
+        /// and the close).
+        /// </param>
+        /// <param name="rendersAtEachReleaseStep">
+        /// Every output renders 1 ms after each start-target change inside the release while a moved output still awaits
+        /// its heard target: a deterministic stand-in for a render thread that runs inside the release.
         /// </param>
         /// <param name="pullsDuringStartLatency">
         /// The device takes audio at its rate from the start while its position still reads 0, as a Bluetooth headset
         /// does (measured on the target PC: position 0 for ~0.6–1 s, then <c>elapsed − position</c> stays constant).
         /// </param>
-        public Rig(TimeSpan[] latencies, double ppm = 0, long totalFrames = (long)Rate * 600, int depth = 120, int chunk = 120, bool pullsDuringStartLatency = false, bool rendersWhenTheEngineReadsTheTimestampFrequency = false)
+        public Rig(TimeSpan[] latencies, double ppm = 0, long totalFrames = (long)Rate * 600, int depth = 120, int chunk = 120, bool pullsDuringStartLatency = false, bool rendersWhenTheEngineReadsTheTimestampFrequency = false, bool rendersAtEachReleaseStep = false)
         {
             _depth = depth;
             _chunk = chunk;
@@ -69,6 +74,11 @@ public sealed class AudioEngineStartAndHangTests
 
             Engine = new AudioEngine(new CapturingBackend(backend, _devices), new FakeAudioDecoder(Tracks, totalFrames), Time, NullLogger<AudioEngine>.Instance);
             Engine.Events.Subscribe(new Collector(this));
+            if (rendersAtEachReleaseStep)
+            {
+                Engine.ReleaseStepForTests = RenderAtReleaseStep;
+            }
+
             var assignments = latencies.Select((_, i) => new OutputAssignment((i % 2) + 1, DeviceRef.ByNumber(i + 1))).ToArray();
             Engine.StartRun("film.mkv", assignments, new EngineOptions()).IsSuccess.ShouldBeTrue();
             _start = Time.GetUtcNow();
@@ -162,6 +172,27 @@ public sealed class AudioEngineStartAndHangTests
             {
                 return _hookRenders.GetValueOrDefault(method);
             }
+        }
+
+        /// <summary>How many times every output rendered inside the release while a moved output still awaited its heard target.</summary>
+        public int ReleaseStepRenders => Volatile.Read(ref _releaseStepRenders);
+
+        private void RenderAtReleaseStep(int movedAwaitingTarget)
+        {
+            if (movedAwaitingTarget == 0)
+            {
+                return;
+            }
+
+            lock (_deviceGate)
+            {
+                foreach (var device in _devices.ToArray())
+                {
+                    device.PumpRender(HookFrames);
+                }
+            }
+
+            Interlocked.Increment(ref _releaseStepRenders);
         }
 
         private void RenderOnEngineThread()
@@ -491,13 +522,13 @@ public sealed class AudioEngineStartAndHangTests
     [Fact]
     public void An_output_that_renders_while_the_film_is_being_released_still_hears_film_frame_zero_at_the_clock_start()
     {
-        using var rig = new Rig([TimeSpan.Zero, TimeSpan.FromMilliseconds(600), TimeSpan.FromMilliseconds(980)], depth: 1_920, chunk: 480, pullsDuringStartLatency: true, rendersWhenTheEngineReadsTheTimestampFrequency: true);
+        using var rig = new Rig([TimeSpan.Zero, TimeSpan.FromMilliseconds(600), TimeSpan.FromMilliseconds(980)], depth: 1_920, chunk: 480, pullsDuringStartLatency: true, rendersAtEachReleaseStep: true);
 
         rig.RenderUntilClockStarts();
         rig.Render(320);
 
-        // The scenario only holds if a device really rendered while the film was being released.
-        rig.HookRendersIn("TryRelease").Renders.ShouldBeGreaterThan(0, "no device rendered inside the release: the race window was not exercised");
+        // The scenario only holds if a device rendered while a moved output still awaited its heard target.
+        rig.ReleaseStepRenders.ShouldBeGreaterThan(0, "no device rendered while a moved output awaited its target: the race window was not exercised");
         var clockStart = rig.ClockStart;
         foreach (var device in rig.Devices)
         {

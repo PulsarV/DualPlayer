@@ -433,6 +433,12 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
     }
 
     /// <summary>
+    /// Test seam: called on the control loop after each start-target change inside the release, with the number of moved
+    /// outputs still awaiting their heard target. A render there is the release race (ADR-0008).
+    /// </summary>
+    internal Action<int>? ReleaseStepForTests { get; set; }
+
+    /// <summary>
     /// Once every non-lost output's position has moved (or it is stalled, or <see cref="FirstAudioDeadline"/> passed),
     /// gives each output its first film frame at the device frame heard when the slowest one hears its next frame (plus
     /// <see cref="StartMargin"/>). An
@@ -466,11 +472,14 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         foreach (var output in run.Outputs.Where(o => !o.Lost && !moved.Exists(m => m.Output == o)))
         {
             output.Source.StartAtDeviceFrame(long.MinValue);
+            ReleaseStepForTests?.Invoke(moved.Count);
         }
 
-        foreach (var (output, _) in moved)
+        for (var i = 0; i < moved.Count; i++)
         {
+            var output = moved[i].Output;
             output.Source.StartWhenHeardAt(clockStart, (double)output.Format.SampleRate / _time.TimestampFrequency);
+            ReleaseStepForTests?.Invoke(moved.Count - i - 1);
         }
 
         run.Released = true;

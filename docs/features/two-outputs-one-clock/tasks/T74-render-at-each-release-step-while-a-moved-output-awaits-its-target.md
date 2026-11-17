@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-17-r3: F3"
-status: "todo"
-step: "SELECT"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-17-r3. Work from what is inlined here; the source always wins.
@@ -29,7 +29,7 @@ See [spec.md](../spec.md) §5 AC-01; [ADR-0008](../adr/0008-start-the-master-clo
 
 ## Definition of Done
 
-- [ ] `AudioEngine.TryRelease` exposes an internal test seam called on the control loop after each start-target change, with the number of moved outputs still awaiting their heard target.
-- [ ] The race test renders every device at each such step while a moved output still awaits its target, asserts that happened at least once, and that every device first hears film frame 0 at the clock start.
-- [ ] Mutation: resetting every output before `StartWhenHeardAt` (the old order) turns the race test red, independent of where the engine reads the timestamp frequency.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `AudioEngine.TryRelease` exposes an internal test seam called on the control loop after each start-target change, with the number of moved outputs still awaiting their heard target.
+- [x] The race test renders every device at each such step while a moved output still awaits its target, asserts that happened at least once, and that every device first hears film frame 0 at the clock start.
+- [x] Mutation: resetting every output before `StartWhenHeardAt` (the old order) turns the race test red, independent of where the engine reads the timestamp frequency.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

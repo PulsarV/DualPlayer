@@ -1598,7 +1598,7 @@
         "tests/DualPlayer.Core.Tests/Playback/AudioEngineStartAndHangTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T74-render-at-each-release-step-while-a-moved-output-awaits-its-target.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-17-r3: F3"
     }
   ]
