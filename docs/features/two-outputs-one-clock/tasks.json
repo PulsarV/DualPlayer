@@ -1641,6 +1641,23 @@
       "file": "docs/features/two-outputs-one-clock/tasks/T76-time-the-pre-roll-stop-from-the-output-lines-and-bound-the-log-check-to-the-run.md",
       "status": "done",
       "origin": "review-2026-11-17-r5: F1, F2"
+    },
+    {
+      "id": "T77",
+      "title": "Name the log file and the last run block in the pre-roll stop check",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-08",
+        "AC-13"
+      ],
+      "dod": "the pre-roll stop row names the log file and says this run's lines are the last Run started … Run ended (Stop) block at the end of the file; gate clean",
+      "files_hint": [
+        "docs/features/two-outputs-one-clock/evidence/target-pc-run-guide.md"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T77-name-the-log-file-and-the-last-run-block-in-the-pre-roll-stop-check.md",
+      "status": "todo",
+      "origin": "review-2026-11-17-r6: F1"
     }
   ]
 }
