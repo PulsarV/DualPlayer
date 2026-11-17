@@ -1,0 +1,172 @@
+# Інструкція — прогін на цільовому Windows-ПК (T22)
+
+Покрокова інструкція до [T22](../tasks/T22-record-target-pc-evidence-run.md): що налаштувати на Windows-машині, як запускати консоль і як перевірити крок 3 на реальному залізі. Цілі — [spec.md](../spec.md) §6, контракт консолі — [cli.md](../contracts/cli.md).
+
+## 1. Що потрібно
+
+- **ПК:** цільовий ПК з Windows 11 x64.
+- **Пристрої:** дві Bluetooth-гарнітури, заздалегідь спарені в Windows. За бажанням ще дротовий вихід (спека радить його додати): навушники в джек або колонки.
+- **Файл:** фільм тривалістю ≥ 3 год (можна склеїти кілька). Бажано з ≥ 2 аудіодоріжками. Якщо доріжка одна, можна дати її на обидва виходи (`--out 1=1 --out 1=2`).
+- **Енергоживлення:** вимкніть сон і гасіння екрана, інакше прогін обірветься:
+  ```powershell
+  powercfg /change standby-timeout-ac 0
+  powercfg /change monitor-timeout-ac 0
+  ```
+
+## 2. Встановлення
+
+### 2.1 Відкрити PowerShell
+
+Натисніть **Win + X** і виберіть **Термінал** (Terminal). Відкриється Windows Terminal з вкладкою PowerShell: у рядку буде щось на кшталт `PS C:\Users\<ім'я>>`. Права адміністратора не потрібні.
+
+Другий спосіб: **Пуск** → введіть `PowerShell` → **Enter**.
+
+Команди нижче вводьте по одній: вставте рядок (**Ctrl + V** або правий клік) і натисніть **Enter**.
+
+### 2.2 Встановити Git і .NET 10 SDK
+
+```powershell
+winget install --id Git.Git -e
+winget install --id Microsoft.DotNet.SDK.10 -e
+```
+
+`winget` уже є у Windows 11. Якщо він спитає про угоду з джерелом (`Do you agree…`), введіть `Y` і натисніть **Enter**. Якщо з'явиться запит контролю облікових записів (UAC), натисніть **Так**.
+
+**Після встановлення закрийте термінал і відкрийте новий**, інакше `git` і `dotnet` не знайдуться (PATH оновлюється лише в новому вікні). Перевірте:
+
+```powershell
+git --version      # git version 2.x
+dotnet --version   # 10.0.xxx
+```
+
+### 2.3 Завантажити репозиторій
+
+Репозиторій публічний, тож найпростіше клонувати через HTTPS, без SSH-ключів:
+
+```powershell
+cd $HOME
+git clone https://github.com/PulsarV/DualPlayer.git
+cd DualPlayer
+```
+
+Код буде в `C:\Users\<ім'я>\DualPlayer`. Усі подальші команди виконуйте з цієї теки: рядок має закінчуватися на `\DualPlayer>`.
+
+### 2.4 Завантажити FFmpeg
+
+```powershell
+powershell -ExecutionPolicy Bypass -File build\fetch-ffmpeg.ps1
+```
+
+`-ExecutionPolicy Bypass` дозволяє запустити цей один скрипт, не змінюючи налаштувань безпеки системи. Скрипт завантажує LGPL-збірку FFmpeg 8.1.3, перевіряє SHA-256 і розпаковує DLL у `build\ffmpeg\`. Наприкінці має з'явитися `FFmpeg unpacked to …`. Перевірте:
+
+```powershell
+dir build\ffmpeg\*.dll   # avcodec-62.dll, avformat-62.dll, avutil-60.dll, swresample-6.dll …
+```
+
+При збірці ці DLL копіюються поруч з exe.
+
+Скрипт прив'язаний до датованої збірки BtbN, і з часом це посилання видаватиме 404. Тоді треба оновити `$url` і `$sha256` у скрипті на актуальну збірку `lgpl-shared` FFmpeg 8.x.
+
+## 3. Збірка і автотести
+
+```powershell
+dotnet build DualPlayer.slnx -c Release
+dotnet test DualPlayer.slnx -c Release
+```
+
+Тести мають бути зеленими. 7 апаратних тестів Windows при цьому пропускаються, і це нормально.
+
+**Апаратні тести WASAPI на реальних пристроях:**
+
+```powershell
+$env:DUALPLAYER_HARDWARE = "1"
+dotnet test tests\DualPlayer.Platform.Windows.Tests -c Release
+```
+
+Вони перевіряють три речі:
+
+- перелік пристроїв;
+- відкриття пристрою за замовчуванням у shared mode;
+- 10 секунд рендеру з монотонною позицією пристрою.
+
+**Тест втрати пристрою:**
+
+```powershell
+$env:DUALPLAYER_LOSS_DEVICE = "<id пристрою зі списку devices>"
+dotnet test tests\DualPlayer.Platform.Windows.Tests -c Release
+```
+
+Коли в тесті з'явиться повідомлення «Disable or unplug device …», за 60 с вимкніть цю гарнітуру. Після цього приберіть змінні:
+
+```powershell
+Remove-Item Env:DUALPLAYER_HARDWARE, Env:DUALPLAYER_LOSS_DEVICE
+```
+
+## 4. Запуск консолі
+
+```powershell
+$exe = "src\DualPlayer.Console\bin\Release\net10.0\DualPlayer.Console.exe"
+& $exe devices
+& $exe tracks D:\movie.mkv
+```
+
+- `devices` показує номер, назву, тип і ID кожного пристрою. Запишіть, під якими номерами йдуть гарнітури A і B та дротовий вихід.
+- `tracks` показує доріжки файлу.
+
+## 5. Короткі функціональні перевірки
+
+Робіть їх окремими запусками, щоб довгий прогін лишився «чистим».
+
+| AC | Що зробити | Що має бути |
+|---|---|---|
+| AC-03 | `& $exe play D:\movie.mkv --out 9=1` і ще раз з неіснуючим пристроєм `--out 1=99` | помилка з поясненням, код виходу 2, звук не грає |
+| AC-05 | `--out 1=1 --out 2=1` | «one audio output per device», код виходу 2 |
+| AC-04 | Увімкніть у властивостях пристрою (Звук → пристрій → Властивості → Додатково) дозвіл на монопольний режим і займіть пристрій програмою, що грає в WASAPI exclusive (наприклад, foobar2000). Потім запустіть `play` на цьому пристрої | `outputs.device_access_denied` з назвою пристрою, код виходу 4 |
+| AC-01, AC-12 | `& $exe play D:\movie.mkv --out 1=<A> --out 2=<B>` | рядки `output …` з конвертацією формату; `started … start-to-audio` ≤ 2 с; кожна гарнітура чує свою доріжку |
+| AC-08 | під час відтворення ввести `pause`, а через кілька секунд `resume` | обидва виходи замовкають разом і продовжують з тієї самої позиції |
+| AC-09, AC-09b | `seek +60`, `seek -10`, потім `pause`, `seek +60`, `resume` | `seek confirmed at …`; на паузі `position moved to …, still paused` |
+| AC-10 | `seek 99:00:00` | попередження, підсумок запуску з `ended seek-past-end` |
+| AC-06 | запуск на 3 виходи (A, B і дротовий), потім вимкнути гарнітуру B | рядок `device-lost … others continue`; A і дротовий грають без розриву |
+| AC-06b | далі вимкнути решту пристроїв по одному | на останньому — `last output, run ends`, підсумок, код виходу 3 |
+| AC-13 | `stop` або Ctrl+C | таблиця підсумку запуску |
+
+## 6. Довгий прогін ≥ 3 год (AC-07)
+
+1. Закрийте інші програми зі звуком. Гарнітури тримайте заряджені й поруч з ПК.
+2. **Вікно 1 — сам прогін.** Протягом прогону нічого в ньому не вводьте:
+   ```powershell
+   & $exe play D:\movie.mkv --out 1=<A> --out 2=<B> [--out 1=<дротовий>]
+   ```
+3. **Вікно 2 — заміри CPU кожні 10 с** протягом усього прогону:
+   ```powershell
+   typeperf "\Process(DualPlayer.Console)\% Processor Time" -si 10 -o cpu.csv
+   ```
+   Цей лічильник рахує відсотки від одного ядра. Щоб отримати частку від усього CPU, середнє треба поділити на кількість логічних ядер (`$env:NUMBER_OF_PROCESSORS`). Ціль — ≤ 5 %.
+4. Дайте фільму доіграти до кінця: підсумок буде з `ended file-end`. Можна й зупинити вручну командою `stop`, але лише після ≥ 3 год.
+5. Періодично послухайте гарнітури: чи немає тріску. Якщо тріск чути, а лічильник показує 0 underrun-ів, запишіть це окремо.
+
+## 7. Що зібрати після прогону
+
+- **Лог:** `%APPDATA%\DualPlayer\logs\dualplayer-console-<дата>.log`. У ньому шукайте:
+  - рядок `started … start-to-audio` і рядки `First audio on <device> … ms`;
+  - усі рядки `excursion` (виходи за межу 10 мс);
+  - таблицю `run summary`;
+  - версію і ліцензію FFmpeg на початку.
+- **CPU:** файл `cpu.csv`.
+- **Залізо:** модель ПК, CPU, Bluetooth-адаптер, моделі гарнітур, тривалість файлу.
+
+Порівняйте результати з цілями §6:
+
+| Ціль | Звідки взяти |
+|---|---|
+| `max_drift_ms` ≤ 10 для кожного пристрою | run summary |
+| `underruns` = 0 | run summary |
+| `clock_mismatch_ppm` для кожної гарнітури (є число) | run summary |
+| start-to-audio ≤ 2 с | рядок `started` |
+| CPU ≤ 5 % | `cpu.csv` |
+
+## 8. Що далі
+
+Результати оформлюються в `docs/features/two-outputs-one-clock/evidence/<дата>-target-pc-run.md`: таблиця підсумку, заміри проти цілей §6 і перелік заліза. Якщо всі цілі виконано, крок 3 у [роадмапі](../../../roadmap.md) позначається як `shipped`. Перед комітом перевірте назви пристроїв: якщо в них є ваше ім'я, їх варто приховати (spec §6.1).
+
+Якщо якусь ціль не досягнуто, цифри не правимо: записуємо як є і запускаємо `/sdd:fix two-outputs-one-clock`.
