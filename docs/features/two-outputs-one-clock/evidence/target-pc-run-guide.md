@@ -76,27 +76,64 @@ dotnet test DualPlayer.slnx -c Release
 
 Тести мають бути зеленими. 7 апаратних тестів Windows при цьому пропускаються, і це нормально.
 
-**Апаратні тести WASAPI на реальних пристроях:**
+### 3.1 Апаратні тести WASAPI на реальних пристроях
+
+Ці 7 тестів у `tests\DualPlayer.Platform.Windows.Tests` працюють зі справжньою звуковою системою Windows. Без змінної `DUALPLAYER_HARDWARE=1` вони пропускаються, тому звичайний `dotnet test` показує `Skipped: 7`.
+
+| Тест | Що перевіряє | Що потрібно від вас |
+|---|---|---|
+| `Runs_only_on_a_windows_machine_with_hardware_enabled` | що апаратні тести справді запустилися | нічого |
+| `Listing_returns_devices_sorted_by_endpoint_id…` | Windows віддає список активних пристроїв з назвами й ID, відсортований за ID | хоча б один увімкнений пристрій виводу |
+| `Opening_an_unknown_endpoint_id_reports_device_not_found` | неіснуючий ID дає помилку `outputs.device_not_found`, а не виняток | нічого |
+| `Opening_the_default_device_in_shared_mode…` | пристрій за замовчуванням відкривається в shared mode, повертає формат мікшера і буфер ≥ 40 мс | у Windows вибрано пристрій виводу за замовчуванням |
+| `Ten_seconds_of_silence_render…` | 10 с тиші на першому пристрої зі списку; позиція пристрою й час лише зростають | нічого; звуку не буде, це тиша |
+| `Starting_twice_or_after_close…` | повторний старт і старт після закриття не падають і не дають хибного «пристрій втрачено» | нічого |
+| `Disabling_a_rendering_device_raises_device_lost_exactly_once` | коли пристрій вимикають, двигун отримує подію втрати рівно один раз (AC-06) | вимкнути пристрій вручну, див. 3.2 |
+
+**Крок 1 — шість автоматичних тестів.** Увімкніть і підключіть гарнітури. У тому ж вікні PowerShell, у теці `DualPlayer`:
 
 ```powershell
 $env:DUALPLAYER_HARDWARE = "1"
-dotnet test tests\DualPlayer.Platform.Windows.Tests -c Release
+dotnet test tests\DualPlayer.Platform.Windows.Tests -c Release --logger "console;verbosity=normal"
 ```
 
-Вони перевіряють три речі:
+`--logger "console;verbosity=normal"` виводить кожен тест окремим рядком: `Passed …`, `Skipped …` або `Failed …`. Прогін триває близько 20 с. Очікуваний підсумок:
 
-- перелік пристроїв;
-- відкриття пристрою за замовчуванням у shared mode;
-- 10 секунд рендеру з монотонною позицією пристрою.
-
-**Тест втрати пристрою:**
-
-```powershell
-$env:DUALPLAYER_LOSS_DEVICE = "<id пристрою зі списку devices>"
-dotnet test tests\DualPlayer.Platform.Windows.Tests -c Release
+```
+Passed!  - Failed: 0, Passed: 39, Skipped: 1, Total: 40
 ```
 
-Коли в тесті з'явиться повідомлення «Disable or unplug device …», за 60 с вимкніть цю гарнітуру. Після цього приберіть змінні:
+Пропущеним лишається лише тест втрати пристрою (він чекає на змінну з кроку 2). Якщо щось `Failed`, скопіюйте блок помилки під назвою тесту.
+
+### 3.2 Тест втрати пристрою (ручний)
+
+Тест відкриває вказаний пристрій, грає на ньому тишу й чекає до **60 с**, поки ви його вимкнете.
+
+1. Дізнайтеся ID гарнітури, яку вимикатимете (наприклад, B):
+   ```powershell
+   & "src\DualPlayer.Console\bin\Release\net10.0\DualPlayer.Console.exe" devices
+   ```
+   Скопіюйте ID з останньої колонки повністю, разом з фігурними дужками: `{0.0.0.00000000}.{…}`.
+2. Задайте змінну. Беріть ID в **одинарні** лапки, щоб PowerShell не чіпав дужки:
+   ```powershell
+   $env:DUALPLAYER_LOSS_DEVICE = '{0.0.0.00000000}.{…}'
+   ```
+3. Запустіть лише цей тест:
+   ```powershell
+   dotnet test tests\DualPlayer.Platform.Windows.Tests -c Release --filter "FullyQualifiedName~Disabling_a_rendering_device" --logger "console;verbosity=normal"
+   ```
+4. Коли з'явиться рядок `Starting test execution, please wait...`, зачекайте ~5 с і вимкніть гарнітуру. Можна будь-яким способом:
+   - кнопкою живлення на самій гарнітурі;
+   - **Параметри → Bluetooth і пристрої →** гарнітура → **Від'єднати**;
+   - **Параметри → Система → Звук →** гарнітура → **Не дозволяти** (вимкнути пристрій).
+
+   Повідомлення «Disable or unplug device …» у консолі може не з'явитися: xUnit показує діагностичні повідомлення лише за окремого налаштування. Орієнтуйтеся на рядок `Starting test execution`.
+5. Очікуваний результат: `Passed Disabling_a_rendering_device_raises_device_lost_exactly_once` і `Passed: 1`.
+   - `Failed` з `TimeoutException`: пристрій не вимкнули за 60 с, повторіть.
+   - `Failed` з `should be 1 but was 2`: подія прийшла двічі, і це справжня помилка, яку треба зберегти.
+6. Увімкніть гарнітуру назад. Якщо вимикали через «Не дозволяти», поверніть **Дозволити**.
+
+Змінні діють лише в цьому вікні PowerShell. Приберіть їх перед подальшими кроками:
 
 ```powershell
 Remove-Item Env:DUALPLAYER_HARDWARE, Env:DUALPLAYER_LOSS_DEVICE
