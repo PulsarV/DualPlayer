@@ -1621,6 +1621,26 @@
       "file": "docs/features/two-outputs-one-clock/tasks/T75-time-the-pre-roll-stop-check-into-the-release-window-and-take-10-starts.md",
       "status": "done",
       "origin": "review-2026-11-17-r4: F1, F2"
+    },
+    {
+      "id": "T76",
+      "title": "Time the pre-roll stop from the output lines and bound its log check to the run",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-08",
+        "AC-13"
+      ],
+      "dod": "the pre-roll stop is timed from the output lines; the count condition reads only this run's lines (Film released between its Run started and Run ended (Stop), master clock 0.000 s); gate clean",
+      "files_hint": [
+        "docs/features/two-outputs-one-clock/evidence/target-pc-run-guide.md",
+        "docs/features/two-outputs-one-clock/tasks/T22-record-target-pc-evidence-run.md",
+        "docs/features/two-outputs-one-clock/test-plan.md",
+        "docs/features/two-outputs-one-clock/sad.md"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T76-time-the-pre-roll-stop-from-the-output-lines-and-bound-the-log-check-to-the-run.md",
+      "status": "todo",
+      "origin": "review-2026-11-17-r5: F1, F2"
     }
   ]
 }
