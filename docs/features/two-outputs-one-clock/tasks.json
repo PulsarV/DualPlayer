@@ -1600,6 +1600,27 @@
       "file": "docs/features/two-outputs-one-clock/tasks/T74-render-at-each-release-step-while-a-moved-output-awaits-its-target.md",
       "status": "done",
       "origin": "review-2026-11-17-r3: F3"
+    },
+    {
+      "id": "T75",
+      "title": "Time the pre-roll stop check into the release-to-start window and take start-to-audio over 10 starts",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-08",
+        "AC-13",
+        "AC-01"
+      ],
+      "dod": "the pre-roll stop check aims between the film release and the clock start and counts only runs whose log shows Film released before Run ended (Stop); the AC-01 start check is 10 starts and records the maximum; gate clean",
+      "files_hint": [
+        "docs/features/two-outputs-one-clock/evidence/target-pc-run-guide.md",
+        "docs/features/two-outputs-one-clock/tasks/T22-record-target-pc-evidence-run.md",
+        "docs/features/two-outputs-one-clock/test-plan.md",
+        "docs/features/two-outputs-one-clock/sad.md"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T75-time-the-pre-roll-stop-check-into-the-release-window-and-take-10-starts.md",
+      "status": "todo",
+      "origin": "review-2026-11-17-r4: F1, F2"
     }
   ]
 }
