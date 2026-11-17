@@ -78,7 +78,7 @@
 | T68 | [Fix the pre-roll comments and pin the stalled-output release time](./T68-fix-the-pre-roll-comments-and-pin-the-stalled-output-release-time.md) | app | Volodymyr Kravchuk | S | T67 | done | COMMIT |
 | T69 | [Retry the release when a moved output's queue read is torn](./T69-retry-the-release-when-a-moved-outputs-queue-read-is-torn.md) | app | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T70 | [Exercise the pre-roll stop silence and reword the pre-roll loss tests](./T70-exercise-the-pre-roll-stop-silence-and-reword-the-pre-roll-loss-tests.md) | app | Volodymyr Kravchuk | S | T69 | done | COMMIT |
-| T71 | [Assert the release-race hook rendered inside the release](./T71-assert-the-release-race-hook-rendered-inside-the-release.md) | app | Volodymyr Kravchuk | S | T70 | todo | — |
+| T71 | [Assert the release-race hook rendered inside the release](./T71-assert-the-release-race-hook-rendered-inside-the-release.md) | app | Volodymyr Kravchuk | S | T70 | done | COMMIT |
 | T72 | [Record the pre-roll stop close assumption and the start recovery wording in sad.md](./T72-record-the-pre-roll-stop-close-assumption-and-the-start-window-wording.md) | app | Volodymyr Kravchuk | S | T71 | todo | — |
 
 **Total:** 72 tasks (T23–T33 are follow-ups from review-2026-11-12, T34–T42 from review-2026-11-12-r2, T43–T51 from review-2026-11-12-r3, T52–T57 from review-2026-11-12-r4, T58–T60 from review-2026-11-12-r5, T61–T62 from review-2026-11-12-r6, T63 from review-2026-11-12-r7, T64 from the target-PC diagnosis 2026-11-17 / ADR-0008, T65–T68 from review-2026-11-17, T69–T72 from review-2026-11-17-r2), ~54 person-days (S = ½ day, M/L = 1 day; L tasks are full days with a split risk).

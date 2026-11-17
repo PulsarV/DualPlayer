@@ -496,6 +496,8 @@ public sealed class AudioEngineStartAndHangTests
         rig.RenderUntilClockStarts();
         rig.Render(320);
 
+        // The scenario only holds if a device really rendered while the film was being released.
+        rig.HookRendersIn("TryRelease").Renders.ShouldBeGreaterThan(0, "no device rendered inside the release: the race window was not exercised");
         var clockStart = rig.ClockStart;
         foreach (var device in rig.Devices)
         {

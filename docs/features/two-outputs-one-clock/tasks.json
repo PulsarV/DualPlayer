@@ -1538,7 +1538,7 @@
         "tests/DualPlayer.Core.Tests/Playback/AudioEngineStartAndHangTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T71-assert-the-release-race-hook-rendered-inside-the-release.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-17-r2: R4"
     },
     {

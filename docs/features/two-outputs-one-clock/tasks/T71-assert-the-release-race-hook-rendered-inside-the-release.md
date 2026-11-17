@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-17-r2: R4"
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-17-r2. Work from what is inlined here; the source always wins.
@@ -29,5 +29,5 @@ See [spec.md](../spec.md) §5 AC-01; [ADR-0008](../adr/0008-start-the-master-clo
 
 ## Definition of Done
 
-- [ ] The rig counts hook renders made from inside the release; the race test asserts the count is > 0.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The rig counts hook renders made from inside the release; the race test asserts the count is > 0.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
