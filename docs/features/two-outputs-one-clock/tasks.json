@@ -1656,7 +1656,7 @@
         "docs/features/two-outputs-one-clock/evidence/target-pc-run-guide.md"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T77-name-the-log-file-and-the-last-run-block-in-the-pre-roll-stop-check.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-17-r6: F1"
     }
   ]
