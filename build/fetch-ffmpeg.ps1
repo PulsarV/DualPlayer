@@ -10,10 +10,17 @@ update $url and $sha256 together.
 #>
 [CmdletBinding()]
 param(
-    [string]$Destination = (Join-Path $PSScriptRoot 'ffmpeg')
+    [string]$Destination
 )
 
 $ErrorActionPreference = 'Stop'
+# Windows PowerShell 5.1 shows a slow per-byte progress bar for Invoke-WebRequest.
+$ProgressPreference = 'SilentlyContinue'
+
+# Windows PowerShell 5.1 leaves $PSScriptRoot empty in param() defaults, so resolve it here.
+if (-not $Destination) {
+    $Destination = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'ffmpeg'
+}
 
 $url    = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-11-11-12-39/ffmpeg-n8.1.3-35-gf1acb0a266-win64-lgpl-shared-8.1.zip'
 $sha256 = 'f7697c270197c04bf72759c65ada64fcaea663bcb80767c390752d2412ea2dcf'
