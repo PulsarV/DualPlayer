@@ -1520,7 +1520,7 @@
         "tests/DualPlayer.Core.Tests/Playback/AudioEngineStartAndHangTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T70-exercise-the-pre-roll-stop-silence-and-reword-the-pre-roll-loss-tests.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-17-r2: R2, R3"
     },
     {

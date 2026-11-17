@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-17-r2: R2, R3"
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-17-r2. Work from what is inlined here; the source always wins.
@@ -30,6 +30,6 @@ See [spec.md](../spec.md) §5 AC-08, AC-06b; [ADR-0008](../adr/0008-start-the-ma
 
 ## Definition of Done
 
-- [ ] A stop after the release but before the clock start renders on the devices during `EndRun` (before the close) and asserts no new film; mutation: removing `SetSilenceFrom(0)` turns it red.
-- [ ] The two loss tests drop the film assertion and the "no film plays" wording; their summary / `AllDevicesLost` / no-`AudioStarted` assertions stay.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] A stop after the release but before the clock start renders on the devices during `EndRun` (before the close) and asserts no new film; mutation: removing `SetSilenceFrom(0)` turns it red.
+- [x] The two loss tests drop the film assertion and the "no film plays" wording; their summary / `AllDevicesLost` / no-`AudioStarted` assertions stay.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

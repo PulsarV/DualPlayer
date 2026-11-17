@@ -42,6 +42,7 @@ public sealed class AudioEngineStartAndHangTests
         private const int HookFrames = Rate / 1_000;
 
         private readonly Lock _deviceGate = new();
+        private readonly Dictionary<string, (int Renders, int Film)> _hookRenders = [];
         private bool _inHook;
 
         /// <param name="rendersWhenTheEngineReadsTheTimestampFrequency">
@@ -151,11 +152,34 @@ public sealed class AudioEngineStartAndHangTests
 
         public void Dispose() => Engine.Dispose();
 
+        /// <summary>
+        /// How many hook renders ran inside the engine method <paramref name="method"/> (<c>TryRelease</c> or <c>EndRun</c>),
+        /// and how many film samples they handed to the devices.
+        /// </summary>
+        public (int Renders, int Film) HookRendersIn(string method)
+        {
+            lock (_hookRenders)
+            {
+                return _hookRenders.GetValueOrDefault(method);
+            }
+        }
+
         private void RenderOnEngineThread()
         {
-            // Only the control loop runs the release; other threads (the decode pump, the fake clock's own timers) read the
-            // frequency too, and blocking them here could deadlock against Fill. Never wait for the gate: skip when busy.
-            if (_inHook || Thread.CurrentThread.Name != "EngineControlLoop" || Events.OfType<AudioStarted>().Any() || !_deviceGate.TryEnter())
+            if (_inHook || Thread.CurrentThread.Name != "EngineControlLoop" || Events.OfType<AudioStarted>().Any())
+            {
+                return;
+            }
+
+            // Only the control loop runs the release and the stop; other threads (the decode pump, the fake clock's own
+            // timers) read the frequency too, and blocking them here could deadlock against Fill. The release never waits
+            // for the gate (skip when busy); the stop does, so a device always renders between the silence and the close.
+            var within = new System.Diagnostics.StackTrace().GetFrames().Select(f => f.GetMethod()?.Name).FirstOrDefault(n => n is "TryRelease" or "EndRun");
+            if (within == "EndRun")
+            {
+                _deviceGate.Enter();
+            }
+            else if (!_deviceGate.TryEnter())
             {
                 return;
             }
@@ -163,9 +187,20 @@ public sealed class AudioEngineStartAndHangTests
             _inHook = true;
             try
             {
-                foreach (var device in _devices.ToArray())
+                var devices = _devices.ToArray();
+                var filmBefore = devices.Sum(FilmSamples);
+                foreach (var device in devices)
                 {
                     device.PumpRender(HookFrames);
+                }
+
+                if (within is not null)
+                {
+                    lock (_hookRenders)
+                    {
+                        var (renders, film) = _hookRenders.GetValueOrDefault(within);
+                        _hookRenders[within] = (renders + 1, film + devices.Sum(FilmSamples) - filmBefore);
+                    }
                 }
             }
             finally
@@ -310,8 +345,8 @@ public sealed class AudioEngineStartAndHangTests
         return rig.Events.OfType<RunSummary>().Single();
     }
 
-    private static Rig StartingRig() =>
-        new([TimeSpan.Zero, TimeSpan.FromMilliseconds(600), TimeSpan.FromMilliseconds(980)], depth: 1_920, chunk: 480, pullsDuringStartLatency: true);
+    private static Rig StartingRig(bool rendersWhenTheEngineReadsTheTimestampFrequency = false) =>
+        new([TimeSpan.Zero, TimeSpan.FromMilliseconds(600), TimeSpan.FromMilliseconds(980)], depth: 1_920, chunk: 480, pullsDuringStartLatency: true, rendersWhenTheEngineReadsTheTimestampFrequency: rendersWhenTheEngineReadsTheTimestampFrequency);
 
     private static int FilmSamples(FakeAudioDevice device) => device.Rendered.Count(s => s != 0f);
 
@@ -376,7 +411,21 @@ public sealed class AudioEngineStartAndHangTests
     }
 
     [Fact]
-    public void Losing_the_last_devices_before_the_film_is_released_ends_the_run_with_all_devices_lost_and_no_film_plays()
+    public void A_device_that_renders_during_a_stop_after_the_release_gets_no_further_film()
+    {
+        using var rig = StartingRig(rendersWhenTheEngineReadsTheTimestampFrequency: true);
+        RenderUntilReleasedButClockNotStarted(rig);
+
+        var summary = StopAndSummarize(rig);
+
+        summary.EndReason.ShouldBe(RunEndReason.Stop);
+        var (renders, film) = rig.HookRendersIn("EndRun");
+        renders.ShouldBeGreaterThan(0, "no device rendered between the stop and the close");
+        film.ShouldBe(0, "film was handed to a device after the stop");
+    }
+
+    [Fact]
+    public void Losing_the_last_devices_before_the_film_is_released_ends_the_run_with_all_devices_lost()
     {
         using var rig = StartingRig();
         rig.Render(30);
@@ -386,21 +435,19 @@ public sealed class AudioEngineStartAndHangTests
 
         var summary = rig.Events.OfType<RunSummary>().Single();
         summary.EndReason.ShouldBe(RunEndReason.AllDevicesLost);
-        FilmSamples(rig).ShouldAllBe(n => n == 0, "film was heard after the loss");
+        rig.Events.OfType<AudioStarted>().ShouldBeEmpty();
     }
 
     [Fact]
-    public void Losing_the_last_devices_after_the_release_but_before_the_clock_starts_ends_the_run_with_all_devices_lost_and_no_film_plays_after_it()
+    public void Losing_the_last_devices_after_the_release_but_before_the_clock_starts_ends_the_run_with_all_devices_lost_and_the_clock_never_starts()
     {
         using var rig = StartingRig();
         RenderUntilReleasedButClockNotStarted(rig);
-        var atLoss = FilmSamples(rig);
 
         LoseAll(rig);
 
         var summary = rig.Events.OfType<RunSummary>().Single();
         summary.EndReason.ShouldBe(RunEndReason.AllDevicesLost);
-        FilmSamples(rig).ShouldBe(atLoss, "film was rendered after the loss");
         rig.Events.OfType<AudioStarted>().ShouldBeEmpty();
     }
 
