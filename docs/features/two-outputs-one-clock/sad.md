@@ -174,7 +174,7 @@ C4Container
 
 All commands and backend events enter the engine through one engine-control loop in `DualPlayer.Core` that handles them one at a time, so transport state never races. Every seek or stop bumps a playback **epoch**: frames carry the epoch they were decoded in, and a render source discards frames from an older epoch ([ADR-0006](adr/0006-coordinate-pause-and-seek-with-playback-epochs-while-device-streams-keep-running.md)). Seeded flows below; the `sequences` stage covers every remaining AC.
 
-**Critical flow 1: start a run (AC-01, AC-03, AC-04, AC-05; ≤ 2 s to audio)**
+**Critical flow 1: start a run (AC-01, AC-03, AC-04, AC-05; ≤ 3 s to audio)**
 
 ```mermaid
 sequenceDiagram
@@ -458,7 +458,7 @@ One process, `DualPlayer.Console`, runs on one PC: the target Windows 11 x64 PC 
 - Per-device sync record once per second (drift, current correction in ppm, cumulative underruns, device id, master-clock position) — console line + structured log event (AC-11).
 - Excursion events (device, peak, duration, start position) when an output leaves the 10 ms tolerance (AC-07); device-lost events (AC-06).
 - Run summary per output at the end of the run (AC-13).
-- Start-to-audio timing: timestamps of the start command and of the first rendered frame per device in the log (spec §6, ≤ 2 s).
+- Start-to-audio timing: timestamps of the start command and of the first rendered frame per device in the log (spec §6, ≤ 3 s).
 - Actual shared-mode device buffer and mix format per device logged when each stream opens (the OS may grant a larger buffer than requested).
 - CPU: the OS performance counter for the console process, averaged over the run (spec §6, ≤ 5 %).
 
@@ -518,7 +518,7 @@ All numbers are spec §6 targets on the target Windows 11 PC; the macOS dev back
 - **How verify:** underrun counts from the AC-13 run summary of the evidence run; CPU from the OS performance counter for the console process, averaged over the run.
 
 **Supporting scenarios (spec §6):**
-- **Start latency** — start command to audio on all outputs ≤ 2 s; verified from log timestamps of the start command and each device's first rendered frame.
+- **Start latency** — start command to audio on all outputs ≤ 3 s; verified from log timestamps of the start command and each device's first rendered frame.
 - **Output count** — ≥ 3 outputs simultaneously within the drift tolerance; verified by a Core test with three fake devices (no third physical device required).
 
 ## 11. Risks and technical debt
