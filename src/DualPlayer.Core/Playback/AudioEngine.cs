@@ -934,6 +934,10 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             {
                 output.Source.SetSilenceFrom(0); // no film after a stop during the pre-roll; nothing to wait for
             }
+
+            // Past the release the slowest output may already hold up to L_max of film in its device queue while the
+            // faster ones hold only silence. Nothing waits for it to play out: closing the device (WASAPI Stop + release)
+            // discards that queue, so every output falls silent together at the close.
         }
         else if (!run.Paused)
         {

@@ -1440,7 +1440,7 @@
         "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T66-test-a-stop-and-the-loss-of-the-last-device-during-the-start-pre-roll.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-17: S3"
     },
     {

@@ -187,7 +187,7 @@ public sealed class AudioEngineStartAndHangTests
         {
             foreach (var device in _devices)
             {
-                if (device.IsClosed || device.IsHung)
+                if (device.IsClosed || device.IsHung || device.IsLost)
                 {
                     continue;
                 }
@@ -308,6 +308,100 @@ public sealed class AudioEngineStartAndHangTests
             return 0;
         });
         return rig.Events.OfType<RunSummary>().Single();
+    }
+
+    private static Rig StartingRig() =>
+        new([TimeSpan.Zero, TimeSpan.FromMilliseconds(600), TimeSpan.FromMilliseconds(980)], depth: 1_920, chunk: 480, pullsDuringStartLatency: true);
+
+    private static int FilmSamples(FakeAudioDevice device) => device.Rendered.Count(s => s != 0f);
+
+    private static int[] FilmSamples(Rig rig) => [.. rig.Devices.Select(FilmSamples)];
+
+    /// <summary>Renders until the film has been handed to some device (the release happened) while the master clock has not started.</summary>
+    private static void RenderUntilReleasedButClockNotStarted(Rig rig)
+    {
+        for (var i = 0; i < 700 && rig.Devices.All(d => FilmSamples(d) == 0); i++)
+        {
+            rig.Events.OfType<AudioStarted>().ShouldBeEmpty("the clock started before the film was released");
+            rig.Render(1);
+        }
+
+        rig.Devices.Any(d => FilmSamples(d) > 0).ShouldBeTrue("the film was never released");
+        rig.Events.OfType<AudioStarted>().ShouldBeEmpty("the clock already started: the test missed the window between release and clock start");
+    }
+
+    private static void LoseAll(Rig rig)
+    {
+        rig.Call(() =>
+        {
+            foreach (var device in rig.Devices)
+            {
+                device.SimulateLoss();
+            }
+
+            return 0;
+        });
+        rig.Render(30);
+    }
+
+    [Fact]
+    public void A_stop_before_the_film_is_released_produces_a_summary_and_no_output_ever_hears_film()
+    {
+        using var rig = StartingRig();
+        rig.Render(30);
+        rig.Events.OfType<AudioStarted>().ShouldBeEmpty();
+        FilmSamples(rig).ShouldAllBe(n => n == 0, "the film must not be released yet");
+
+        var summary = StopAndSummarize(rig);
+        rig.Render(50);
+
+        summary.EndReason.ShouldBe(RunEndReason.Stop);
+        FilmSamples(rig).ShouldAllBe(n => n == 0, "film was heard after a stop before the release");
+        rig.Events.OfType<AudioStarted>().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void A_stop_after_the_release_but_before_the_clock_starts_produces_a_summary_and_no_output_renders_film_after_it()
+    {
+        using var rig = StartingRig();
+        RenderUntilReleasedButClockNotStarted(rig);
+        var atStop = FilmSamples(rig);
+
+        var summary = StopAndSummarize(rig);
+        rig.Render(50);
+
+        summary.EndReason.ShouldBe(RunEndReason.Stop);
+        FilmSamples(rig).ShouldBe(atStop, "film was rendered after the stop");
+        rig.Events.OfType<AudioStarted>().ShouldBeEmpty("the clock must not start after a stop");
+    }
+
+    [Fact]
+    public void Losing_the_last_devices_before_the_film_is_released_ends_the_run_with_all_devices_lost_and_no_film_plays()
+    {
+        using var rig = StartingRig();
+        rig.Render(30);
+        FilmSamples(rig).ShouldAllBe(n => n == 0, "the film must not be released yet");
+
+        LoseAll(rig);
+
+        var summary = rig.Events.OfType<RunSummary>().Single();
+        summary.EndReason.ShouldBe(RunEndReason.AllDevicesLost);
+        FilmSamples(rig).ShouldAllBe(n => n == 0, "film was heard after the loss");
+    }
+
+    [Fact]
+    public void Losing_the_last_devices_after_the_release_but_before_the_clock_starts_ends_the_run_with_all_devices_lost_and_no_film_plays_after_it()
+    {
+        using var rig = StartingRig();
+        RenderUntilReleasedButClockNotStarted(rig);
+        var atLoss = FilmSamples(rig);
+
+        LoseAll(rig);
+
+        var summary = rig.Events.OfType<RunSummary>().Single();
+        summary.EndReason.ShouldBe(RunEndReason.AllDevicesLost);
+        FilmSamples(rig).ShouldBe(atLoss, "film was rendered after the loss");
+        rig.Events.OfType<AudioStarted>().ShouldBeEmpty();
     }
 
     [Fact]

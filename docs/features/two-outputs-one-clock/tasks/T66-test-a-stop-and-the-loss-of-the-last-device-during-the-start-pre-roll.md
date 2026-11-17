@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
 origin: "review-2026-11-17: S3"
-status: "todo"
-step: "SELECT"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-17. Work from what is inlined here; the source always wins.
@@ -30,7 +30,7 @@ See [spec.md](../spec.md) §5 AC-08, AC-06b, AC-13; [ADR-0008](../adr/0008-start
 
 ## Definition of Done
 
-- [ ] Tests: stop before the release, stop after the release but before the clock start, last device lost before the release, last device lost after the release; each asserts a run summary is produced (AC-13) and no film is heard after the stop / loss.
-- [ ] Mutation check: deleting the `run.Starting` branch of `EndRun` turns at least one of them red.
-- [ ] The reliance on `Close` discarding queued device audio is either handled in code or documented at the stop path (and in sad.md if it is an assumption on the Windows backend).
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Tests: stop before the release, stop after the release but before the clock start, last device lost before the release, last device lost after the release; each asserts a run summary is produced (AC-13) and no film is heard after the stop / loss.
+- [x] Mutation check: deleting the `run.Starting` branch of `EndRun` turns at least one of them red.
+- [x] The reliance on `Close` discarding queued device audio is either handled in code or documented at the stop path (and in sad.md if it is an assumption on the Windows backend).
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
