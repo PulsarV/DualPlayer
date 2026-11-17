@@ -444,15 +444,18 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         var moved = new List<(Output Output, long HeardAt)>();
         foreach (var output in run.Outputs.Where(o => !o.Lost))
         {
-            if (output.Source.TryGetLatestQueue(out var played, out var timestamp, out var written) && played > 0)
+            var queueRead = output.Source.TryGetLatestQueue(out var played, out var timestamp, out var written);
+            var reading = ReadForRelease(queueRead, played, output.Source.LatestFramesPlayed, pastDeadline, run.Pump!.IsStalled(output.Index));
+            if (reading == ReleaseReading.Wait)
+            {
+                return false;
+            }
+
+            if (reading == ReleaseReading.Moved)
             {
                 // Constant once the position moves: a frame handed over now is heard after the frames still queued.
                 var lag = (double)Math.Max(0, written - played) / output.Format.SampleRate; // an underrun queue is heard at once
                 moved.Add((output, timestamp + (long)(lag * _time.TimestampFrequency)));
-            }
-            else if (!pastDeadline && !run.Pump!.IsStalled(output.Index))
-            {
-                return false;
             }
         }
 
@@ -474,6 +477,36 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         run.ClockStartTimestamp = clockStart;
         LogFilmReleased(moved.Count, run.Outputs.Count(o => !o.Lost), _time.GetElapsedTime(run.StartTimestamp, clockStart).TotalMilliseconds);
         return true;
+    }
+
+    internal enum ReleaseReading
+    {
+        /// <summary>The position moved: the output gets a heard target and its lag counts for the clock start.</summary>
+        Moved,
+
+        /// <summary>The release waits for the next poll.</summary>
+        Wait,
+
+        /// <summary>The output no longer holds the release; it gets the film at once and is aligned at the clock start.</summary>
+        NotMoved,
+    }
+
+    /// <summary>How the release reads one output from its last queue reading (ADR-0008).</summary>
+    internal static ReleaseReading ReadForRelease(bool queueRead, long queuePlayed, long latestPlayed, bool pastDeadline, bool stalled)
+    {
+        if (queueRead && queuePlayed > 0)
+        {
+            return ReleaseReading.Moved;
+        }
+
+        // A render was updating the queue of an output that has a position: read it again on the next poll, or it would
+        // get the film at once, ~its lag early, and its lag would be left out of the clock start.
+        if (!queueRead && latestPlayed > 0 && !stalled)
+        {
+            return ReleaseReading.Wait;
+        }
+
+        return !pastDeadline && !stalled ? ReleaseReading.Wait : ReleaseReading.NotMoved;
     }
 
     /// <summary>

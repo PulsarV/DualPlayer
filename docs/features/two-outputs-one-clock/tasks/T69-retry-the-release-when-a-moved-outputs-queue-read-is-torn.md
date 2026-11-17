@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-17-r2: R5"
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-17-r2. Work from what is inlined here; the source always wins.
@@ -29,6 +29,6 @@ See [spec.md](../spec.md) §5 AC-01; [ADR-0008](../adr/0008-start-the-master-clo
 
 ## Definition of Done
 
-- [ ] The per-output release reading is a pure decision (moved / wait / not moved) covered by unit tests: a torn read of an output with `LatestFramesPlayed > 0` that is not stalled waits, before and after the deadline; a stalled one does not hold the release.
-- [ ] `TryRelease` returns false (retry on the next poll) in that case.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The per-output release reading is a pure decision (moved / wait / not moved) covered by unit tests: a torn read of an output with `LatestFramesPlayed > 0` that is not stalled waits, before and after the deadline; a stalled one does not hold the release.
+- [x] `TryRelease` returns false (retry on the next poll) in that case.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

@@ -76,7 +76,7 @@
 | T66 | [Test a stop and the loss of the last device during the start pre-roll](./T66-test-a-stop-and-the-loss-of-the-last-device-during-the-start-pre-roll.md) | app | Volodymyr Kravchuk | M | T65 | done | COMMIT |
 | T67 | [Bring the start-to-audio budget and the start recovery window in line with ADR-0008 everywhere](./T67-bring-the-start-to-audio-budget-and-the-start-recovery-window-in-line-wi.md) | app | Volodymyr Kravchuk | S | T66 | done | COMMIT |
 | T68 | [Fix the pre-roll comments and pin the stalled-output release time](./T68-fix-the-pre-roll-comments-and-pin-the-stalled-output-release-time.md) | app | Volodymyr Kravchuk | S | T67 | done | COMMIT |
-| T69 | [Retry the release when a moved output's queue read is torn](./T69-retry-the-release-when-a-moved-outputs-queue-read-is-torn.md) | app | Volodymyr Kravchuk | S | — | todo | — |
+| T69 | [Retry the release when a moved output's queue read is torn](./T69-retry-the-release-when-a-moved-outputs-queue-read-is-torn.md) | app | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T70 | [Exercise the pre-roll stop silence and reword the pre-roll loss tests](./T70-exercise-the-pre-roll-stop-silence-and-reword-the-pre-roll-loss-tests.md) | app | Volodymyr Kravchuk | S | T69 | todo | — |
 | T71 | [Assert the release-race hook rendered inside the release](./T71-assert-the-release-race-hook-rendered-inside-the-release.md) | app | Volodymyr Kravchuk | S | T70 | todo | — |
 | T72 | [Record the pre-roll stop close assumption and the start recovery wording in sad.md](./T72-record-the-pre-roll-stop-close-assumption-and-the-start-window-wording.md) | app | Volodymyr Kravchuk | S | T71 | todo | — |

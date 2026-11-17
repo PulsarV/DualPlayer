@@ -1501,7 +1501,7 @@
         "tests/DualPlayer.Core.Tests/Playback/AudioEngineReleaseTests.cs"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T69-retry-the-release-when-a-moved-outputs-queue-read-is-torn.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-17-r2: R5"
     },
     {
