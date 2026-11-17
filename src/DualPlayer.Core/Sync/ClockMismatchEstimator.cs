@@ -4,7 +4,8 @@ namespace DualPlayer.Core.Sync;
 /// Estimates the device clock's rate relative to the master clock, in ppm, from device-position readings since the
 /// first one. The base is monotonic elapsed time on the <see cref="TimeProvider"/> timestamp base (the rate the
 /// running master clock advances at), not the master position, so pause and seek do not disturb it; device positions
-/// stay continuous across commands (ADR-0006).
+/// stay continuous across commands (ADR-0006). The base starts at the first reading after the device position has
+/// moved: a Bluetooth device holds its position for up to ~1 s after start, and that start-up latency is not a rate.
 /// </summary>
 public sealed class ClockMismatchEstimator(TimeProvider time)
 {
@@ -13,12 +14,13 @@ public sealed class ClockMismatchEstimator(TimeProvider time)
     private long _lastTimestamp;
     private TimeSpan _lastDevice;
     private bool _hasFirst;
+    private bool _moving;
 
     public double EstimatedPpm
     {
         get
         {
-            if (!_hasFirst)
+            if (!_moving)
             {
                 return 0;
             }
@@ -33,14 +35,26 @@ public sealed class ClockMismatchEstimator(TimeProvider time)
     {
         if (!_hasFirst)
         {
-            _firstTimestamp = timestamp;
             _firstDevice = deviceElapsed;
             _hasFirst = true;
+            return;
+        }
+
+        if (!_moving)
+        {
+            if (deviceElapsed == _firstDevice)
+            {
+                return;
+            }
+
+            _firstTimestamp = timestamp;
+            _firstDevice = deviceElapsed;
+            _moving = true;
         }
 
         _lastTimestamp = timestamp;
         _lastDevice = deviceElapsed;
     }
 
-    public void Reset() => _hasFirst = false;
+    public void Reset() => _hasFirst = _moving = false;
 }
