@@ -1562,6 +1562,44 @@
       "file": "docs/features/two-outputs-one-clock/tasks/T72-record-the-pre-roll-stop-close-assumption-and-the-start-window-wording.md",
       "status": "done",
       "origin": "review-2026-11-17-r2: R1, R6"
+    },
+    {
+      "id": "T73",
+      "title": "Carry the pre-roll stop check and the 3 s start target into the run guide and T22",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-08",
+        "AC-13",
+        "AC-01"
+      ],
+      "dod": "run guide §5 has the pre-roll stop row; the guide and the T22 quote say start-to-audio ≤ 3 s; T22 points to the check; gate clean",
+      "files_hint": [
+        "docs/features/two-outputs-one-clock/evidence/target-pc-run-guide.md",
+        "docs/features/two-outputs-one-clock/tasks/T22-record-target-pc-evidence-run.md"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T73-carry-the-pre-roll-stop-check-and-the-3-s-start-target-into-the-run-guide.md",
+      "status": "todo",
+      "origin": "review-2026-11-17-r3: F1, F2"
+    },
+    {
+      "id": "T74",
+      "title": "Render at each release step while a moved output still awaits its start target",
+      "layer": "app",
+      "deps": [
+        "T73"
+      ],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "TryRelease calls an internal test seam after each start-target change; the race test renders there while a moved output awaits its target and asserts it did; the old reset order turns it red; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineStartAndHangTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T74-render-at-each-release-step-while-a-moved-output-awaits-its-target.md",
+      "status": "todo",
+      "origin": "review-2026-11-17-r3: F3"
     }
   ]
 }
