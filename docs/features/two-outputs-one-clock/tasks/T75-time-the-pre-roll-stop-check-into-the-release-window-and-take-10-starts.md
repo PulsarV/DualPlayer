@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-17-r4: F1, F2"
-status: "todo"
-step: "SELECT"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-17-r4. Work from what is inlined here; the source always wins.
@@ -30,7 +30,7 @@ See [spec.md](../spec.md) §5 AC-08, AC-13, AC-01 and §6 row "Start command to 
 
 ## Definition of Done
 
-- [ ] The pre-roll stop check (guide §5, T22, test-plan.md, sad.md §11) aims the stop after the film release and before the master-clock start (~1.5 s after `play` on the Bluetooth pair) and counts a run only when its log shows `Film released …` before `Run ended (Stop)` and the console printed no `started …` line; 10 counted runs.
-- [ ] The AC-01 start check in guide §5 is 10 starts, ≤ 3 s each; guide §7 and T22 record the maximum of the 10 `started` values.
-- [ ] The author's uncommitted run-guide change (§3.1/§3.2) stays out of this task's commit.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The pre-roll stop check (guide §5, T22, test-plan.md, sad.md §11) aims the stop after the film release and before the master-clock start (~1.5 s after `play` on the Bluetooth pair) and counts a run only when its log shows `Film released …` before `Run ended (Stop)` and the console printed no `started …` line; 10 counted runs.
+- [x] The AC-01 start check in guide §5 is 10 starts, ≤ 3 s each; guide §7 and T22 record the maximum of the 10 `started` values.
+- [x] The author's uncommitted run-guide change (§3.1/§3.2) stays out of this task's commit.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

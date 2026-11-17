@@ -1619,7 +1619,7 @@
         "docs/features/two-outputs-one-clock/sad.md"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T75-time-the-pre-roll-stop-check-into-the-release-window-and-take-10-starts.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-17-r4: F1, F2"
     }
   ]
