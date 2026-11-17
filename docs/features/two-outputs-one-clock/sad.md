@@ -199,9 +199,11 @@ sequenceDiagram
             Backend-->>Core: mix format per device
             Core->>Media: open file, decode chosen tracks into device formats
             Media-->>Core: frames fill each output's ring buffer
-            Core->>Core: start master clock when every ring holds its start level
+            Core->>Backend: start every device on silence (pre-roll, ADR-0008)
             Backend->>Core: render request with device position
-            Core-->>Backend: frames for that device
+            Core->>Core: wait until every device position has moved
+            Core-->>Backend: film from frame 0 on every output at once
+            Core->>Core: start master clock at 00:00 when the slowest output hears frame 0; delay faster outputs by their difference
             Core-->>Console: run started, resolved device ids, clock position
         end
     end
@@ -492,6 +494,7 @@ One process, `DualPlayer.Console`, runs on one PC: the target Windows 11 x64 PC 
 | 0005 | Convert each track to its device's mix format with FFmpeg swresample in DualPlayer.Media | Accepted | §5 |
 | 0006 | Coordinate pause and seek with playback epochs while device streams keep running | Accepted | §6 |
 | 0007 | Publish per-device records and other engine events as one observable stream from the engine-control loop | Accepted | §8 |
+| 0008 | Start the master clock when the slowest output hears the first frame, after a silent pre-roll | Accepted | §6 |
 
 ADR files live under `docs/features/two-outputs-one-clock/adr/NNNN-<title>.md`.
 
