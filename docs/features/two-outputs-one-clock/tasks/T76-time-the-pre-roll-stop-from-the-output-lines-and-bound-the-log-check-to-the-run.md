@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-17-r5: F1, F2"
-status: "todo"
-step: "SELECT"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-17-r5. Work from what is inlined here; the source always wins.
@@ -30,7 +30,7 @@ See [spec.md](../spec.md) §5 AC-08, AC-13; [ADR-0008](../adr/0008-start-the-mas
 
 ## Definition of Done
 
-- [ ] The pre-roll stop check (guide §5, T22, test-plan.md) times the stop ~1.5 s after the console's `output …` lines, not after `play`.
-- [ ] The count condition in guide §5, T22, test-plan.md and sad.md §11 reads the lines of this run only: `Film released on …` between this run's `Run started with …` and its `Run ended (Stop)`, and that `Run ended (Stop)` shows `at master clock 0.000 s`; the retry rule says stop later when the release is missing and earlier when `started …` printed or the clock is above 0.
-- [ ] The author's uncommitted run-guide change (§3.1/§3.2) stays out of this task's commit.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The pre-roll stop check (guide §5, T22, test-plan.md) times the stop ~1.5 s after the console's `output …` lines, not after `play`.
+- [x] The count condition in guide §5, T22, test-plan.md and sad.md §11 reads the lines of this run only: `Film released on …` between this run's `Run started with …` and its `Run ended (Stop)`, and that `Run ended (Stop)` shows `at master clock 0.000 s`; the retry rule says stop later when the release is missing and earlier when `started …` printed or the clock is above 0.
+- [x] The author's uncommitted run-guide change (§3.1/§3.2) stays out of this task's commit.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

@@ -1639,7 +1639,7 @@
         "docs/features/two-outputs-one-clock/sad.md"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T76-time-the-pre-roll-stop-from-the-output-lines-and-bound-the-log-check-to-the-run.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-17-r5: F1, F2"
     }
   ]
