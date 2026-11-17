@@ -1579,7 +1579,7 @@
         "docs/features/two-outputs-one-clock/tasks/T22-record-target-pc-evidence-run.md"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T73-carry-the-pre-roll-stop-check-and-the-3-s-start-target-into-the-run-guide.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-17-r3: F1, F2"
     },
     {
