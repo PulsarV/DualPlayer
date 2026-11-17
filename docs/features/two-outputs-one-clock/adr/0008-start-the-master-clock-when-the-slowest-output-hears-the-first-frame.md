@@ -44,7 +44,7 @@ On the target PC, a Bluetooth headset takes audio from the moment its stream sta
 - The measured per-device latency at start is a by-product that roadmap step 4 (latency compensation) can use.
 
 **Negative**
-- Start-to-audio grows to about the device lag twice: ~2 s with MOTIF (~1 s of silent pre-roll, then ~1 s for the film to reach the ear). This sits at the edge of spec §6's ≤ 2 s target. The target needs a decision: keep it, or relax it to ≤ 3 s for Bluetooth outputs.
+- Start-to-audio grows to about the device lag twice: ~2 s with MOTIF (~1 s of silent pre-roll, then ~1 s for the film to reach the ear). This sat at the edge of spec §6's ≤ 2 s target, so the target was relaxed to ≤ 3 s (owner decision, 2026-11-17).
 - The start flow gets a new phase (pre-roll, then release) with its own wait. A device whose position never moves must not hold the others: the existing first-audio deadline (5 s) applies.
 - The console's `start-to-audio` now includes the pre-roll. Its meaning stays "until the film is heard on every output", but the number goes up.
 
