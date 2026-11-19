@@ -2,7 +2,7 @@
 status: Draft
 owner: "Volodymyr Kravchuk"
 reviewers: ["Tech Lead", "Security Lead"]
-updated_at: "2026-11-19"
+updated_at: "2026-11-20"
 feature_size: "L"
 ---
 
@@ -83,6 +83,21 @@ Traceability: requirements PLY-01 (formats, hardware decoding), PLY-02 (play, pa
 
 ## 5. Acceptance criteria
 
+**Fixed keys of this step** (outputs are numbered in the order the start command names them, at most three):
+
+| Key | Action |
+|---|---|
+| Space | pause / resume |
+| ← / → | seek −10 s / +10 s |
+| ↓ / ↑ | seek −60 s / +60 s |
+| Page Up / Page Down | previous / next file |
+| Esc | exit |
+| 1 / Q | output 1: offset +10 ms (later) / −10 ms (earlier) |
+| 2 / W | output 2: offset +10 ms / −10 ms |
+| 3 / E | output 3: offset +10 ms / −10 ms |
+
+"Shows briefly" in the AC below means an on-screen note held for 2 s after the last change; a new note replaces the current one and restarts the 2 s.
+
 ### AC-01 (US-01) — happy path
 
 **Given** a video file with a picture and at least two audio tracks, and the Developer's start command names the file, a track and a device for each Viewer, and a screen
@@ -93,7 +108,7 @@ Traceability: requirements PLY-01 (formats, hardware decoding), PLY-02 (play, pa
 
 **Given** a start command whose file has no picture, or whose picture the PC cannot decode
 **When** the start command is given
-**Then** nothing plays, no window stays open, and the Developer is told in plain words that the file has no picture or that its picture format cannot be played on this PC, naming the format
+**Then** nothing plays, no window stays open, and the Developer is told in plain words that the file has no picture or that its picture format cannot be played on this PC, naming the format; a picture this PC can decode only in software counts as "cannot decode" in this step (software decoding is roadmap step 6)
 
 ### AC-03 (US-01) — authorization
 
@@ -101,17 +116,23 @@ Traceability: requirements PLY-01 (formats, hardware decoding), PLY-02 (play, pa
 **When** the start command is given
 **Then** nothing plays and the Developer is told that the operating system denied the player access to that file, so they can fix the permission and retry
 
+### AC-03b (US-01) — error
+
+**Given** a start command naming a screen that is not connected
+**When** the start command is given
+**Then** nothing plays, no window opens, and the Developer is told that the named screen was not found, with the list of connected screens
+
 ### AC-04 (US-02) — happy path
 
 **Given** a film is playing on two outputs
 **When** a Viewer presses the pause key, and later the pause key again
-**Then** the picture freezes on the frame that matches the last sound each Viewer heard and every output falls silent together; on the second press picture and sound continue together from that point, lip-synced again within the recovery time (§6)
+**Then** the picture freezes on the frame shown at the key press and every output stops being given sound at the same moment (sound already inside a device, up to its latency, still plays out); on the second press picture and sound continue together from that point, lip-synced again within the recovery time (§6)
 
 ### AC-05 (US-02) — happy path
 
-**Given** a film is playing on two outputs
+**Given** a film is playing on two outputs, is paused, or has reached its end
 **When** a Viewer presses a seek key for −10 s, +10 s, −60 s or +60 s
-**Then** the picture and every output continue from the new position together, lip-synced again within the recovery time (§6); a seek before the start goes to the start, and a seek past the end ends the film as at its natural end
+**Then** while playing, the picture and every output continue from the new position together, lip-synced again within the recovery time (§6); while paused, the frame at the new position is shown and the film stays paused; at the end, a backward seek returns into the film and it plays from there; a seek before the start goes to the start, and a seek past the end ends the film as at its natural end
 
 ### AC-06 (US-02) — happy path
 
@@ -119,11 +140,17 @@ Traceability: requirements PLY-01 (formats, hardware decoding), PLY-02 (play, pa
 **When** it reaches its end, or a Viewer presses the exit key
 **Then** the picture stops on its last frame at the end of the film, or the window closes on exit, every output falls silent together, and the run summary of step 3 is printed and logged for every output
 
+### AC-06b (US-01) — error
+
+**Given** a film is playing
+**When** part of its picture cannot be decoded (a damaged stretch of the file)
+**Then** the damaged frames are skipped while the sound plays on and the log counts them; if the picture cannot be decoded again at all, the film stops as at its natural end (AC-06) and the window and the Developer's log say in plain words that the picture could not be decoded further
+
 ### AC-07 (US-03) — happy path
 
-**Given** a film is playing, paused or has reached its end, and its folder holds other video files
+**Given** a film is playing, paused or has reached its end, and its folder holds other video files (files with the PLY-01 container extensions `.mkv` or `.mp4`, in any letter case; whether a file is playable is checked only for the file being moved to, as in AC-09 and AC-09b)
 **When** a Viewer presses the next-file or previous-file key
-**Then** the player stops the current file, prints and logs its run summary, and plays the neighbouring playable file in natural name order ("Episode 2" before "Episode 10"), on the same outputs with the same track numbers and offsets, lip-synced within the start budget (§6)
+**Then** the player stops the current file, prints and logs its run summary, and plays the neighbouring playable file in natural name order ("Episode 2" before "Episode 10"; names equal apart from letter case are ordered by exact comparison), on the same outputs with the same track numbers and offsets, lip-synced within the start budget (§6)
 
 ### AC-08 (US-03) — domain invariant
 
@@ -139,15 +166,15 @@ Traceability: requirements PLY-01 (formats, hardware decoding), PLY-02 (play, pa
 
 ### AC-09b (US-03) — error
 
-**Given** the neighbouring file cannot be read, has no picture, or has a picture this PC cannot decode
+**Given** the neighbouring file cannot be read, has no picture, or has a picture this PC cannot decode in hardware (as in AC-02)
 **When** a Viewer presses the next-file or previous-file key
 **Then** that file is skipped in the same way as in AC-09, the window shows briefly which file was skipped and why in plain words, and the Developer's log names the file and the reason
 
 ### AC-10 (US-04) — happy path
 
-**Given** a film is playing on two outputs
+**Given** a film is playing on two outputs (or is paused or at its end — the new offset is then shown and remembered at once and applied when playback continues)
 **When** a Viewer presses their output's offset key to make the sound later (offset +10 ms) or earlier (offset −10 ms)
-**Then** that output's sound moves by 10 ms per press against the picture while every other output stays where it was against the picture (if the change moves the picture delay, the picture follows as in AC-14), the window shows briefly the output and its new offset, and the next start on the same device uses this offset again
+**Then** that output's sound moves by 10 ms per press against the picture, gradually at no more than 0.2 % faster or slower than normal speed (about 5 s per 10 ms) with no click or pitch change heard, while every other output stays where it was against the picture (if the change moves the picture delay, the picture follows as in AC-14); further presses during the move change its target rather than queue behind it; the picture delay has no lower limit — when every output's latency plus offset is below zero the sound is given ahead of the picture, so every "earlier" press takes effect down to −500 ms; the window shows briefly the output and its new offset, and the next start on the same device uses this offset again (it is saved no later than 1 s after the last press, so a crash of the player or the PC does not lose it)
 
 ### AC-11 (US-04) — error
 
@@ -159,25 +186,31 @@ Traceability: requirements PLY-01 (formats, hardware decoding), PLY-02 (play, pa
 
 **Given** a device had an offset remembered in an earlier run
 **When** a film is started with that device on any output
-**Then** the output starts with the remembered offset, and the Developer's log shows the device, the remembered offset and the latency used
+**Then** the output starts with the remembered offset, and the Developer's log shows the device, the remembered offset and the latency used; only the offset is remembered — the latency is worked out again at every start (reported part plus the current type default, AC-13), so a revised type default (§8) also shifts devices that already have a remembered offset
 
 ### AC-13 (US-05) — happy path
 
 **Given** a device that has never been used by the player
 **When** a film is started on it
-**Then** its output's assumed latency is the latency the operating system reports for the device plus the default for its device type (Bluetooth headphones, Bluetooth speaker, wired, HDMI, other), its offset is 0, and the Developer's log shows the reported part, the type default, the type it was taken as, and the resulting picture delay
+**Then** its output's assumed latency is the latency the operating system reports for the device plus the default for its device type (Bluetooth headphones, Bluetooth speaker, wired, HDMI, other — taken from the connection kind and form factor the operating system reports, never from the device name; USB counts as wired, anything not recognised as other), its offset is 0, and the Developer's log shows the reported part, the type default, the type it was taken as, and the resulting picture delay
 
 ### AC-14 (US-06) — domain invariant
 
 **Given** a film is playing and the picture is held back by the picture delay the slowest output needs
 **When** the picture delay has to change — an offset is corrected, or the slowest output's device is lost and another output becomes the slowest
-**Then** the picture and every output whose offset did not change move to the new delay together, at most 0.2 % faster or slower than normal speed, so that nobody sees a jump, a black frame or a repeated scene or hears a change of pitch, and each of those outputs stays within the lip-sync budget (§6) throughout the move; the corrected output reaches its new offset no later than the move ends
+**Then** the picture and every output whose offset did not change move to the new delay together, at most 0.2 % faster or slower than normal speed, so that nobody sees a jump, a black frame or a repeated scene or hears a change of pitch, and each of those outputs stays within the lip-sync budget (§6) throughout the move; the corrected output reaches its new offset no later than the move ends; a seek, file change or resume during a move sets the target picture delay and offsets at once instead, since picture and sound are re-aligned then anyway
 
 ### AC-15 (US-06) — happy path
 
 **Given** a film is playing on two outputs
 **When** one output's device is lost
 **Then** the picture and the other output keep playing (step 3 AC-06), the picture follows the remaining outputs' largest latency as in AC-14, and the loss is shown briefly in the window
+
+### AC-15b (US-06) — error
+
+**Given** a film is playing and only one output is left
+**When** that output's device is lost
+**Then** the film stops as at its natural end (AC-06): the picture freezes, the window stays open, the loss is shown briefly in the window, the run summary is printed and logged for every output, and the next-file, previous-file and exit keys still work
 
 ### AC-16 (US-07) — happy path
 
@@ -198,8 +231,8 @@ All targets apply to the target Windows 11 PC; the macOS development path is not
 | Aspect | Target | Measurement |
 |---|---|---|
 | Lip-sync per output, after the Viewer's offsets are set | sound no more than 45 ms ahead of and no more than 125 ms behind its picture (ITU-R BT.1359 detectability) | click-and-flash test video filmed with a phone at ≥ 120 frames per second, the phone's own offset subtracted (AC-16), 10 flashes per output, the largest error counts |
-| Start command to picture and sound | ≤ 3 s, picture and every output together (step 3 budget, ADR-0008) | timestamps in the log: start command, first frame presented, first audio heard per output |
-| Recovery after pause, resume, seek or file change | picture and every output lip-synced again ≤ 1 s after the command (file change: within the start budget) | log: command time and the first picture presentation within 20 ms of due; unit tests with a fake clock |
+| Start command to picture and sound | ≤ 3 s, picture and every output together (step 3 budget, ADR-0008) | timestamps in the log: start command, first frame presented, first audio heard per output (logged as the moment the first sound is given to the device plus its assumed latency; what is actually heard is proven by AC-16) |
+| Recovery after pause, resume, seek or file change | picture and every output lip-synced again ≤ 1 s after the command (file change: within the start budget); "lip-synced again" = the picture presented within 20 ms of due and every output within 10 ms of its due position | log: command time, the first picture presentation within 20 ms of due, and each output's position error; unit tests with a fake clock |
 | Picture-delay change during playback | picture and unchanged outputs move together at ≤ 0.2 % speed change (about 5 s per 10 ms of change), each within the lip-sync budget throughout | log of picture presentation against due time and of playback speed; unit tests with a fake clock |
 | Picture presentation on the target PC | ≤ 1 frame presented late or dropped per minute, averaged over a 2 h film, for 1080p H.264 and HEVC files with hardware decoding | the renderer's late and dropped frame counters in the log |
 | CPU while playing a 1080p HEVC film on two outputs | ≤ 15 % of total CPU (`idea-brief.md` NFR) | operating-system performance counter, average over the run |
