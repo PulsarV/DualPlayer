@@ -47,11 +47,13 @@ Gap, confirmed by the owner on 2026-11-19. Spec §6:
 - added after the first sentence: "The targets are guaranteed for two Bluetooth headsets in the same room as the PC, in line of sight. A third Bluetooth device on the same adapter, or devices behind a wall, are outside the guaranteed conditions: there a Bluetooth output can stop taking audio for 10–180 ms (evidence 2026-11-19); the engine re-aligns it in one step and counts a correction (AC-13)."
 - new table row: "Recovery after a drift step of a device (its position falls behind or ahead by more than the tolerance at once) | the output is back within the drift tolerance ≤ 0.5 s after the step | unit tests with a fake clock and fake devices; re-alignment lines in the log".
 
+After [review 2026-11-19](../_review/review-2026-11-19.md) the owner confirmed a narrower wording of that row (F1): the step is one beyond the re-alignment threshold, tolerance + 0.5 ms, because a smaller error is left to the rate correction; the row also says that a step removed this fast may open no excursion (F4). `test-plan.md` and `sad.md` QG-1 carry both statements (F2).
+
 Spec §8: the drift-step question is marked resolved. `sad.md` §6 flow 7 shows the 100 ms step check.
 
 ## Follow-ups
 
 - Measured on the target PC the same evening (three Bluetooth devices behind the wall, 9 min): all 45 re-alignments took the new path after three readings, at most 0.21 s between the first and the last reading beyond the threshold; excursions on the speaker fell from 129 in 30 min to 9 in 9 min with a peak of −13.0 ms ([evidence](../evidence/2026-11-19-target-pc-drift-trace.md)).
 - The correction reaches the listener only after the audio already queued in the device has played (0.05–0.45 s on these devices); the 0.5 s target is measured on the engine's drift readings, like every other drift figure.
-- A 1 s record averages its ten readings, so a step removed after three readings can leave the record within 10 ms and open no excursion; the correction count and the re-alignment log lines still show it.
+- A 1 s record averages its ten readings, so a step removed after three readings can leave the record within 10 ms and open no excursion; the correction count and the re-alignment log lines still show it. Since the review follow-up every step re-alignment also writes the `drift-trace` readings around it (review F4), and the pinning test asserts the readings 0.5 s after the step, not the time of the request (F3, F6); `OutputSyncTests` cover the decision paths, the once-per-second fallback included (F5).
 - What the listener hears at the instant of a step (a pause or smoothed audio) is not visible from the PC.
