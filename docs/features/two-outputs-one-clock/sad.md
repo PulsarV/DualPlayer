@@ -15,7 +15,7 @@ target_surfaces: [cli]
 
 **Top-3 quality goals (1-liners; full scenarios in §10):**
 
-1. **Sync accuracy over a feature-length run** — every audio output stays within ≤ 10 ms of the master clock for ≥ 3 h without Developer help, and re-aligns ≤ 1 s after the master clock starts (ADR-0008), and ≤ 1 s after resume or seek.
+1. **Sync accuracy over a feature-length run** — every audio output stays within ≤ 10 ms of the master clock for ≥ 3 h without Developer help, and re-aligns ≤ 1 s after the master clock starts (ADR-0008), ≤ 1 s after resume or seek, and ≤ 0.5 s after a drift step of a device; guaranteed for two Bluetooth headsets in the same room as the PC (spec §6).
 2. **Fault isolation between outputs** — losing one device never stops or disturbs the other outputs (0 underruns within ±5 s of the loss).
 3. **Glitch-free continuity at low cost** — 0 underruns per 3 h run with two Bluetooth headsets, at ≤ 5 % CPU, in shared mode.
 
@@ -514,9 +514,9 @@ ADR files live under `docs/features/two-outputs-one-clock/adr/NNNN-<title>.md`.
 All numbers are spec §6 targets on the target Windows 11 PC; the macOS dev backend is not held to them (repo ADR-0002).
 
 **QG-1. Sync accuracy over a feature-length run**
-- **When:** two audio outputs play on both Bluetooth headsets for a ≥ 3 h run on the target PC, with no action from the Developer.
-- **Then:** steady-state drift of each audio output from the master clock ≤ 10 ms (absolute) — each record's drift is the average of the device-position readings over its 1 s interval; the largest value outside the recovery windows (the 1 s after the master clock starts, after resume or after seek) counts. After resume or seek, every output is within the drift tolerance ≤ 1 s after the command; after a start, ≤ 1 s after the master clock starts (ADR-0008).
-- **How verify:** (a) unit tests in `tests/DualPlayer.Core.Tests/Sync/` drive the drift controller and adaptive resampler with a fake `TimeProvider` and fake devices whose clocks run fast or slow by a fixed ppm, asserting |drift| ≤ 10 ms in steady state and recovery ≤ 1 s after the master clock starts, and after resume and seek; (b) the recorded target-PC evidence run: largest steady-state drift from the AC-11 records and the AC-13 run summary ≤ 10 ms.
+- **When:** two audio outputs play on both Bluetooth headsets, in the same room as the PC and in line of sight (the guaranteed conditions of spec §6), for a ≥ 3 h run on the target PC, with no action from the Developer.
+- **Then:** steady-state drift of each audio output from the master clock ≤ 10 ms (absolute) — each record's drift is the average of the device-position readings over its 1 s interval; the largest value outside the recovery windows (the 1 s after the master clock starts, after resume or after seek) counts. After resume or seek, every output is within the drift tolerance ≤ 1 s after the command; after a start, ≤ 1 s after the master clock starts (ADR-0008). After a drift step of a device beyond the re-alignment threshold (tolerance + 0.5 ms), the output is back within the tolerance ≤ 0.5 s after the step, removed in one step and counted as a correction.
+- **How verify:** (a) unit tests in `tests/DualPlayer.Core.Tests/Sync/` drive the drift controller and adaptive resampler with a fake `TimeProvider` and fake devices whose clocks run fast or slow by a fixed ppm, asserting |drift| ≤ 10 ms in steady state, recovery ≤ 1 s after the master clock starts and after resume and seek, and recovery ≤ 0.5 s after an injected position step; (b) the recorded target-PC evidence run: largest steady-state drift from the AC-11 records and the AC-13 run summary ≤ 10 ms.
 
 **QG-2. Fault isolation between outputs**
 - **When:** one device disappears (switched off, unplugged, out of range) while another output plays.
