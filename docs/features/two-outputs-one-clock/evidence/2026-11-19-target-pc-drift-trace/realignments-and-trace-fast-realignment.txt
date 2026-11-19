@@ -1,0 +1,135 @@
+22:10:33.064 Re-aligned {2584} in one step at master clock "00:00:11.7178719": removed -21.7 ms after 3 readings beyond the threshold
+22:10:53.271 Re-aligned {2584} in one step at master clock "00:00:31.9281273": removed -37.8 ms after 3 readings beyond the threshold
+22:10:53.369 drift-trace {9449} clock="00:00:30.1275478" measured=true age=6.8ms played=1462115 queued=299.27ms drift=-0.02ms ring=1762ms correction=-0.1ppm underruns=0
+22:10:53.369 drift-trace {9449} clock="00:00:30.2214744" measured=true age=0.8ms played=1466911 queued=299.35ms drift=-0.01ms ring=1662ms correction=-0.2ppm underruns=0
+22:10:53.369 drift-trace {9449} clock="00:00:30.3158857" measured=true age=5.2ms played=1471232 queued=299.33ms drift=0.02ms ring=1764ms correction=0.1ppm underruns=0
+22:10:53.369 drift-trace {9449} clock="00:00:30.4244099" measured=true age=3.9ms played=1476505 queued=299.48ms drift=0.00ms ring=1718ms correction=0.2ppm underruns=0
+22:10:53.369 drift-trace {9449} clock="00:00:30.5169781" measured=true age=4.7ms played=1480909 queued=297.73ms drift=0.01ms ring=1628ms correction=0.4ppm underruns=0
+22:10:53.369 drift-trace {9449} clock="00:00:30.6278891" measured=true age=5.4ms played=1486201 queued=297.48ms drift=0.00ms ring=1742ms correction=0.4ppm underruns=0
+22:10:53.369 drift-trace {9449} clock="00:00:30.7205542" measured=true age=9.4ms played=1490457 queued=298.81ms drift=-0.00ms ring=1684ms correction=0.3ppm underruns=0
+22:10:53.369 drift-trace {9449} clock="00:00:30.8149226" measured=true age=2.6ms played=1495313 queued=297.65ms drift=0.01ms ring=1744ms correction=0.4ppm underruns=0
+22:10:53.369 drift-trace {9449} clock="00:00:30.9231895" measured=true age=0.8ms played=1500594 queued=297.62ms drift=-0.02ms ring=1730ms correction=0.0ppm underruns=0
+22:10:53.369 drift-trace {9449} clock="00:00:31.0170777" measured=true age=6.3ms played=1504839 queued=299.19ms drift=0.00ms ring=1640ms correction=0.1ppm underruns=0
+22:10:53.369 drift-trace {9449} clock="00:00:31.1274639" measured=true age=6.7ms played=1510116 queued=299.25ms drift=-0.01ms ring=1754ms correction=-0.2ppm underruns=0
+22:10:53.369 drift-trace {9449} clock="00:00:31.2218791" measured=true age=1.0ms played=1514922 queued=299.12ms drift=-0.01ms ring=1686ms correction=-0.3ppm underruns=0
+22:10:53.369 drift-trace {9449} clock="00:00:31.3158328" measured=true age=5.0ms played=1519239 queued=299.19ms drift=-0.01ms ring=1756ms correction=-0.3ppm underruns=0
+22:10:53.369 drift-trace {9449} clock="00:00:31.4241192" measured=true age=3.3ms played=1524519 queued=299.19ms drift=-0.00ms ring=1742ms correction=-0.3ppm underruns=0
+22:10:53.369 drift-trace {9449} clock="00:00:31.5189981" measured=true age=6.9ms played=1528902 queued=297.88ms drift=0.00ms ring=1652ms correction=-0.3ppm underruns=0
+22:10:53.369 drift-trace {9449} clock="00:00:31.6133409" measured=true age=2.6ms played=1533635 queued=299.27ms drift=0.00ms ring=1744ms correction=-0.2ppm underruns=0
+22:10:53.369 drift-trace {9449} clock="00:00:31.7244545" measured=true age=4.0ms played=1538902 queued=299.54ms drift=0.01ms ring=1698ms correction=0.1ppm underruns=0
+22:10:53.369 drift-trace {9449} clock="00:00:31.8179215" measured=true age=7.4ms played=1543223 queued=299.52ms drift=-0.01ms ring=1736ms correction=-0.1ppm underruns=0
+22:10:53.369 drift-trace {9449} clock="00:00:31.9281273" measured=true age=7.3ms played=1548521 queued=299.15ms drift=0.00ms ring=1722ms correction=-0.0ppm underruns=0
+22:10:53.369 drift-trace {9449} clock="00:00:32.0228114" measured=true age=2.3ms played=1553304 queued=299.50ms drift=0.01ms ring=1654ms correction=0.2ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:30.1275478" measured=true age=3.0ms played=1362769 queued=198.21ms drift=-0.00ms ring=1859ms correction=0.3ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:30.2214744" measured=true age=6.9ms played=1366738 queued=198.21ms drift=0.01ms ring=1961ms correction=0.5ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:30.3158857" measured=true age=1.2ms played=1371154 queued=198.07ms drift=0.00ms ring=1925ms correction=0.5ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:30.4244099" measured=true age=1.0ms played=1375948 queued=199.36ms drift=0.00ms ring=1975ms correction=0.5ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:30.5169781" measured=true age=2.7ms played=1379956 queued=198.48ms drift=0.00ms ring=1949ms correction=0.6ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:30.6278891" measured=true age=4.2ms played=1384780 queued=199.09ms drift=0.00ms ring=1871ms correction=0.6ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:30.7205542" measured=true age=7.0ms played=1388744 queued=199.21ms drift=-0.00ms ring=1973ms correction=0.5ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:30.8149226" measured=true age=1.4ms played=1393151 queued=199.27ms drift=-0.00ms ring=1937ms correction=0.5ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:30.9231895" measured=true age=7.8ms played=1397641 queued=197.46ms drift=-0.01ms ring=1965ms correction=0.3ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:31.0170777" measured=true age=3.4ms played=1401977 queued=199.14ms drift=0.00ms ring=1961ms correction=0.3ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:31.1274639" measured=true age=2.9ms played=1406869 queued=198.21ms drift=-0.01ms ring=1883ms correction=0.1ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:31.2218791" measured=true age=8.0ms played=1410805 queued=198.96ms drift=-0.01ms ring=1985ms correction=-0.0ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:31.3158328" measured=true age=1.3ms played=1415247 queued=198.23ms drift=-0.00ms ring=1949ms correction=-0.1ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:31.4241192" measured=true age=0.6ms played=1420052 queued=199.27ms drift=-0.02ms ring=1839ms correction=-0.4ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:31.5189981" measured=true age=4.4ms played=1424068 queued=198.21ms drift=-0.01ms ring=1973ms correction=-0.6ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:31.6133409" measured=true age=9.8ms played=1427993 queued=199.21ms drift=0.01ms ring=1915ms correction=-0.4ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:31.7244545" measured=true age=1.2ms played=1433272 queued=199.50ms drift=0.00ms ring=1795ms correction=-0.3ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:31.8179215" measured=true age=4.3ms played=1437255 queued=199.18ms drift=0.00ms ring=1961ms correction=-0.3ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:31.9281273" measured=true age=5.0ms played=1442083 queued=199.71ms drift=0.01ms ring=1851ms correction=-0.1ppm underruns=0
+22:10:53.369 drift-trace {89a2} clock="00:00:32.0228114" measured=true age=9.0ms played=1446083 queued=199.00ms drift=-0.00ms ring=1985ms correction=-0.1ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:30.1275478" measured=true age=3.0ms played=1382993 queued=49.61ms drift=-0.01ms ring=1975ms correction=-0.5ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:30.2214744" measured=true age=6.9ms played=1386964 queued=49.57ms drift=-0.00ms ring=1917ms correction=-0.4ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:30.3158857" measured=true age=1.2ms played=1391378 queued=49.48ms drift=-0.00ms ring=1977ms correction=-0.4ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:30.4244099" measured=true age=9.3ms played=1395809 queued=49.00ms drift=0.01ms ring=1973ms correction=-0.1ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:30.5169781" measured=true age=2.2ms played=1400202 queued=49.39ms drift=0.00ms ring=1873ms correction=0.0ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:30.6278891" measured=true age=3.1ms played=1405053 queued=49.39ms drift=-0.00ms ring=1955ms correction=0.0ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:30.7205542" measured=true age=5.7ms played=1409025 queued=49.32ms drift=-0.01ms ring=1929ms correction=-0.1ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:30.8149226" measured=true age=0.4ms played=1413419 queued=49.68ms drift=-0.02ms ring=1989ms correction=-0.3ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:30.9231895" measured=true age=7.8ms played=1417868 queued=48.80ms drift=-0.00ms ring=1985ms correction=-0.2ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:31.0170777" measured=true age=2.0ms played=1422266 queued=49.07ms drift=0.00ms ring=1885ms correction=-0.1ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:31.1274639" measured=true age=2.9ms played=1427096 queued=49.55ms drift=-0.00ms ring=1967ms correction=0.0ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:31.2218791" measured=true age=7.5ms played=1431054 queued=49.80ms drift=0.01ms ring=1941ms correction=0.3ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:31.3158328" measured=true age=1.3ms played=1435473 queued=49.59ms drift=-0.02ms ring=1969ms correction=-0.0ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:31.4241192" measured=true age=9.3ms played=1439893 queued=49.37ms drift=-0.01ms ring=1965ms correction=-0.0ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:31.5189981" measured=true age=4.4ms played=1444293 queued=49.59ms drift=-0.01ms ring=1897ms correction=-0.1ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:31.6133409" measured=true age=8.5ms played=1448275 queued=49.30ms drift=0.01ms ring=1967ms correction=0.1ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:31.7244545" measured=true age=2.4ms played=1451774 queued=49.95ms drift=-37.88ms ring=1951ms correction=-500.0ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:31.8179215" measured=true age=5.7ms played=1455751 queued=49.77ms drift=-37.85ms ring=1989ms correction=-500.0ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:31.9281273" measured=true age=5.5ms played=1460617 queued=49.43ms drift=-37.77ms ring=1975ms correction=-500.0ppm underruns=0
+22:10:53.369 drift-trace {2584} clock="00:00:32.0228114" measured=true age=0.4ms played=1465017 queued=49.66ms drift=0.05ms ring=1902ms correction=1.8ppm underruns=0
+22:10:54.380 drift-trace {9449} clock="00:00:32.1153387" measured=true age=4.5ms played=1557641 queued=299.15ms drift=-0.00ms ring=1756ms correction=0.1ppm underruns=0
+22:10:54.380 drift-trace {9449} clock="00:00:32.2238448" measured=true age=3.1ms played=1562917 queued=299.23ms drift=0.01ms ring=1710ms correction=0.2ppm underruns=0
+22:10:54.380 drift-trace {9449} clock="00:00:32.3189189" measured=true age=8.5ms played=1567219 queued=299.60ms drift=0.01ms ring=1748ms correction=0.3ppm underruns=0
+22:10:54.380 drift-trace {9449} clock="00:00:32.4267026" measured=true age=6.3ms played=1572499 queued=299.60ms drift=0.00ms ring=1734ms correction=0.3ppm underruns=0
+22:10:54.380 drift-trace {9449} clock="00:00:32.5220622" measured=true age=0.1ms played=1577375 queued=298.02ms drift=-0.00ms ring=1666ms correction=0.3ppm underruns=0
+22:10:54.380 drift-trace {9449} clock="00:00:32.6160046" measured=true age=5.1ms played=1581646 queued=299.04ms drift=0.00ms ring=1736ms correction=0.3ppm underruns=0
+22:10:54.380 drift-trace {9449} clock="00:00:32.7260210" measured=true age=5.2ms played=1586918 queued=299.21ms drift=-0.00ms ring=1722ms correction=0.2ppm underruns=0
+22:10:54.380 drift-trace {9449} clock="00:00:32.8203260" measured=true age=7.8ms played=1591323 queued=297.44ms drift=-0.02ms ring=1760ms correction=-0.1ppm underruns=0
+22:10:54.380 drift-trace {9449} clock="00:00:32.9143514" measured=true age=3.6ms played=1596036 queued=299.25ms drift=0.01ms ring=1756ms correction=0.0ppm underruns=0
+22:10:54.380 drift-trace {9449} clock="00:00:33.0249832" measured=true age=4.2ms played=1601319 queued=299.19ms drift=0.00ms ring=1678ms correction=0.1ppm underruns=0
+22:10:54.380 drift-trace {89a2} clock="00:00:32.1153387" measured=true age=2.0ms played=1450471 queued=199.50ms drift=0.00ms ring=1917ms correction=-0.1ppm underruns=0
+22:10:54.381 drift-trace {89a2} clock="00:00:32.2238448" measured=true age=10.1ms played=1454899 queued=199.09ms drift=0.01ms ring=1977ms correction=0.1ppm underruns=0
+22:10:54.381 drift-trace {89a2} clock="00:00:32.3189189" measured=true age=5.5ms played=1459297 queued=199.36ms drift=-0.00ms ring=1973ms correction=0.1ppm underruns=0
+22:10:54.381 drift-trace {89a2} clock="00:00:32.4267026" measured=true age=3.0ms played=1464160 queued=199.09ms drift=-0.01ms ring=1863ms correction=-0.2ppm underruns=0
+22:10:54.381 drift-trace {89a2} clock="00:00:32.5220622" measured=true age=7.1ms played=1468182 queued=197.89ms drift=-0.02ms ring=1997ms correction=-0.5ppm underruns=0
+22:10:54.381 drift-trace {89a2} clock="00:00:32.6160046" measured=true age=1.0ms played=1472595 queued=197.82ms drift=0.00ms ring=1929ms correction=-0.5ppm underruns=0
+22:10:54.381 drift-trace {89a2} clock="00:00:32.7260210" measured=true age=2.0ms played=1477403 queued=198.80ms drift=-0.01ms ring=1979ms correction=-0.6ppm underruns=0
+22:10:54.381 drift-trace {89a2} clock="00:00:32.8203260" measured=true age=6.5ms played=1481366 queued=198.93ms drift=0.00ms ring=1985ms correction=-0.5ppm underruns=0
+22:10:54.381 drift-trace {89a2} clock="00:00:32.9143514" measured=true age=1.1ms played=1485749 queued=199.55ms drift=0.01ms ring=1885ms correction=-0.2ppm underruns=0
+22:10:54.381 drift-trace {89a2} clock="00:00:33.0249832" measured=true age=1.5ms played=1490610 queued=199.32ms drift=-0.00ms ring=1967ms correction=-0.2ppm underruns=0
+22:10:54.381 drift-trace {2584} clock="00:00:32.1153387" measured=true age=2.8ms played=1468995 queued=49.46ms drift=0.05ms ring=1972ms correction=2.6ppm underruns=0
+22:10:54.381 drift-trace {2584} clock="00:00:32.2238448" measured=true age=1.3ms played=1473843 queued=49.52ms drift=0.05ms ring=1958ms correction=3.5ppm underruns=0
+22:10:54.381 drift-trace {2584} clock="00:00:32.3189189" measured=true age=6.7ms played=1477801 queued=49.77ms drift=0.06ms ring=1996ms correction=4.4ppm underruns=0
+22:10:54.381 drift-trace {2584} clock="00:00:32.4267026" measured=true age=4.4ms played=1482655 queued=49.71ms drift=0.07ms ring=1950ms correction=5.4ppm underruns=0
+22:10:54.381 drift-trace {2584} clock="00:00:32.5220622" measured=true age=9.5ms played=1486633 queued=49.50ms drift=0.05ms ring=1924ms correction=6.0ppm underruns=0
+22:10:54.381 drift-trace {2584} clock="00:00:32.6160046" measured=true age=3.5ms played=1491043 queued=49.50ms drift=0.06ms ring=1952ms correction=6.7ppm underruns=0
+22:10:54.381 drift-trace {2584} clock="00:00:32.7260210" measured=true age=3.6ms played=1495890 queued=49.59ms drift=0.06ms ring=1970ms correction=7.3ppm underruns=0
+22:10:54.381 drift-trace {2584} clock="00:00:32.8203260" measured=true age=7.8ms played=1499865 queued=49.46ms drift=0.05ms ring=1976ms correction=7.7ppm underruns=0
+22:10:54.381 drift-trace {2584} clock="00:00:32.9143514" measured=true age=1.5ms played=1504289 queued=49.14ms drift=0.06ms ring=1972ms correction=8.4ppm underruns=0
+22:10:54.381 drift-trace {2584} clock="00:00:33.0249832" measured=true age=2.6ms played=1509117 queued=49.66ms drift=0.04ms ring=1926ms correction=8.5ppm underruns=0
+22:11:03.263 Re-aligned {2584} in one step at master clock "00:00:41.9204374": removed -32.5 ms after 3 readings beyond the threshold
+22:11:06.463 Re-aligned {2584} in one step at master clock "00:00:45.1206554": removed -35.2 ms after 3 readings beyond the threshold
+22:11:28.466 Re-aligned {2584} in one step at master clock "00:01:07.1237526": removed -23.4 ms after 3 readings beyond the threshold
+22:11:36.962 Re-aligned {2584} in one step at master clock "00:01:15.6197444": removed -33.5 ms after 3 readings beyond the threshold
+22:11:42.063 Re-aligned {2584} in one step at master clock "00:01:20.7200274": removed -28.1 ms after 3 readings beyond the threshold
+22:11:46.668 Re-aligned {2584} in one step at master clock "00:01:25.3254824": removed -30.1 ms after 3 readings beyond the threshold
+22:11:57.261 Re-aligned {2584} in one step at master clock "00:01:35.9187187": removed -25.3 ms after 3 readings beyond the threshold
+22:12:06.357 Re-aligned {2584} in one step at master clock "00:01:45.0147651": removed -43.4 ms after 3 readings beyond the threshold
+22:12:08.271 Re-aligned {2584} in one step at master clock "00:01:46.9284553": removed -22.9 ms after 3 readings beyond the threshold
+22:12:12.961 Re-aligned {2584} in one step at master clock "00:01:51.6184070": removed -31.8 ms after 3 readings beyond the threshold
+22:12:28.460 Re-aligned {2584} in one step at master clock "00:02:07.1172669": removed -23.5 ms after 3 readings beyond the threshold
+22:12:49.757 Re-aligned {2584} in one step at master clock "00:02:28.4145194": removed -30.2 ms after 3 readings beyond the threshold
+22:13:09.768 Re-aligned {2584} in one step at master clock "00:02:48.4254249": removed -25.7 ms after 3 readings beyond the threshold
+22:13:12.364 Re-aligned {2584} in one step at master clock "00:02:51.0214445": removed -26.8 ms after 3 readings beyond the threshold
+22:13:15.964 Re-aligned {2584} in one step at master clock "00:02:54.6215819": removed -33.0 ms after 3 readings beyond the threshold
+22:13:18.464 Re-aligned {2584} in one step at master clock "00:02:57.1212917": removed -24.6 ms after 3 readings beyond the threshold
+22:13:26.067 Re-aligned {2584} in one step at master clock "00:03:04.7244728": removed -34.9 ms after 3 readings beyond the threshold
+22:13:58.759 Re-aligned {2584} in one step at master clock "00:03:37.4162712": removed -27.2 ms after 3 readings beyond the threshold
+22:14:51.661 Re-aligned {2584} in one step at master clock "00:04:30.3187549": removed -20.3 ms after 3 readings beyond the threshold
+22:14:53.968 Re-aligned {2584} in one step at master clock "00:04:32.6254362": removed -29.7 ms after 3 readings beyond the threshold
+22:15:01.863 Re-aligned {2584} in one step at master clock "00:04:40.5198955": removed -35.1 ms after 3 readings beyond the threshold
+22:15:07.458 Re-aligned {2584} in one step at master clock "00:04:46.1153293": removed -34.9 ms after 3 readings beyond the threshold
+22:15:12.262 Re-aligned {2584} in one step at master clock "00:04:50.9190527": removed -30.2 ms after 3 readings beyond the threshold
+22:15:15.068 Re-aligned {2584} in one step at master clock "00:04:53.7252291": removed -26.3 ms after 3 readings beyond the threshold
+22:15:21.763 Re-aligned {2584} in one step at master clock "00:05:00.4201688": removed -15.2 ms after 3 readings beyond the threshold
+22:15:41.860 Re-aligned {2584} in one step at master clock "00:05:20.5169286": removed -26.3 ms after 3 readings beyond the threshold
+22:15:55.056 Re-aligned {2584} in one step at master clock "00:05:33.7133874": removed -22.5 ms after 3 readings beyond the threshold
+22:16:07.463 Re-aligned {2584} in one step at master clock "00:05:46.1201475": removed -36.8 ms after 3 readings beyond the threshold
+22:16:12.056 Re-aligned {2584} in one step at master clock "00:05:50.7134869": removed -24.2 ms after 3 readings beyond the threshold
+22:16:24.859 Re-aligned {2584} in one step at master clock "00:06:03.5168309": removed -36.0 ms after 3 readings beyond the threshold
+22:16:38.561 Re-aligned {2584} in one step at master clock "00:06:17.2179243": removed -29.8 ms after 3 readings beyond the threshold
+22:16:48.057 Re-aligned {2584} in one step at master clock "00:06:26.7144206": removed -19.8 ms after 3 readings beyond the threshold
+22:17:22.266 Re-aligned {2584} in one step at master clock "00:07:00.9236775": removed -26.0 ms after 3 readings beyond the threshold
+22:17:29.258 Re-aligned {2584} in one step at master clock "00:07:07.9156923": removed -23.4 ms after 3 readings beyond the threshold
+22:17:33.758 Re-aligned {2584} in one step at master clock "00:07:12.4158154": removed -32.6 ms after 3 readings beyond the threshold
+22:18:08.356 Re-aligned {2584} in one step at master clock "00:07:47.0136956": removed -36.7 ms after 3 readings beyond the threshold
+22:18:13.661 Re-aligned {2584} in one step at master clock "00:07:52.3188556": removed -20.8 ms after 3 readings beyond the threshold
+22:18:31.768 Re-aligned {2584} in one step at master clock "00:08:10.4254778": removed -22.3 ms after 3 readings beyond the threshold
+22:19:03.170 Re-aligned {2584} in one step at master clock "00:08:41.8271495": removed -37.5 ms after 3 readings beyond the threshold
+22:19:12.869 Re-aligned {2584} in one step at master clock "00:08:51.5264948": removed -34.3 ms after 3 readings beyond the threshold
+22:19:15.969 Re-aligned {2584} in one step at master clock "00:08:54.6263489": removed -31.1 ms after 3 readings beyond the threshold
+22:19:20.166 Re-aligned {2584} in one step at master clock "00:08:58.8231594": removed -20.9 ms after 3 readings beyond the threshold
+22:19:22.667 Re-aligned {2584} in one step at master clock "00:09:01.3243701": removed -28.3 ms after 3 readings beyond the threshold

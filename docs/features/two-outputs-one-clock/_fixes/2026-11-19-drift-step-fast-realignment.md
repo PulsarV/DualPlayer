@@ -51,7 +51,7 @@ Spec §8: the drift-step question is marked resolved. `sad.md` §6 flow 7 shows 
 
 ## Follow-ups
 
-- Not yet measured on the target PC: run three Bluetooth devices behind the wall with this build and compare how long a step stays in the `drift-trace` lines (expected about 0.3 s instead of about 1 s).
+- Measured on the target PC the same evening (three Bluetooth devices behind the wall, 9 min): all 45 re-alignments took the new path after three readings, at most 0.21 s between the first and the last reading beyond the threshold; excursions on the speaker fell from 129 in 30 min to 9 in 9 min with a peak of −13.0 ms ([evidence](../evidence/2026-11-19-target-pc-drift-trace.md)).
 - The correction reaches the listener only after the audio already queued in the device has played (0.05–0.45 s on these devices); the 0.5 s target is measured on the engine's drift readings, like every other drift figure.
 - A 1 s record averages its ten readings, so a step removed after three readings can leave the record within 10 ms and open no excursion; the correction count and the re-alignment log lines still show it.
 - What the listener hears at the instant of a step (a pause or smoothed audio) is not visible from the PC.
