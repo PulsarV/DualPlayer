@@ -103,3 +103,18 @@ output  device                     played      max_drift_ms  clock_mismatch_ppm 
 2       {6693} 00:00:58.1  0.0           +1.0                0            0          -
 3       {4086} 00:00:29.7  0.1           -2.3                0            0          00:00:29.742
 
+=== ac04-exclusive  exit 4  839 ms
+error outputs.device_access_denied: The operating system denied the player access to device '???????? / ??????? (Realtek Audio)'. Free the device and retry.
+
+=== ac12-listen  exit 0  135075 ms
+saw '(?m)^started ' at 2125 ms; sent 'seek +1500' at 2634 ms 20:12:28.436
+TIMEOUT after 135 s: sending stop
+output 1  track 1 (ukr 5.1 -> stereo, LFE dropped)  device Headphones (2- MOTIF II A.N.C.)  id {9449}
+output 2  track 3 (eng 5.1 -> stereo, LFE dropped 48000 -> 44100)  device Headphones (JBL Tune 520BT)  id {89a2}
+started   clock 00:00:00.000  start-to-audio 1.8 s
+seek confirmed at 00:25:01.863
+run summary  ended stop  clock 00:27:13.875
+output  device                     played      max_drift_ms  clock_mismatch_ppm  corrections  underruns  device_lost
+1       {9449} 00:02:12.8  0.0           -0.2                0            0          -
+2       {89a2} 00:02:12.8  0.0           0.0                 0            0          -
+
