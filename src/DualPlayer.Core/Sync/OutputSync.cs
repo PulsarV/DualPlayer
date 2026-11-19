@@ -19,8 +19,8 @@ public sealed class OutputSync(MasterClock clock, TimeSpan driftTolerance)
 
     /// <summary>
     /// A drift step is confirmed by this many readings in a row beyond <see cref="RealignThreshold"/> on the same side:
-    /// one stray reading does not move the output, and at one reading per 100 ms the step is removed within the 0.5 s
-    /// of spec §6.
+    /// one stray reading does not move the output, and at one reading per 100 ms a step beyond that threshold is
+    /// removed within the 0.5 s of spec §6. A smaller error is left to the rate correction.
     /// </summary>
     public const int StepReadings = 3;
 

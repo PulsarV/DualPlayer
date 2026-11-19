@@ -1,6 +1,7 @@
 using DualPlayer.Core.Diagnostics;
 using DualPlayer.Core.Outputs;
 using DualPlayer.Core.Playback;
+using DualPlayer.Core.Sync;
 using DualPlayer.Core.Tests.Fakes;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
@@ -95,6 +96,20 @@ public sealed class AudioEngineSyncRecordTests
         {
             _positionBase = position;
             _positionSince = Time.GetUtcNow() - _origin;
+        }
+
+        /// <summary>
+        /// As <see cref="Render"/>, but after every step waits until the engine-control loop has handled everything queued
+        /// (a start while running is refused on the loop), so each 100 ms sync sample is taken at the instant its timer
+        /// fired however slow the machine is.
+        /// </summary>
+        public void RenderSettled(int steps)
+        {
+            for (var i = 0; i < steps; i++)
+            {
+                Render(1);
+                Engine.StartRun(string.Empty, [], new EngineOptions()).IsSuccess.ShouldBeFalse();
+            }
         }
 
         /// <summary>Advances the fake clock by <paramref name="steps"/> x 10 ms, asking every open device for 10 ms of audio each step.</summary>
@@ -369,25 +384,69 @@ public sealed class AudioEngineSyncRecordTests
         rig.RecordsOf("dev-1")[^1].DriftMs.ShouldBe(0, 2);
     }
 
+    /// <summary>The drift-trace lines of one device, oldest first.</summary>
+    private static List<(TimeSpan Clock, bool Measured, double DriftMs)> TraceOf(Rig rig, string deviceId) =>
+        [.. rig.Log.With("DeviceId", "ClockPosition", "Measured", "PositionAgeMs", "PlayedFrames", "QueuedMs", "DriftMs", "RingMs")
+            .Where(e => (string)e["DeviceId"]! == deviceId)
+            .Select(e => ((TimeSpan)e["ClockPosition"]!, (bool)e["Measured"]!, (double)e["DriftMs"]!))];
+
     [Fact]
-    public void A_step_error_is_re_aligned_within_half_a_second_without_waiting_for_the_end_of_the_record_interval()
+    public void A_step_error_is_back_within_the_tolerance_half_a_second_later_without_waiting_for_the_end_of_the_record_interval()
     {
         using var rig = new Rig(0, 0);
         rig.Start(2);
-        rig.Render(410); // just after a record interval closed: the next one closes 0.9 s later
+        rig.RenderSettled(410); // a little after a record interval closed: the next one closes most of a second later
 
-        rig.Backend.Devices["dev-1"].StepPosition(2880); // 60 ms, at master clock 00:00:04.1
-        rig.Render(600);
+        rig.Backend.Devices["dev-1"].StepPosition(2880); // 60 ms
+        rig.RenderSettled(300);
+        rig.Render(300);
         rig.WaitFor(() => rig.Records.Count == 2 * 10).ShouldBeTrue($"records: {rig.Records.Count}");
         rig.Stop(RunEndReason.Stop);
+
+        // The step lies between the last reading within the tolerance and the first one beyond it.
+        var trace = TraceOf(rig, "dev-1").Where(r => r.Measured).ToList();
+        var firstBeyond = trace.FindIndex(r => Math.Abs(r.DriftMs) > 10);
+        firstBeyond.ShouldBeGreaterThan(0, "the trace starts before the step");
+        var lastBefore = trace[firstBeyond - 1].Clock;
+        var deadline = lastBefore + TimeSpan.FromSeconds(0.5);
+
+        trace.Count(r => Math.Abs(r.DriftMs) > 10).ShouldBe(OutputSync.StepReadings, "readings beyond the tolerance");
+        var settled = trace.Where(r => r.Clock >= deadline).ToList();
+        settled.Count.ShouldBeGreaterThanOrEqualTo(3, "readings later than 0.5 s after the step");
+        settled.ShouldAllBe(r => Math.Abs(r.DriftMs) <= 10, "spec §6: back within the tolerance 0.5 s after the step");
 
         var realigned = rig.Log.With("DeviceId", "ClockPosition", "RealignMs", "Readings")
             .ShouldHaveSingleItem("one-step re-alignments in the log");
         realigned["DeviceId"].ShouldBe("dev-1");
         Math.Abs((double)realigned["RealignMs"]!).ShouldBe(60, 5);
-        ((TimeSpan)realigned["ClockPosition"]!).ShouldBeLessThanOrEqualTo(TimeSpan.FromSeconds(4.6), "spec §6: back within the tolerance 0.5 s after the step");
+        ((TimeSpan)realigned["ClockPosition"]!).ShouldBeLessThanOrEqualTo(deadline);
         rig.Summary.ShouldNotBeNull().Outputs.Single(o => o.DeviceId == "dev-1").Corrections.ShouldBe(1);
-        rig.RecordsOf("dev-1").Where(r => r.ClockPosition > TimeSpan.FromSeconds(5.5)).ShouldAllBe(r => Math.Abs(r.DriftMs) < 2);
+        rig.RecordsOf("dev-1")[^1].DriftMs.ShouldBe(0, 2);
+    }
+
+    [Fact]
+    public void A_step_too_small_to_push_its_record_beyond_the_tolerance_is_still_counted_and_its_raw_readings_logged()
+    {
+        using var rig = new Rig(0, 0);
+        rig.Start(2);
+        rig.RenderSettled(410);
+
+        rig.Backend.Devices["dev-1"].StepPosition(960); // 20 ms: three readings of it average to 6 ms over the 1 s record
+        rig.RenderSettled(300);
+        rig.Render(300);
+        rig.WaitFor(() => rig.Records.Count == 2 * 10).ShouldBeTrue($"records: {rig.Records.Count}");
+        rig.Stop(RunEndReason.Stop);
+
+        rig.Events.OfType<Excursion>().ShouldBeEmpty("no 1 s record went beyond the tolerance");
+        rig.RecordsOf("dev-1").ShouldAllBe(r => Math.Abs(r.DriftMs) <= 10);
+        rig.Summary.ShouldNotBeNull().Outputs.Single(o => o.DeviceId == "dev-1").Corrections.ShouldBe(1);
+        rig.Log.With("DeviceId", "ClockPosition", "RealignMs", "Readings").ShouldHaveSingleItem("one-step re-alignments in the log");
+
+        var trace = TraceOf(rig, "dev-1");
+        trace.Count(r => r.Measured && Math.Abs(r.DriftMs) > 15).ShouldBe(OutputSync.StepReadings, "readings that show the step");
+        Math.Abs(trace[0].DriftMs).ShouldBeLessThan(2, "the trace starts before the step");
+        Math.Abs(trace[^1].DriftMs).ShouldBeLessThan(2, "the trace ends after the re-alignment");
+        TraceOf(rig, "dev-2").Count.ShouldBe(trace.Count, "every output is traced side by side");
     }
 
     [Fact]

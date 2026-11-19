@@ -908,6 +908,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         source.RequestRealign(DriftController.ResamplerRealignFrames(step, output.Format.SampleRate));
         output.RealignsRequested++;
         run.Summary.RecordCorrection(output.DeviceId);
+        run.StepRealignedInInterval = true;
         LogStepRealigned(output.DeviceId, run.Clock!.PositionAt(now), step.TotalMilliseconds, OutputSync.StepReadings);
     }
 
@@ -944,17 +945,19 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         }
 
         run.Publisher!.Publish(clockPosition, samples);
-        FlushDriftTraces(run, beyondTolerance);
+        FlushDriftTraces(run, beyondTolerance || run.StepRealignedInInterval);
+        run.StepRealignedInInterval = false;
     }
 
     /// <summary>
     /// Writes the raw 100 ms readings of every output to the log for a record interval with an output beyond the drift
-    /// tolerance (together with the interval before it) and for the interval that follows: what each device reported
-    /// before, during and after the excursion, side by side.
+    /// tolerance or re-aligned after a drift step (together with the interval before it) and for the interval that
+    /// follows: what each device reported before, during and after it, side by side. A step removed after a few
+    /// readings can leave its 1 s record within the tolerance, so the record alone would not show it.
     /// </summary>
-    private static void FlushDriftTraces(Run run, bool beyondTolerance)
+    private static void FlushDriftTraces(Run run, bool disturbed)
     {
-        if (!beyondTolerance && !run.TraceNextInterval)
+        if (!disturbed && !run.TraceNextInterval)
         {
             return;
         }
@@ -964,7 +967,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             output.Trace!.Flush();
         }
 
-        run.TraceNextInterval = beyondTolerance;
+        run.TraceNextInterval = disturbed;
     }
 
     /// <summary>
@@ -1211,8 +1214,11 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         /// <summary>Spec §6 steady-state drift tolerance of this run.</summary>
         public TimeSpan DriftTolerance { get; set; }
 
-        /// <summary>The last record interval had an output beyond the tolerance: the next one's readings are logged too.</summary>
+        /// <summary>The last record interval had an output beyond the tolerance or re-aligned: the next one's readings are logged too.</summary>
         public bool TraceNextInterval { get; set; }
+
+        /// <summary>An output was re-aligned after a drift step in the current record interval.</summary>
+        public bool StepRealignedInInterval { get; set; }
 
         /// <summary>Set from the decode thread when the decoder reports a failure.</summary>
         public Error? DecodeError
