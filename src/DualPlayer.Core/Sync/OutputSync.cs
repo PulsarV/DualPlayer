@@ -18,7 +18,8 @@ public sealed class OutputSync(MasterClock clock, TimeSpan driftTolerance)
         TimeSpan.FromSeconds(DriftController.MaxCorrectionPpm * 1e-6 * RecoveryTime.TotalSeconds);
 
     /// <summary>
-    /// A drift step is confirmed by this many readings in a row beyond <see cref="RealignThreshold"/> on the same side:
+    /// A drift step is confirmed by this many readings in a row on the same side, the first beyond
+    /// <see cref="RealignThreshold"/> and the rest still beyond the tolerance:
     /// one stray reading does not move the output, and at one reading per 100 ms a step beyond that threshold is
     /// removed within the 0.5 s of spec §6. A smaller error is left to the rate correction.
     /// </summary>
@@ -99,7 +100,10 @@ public sealed class OutputSync(MasterClock clock, TimeSpan driftTolerance)
 
     private void CountBeyond()
     {
-        var side = _latestDrift.Duration() <= RealignThreshold ? 0 : Math.Sign(_latestDrift.Ticks);
+        // Once a reading is beyond the threshold, the following ones only have to stay beyond the tolerance: the rate
+        // correction is already shrinking the error, and a step just over the threshold must not slip back under it.
+        var bar = _readingsBeyond > 0 ? driftTolerance : RealignThreshold;
+        var side = _latestDrift.Duration() <= bar ? 0 : Math.Sign(_latestDrift.Ticks);
         _readingsBeyond = side == 0 ? 0 : side == _beyondSide ? _readingsBeyond + 1 : 1;
         _beyondSide = side;
     }

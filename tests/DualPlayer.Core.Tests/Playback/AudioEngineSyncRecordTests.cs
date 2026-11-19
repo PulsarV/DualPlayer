@@ -421,7 +421,9 @@ public sealed class AudioEngineSyncRecordTests
         Math.Abs((double)realigned["RealignMs"]!).ShouldBe(60, 5);
         ((TimeSpan)realigned["ClockPosition"]!).ShouldBeLessThanOrEqualTo(deadline);
         rig.Summary.ShouldNotBeNull().Outputs.Single(o => o.DeviceId == "dev-1").Corrections.ShouldBe(1);
-        rig.RecordsOf("dev-1")[^1].DriftMs.ShouldBe(0, 2);
+        var later = rig.RecordsOf("dev-1").Where(r => r.ClockPosition > deadline + TimeSpan.FromSeconds(1)).ToList();
+        later.Count.ShouldBeGreaterThanOrEqualTo(3, "records after the step");
+        later.ShouldAllBe(r => Math.Abs(r.DriftMs) < 2);
     }
 
     [Fact]

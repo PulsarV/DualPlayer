@@ -76,6 +76,16 @@ public sealed class OutputSyncTests
     }
 
     [Fact]
+    public void A_step_just_over_the_threshold_is_still_re_aligned_when_the_rate_correction_shrinks_it_under_the_threshold()
+    {
+        Read(10.55);
+        Read(10.53);
+        Read(10.50); // no longer beyond the threshold, still beyond the tolerance
+
+        _sync.TakeStepRealignment(mayRealign: true).ShouldBe(TimeSpan.FromMilliseconds(10.50));
+    }
+
+    [Fact]
     public void A_blocked_step_is_kept_and_removed_as_soon_as_re_aligning_is_allowed()
     {
         Read(40);
