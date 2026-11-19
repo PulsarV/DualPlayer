@@ -29,7 +29,7 @@
 | T19 | [Console: list devices and tracks, and start a run from command-line arguments](./T19-console-list-and-play.md) | ports | Volodymyr Kravchuk | L | T2, T11 | done | COMMIT |
 | T20 | [Console: pause, resume, seek and stop a running run from standard input](./T20-console-transport-commands.md) | ports | Volodymyr Kravchuk | M | T19, T12 | done | COMMIT |
 | T21 | [Console: print sync records, excursions, device loss and the run summary, also on Ctrl+C and window close](./T21-console-live-output-and-shutdown.md) | ports | Volodymyr Kravchuk | M | T19, T13 | done | COMMIT |
-| T22 | [Record the ≥ 3 h evidence run on the target Windows PC and commit its run summary](./T22-record-target-pc-evidence-run.md) | docs | Volodymyr Kravchuk | M | T15, T17, T20, T21 | blocked | manual — needs the ≥ 3 h run on the target Windows PC |
+| T22 | [Record the ≥ 3 h evidence run on the target Windows PC and commit its run summary](./T22-record-target-pc-evidence-run.md) | docs | Volodymyr Kravchuk | M | T15, T17, T20, T21 | done | COMMIT |
 | T23 | [Stop the decode pump from dropping blocks for healthy outputs and keep content position true](./T23-stop-the-decode-pump-from-dropping-blocks-for-heal.md) | app | Volodymyr Kravchuk | M | — | done | COMMIT |
 | T24 | [Start audio exactly at the seek target and honour block start positions from the decoder](./T24-start-audio-exactly-at-the-seek-target-and-honour.md) | infra | Volodymyr Kravchuk | M | T23, T27 | done | COMMIT |
 | T25 | [Align every output in one step at start, and keep seek confirmation and correction alive when a device hangs](./T25-align-every-output-in-one-step-at-start-and-keep-s.md) | app | Volodymyr Kravchuk | M | T23 | done | COMMIT |

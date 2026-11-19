@@ -9,8 +9,8 @@ files_hint: ["docs/features/two-outputs-one-clock/evidence/"]
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
-status: "blocked"
-step: "manual — needs the ≥ 3 h run on the target Windows PC"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Self-contained task: work from what is inlined here. Every quoted chunk ends with its provenance
