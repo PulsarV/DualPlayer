@@ -156,4 +156,4 @@ output  device                     played      max_drift_ms  clock_mismatch_ppm 
 | [cpu.csv](2026-11-17-target-pc-run/cpu.csv) | заміри CPU процесу кожні 10 с до кінця прогону |
 | [short-checks-console.txt](2026-11-17-target-pc-run/short-checks-console.txt) | вивід консолі коротких перевірок 18 листопада без рядків `record` |
 
-Повний вивід консолі (21 598 рядків `record`) і логи плеєра `dualplayer-console-20261117.log` та `dualplayer-console-20261118.log` лишилися на цільовому ПК.
+Повний вивід консолі (21 598 рядків `record`) і логи плеєра `dualplayer-console-20261117.log` та `dualplayer-console-20261118.log` лишалися на цільовому ПК. Під час прибирання 2026-11-19 їх видалено з цільового ПК на прохання власника разом із тестовими файлами; у репозиторії їх немає.

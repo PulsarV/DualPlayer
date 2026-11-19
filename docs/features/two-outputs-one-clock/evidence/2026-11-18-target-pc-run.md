@@ -87,4 +87,4 @@ output  device                     played      max_drift_ms  clock_mismatch_ppm 
 | [console-records-seam-02-11-55--02-12-14.txt](2026-11-18-target-pc-run/console-records-seam-02-11-55--02-12-14.txt) | рядки `record` навколо шва склейки |
 | [cpu.csv](2026-11-18-target-pc-run/cpu.csv) | заміри CPU процесу кожні 10 с за весь прогін |
 
-Повний вивід консолі (21 598 рядків `record`) і лог плеєра `dualplayer-console-20261118.log` лишилися на цільовому ПК, у `dpdiag\longrun`.
+Повний вивід консолі (21 598 рядків `record`) і лог плеєра `dualplayer-console-20261118.log` лишалися на цільовому ПК, у `dpdiag\longrun`. Під час прибирання 2026-11-19 їх видалено з цільового ПК на прохання власника разом із тестовими файлами; у репозиторії їх немає.
