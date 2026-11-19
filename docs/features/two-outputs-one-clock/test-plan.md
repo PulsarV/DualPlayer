@@ -49,6 +49,9 @@ E2E rows run with a fake audio backend in CI and again, unchanged, as a hardware
 | AC-06b last device lost | `losing the last output ends the run with a summary` | unit | Master clock stops; run summary is produced and lists every device-lost event of the run |
 | AC-07 3 h without drift | `skewed device clocks stay within tolerance for a simulated three hours` | unit | With fake devices at +200 ppm and −200 ppm on a fake clock, every 1 s drift average outside recovery windows is ≤ 10 ms |
 | AC-07 | `drift excursion is recorded once from start to return` | unit | An injected position jump produces exactly one excursion record with device, peak, duration and start position |
+| AC-07 | `a step error is back within the tolerance half a second later` | unit | An injected 60 ms position step: exactly three 100 ms readings beyond the tolerance, every reading from 0.5 s after the step within 10 ms, one correction, one re-alignment line in the log |
+| AC-07 | `a step too small to push its record beyond the tolerance is still counted and its raw readings logged` | unit | An injected 20 ms step: no excursion, one correction, the raw readings of every output around it in the log |
+| AC-07 | `output sync re-alignment decisions` | unit | `OutputSyncTests`: three readings in a row on one side beyond the threshold re-align, fewer or alternating sides do not, a blocked step waits, a re-alignment and a reset clear the count, the once-per-second close still re-aligns |
 | AC-07 | `three hour soak on the target PC stays within tolerance` | load | See NFR validation — largest steady-state drift ≤ 10 ms, 0 underruns |
 | AC-08 pause and resume | `pause silences all outputs within ten milliseconds and stops the clock` | unit | Fake-device positions at the silence instant differ by ≤ 10 ms; master clock does not advance while paused; same on stop |
 | AC-08 | `resume continues every output from the paused position and recovers within one second` | unit | Each output is within ≤ 10 ms of the master clock ≤ 1 s after resume |
@@ -97,6 +100,8 @@ Error and authorization ACs (AC-03, AC-04, AC-05, AC-10) each have their own row
 The load level here is a soak run with the console on the target Windows PC (spec §6, measured in shared mode). Tool: the console and its per-device records already in the repo; a generic load tool (e.g. k6 or Locust) does not apply.
 
 - Steady-state drift ≤ 10 ms → scenario: two Bluetooth headsets (plus one wired output if available, spec §8) play two tracks for ≥ 3 h with no Developer action; assert the largest 1 s drift average outside the 1 s recovery windows ≤ 10 ms per device.
+- Guaranteed conditions (spec §6): the soak and the scenarios below run with two Bluetooth headsets in the same room as the PC, in line of sight; a third Bluetooth device on the adapter or devices behind a wall are outside them.
+- Recovery after a drift step ≤ 0.5 s → covered by the unit tests with an injected position step; on the target PC a step cannot be provoked on demand, so the evidence is the re-alignment lines and `drift-trace` readings of a run outside the guaranteed conditions (evidence 2026-11-19: at most 0.21 s between the first and the last reading beyond the threshold).
 - Recovery ≤ 1 s → scenario: during the same run, 5 pauses/resumes and 5 seeks of ±10 s and ±60 s; assert every output within 10 ms ≤ 1 s after each command.
 - Underruns 0 per 3 h → scenario: the same ≥ 3 h run; assert the run summary's underrun count = 0 for every output.
 - Start to audio ≤ 3 s → scenario: 10 starts; assert log time from the play command to the first film frame heard on each device ≤ 3 s every time.

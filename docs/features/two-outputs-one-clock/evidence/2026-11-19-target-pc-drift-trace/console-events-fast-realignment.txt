@@ -1,0 +1,20 @@
+=== fast-wall  exit 0  545575 ms
+TIMEOUT after 545 s: sending stop
+output 1  track 1 (ukr stereo)  device Headphones (2- MOTIF II A.N.C.)  id {9449}
+output 2  track 2 (eng 5.1 -> stereo, LFE dropped 48000 -> 44100)  device Headphones (JBL Tune 520BT)  id {89a2}
+output 3  track 1 (ukr stereo 48000 -> 44100)  device Headphones (Right)  id {2584}
+started   clock 00:00:00.000  start-to-audio 2.4 s
+excursion  device {2584}  start 00:00:32.022  duration_ms 1002  peak_ms -11.3
+excursion  device {2584}  start 00:01:16.027  duration_ms 986  peak_ms -10.0
+excursion  device {2584}  start 00:01:45.014  duration_ms 1001  peak_ms -13.0
+excursion  device {2584}  start 00:03:05.022  duration_ms 1000  peak_ms -10.5
+excursion  device {2584}  start 00:04:41.020  duration_ms 997  peak_ms -10.5
+excursion  device {2584}  start 00:06:04.017  duration_ms 999  peak_ms -10.8
+excursion  device {2584}  start 00:07:47.013  duration_ms 1005  peak_ms -11.0
+excursion  device {2584}  start 00:08:42.016  duration_ms 1006  peak_ms -11.3
+excursion  device {2584}  start 00:08:52.021  duration_ms 1003  peak_ms -10.3
+run summary  ended stop  clock 00:09:02.760
+output  device                     played      max_drift_ms  clock_mismatch_ppm  corrections  underruns  device_lost
+1       {9449} 00:09:02.7  0.0           0.0                 0            0          -
+2       {89a2} 00:09:02.7  0.0           0.0                 0            0          -
+3       {2584} 00:09:02.7  13.0          -2393.7             45           0          -

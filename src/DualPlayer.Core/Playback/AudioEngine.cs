@@ -185,6 +185,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         foreach (var output in run.Outputs)
         {
             output.Sync = new OutputSync(run.Clock, options.DriftTolerance);
+            output.Trace = new DriftTrace(output.DeviceId, _logger);
             output.Mismatch = new ClockMismatchEstimator(_time);
             output.Source.StartAtDeviceFrame(long.MaxValue);
             output.Device.Start();
@@ -193,6 +194,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
         var now = _time.GetTimestamp();
         run.Starting = true;
+        run.DriftTolerance = options.DriftTolerance;
         run.Publisher = new SyncRecordPublisher(
             _events.Publish,
             (ILogger?)_loggerFactory?.CreateLogger<SyncRecordPublisher>() ?? _logger);
@@ -766,6 +768,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             source.RequestRealign(DriftController.ResamplerRealignFrames(drift, output.Format.SampleRate));
             output.RealignsRequested++;
             output.AlignRounds++;
+            LogAligned(output.DeviceId, run.Clock.PositionAt(now), drift.TotalMilliseconds, output.AlignRounds);
         }
 
         return pending;
@@ -839,7 +842,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         run.IntervalInRecovery |= now < run.RecoveryUntil;
         foreach (var output in run.Outputs.Where(o => !o.Lost))
         {
-            SampleOutput(run, output);
+            SampleOutput(run, output, now);
         }
 
         if (++run.SamplesInInterval < SamplesPerRecord)
@@ -852,26 +855,61 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         run.IntervalInRecovery = now < run.RecoveryUntil;
     }
 
-    private void SampleOutput(Run run, Output output)
+    private void SampleOutput(Run run, Output output, long now)
     {
         var source = output.Source;
-        if (source.TryGetLatestPosition(out var played, out var timestamp))
+        var hasPosition = source.TryGetLatestPosition(out var played, out var timestamp);
+        if (hasPosition)
         {
             output.Mismatch!.AddReading(timestamp, TimeSpan.FromSeconds((double)played / output.Format.SampleRate));
         }
 
-        if (!TryMeasureHeardContent(run, output, out var content, out var heardAt))
+        var sync = output.Sync!;
+        var measured = TryMeasureHeardContent(run, output, out var content, out var heardAt);
+        var drift = TimeSpan.Zero;
+        if (measured)
+        {
+            // While a seek or resume is being aligned in steps, the rate stays at unity so the two do not fight.
+            drift = sync.AddReading(content, heardAt, SyncSampleInterval, correct: !output.AlignPending);
+            if (!output.AlignPending)
+            {
+                source.SetResamplerRatio(sync.ResamplerRatio);
+                RealignStep(run, output, now);
+            }
+        }
+
+        output.Trace!.Add(new DriftReading(
+            run.Clock!.PositionAt(now),
+            measured,
+            hasPosition ? _time.GetElapsedTime(timestamp, now) : TimeSpan.Zero,
+            played,
+            measured ? TimeSpan.FromSeconds((double)(heardAt - timestamp) / _time.TimestampFrequency) : TimeSpan.Zero,
+            drift,
+            TimeSpan.FromSeconds((double)output.Ring.FramesAvailable / output.Format.SampleRate),
+            sync.CorrectionPpm,
+            source.UnderrunCount));
+    }
+
+    /// <summary>
+    /// A drift step confirmed by consecutive readings is removed at once, not at the end of the record interval
+    /// (spec §6: back within the tolerance 0.5 s after the step). Not inside a recovery window, where the alignment
+    /// after the command is still settling.
+    /// </summary>
+    private void RealignStep(Run run, Output output, long now)
+    {
+        var source = output.Source;
+        var mayRealign = now >= run.RecoveryUntil && source.RealignsApplied >= output.RealignsRequested;
+        var step = output.Sync!.TakeStepRealignment(mayRealign);
+        if (step == TimeSpan.Zero)
         {
             return;
         }
 
-        // While a seek or resume is being aligned in steps, the rate stays at unity so the two do not fight.
-        var sync = output.Sync!;
-        sync.AddReading(content, heardAt, SyncSampleInterval, correct: !output.AlignPending);
-        if (!output.AlignPending)
-        {
-            source.SetResamplerRatio(sync.ResamplerRatio);
-        }
+        source.RequestRealign(DriftController.ResamplerRealignFrames(step, output.Format.SampleRate));
+        output.RealignsRequested++;
+        run.Summary.RecordCorrection(output.DeviceId);
+        run.StepRealignedInInterval = true;
+        LogStepRealigned(output.DeviceId, run.Clock!.PositionAt(now), step.TotalMilliseconds, OutputSync.StepReadings);
     }
 
     /// <summary>
@@ -881,6 +919,8 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
     private void PublishSyncRecords(Run run, long now)
     {
         var inRecovery = run.IntervalInRecovery;
+        var clockPosition = run.Clock!.PositionAt(now);
+        var beyondTolerance = false;
         var samples = new List<OutputSample>(run.Outputs.Count);
         foreach (var output in run.Outputs.Where(o => !o.Lost))
         {
@@ -892,8 +932,10 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
                 source.RequestRealign(DriftController.ResamplerRealignFrames(interval.Realignment, output.Format.SampleRate));
                 output.RealignsRequested++;
                 run.Summary.RecordCorrection(output.DeviceId);
+                LogRealigned(output.DeviceId, clockPosition, interval.Realignment.TotalMilliseconds, interval.AverageDrift.TotalMilliseconds);
             }
 
+            beyondTolerance |= !inRecovery && interval.AverageDrift.Duration() > run.DriftTolerance;
             var driftMs = interval.AverageDrift.TotalMilliseconds;
             var underruns = source.UnderrunCount;
             run.Summary.RecordDrift(output.DeviceId, driftMs, inRecovery);
@@ -902,7 +944,30 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             samples.Add(new OutputSample(output.DeviceId, interval.AverageDrift, output.Sync.CorrectionPpm, underruns, inRecovery));
         }
 
-        run.Publisher!.Publish(run.Clock!.PositionAt(now), samples);
+        run.Publisher!.Publish(clockPosition, samples);
+        FlushDriftTraces(run, beyondTolerance || run.StepRealignedInInterval);
+        run.StepRealignedInInterval = false;
+    }
+
+    /// <summary>
+    /// Writes the raw 100 ms readings of every output to the log for a record interval with an output beyond the drift
+    /// tolerance or re-aligned after a drift step (together with the interval before it) and for the interval that
+    /// follows: what each device reported before, during and after it, side by side. A step removed after a few
+    /// readings can leave its 1 s record within the tolerance, so the record alone would not show it.
+    /// </summary>
+    private static void FlushDriftTraces(Run run, bool disturbed)
+    {
+        if (!disturbed && !run.TraceNextInterval)
+        {
+            return;
+        }
+
+        foreach (var output in run.Outputs.Where(o => !o.Lost))
+        {
+            output.Trace!.Flush();
+        }
+
+        run.TraceNextInterval = disturbed;
     }
 
     /// <summary>
@@ -1055,6 +1120,15 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
     [LoggerMessage(Level = LogLevel.Information, Message = "First audio on {DeviceId} {StartToAudioMs:F1} ms after the start command")]
     private partial void LogFirstAudio(string deviceId, double startToAudioMs);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Re-aligned {DeviceId} in one step at master clock {ClockPosition}: removed {RealignMs:F1} ms, the interval's average drift was {AverageDriftMs:F1} ms")]
+    private partial void LogRealigned(string deviceId, TimeSpan clockPosition, double realignMs, double averageDriftMs);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Re-aligned {DeviceId} in one step at master clock {ClockPosition}: removed {RealignMs:F1} ms after {Readings} readings beyond the threshold")]
+    private partial void LogStepRealigned(string deviceId, TimeSpan clockPosition, double realignMs, int readings);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Aligned {DeviceId} after a start, seek or resume at master clock {ClockPosition}: removed {RealignMs:F1} ms (round {Round})")]
+    private partial void LogAligned(string deviceId, TimeSpan clockPosition, double realignMs, int round);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Device {DeviceId} lost at master clock {ClockSeconds:F3} s; others continue: {OthersContinue}")]
     private partial void LogDeviceLost(string deviceId, double clockSeconds, bool othersContinue);
 
@@ -1137,6 +1211,15 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
         public int SamplesInInterval { get; set; }
 
+        /// <summary>Spec §6 steady-state drift tolerance of this run.</summary>
+        public TimeSpan DriftTolerance { get; set; }
+
+        /// <summary>The last record interval had an output beyond the tolerance or re-aligned: the next one's readings are logged too.</summary>
+        public bool TraceNextInterval { get; set; }
+
+        /// <summary>An output was re-aligned after a drift step in the current record interval.</summary>
+        public bool StepRealignedInInterval { get; set; }
+
         /// <summary>Set from the decode thread when the decoder reports a failure.</summary>
         public Error? DecodeError
         {
@@ -1204,6 +1287,9 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         public OutputSync? Sync { get; set; }
 
         public ClockMismatchEstimator? Mismatch { get; set; }
+
+        /// <summary>The latest raw sync samples, logged around a drift excursion (set when the clock is created).</summary>
+        public DriftTrace? Trace { get; set; }
     }
 
     /// <summary>
