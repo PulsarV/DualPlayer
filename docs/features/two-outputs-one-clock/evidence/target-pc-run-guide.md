@@ -76,27 +76,64 @@ dotnet test DualPlayer.slnx -c Release
 
 Тести мають бути зеленими. 7 апаратних тестів Windows при цьому пропускаються, і це нормально.
 
-**Апаратні тести WASAPI на реальних пристроях:**
+### 3.1 Апаратні тести WASAPI на реальних пристроях
+
+Ці 7 тестів у `tests\DualPlayer.Platform.Windows.Tests` працюють зі справжньою звуковою системою Windows. Без змінної `DUALPLAYER_HARDWARE=1` вони пропускаються, тому звичайний `dotnet test` показує `Skipped: 7`.
+
+| Тест | Що перевіряє | Що потрібно від вас |
+|---|---|---|
+| `Runs_only_on_a_windows_machine_with_hardware_enabled` | що апаратні тести справді запустилися | нічого |
+| `Listing_returns_devices_sorted_by_endpoint_id…` | Windows віддає список активних пристроїв з назвами й ID, відсортований за ID | хоча б один увімкнений пристрій виводу |
+| `Opening_an_unknown_endpoint_id_reports_device_not_found` | неіснуючий ID дає помилку `outputs.device_not_found`, а не виняток | нічого |
+| `Opening_the_default_device_in_shared_mode…` | пристрій за замовчуванням відкривається в shared mode, повертає формат мікшера і буфер ≥ 40 мс | у Windows вибрано пристрій виводу за замовчуванням |
+| `Ten_seconds_of_silence_render…` | 10 с тиші на першому пристрої зі списку; позиція пристрою й час лише зростають | нічого; звуку не буде, це тиша |
+| `Starting_twice_or_after_close…` | повторний старт і старт після закриття не падають і не дають хибного «пристрій втрачено» | нічого |
+| `Disabling_a_rendering_device_raises_device_lost_exactly_once` | коли пристрій вимикають, двигун отримує подію втрати рівно один раз (AC-06) | вимкнути пристрій вручну, див. 3.2 |
+
+**Крок 1 — шість автоматичних тестів.** Увімкніть і підключіть гарнітури. У тому ж вікні PowerShell, у теці `DualPlayer`:
 
 ```powershell
 $env:DUALPLAYER_HARDWARE = "1"
-dotnet test tests\DualPlayer.Platform.Windows.Tests -c Release
+dotnet test tests\DualPlayer.Platform.Windows.Tests -c Release --logger "console;verbosity=normal"
 ```
 
-Вони перевіряють три речі:
+`--logger "console;verbosity=normal"` виводить кожен тест окремим рядком: `Passed …`, `Skipped …` або `Failed …`. Прогін триває близько 20 с. Очікуваний підсумок:
 
-- перелік пристроїв;
-- відкриття пристрою за замовчуванням у shared mode;
-- 10 секунд рендеру з монотонною позицією пристрою.
-
-**Тест втрати пристрою:**
-
-```powershell
-$env:DUALPLAYER_LOSS_DEVICE = "<id пристрою зі списку devices>"
-dotnet test tests\DualPlayer.Platform.Windows.Tests -c Release
+```
+Passed!  - Failed: 0, Passed: 39, Skipped: 1, Total: 40
 ```
 
-Коли в тесті з'явиться повідомлення «Disable or unplug device …», за 60 с вимкніть цю гарнітуру. Після цього приберіть змінні:
+Пропущеним лишається лише тест втрати пристрою (він чекає на змінну з кроку 2). Якщо щось `Failed`, скопіюйте блок помилки під назвою тесту.
+
+### 3.2 Тест втрати пристрою (ручний)
+
+Тест відкриває вказаний пристрій, грає на ньому тишу й чекає до **60 с**, поки ви його вимкнете.
+
+1. Дізнайтеся ID гарнітури, яку вимикатимете (наприклад, B):
+   ```powershell
+   & "src\DualPlayer.Console\bin\Release\net10.0\DualPlayer.Console.exe" devices
+   ```
+   Скопіюйте ID з останньої колонки повністю, разом з фігурними дужками: `{0.0.0.00000000}.{…}`.
+2. Задайте змінну. Беріть ID в **одинарні** лапки, щоб PowerShell не чіпав дужки:
+   ```powershell
+   $env:DUALPLAYER_LOSS_DEVICE = '{0.0.0.00000000}.{…}'
+   ```
+3. Запустіть лише цей тест:
+   ```powershell
+   dotnet test tests\DualPlayer.Platform.Windows.Tests -c Release --filter "FullyQualifiedName~Disabling_a_rendering_device" --logger "console;verbosity=normal"
+   ```
+4. Коли з'явиться рядок `Starting test execution, please wait...`, зачекайте ~5 с і вимкніть гарнітуру. Можна будь-яким способом:
+   - кнопкою живлення на самій гарнітурі;
+   - **Параметри → Bluetooth і пристрої →** гарнітура → **Від'єднати**;
+   - **Параметри → Система → Звук →** гарнітура → **Не дозволяти** (вимкнути пристрій).
+
+   Повідомлення «Disable or unplug device …» у консолі може не з'явитися: xUnit показує діагностичні повідомлення лише за окремого налаштування. Орієнтуйтеся на рядок `Starting test execution`.
+5. Очікуваний результат: `Passed Disabling_a_rendering_device_raises_device_lost_exactly_once` і `Passed: 1`.
+   - `Failed` з `TimeoutException`: пристрій не вимкнули за 60 с, повторіть.
+   - `Failed` з `should be 1 but was 2`: подія прийшла двічі, і це справжня помилка, яку треба зберегти.
+6. Увімкніть гарнітуру назад. Якщо вимикали через «Не дозволяти», поверніть **Дозволити**.
+
+Змінні діють лише в цьому вікні PowerShell. Приберіть їх перед подальшими кроками:
 
 ```powershell
 Remove-Item Env:DUALPLAYER_HARDWARE, Env:DUALPLAYER_LOSS_DEVICE
@@ -122,8 +159,9 @@ $exe = "src\DualPlayer.Console\bin\Release\net10.0\DualPlayer.Console.exe"
 | AC-03 | `& $exe play D:\movie.mkv --out 9=1` і ще раз з неіснуючим пристроєм `--out 1=99` | помилка з поясненням, код виходу 2, звук не грає |
 | AC-05 | `--out 1=1 --out 2=1` | «one audio output per device», код виходу 2 |
 | AC-04 | Увімкніть у властивостях пристрою (Звук → пристрій → Властивості → Додатково) дозвіл на монопольний режим і займіть пристрій програмою, що грає в WASAPI exclusive (наприклад, foobar2000). Потім запустіть `play` на цьому пристрої | `outputs.device_access_denied` з назвою пристрою, код виходу 4 |
-| AC-01, AC-12 | `& $exe play D:\movie.mkv --out 1=<A> --out 2=<B>` | рядки `output …` з конвертацією формату; `started … start-to-audio` ≤ 2 с; кожна гарнітура чує свою доріжку |
+| AC-01, AC-12 | 10 разів `& $exe play D:\movie.mkv --out 1=<A> --out 2=<B>`; після рядка `started …` послухати кілька секунд і ввести `stop` | рядки `output …` з конвертацією формату; у кожному з 10 запусків `started … start-to-audio` ≤ 3 с, запишіть найбільше значення; кожна гарнітура чує свою доріжку |
 | AC-08 | під час відтворення ввести `pause`, а через кілька секунд `resume` | обидва виходи замовкають разом і продовжують з тієї самої позиції |
+| AC-08, AC-13 | зупинка між видачею фільму і стартом годинника: `& $exe play D:\movie.mkv --out 1=<A> --out 2=<B>` і `stop` через ~1,5 с після рядків `output …` (вони з'являються, коли починається тихий pre-roll), до рядка `started …`. Лог `%APPDATA%\DualPlayer\logs\dualplayer-console-<дата>.log` (див. §7) один на день для всіх запусків, тому дивіться лише рядки цього запуску: це останній блок від `Run started with …` до `Run ended (Stop)` у кінці файлу. Запуск зараховується, лише якщо між ними є `Film released on …`, `Run ended (Stop)` показує `at master clock 0.000 s`, а в консолі не було `started …`: раніше за видачу фільму в пристроях ще нічого немає, і перевіряти нічого. Якщо `Film released` між цими рядками немає, наступного разу вводьте `stop` пізніше; якщо з'явився `started` або master clock більше 0, раніше. Потрібно 10 зарахованих запусків | обидві гарнітури замовкають разом; на повільнішій немає «хвоста» фільму після того, як інша вже замовкла; друкується підсумок запуску |
 | AC-09, AC-09b | `seek +60`, `seek -10`, потім `pause`, `seek +60`, `resume` | `seek confirmed at …`; на паузі `position moved to …, still paused` |
 | AC-10 | `seek 99:00:00` | попередження, підсумок запуску з `ended seek-past-end` |
 | AC-06 | запуск на 3 виходи (A, B і дротовий), потім вимкнути гарнітуру B | рядок `device-lost … others continue`; A і дротовий грають без розриву |
@@ -162,7 +200,7 @@ $exe = "src\DualPlayer.Console\bin\Release\net10.0\DualPlayer.Console.exe"
 | `max_drift_ms` ≤ 10 для кожного пристрою | run summary |
 | `underruns` = 0 | run summary |
 | `clock_mismatch_ppm` для кожної гарнітури (є число) | run summary |
-| start-to-audio ≤ 2 с | рядок `started` |
+| start-to-audio ≤ 3 с у кожному з 10 запусків | найбільше зі значень рядків `started` перевірки AC-01 у §5 |
 | CPU ≤ 5 % | `cpu.csv` |
 
 ## 8. Що далі

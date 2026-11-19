@@ -336,7 +336,7 @@ public sealed class AudioEngineRunTests
     {
         using var rig = new Rig(2);
         rig.Engine.StartRun("film.mkv", [Assign(1, 1), Assign(2, 2)], new EngineOptions()).IsSuccess.ShouldBeTrue();
-        rig.Render(500);
+        rig.Render(510); // the clock starts after the silent pre-roll (ADR-0008)
 
         rig.Backend.Devices["dev-2"].SimulateLoss();
 
@@ -378,7 +378,7 @@ public sealed class AudioEngineRunTests
     {
         using var rig = new Rig(2);
         rig.Engine.StartRun("film.mkv", [Assign(1, 1), Assign(2, 2)], new EngineOptions()).IsSuccess.ShouldBeTrue();
-        rig.Render(100);
+        rig.Render(110); // the clock starts after the silent pre-roll (ADR-0008)
 
         rig.Stop(RunEndReason.Stop);
 
@@ -458,13 +458,19 @@ public sealed class AudioEngineRunTests
         rig.Engine.StartRun("film.mkv", [Assign(1, 1), Assign(2, 2)], new EngineOptions()).IsSuccess.ShouldBeTrue();
         rig.Backend.Devices["dev-2"].Hang();
 
-        rig.Render(1);
+        rig.Render(150); // 10 ms steps: the hung output stops holding the release once it counts as stalled (~1 s)
         rig.Time.Advance(TimeSpan.FromSeconds(5)); // past the start deadline after which a never-rendered output is no longer awaited
         rig.Render(2);
 
-        rig.WaitFor(() => rig.Events.OfType<AudioStarted>().Any()).ShouldBeTrue("AudioStarted waited for the hung output");
+        rig.WaitFor(() =>
+        {
+            rig.Render(1);
+            return rig.Events.OfType<AudioStarted>().Any();
+        }).ShouldBeTrue("AudioStarted waited for the hung output");
         var started = rig.Events.OfType<AudioStarted>().Single();
-        started.StartToAudio.ShouldBeLessThanOrEqualTo(TimeSpan.FromMilliseconds(100), "measured to the rendering output's first audio");
+
+        // The film is released once every output moved or is stalled, not held to the first-audio deadline (ADR-0008).
+        started.StartToAudio.ShouldBeInRange(TimeSpan.FromSeconds(1.0), TimeSpan.FromSeconds(1.2), "the hung output held the release past its stall");
         rig.Stop(RunEndReason.Stop);
         rig.Events.OfType<AudioStarted>().Count().ShouldBe(1);
     }
@@ -514,17 +520,19 @@ public sealed class AudioEngineRunTests
     }
 
     [Fact]
-    public void Start_to_audio_is_logged_for_every_device_and_is_at_most_two_seconds_on_the_fake_clock()
+    public void Start_to_audio_is_logged_for_every_device_and_is_at_most_three_seconds_on_the_fake_clock()
     {
         using var rig = new Rig(2);
         rig.Engine.StartRun("film.mkv", [Assign(1, 1), Assign(2, 2)], new EngineOptions()).IsSuccess.ShouldBeTrue();
 
-        rig.Render(1);
-
-        rig.WaitFor(() => rig.Log.With("DeviceId", "StartToAudioMs").Count == 2).ShouldBeTrue();
+        rig.WaitFor(() =>
+        {
+            rig.Render(1); // the film is handed over after the silent pre-roll (ADR-0008)
+            return rig.Log.With("DeviceId", "StartToAudioMs").Count == 2;
+        }).ShouldBeTrue();
         var entries = rig.Log.With("DeviceId", "StartToAudioMs");
         entries.Select(e => (string)e["DeviceId"]!).ShouldBe(["dev-1", "dev-2"], ignoreOrder: true);
-        entries.ShouldAllBe(e => (double)e["StartToAudioMs"]! > 0 && (double)e["StartToAudioMs"]! <= 2_000);
+        entries.ShouldAllBe(e => (double)e["StartToAudioMs"]! > 0 && (double)e["StartToAudioMs"]! <= 3_000);
         rig.Stop(RunEndReason.Stop);
     }
 
@@ -542,6 +550,7 @@ public sealed class AudioEngineRunTests
             rig.Render(1);
             return rig.Events.OfType<AudioStarted>().Any();
         }).ShouldBeTrue();
+        rig.Render(10); // the clock starts at 00:00 when AudioStarted is published (ADR-0008): leave film before the pause instant
 
         // Paused, no alignment keeps the poll going (a hung output stays pending while playing): only the unlogged output does.
         rig.Engine.Pause().IsSuccess.ShouldBeTrue();
@@ -580,15 +589,15 @@ public sealed class AudioEngineRunTests
     }
 
     [Fact]
-    public void Audio_started_counts_a_first_render_just_past_the_two_second_start_to_audio_budget()
+    public void Audio_started_counts_a_first_render_just_past_the_three_second_start_to_audio_budget()
     {
         using var rig = new Rig(2);
         rig.Engine.StartRun("film.mkv", [Assign(1, 1), Assign(2, 2)], new EngineOptions()).IsSuccess.ShouldBeTrue();
         rig.Backend.Devices["dev-2"].Hang();
         rig.Render(1); // dev-1 renders its first audio
-        rig.Time.Advance(TimeSpan.FromMilliseconds(2_350)); // dev-2 has never rendered and is now past the two-second budget
+        rig.Time.Advance(TimeSpan.FromMilliseconds(3_350)); // dev-2 has never rendered and is now past the three-second budget
         rig.Render(20); // still under the start deadline, and long enough in real time for several control-loop polls
-        rig.Events.OfType<AudioStarted>().ShouldBeEmpty("dev-2 has never rendered and is still awaited 2.5 s after the start");
+        rig.Events.OfType<AudioStarted>().ShouldBeEmpty("dev-2 has never rendered and is still awaited 3.5 s after the start");
         rig.Backend.Devices["dev-2"].Unhang();
 
         rig.WaitFor(() =>
@@ -597,7 +606,7 @@ public sealed class AudioEngineRunTests
             return rig.Events.OfType<AudioStarted>().Any();
         }).ShouldBeTrue();
 
-        rig.Events.OfType<AudioStarted>().Single().StartToAudio.ShouldBeGreaterThanOrEqualTo(TimeSpan.FromSeconds(2), "a budget breach must not be reported as the faster output's value");
+        rig.Events.OfType<AudioStarted>().Single().StartToAudio.ShouldBeGreaterThanOrEqualTo(TimeSpan.FromSeconds(3), "a budget breach must not be reported as the faster output's value");
         rig.Stop(RunEndReason.Stop);
     }
 

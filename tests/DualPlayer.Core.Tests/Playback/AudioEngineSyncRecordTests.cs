@@ -76,7 +76,18 @@ public sealed class AudioEngineSyncRecordTests
             var assignments = Enumerable.Range(1, outputs).Select(n => Assign(((n - 1) % 2) + 1, n)).ToArray();
             var started = Engine.StartRun("film.mkv", assignments, new EngineOptions());
             started.IsSuccess.ShouldBeTrue(started.Error?.Message);
-            _origin = Time.GetUtcNow();
+            var commandAt = Time.GetUtcNow();
+            _origin = commandAt;
+
+            // The master clock starts after the silent pre-roll (ADR-0008); the rig's origin is that instant, from the engine.
+            for (var i = 0; i < 700 && !Events.OfType<AudioStarted>().Any(); i++)
+            {
+                Render(1);
+            }
+
+            var audioStarted = Events.OfType<AudioStarted>().FirstOrDefault();
+            audioStarted.ShouldNotBeNull("the master clock never started");
+            _origin = commandAt + audioStarted.StartToAudio;
         }
 
         /// <summary>Tells the rig where the master clock is now (after a seek), so it knows how far the decoder has to be.</summary>

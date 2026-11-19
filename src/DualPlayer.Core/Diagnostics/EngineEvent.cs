@@ -13,7 +13,7 @@ public enum RunEndReason
 /// <summary>Closed set of events the engine-control loop publishes.</summary>
 public abstract record EngineEvent;
 
-/// <summary>Every non-lost output of the run has rendered its first audio; published once per run. <paramref name="StartToAudio"/> is the latest output's first-audio instant minus the start command.</summary>
+/// <summary>Every non-lost output of the run has rendered its first audio; published once per run. <paramref name="StartToAudio"/> is the latest output's first-audio instant minus the start command; film handed over during the start counts from the master clock's start, when it is heard (ADR-0008), so this includes the silent pre-roll.</summary>
 public sealed record AudioStarted(TimeSpan ClockPosition, TimeSpan StartToAudio) : EngineEvent;
 
 public sealed record SyncRecord(string DeviceId, TimeSpan ClockPosition, double DriftMs, double CorrectionPpm, long Underruns) : EngineEvent;

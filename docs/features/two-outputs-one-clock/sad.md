@@ -15,7 +15,7 @@ target_surfaces: [cli]
 
 **Top-3 quality goals (1-liners; full scenarios in §10):**
 
-1. **Sync accuracy over a feature-length run** — every audio output stays within ≤ 10 ms of the master clock for ≥ 3 h without Developer help, and re-aligns ≤ 1 s after start, resume or seek.
+1. **Sync accuracy over a feature-length run** — every audio output stays within ≤ 10 ms of the master clock for ≥ 3 h without Developer help, and re-aligns ≤ 1 s after the master clock starts (ADR-0008), and ≤ 1 s after resume or seek.
 2. **Fault isolation between outputs** — losing one device never stops or disturbs the other outputs (0 underruns within ±5 s of the loss).
 3. **Glitch-free continuity at low cost** — 0 underruns per 3 h run with two Bluetooth headsets, at ≤ 5 % CPU, in shared mode.
 
@@ -174,7 +174,7 @@ C4Container
 
 All commands and backend events enter the engine through one engine-control loop in `DualPlayer.Core` that handles them one at a time, so transport state never races. Every seek or stop bumps a playback **epoch**: frames carry the epoch they were decoded in, and a render source discards frames from an older epoch ([ADR-0006](adr/0006-coordinate-pause-and-seek-with-playback-epochs-while-device-streams-keep-running.md)). Seeded flows below; the `sequences` stage covers every remaining AC.
 
-**Critical flow 1: start a run (AC-01, AC-03, AC-04, AC-05; ≤ 2 s to audio)**
+**Critical flow 1: start a run (AC-01, AC-03, AC-04, AC-05; ≤ 3 s to audio)**
 
 ```mermaid
 sequenceDiagram
@@ -199,9 +199,11 @@ sequenceDiagram
             Backend-->>Core: mix format per device
             Core->>Media: open file, decode chosen tracks into device formats
             Media-->>Core: frames fill each output's ring buffer
-            Core->>Core: start master clock when every ring holds its start level
+            Core->>Backend: start every device on silence (pre-roll, ADR-0008)
             Backend->>Core: render request with device position
-            Core-->>Backend: frames for that device
+            Core->>Core: wait until every device position has moved
+            Core-->>Backend: film from frame 0 on every output at once
+            Core->>Core: start master clock at 00:00 when the slowest output hears frame 0; delay faster outputs by their difference
             Core-->>Console: run started, resolved device ids, clock position
         end
     end
@@ -416,9 +418,14 @@ sequenceDiagram
     else Ctrl+C or the console window is closed
         C->>S: stop requested by the console shutdown signal
     end
-    S->>S: pick the stop instant beyond the audio queued in every device, new epoch
-    X->>S: render request with device position
-    S-->>X: silence from the stop instant
+    alt the master clock has not started yet (start pre-roll, ADR-0008)
+        S->>S: silence from content frame 0, nothing to wait for
+        Note over S,X: film already queued on a device after the release is not played out - it relies on the device close discarding it (§11)
+    else the master clock is running
+        S->>S: pick the stop instant beyond the audio queued in every device, new epoch
+        X->>S: render request with device position
+        S-->>X: silence from the stop instant
+    end
     S->>S: stop the master clock, build the run summary per output
     S->>D: write the run summary
     Note over S,D: persists run summary - device, played duration, largest steady-state drift, clock mismatch in ppm, corrections, underruns, device-lost events
@@ -456,7 +463,7 @@ One process, `DualPlayer.Console`, runs on one PC: the target Windows 11 x64 PC 
 - Per-device sync record once per second (drift, current correction in ppm, cumulative underruns, device id, master-clock position) — console line + structured log event (AC-11).
 - Excursion events (device, peak, duration, start position) when an output leaves the 10 ms tolerance (AC-07); device-lost events (AC-06).
 - Run summary per output at the end of the run (AC-13).
-- Start-to-audio timing: timestamps of the start command and of the first rendered frame per device in the log (spec §6, ≤ 2 s).
+- Start-to-audio timing: timestamps of the start command and of the first film frame heard per device in the log (ADR-0008: the first rendered frames are pre-roll silence) (spec §6, ≤ 3 s).
 - Actual shared-mode device buffer and mix format per device logged when each stream opens (the OS may grant a larger buffer than requested).
 - CPU: the OS performance counter for the console process, averaged over the run (spec §6, ≤ 5 %).
 
@@ -492,6 +499,7 @@ One process, `DualPlayer.Console`, runs on one PC: the target Windows 11 x64 PC 
 | 0005 | Convert each track to its device's mix format with FFmpeg swresample in DualPlayer.Media | Accepted | §5 |
 | 0006 | Coordinate pause and seek with playback epochs while device streams keep running | Accepted | §6 |
 | 0007 | Publish per-device records and other engine events as one observable stream from the engine-control loop | Accepted | §8 |
+| 0008 | Start the master clock when the slowest output hears the first frame, after a silent pre-roll | Accepted | §6 |
 
 ADR files live under `docs/features/two-outputs-one-clock/adr/NNNN-<title>.md`.
 
@@ -501,8 +509,8 @@ All numbers are spec §6 targets on the target Windows 11 PC; the macOS dev back
 
 **QG-1. Sync accuracy over a feature-length run**
 - **When:** two audio outputs play on both Bluetooth headsets for a ≥ 3 h run on the target PC, with no action from the Developer.
-- **Then:** steady-state drift of each audio output from the master clock ≤ 10 ms (absolute) — each record's drift is the average of the device-position readings over its 1 s interval; the largest value outside the recovery windows (the 1 s after start, resume or seek) counts. After start, resume or seek, every output is within the drift tolerance ≤ 1 s after the command.
-- **How verify:** (a) unit tests in `tests/DualPlayer.Core.Tests/Sync/` drive the drift controller and adaptive resampler with a fake `TimeProvider` and fake devices whose clocks run fast or slow by a fixed ppm, asserting |drift| ≤ 10 ms in steady state and recovery ≤ 1 s after start, resume and seek; (b) the recorded target-PC evidence run: largest steady-state drift from the AC-11 records and the AC-13 run summary ≤ 10 ms.
+- **Then:** steady-state drift of each audio output from the master clock ≤ 10 ms (absolute) — each record's drift is the average of the device-position readings over its 1 s interval; the largest value outside the recovery windows (the 1 s after the master clock starts, after resume or after seek) counts. After resume or seek, every output is within the drift tolerance ≤ 1 s after the command; after a start, ≤ 1 s after the master clock starts (ADR-0008).
+- **How verify:** (a) unit tests in `tests/DualPlayer.Core.Tests/Sync/` drive the drift controller and adaptive resampler with a fake `TimeProvider` and fake devices whose clocks run fast or slow by a fixed ppm, asserting |drift| ≤ 10 ms in steady state and recovery ≤ 1 s after the master clock starts, and after resume and seek; (b) the recorded target-PC evidence run: largest steady-state drift from the AC-11 records and the AC-13 run summary ≤ 10 ms.
 
 **QG-2. Fault isolation between outputs**
 - **When:** one device disappears (switched off, unplugged, out of range) while another output plays.
@@ -515,7 +523,7 @@ All numbers are spec §6 targets on the target Windows 11 PC; the macOS dev back
 - **How verify:** underrun counts from the AC-13 run summary of the evidence run; CPU from the OS performance counter for the console process, averaged over the run.
 
 **Supporting scenarios (spec §6):**
-- **Start latency** — start command to audio on all outputs ≤ 2 s; verified from log timestamps of the start command and each device's first rendered frame.
+- **Start latency** — start command to audio on all outputs ≤ 3 s; verified from log timestamps of the start command and the first film frame heard on each device (ADR-0008).
 - **Output count** — ≥ 3 outputs simultaneously within the drift tolerance; verified by a Core test with three fake devices (no third physical device required).
 
 ## 11. Risks and technical debt
@@ -528,6 +536,7 @@ All numbers are spec §6 targets on the target Windows 11 PC; the macOS dev back
 | GC pauses or JIT on render threads cause underruns that look like device problems | Medium | §8 real-time rule (no allocation on render threads), pre-allocated rings and buffers, warm-up before the master clock starts; underruns logged with master-clock position for correlation | Volodymyr Kravchuk |
 | Crackling caused outside the player (adapter, radio) may persist while the engine counts 0 underruns | Medium | Underrun counter measures the engine only (spec §8 default); resolve the spec §8 question before the evidence run; roadmap step 1 investigates the adapter side | Volodymyr Kravchuk |
 | FFmpeg binary and FFmpeg.AutoGen versions drift apart, or a GPL build slips in | Medium | `build/fetch-ffmpeg.ps1` pins one LGPL shared build with SHA-256; FFmpeg major version pinned to the FFmpeg.AutoGen package; console logs FFmpeg version and license at start | Volodymyr Kravchuk |
+| A stop between the film release and the master-clock start (ADR-0008 pre-roll) does not play the queued audio out: film already handed to a device (up to `L_max` on the slowest output, and from `clockStart − L_i` on each other one) is assumed to be discarded by the device close (WASAPI `Stop` + release). ADR-0008 notes that audio already handed to a Bluetooth device cannot be recalled, so a headset may still play a short film tail after the others fall silent (AC-08) | Low | Target-PC check in the evidence run: stop between the film release and the master-clock start on the Bluetooth pair (between this run's `Run started with …` and its `Run ended (Stop) at master clock 0.000 s`, the log shows `Film released on …`), every output falls silent together (test-plan.md NFR validation); if a tail is heard, stop at a master-clock instant beyond the queue as after the clock start | Volodymyr Kravchuk |
 | The OS grants a larger shared-mode buffer than the requested 40 ms, slowing seek confirmation and pause alignment | Low | Actual buffer logged per device at stream open; `EngineOptions` lets the Developer tune it on the target PC | Volodymyr Kravchuk |
 | The two composition roots (`DualPlayer.App`, `DualPlayer.Console`) drift apart in what they register | Low | Smoke test per root; both call the same `Add<Module>()` extensions; CLAUDE.md rule updated to name both roots | Volodymyr Kravchuk |
 | `docs/architecture-map.md` still reflects the pre-scaffold plan (`reflects_commit: 546fd39`) and does not list `DualPlayer.Console` | Low | Re-run `/sdd:survey` after this feature's skeleton lands | Volodymyr Kravchuk |

@@ -39,7 +39,7 @@ public sealed class AudioEngineRecoveryTests
         rig.Start();
         rig.Render(3_200);
 
-        AssertWithinToleranceFromRecoveryOn(rig, TimeSpan.Zero, TimeSpan.Zero);
+        AssertWithinToleranceFromRecoveryOn(rig, rig.ClockStart, TimeSpan.Zero);
     }
 
     [Theory]
@@ -121,7 +121,7 @@ public sealed class AudioEngineRecoveryTests
         rig.Start();
         rig.Render(3_200);
 
-        AssertWithinToleranceFromRecoveryOn(rig, TimeSpan.Zero, TimeSpan.Zero);
+        AssertWithinToleranceFromRecoveryOn(rig, rig.ClockStart, TimeSpan.Zero);
     }
 
     [Theory]

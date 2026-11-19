@@ -495,7 +495,7 @@
         "docs/features/two-outputs-one-clock/evidence/"
       ],
       "file": "docs/features/two-outputs-one-clock/tasks/T22-record-target-pc-evidence-run.md",
-      "status": "blocked"
+      "status": "done"
     },
     {
       "id": "T23",
@@ -1381,6 +1381,283 @@
       "file": "docs/features/two-outputs-one-clock/tasks/T63-step-the-start-deadline-tests-on-the-fake-clock-and-fix-the-deadline-comment.md",
       "status": "done",
       "origin": "review-2026-11-12-r7: W1, W2, W3"
+    },
+    {
+      "id": "T64",
+      "title": "Start the master clock when the slowest output hears the first frame, after a silent pre-roll",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-07"
+      ],
+      "dod": "pre-roll on silence; release when every position moved; per-output silence insert L_max-L_i; clock at the slowest output's first heard frame; never-moving output bounded by FirstAudioDeadline; commands during pre-roll handled and tested; rigs take clock start from the engine; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "src/DualPlayer.Core/Outputs/OutputRenderSource.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineStartAndHangTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T64-start-the-master-clock-when-the-slowest-output-hears-the-first-frame.md",
+      "status": "done",
+      "origin": "target-PC diagnosis 2026-11-17; ADR-0008"
+    },
+    {
+      "id": "T65",
+      "title": "Hand out film only after the start target is set on every moved output",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "TryRelease never leaves a moved output with startDeviceFrame=MinValue and no heard target; a deterministic test forces a render between the reset and the target and fails on the old order; repeated three-output start scenario green; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "src/DualPlayer.Core/Outputs/OutputRenderSource.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineStartAndHangTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T65-hand-out-film-only-after-the-start-target-is-set-on-every-moved-output.md",
+      "status": "done",
+      "origin": "review-2026-11-17: B1"
+    },
+    {
+      "id": "T66",
+      "title": "Test a stop and the loss of the last device during the start pre-roll",
+      "layer": "app",
+      "deps": [
+        "T65"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-06b",
+        "AC-13"
+      ],
+      "dod": "stop and last-device-lost tested before and after the release (summary produced, no film after stop); deleting the run.Starting branch of EndRun turns a test red; the reliance on Close discarding queued film is documented or handled; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineStartAndHangTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T66-test-a-stop-and-the-loss-of-the-last-device-during-the-start-pre-roll.md",
+      "status": "done",
+      "origin": "review-2026-11-17: S3"
+    },
+    {
+      "id": "T67",
+      "title": "Bring the start-to-audio budget and the start recovery window in line with ADR-0008 everywhere",
+      "layer": "app",
+      "deps": [
+        "T66"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-07"
+      ],
+      "dod": "no stale ≤ 2 s start-to-audio; CHANGELOG lists ADR-0008; T62 test uses a first render past 3 s (under 5 s) and is renamed; sad/test-plan say first film frame heard; spec §6 + QG-1 say the start recovery window opens at the master-clock start; gate clean",
+      "files_hint": [
+        "docs/features/two-outputs-one-clock/spec.md",
+        "docs/features/two-outputs-one-clock/sad.md",
+        "docs/features/two-outputs-one-clock/test-plan.md",
+        "docs/features/two-outputs-one-clock/adr/0008-start-the-master-clock-when-the-slowest-output-hears-the-first-frame.md",
+        "docs/features/two-outputs-one-clock/CHANGELOG.md",
+        "docs/features/two-outputs-one-clock/contracts/api-sync-report.md",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T67-bring-the-start-to-audio-budget-and-the-start-recovery-window-in-line-wi.md",
+      "status": "done",
+      "origin": "review-2026-11-17: S1, S2"
+    },
+    {
+      "id": "T68",
+      "title": "Fix the pre-roll comments and pin the stalled-output release time",
+      "layer": "app",
+      "deps": [
+        "T67"
+      ],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "StartMargin, wait-bound and hold comments match code; the stalled-output test steps the fake clock and asserts StartToAudio ≈ 1.0–1.2 s, red against holding to the 5 s deadline; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T68-fix-the-pre-roll-comments-and-pin-the-stalled-output-release-time.md",
+      "status": "done",
+      "origin": "review-2026-11-17: N1, N2"
+    },
+    {
+      "id": "T69",
+      "title": "Retry the release when a moved output's queue read is torn",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "a torn queue read of an output that has a position and is not stalled makes the release wait for the next poll, also past FirstAudioDeadline; unit-tested; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineReleaseTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T69-retry-the-release-when-a-moved-outputs-queue-read-is-torn.md",
+      "status": "done",
+      "origin": "review-2026-11-17-r2: R5"
+    },
+    {
+      "id": "T70",
+      "title": "Exercise the pre-roll stop silence and reword the pre-roll loss tests",
+      "layer": "app",
+      "deps": [
+        "T69"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-06b"
+      ],
+      "dod": "a device renders during EndRun of a pre-roll stop and no new film appears; removing SetSilenceFrom(0) turns it red; the loss tests no longer assert film the fake cannot render; gate clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineStartAndHangTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T70-exercise-the-pre-roll-stop-silence-and-reword-the-pre-roll-loss-tests.md",
+      "status": "done",
+      "origin": "review-2026-11-17-r2: R2, R3"
+    },
+    {
+      "id": "T71",
+      "title": "Assert the release-race hook rendered inside the release",
+      "layer": "app",
+      "deps": [
+        "T70"
+      ],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "the race test asserts its hook rendered inside TryRelease at least once; gate clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineStartAndHangTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T71-assert-the-release-race-hook-rendered-inside-the-release.md",
+      "status": "done",
+      "origin": "review-2026-11-17-r2: R4"
+    },
+    {
+      "id": "T72",
+      "title": "Record the pre-roll stop close assumption and the start recovery wording in sad.md",
+      "layer": "app",
+      "deps": [
+        "T71"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-13",
+        "AC-07"
+      ],
+      "dod": "sad.md §11 and flow 9 record the pre-roll stop assumption; the EndRun comment is correct; test-plan.md has a target-PC check for a stop right after play; sad.md:18 and :508 carry the master-clock-start qualifier; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "docs/features/two-outputs-one-clock/sad.md",
+        "docs/features/two-outputs-one-clock/test-plan.md"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T72-record-the-pre-roll-stop-close-assumption-and-the-start-window-wording.md",
+      "status": "done",
+      "origin": "review-2026-11-17-r2: R1, R6"
+    },
+    {
+      "id": "T73",
+      "title": "Carry the pre-roll stop check and the 3 s start target into the run guide and T22",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-08",
+        "AC-13",
+        "AC-01"
+      ],
+      "dod": "run guide §5 has the pre-roll stop row; the guide and the T22 quote say start-to-audio ≤ 3 s; T22 points to the check; gate clean",
+      "files_hint": [
+        "docs/features/two-outputs-one-clock/evidence/target-pc-run-guide.md",
+        "docs/features/two-outputs-one-clock/tasks/T22-record-target-pc-evidence-run.md"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T73-carry-the-pre-roll-stop-check-and-the-3-s-start-target-into-the-run-guide.md",
+      "status": "done",
+      "origin": "review-2026-11-17-r3: F1, F2"
+    },
+    {
+      "id": "T74",
+      "title": "Render at each release step while a moved output still awaits its start target",
+      "layer": "app",
+      "deps": [
+        "T73"
+      ],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "TryRelease calls an internal test seam after each start-target change; the race test renders there while a moved output awaits its target and asserts it did; the old reset order turns it red; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineStartAndHangTests.cs"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T74-render-at-each-release-step-while-a-moved-output-awaits-its-target.md",
+      "status": "done",
+      "origin": "review-2026-11-17-r3: F3"
+    },
+    {
+      "id": "T75",
+      "title": "Time the pre-roll stop check into the release-to-start window and take start-to-audio over 10 starts",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-08",
+        "AC-13",
+        "AC-01"
+      ],
+      "dod": "the pre-roll stop check aims between the film release and the clock start and counts only runs whose log shows Film released before Run ended (Stop); the AC-01 start check is 10 starts and records the maximum; gate clean",
+      "files_hint": [
+        "docs/features/two-outputs-one-clock/evidence/target-pc-run-guide.md",
+        "docs/features/two-outputs-one-clock/tasks/T22-record-target-pc-evidence-run.md",
+        "docs/features/two-outputs-one-clock/test-plan.md",
+        "docs/features/two-outputs-one-clock/sad.md"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T75-time-the-pre-roll-stop-check-into-the-release-window-and-take-10-starts.md",
+      "status": "done",
+      "origin": "review-2026-11-17-r4: F1, F2"
+    },
+    {
+      "id": "T76",
+      "title": "Time the pre-roll stop from the output lines and bound its log check to the run",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-08",
+        "AC-13"
+      ],
+      "dod": "the pre-roll stop is timed from the output lines; the count condition reads only this run's lines (Film released between its Run started and Run ended (Stop), master clock 0.000 s); gate clean",
+      "files_hint": [
+        "docs/features/two-outputs-one-clock/evidence/target-pc-run-guide.md",
+        "docs/features/two-outputs-one-clock/tasks/T22-record-target-pc-evidence-run.md",
+        "docs/features/two-outputs-one-clock/test-plan.md",
+        "docs/features/two-outputs-one-clock/sad.md"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T76-time-the-pre-roll-stop-from-the-output-lines-and-bound-the-log-check-to-the-run.md",
+      "status": "done",
+      "origin": "review-2026-11-17-r5: F1, F2"
+    },
+    {
+      "id": "T77",
+      "title": "Name the log file and the last run block in the pre-roll stop check",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-08",
+        "AC-13"
+      ],
+      "dod": "the pre-roll stop row names the log file and says this run's lines are the last Run started … Run ended (Stop) block at the end of the file; gate clean",
+      "files_hint": [
+        "docs/features/two-outputs-one-clock/evidence/target-pc-run-guide.md"
+      ],
+      "file": "docs/features/two-outputs-one-clock/tasks/T77-name-the-log-file-and-the-last-run-block-in-the-pre-roll-stop-check.md",
+      "status": "done",
+      "origin": "review-2026-11-17-r6: F1"
     }
   ]
 }

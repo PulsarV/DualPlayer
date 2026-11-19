@@ -18,6 +18,12 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
     private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(2);
     private const int MaxAlignRounds = 16;
 
+    /// <summary>
+    /// Added after the moment the slowest output hears the next frame it is handed (so the clock starts ≈ L_max + this after
+    /// the release), so every output still gets its first film frame on time.
+    /// </summary>
+    private static readonly TimeSpan StartMargin = TimeSpan.FromMilliseconds(30);
+
     /// <summary>How long after a seek or resume each output keeps being re-measured, so a later hole is corrected too.</summary>
     private static readonly TimeSpan AlignWindow = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan StartLevelPollInterval = TimeSpan.FromMilliseconds(2);
@@ -173,29 +179,25 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             return Result<RunStarted>.Failure(filled.Error);
         }
 
+        // Silent pre-roll (ADR-0008): every device plays silence until its position moves; the control loop then
+        // releases the film so that every output hears frame 0 when the master clock starts (AdvanceStart).
         run.Clock = new MasterClock(_time);
-        run.Clock.Start();
         foreach (var output in run.Outputs)
         {
             output.Sync = new OutputSync(run.Clock, options.DriftTolerance);
             output.Mismatch = new ClockMismatchEstimator(_time);
+            output.Source.StartAtDeviceFrame(long.MaxValue);
             output.Device.Start();
             run.Summary.OutputStarted(output.DeviceId, TimeSpan.Zero);
         }
 
         var now = _time.GetTimestamp();
-        BeginRecovery(run, now);
-        foreach (var output in run.Outputs)
-        {
-            BeginAlignment(output, now); // one re-align step per output, whenever its position starts moving
-        }
-
+        run.Starting = true;
         run.Publisher = new SyncRecordPublisher(
             _events.Publish,
             (ILogger?)_loggerFactory?.CreateLogger<SyncRecordPublisher>() ?? _logger);
         _run = run;
-        run.SyncTimer = _time.CreateTimer(_ => _loop.Post(() => OnSyncSample(run)), null, SyncSampleInterval, SyncSampleInterval);
-        _loop.Polling = true; // until every output's first audio is logged
+        _loop.Polling = true; // through the pre-roll, then until every output's first audio is logged
         run.StartClockPosition = run.Clock.PositionAt(now);
         LogRunStarted(run.Outputs.Count, _time.GetElapsedTime(startTimestamp, now).TotalMilliseconds);
         return Result<RunStarted>.Success(new RunStarted(
@@ -211,6 +213,12 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         if (_run is not { } run)
         {
             return Result<TimeSpan>.Failure("playback.no_run", "No run is active.");
+        }
+
+        var started = WaitForClockStart(run);
+        if (!started.IsSuccess)
+        {
+            return Result<TimeSpan>.Failure(started.Error);
         }
 
         var clock = run.Clock!;
@@ -230,6 +238,12 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         if (_run is not { } run)
         {
             return Result<TimeSpan>.Failure("playback.no_run", "No run is active.");
+        }
+
+        var started = WaitForClockStart(run);
+        if (!started.IsSuccess)
+        {
+            return Result<TimeSpan>.Failure(started.Error);
         }
 
         var clock = run.Clock!;
@@ -273,6 +287,12 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         if (_run is not { } run)
         {
             return Result<SeekResult>.Failure("playback.no_run", "No run is active.");
+        }
+
+        var started = WaitForClockStart(run);
+        if (!started.IsSuccess)
+        {
+            return Result<SeekResult>.Failure(started.Error);
         }
 
         var outsideFile = target < TimeSpan.Zero;
@@ -349,6 +369,153 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
         _loop.Polling = true;
         return Result<SeekResult>.Success(new SeekResult(run.Clock.PositionAt(_time.GetTimestamp()), outsideFile, run.Paused));
+    }
+
+    /// <summary>
+    /// A command given during the start's pre-roll waits on the loop until the master clock has started, then runs as
+    /// it would afterwards: no film plays while paused and the start is not broken. Bounded by
+    /// <see cref="FirstAudioDeadline"/> + <see cref="StartLevelTimeout"/> after the start.
+    /// </summary>
+    private Result WaitForClockStart(Run run)
+    {
+        var deadline = run.StartTimestamp + (long)((FirstAudioDeadline + StartLevelTimeout).TotalSeconds * _time.TimestampFrequency);
+        while (AdvanceStart(run))
+        {
+            if (run.DecodeError is { } error)
+            {
+                return Result.Failure(error);
+            }
+
+            if (_time.GetTimestamp() >= deadline || Volatile.Read(ref _disposed) != 0)
+            {
+                return Result.Failure("playback.start_timeout", "The outputs did not start in time.");
+            }
+
+            Thread.Sleep(StartLevelPollInterval);
+        }
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Moves the start on (ADR-0008): releases the film once every output's position has moved, then starts the master
+    /// clock at 00:00 when the slowest output hears film frame 0, and aligns every output in one step from there.
+    /// True while the clock has not started yet.
+    /// </summary>
+    private bool AdvanceStart(Run run)
+    {
+        if (!run.Starting)
+        {
+            return false;
+        }
+
+        var now = _time.GetTimestamp();
+        if (!run.Released && !TryRelease(run, now))
+        {
+            return true;
+        }
+
+        if (now < run.ClockStartTimestamp)
+        {
+            return true;
+        }
+
+        run.Starting = false;
+        run.Clock!.StartAt(run.ClockStartTimestamp);
+        BeginRecovery(run, run.ClockStartTimestamp);
+        run.SyncTimer = _time.CreateTimer(_ => _loop.Post(() => OnSyncSample(run)), null, SyncSampleInterval, SyncSampleInterval);
+        foreach (var output in run.Outputs.Where(o => !o.Lost))
+        {
+            BeginAlignment(output, now); // trims what is left: about one device period, or an output that never moved
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Test seam: called on the control loop after each start-target change inside the release, with the number of moved
+    /// outputs still awaiting their heard target. A render there is the release race (ADR-0008).
+    /// </summary>
+    internal Action<int>? ReleaseStepForTests { get; set; }
+
+    /// <summary>
+    /// Once every non-lost output's position has moved (or it is stalled, or <see cref="FirstAudioDeadline"/> passed),
+    /// gives each output its first film frame at the device frame heard when the slowest one hears its next frame (plus
+    /// <see cref="StartMargin"/>). An
+    /// output that never moved gets the film at once and is aligned when the clock starts. False while still waiting.
+    /// </summary>
+    private bool TryRelease(Run run, long now)
+    {
+        var pastDeadline = _time.GetElapsedTime(run.StartTimestamp, now) >= FirstAudioDeadline;
+        var moved = new List<(Output Output, long HeardAt)>();
+        foreach (var output in run.Outputs.Where(o => !o.Lost))
+        {
+            var queueRead = output.Source.TryGetLatestQueue(out var played, out var timestamp, out var written);
+            var reading = ReadForRelease(queueRead, played, output.Source.LatestFramesPlayed, pastDeadline, run.Pump!.IsStalled(output.Index));
+            if (reading == ReleaseReading.Wait)
+            {
+                return false;
+            }
+
+            if (reading == ReleaseReading.Moved)
+            {
+                // Constant once the position moves: a frame handed over now is heard after the frames still queued.
+                var lag = (double)Math.Max(0, written - played) / output.Format.SampleRate; // an underrun queue is heard at once
+                moved.Add((output, timestamp + (long)(lag * _time.TimestampFrequency)));
+            }
+        }
+
+        var margin = (long)(StartMargin.TotalSeconds * _time.TimestampFrequency);
+        var clockStart = moved.Count == 0 ? now : Math.Max(now, moved.Max(m => m.HeardAt)) + margin;
+        // A moved output keeps its pre-roll hold until its heard target is set: resetting it first would let a
+        // render in between hand out film frame 0 at once, ~L_max before the clock starts.
+        foreach (var output in run.Outputs.Where(o => !o.Lost && !moved.Exists(m => m.Output == o)))
+        {
+            output.Source.StartAtDeviceFrame(long.MinValue);
+            ReleaseStepForTests?.Invoke(moved.Count);
+        }
+
+        for (var i = 0; i < moved.Count; i++)
+        {
+            var output = moved[i].Output;
+            output.Source.StartWhenHeardAt(clockStart, (double)output.Format.SampleRate / _time.TimestampFrequency);
+            ReleaseStepForTests?.Invoke(moved.Count - i - 1);
+        }
+
+        run.Released = true;
+        run.ClockStartTimestamp = clockStart;
+        LogFilmReleased(moved.Count, run.Outputs.Count(o => !o.Lost), _time.GetElapsedTime(run.StartTimestamp, clockStart).TotalMilliseconds);
+        return true;
+    }
+
+    internal enum ReleaseReading
+    {
+        /// <summary>The position moved: the output gets a heard target and its lag counts for the clock start.</summary>
+        Moved,
+
+        /// <summary>The release waits for the next poll.</summary>
+        Wait,
+
+        /// <summary>The output no longer holds the release; it gets the film at once and is aligned at the clock start.</summary>
+        NotMoved,
+    }
+
+    /// <summary>How the release reads one output from its last queue reading (ADR-0008).</summary>
+    internal static ReleaseReading ReadForRelease(bool queueRead, long queuePlayed, long latestPlayed, bool pastDeadline, bool stalled)
+    {
+        if (queueRead && queuePlayed > 0)
+        {
+            return ReleaseReading.Moved;
+        }
+
+        // A render was updating the queue of an output that has a position: read it again on the next poll, or it would
+        // get the film at once, ~its lag early, and its lag would be left out of the clock start.
+        if (!queueRead && latestPlayed > 0 && !stalled)
+        {
+            return ReleaseReading.Wait;
+        }
+
+        return !pastDeadline && !stalled ? ReleaseReading.Wait : ReleaseReading.NotMoved;
     }
 
     /// <summary>
@@ -524,6 +691,12 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             return;
         }
 
+        if (AdvanceStart(run))
+        {
+            _loop.Polling = true;
+            return;
+        }
+
         var awaitingFirstAudio = LogFirstAudio(run);
         if (run.DecodeEnded && run.Outputs.Where(o => !o.Lost).All(o => o.Ring.FramesAvailable == 0))
         {
@@ -539,7 +712,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
     }
 
     /// <summary>
-    /// One-step re-alignment after a seek or resume: once an output has handed a full buffer of audio from the new
+    /// One-step re-alignment after the start, a seek or a resume: once an output has handed a full buffer of audio from the new
     /// position to the device, measures how far that audio is from the master clock when the device plays it and
     /// removes the offset. Each output keeps being measured for <see cref="AlignWindow"/> after the command, so a
     /// hole that appears after a good measurement (the decoder not keeping up) is removed as well. True while some
@@ -733,8 +906,10 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
     }
 
     /// <summary>
-    /// How long after the start an output that has never rendered is still awaited by <see cref="AudioStarted"/>: well above the
-    /// 2 s start-to-audio budget, so a first render that misses the budget is reported, not hidden behind a faster output.
+    /// How long after the start an output whose position has not moved can hold the film's release (only while it keeps
+    /// rendering: one that stops counts as stalled after <see cref="DecodePump.StallThreshold"/> and no longer holds it),
+    /// and an output that has never rendered is still awaited by <see cref="AudioStarted"/>: above the 3 s start-to-audio
+    /// budget, so a first render that misses the budget is reported, not hidden behind a faster output.
     /// </summary>
     private static readonly TimeSpan FirstAudioDeadline = TimeSpan.FromSeconds(5);
 
@@ -753,6 +928,8 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
                 continue;
             }
 
+            // Film handed over before the clock started is heard when it starts.
+            timestamp = Math.Max(timestamp, run.ClockStartTimestamp);
             output.FirstAudioLogged = true;
             run.LatestFirstAudio = run.LatestFirstAudio is { } previous ? Math.Max(previous, timestamp) : timestamp;
             LogFirstAudio(output.DeviceId, _time.GetElapsedTime(run.StartTimestamp, timestamp).TotalMilliseconds);
@@ -798,7 +975,19 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         var clock = run.Clock!;
         var now = _time.GetTimestamp();
         run.SyncTimer?.Dispose();
-        if (!run.Paused)
+        if (run.Starting)
+        {
+            foreach (var output in run.Outputs)
+            {
+                output.Source.SetSilenceFrom(0); // no film after a stop during the pre-roll; nothing to wait for
+            }
+
+            // Past the release each output may already hold film in its device queue (the slowest up to L_max, another
+            // one from clockStart − L_i on). Nothing waits for it to play out: this assumes closing the device (WASAPI
+            // Stop + release) discards that queue. A Bluetooth headset may still play a short tail (ADR-0008: audio
+            // handed over cannot be recalled); sad.md §11 records it and the target-PC run checks it.
+        }
+        else if (!run.Paused)
         {
             StopBeyondQueue(run, now); // paused: already silent from the pause instant, which must not move later
         }
@@ -860,6 +1049,9 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
     [LoggerMessage(Level = LogLevel.Information, Message = "Run started with {Outputs} outputs; devices started {StartToDevicesMs:F1} ms after the start command")]
     private partial void LogRunStarted(int outputs, double startToDevicesMs);
 
+    [LoggerMessage(Level = LogLevel.Information, Message = "Film released on {Measured} of {Outputs} outputs; master clock starts {StartToClockMs:F1} ms after the start command")]
+    private partial void LogFilmReleased(int measured, int outputs, double startToClockMs);
+
     [LoggerMessage(Level = LogLevel.Information, Message = "First audio on {DeviceId} {StartToAudioMs:F1} ms after the start command")]
     private partial void LogFirstAudio(string deviceId, double startToAudioMs);
 
@@ -900,6 +1092,15 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         public long? LatestFirstAudio { get; set; }
 
         public bool AudioStartedPublished { get; set; }
+
+        /// <summary>The start's pre-roll: the master clock has not started yet (control-loop thread only).</summary>
+        public bool Starting { get; set; }
+
+        /// <summary>The film has been handed to the outputs at their start device frames.</summary>
+        public bool Released { get; set; }
+
+        /// <summary>When the master clock reads 00:00: the slowest output hears film frame 0 (set at the release).</summary>
+        public long ClockStartTimestamp { get; set; }
 
         public List<Output> Outputs { get; } = [];
 

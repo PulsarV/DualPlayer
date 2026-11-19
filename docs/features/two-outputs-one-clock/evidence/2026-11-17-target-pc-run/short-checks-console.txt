@@ -1,0 +1,273 @@
+##### ac01
+=== ac01-start-01  exit 0  41479 ms
+step '^started ' NOT SEEN at 40033 ms
+TIMEOUT after 40 s: sending stop
+output 1  track 1 (ukr 5.1 -> stereo, LFE dropped)  device Headphones (2- MOTIF II A.N.C.)  id {9449}
+output 2  track 3 (eng 5.1 -> stereo, LFE dropped 48000 -> 44100)  device Headphones (JBL Tune 520BT)  id {89a2}
+started   clock 00:00:00.000  start-to-audio 1.5 s
+run summary  ended stop  clock 00:00:39.607
+1       {9449} 00:00:39.6  0.0           +0.2                0            0          -
+2       {89a2} 00:00:39.6  0.0           -0.4                0            0          -
+=== ac01-start-02  exit 0  41506 ms
+step '^started ' NOT SEEN at 40025 ms
+TIMEOUT after 40 s: sending stop
+output 1  track 1 (ukr 5.1 -> stereo, LFE dropped)  device Headphones (2- MOTIF II A.N.C.)  id {9449}
+output 2  track 3 (eng 5.1 -> stereo, LFE dropped 48000 -> 44100)  device Headphones (JBL Tune 520BT)  id {89a2}
+started   clock 00:00:00.000  start-to-audio 1.5 s
+run summary  ended stop  clock 00:00:39.688
+1       {9449} 00:00:39.6  0.0           +0.1                0            0          -
+2       {89a2} 00:00:39.6  0.0           0.0                 0            0          -
+=== ac01-start-03  exit 0  41486 ms
+step '^started ' NOT SEEN at 40009 ms
+TIMEOUT after 40 s: sending stop
+output 1  track 1 (ukr 5.1 -> stereo, LFE dropped)  device Headphones (2- MOTIF II A.N.C.)  id {9449}
+output 2  track 3 (eng 5.1 -> stereo, LFE dropped 48000 -> 44100)  device Headphones (JBL Tune 520BT)  id {89a2}
+started   clock 00:00:00.000  start-to-audio 1.5 s
+run summary  ended stop  clock 00:00:39.630
+1       {9449} 00:00:39.6  0.0           +0.4                0            0          -
+2       {89a2} 00:00:39.6  0.0           -0.6                0            0          -
+=== ac01-start-04  exit 0  41482 ms
+step '^started ' NOT SEEN at 40029 ms
+TIMEOUT after 40 s: sending stop
+output 1  track 1 (ukr 5.1 -> stereo, LFE dropped)  device Headphones (2- MOTIF II A.N.C.)  id {9449}
+output 2  track 3 (eng 5.1 -> stereo, LFE dropped 48000 -> 44100)  device Headphones (JBL Tune 520BT)  id {89a2}
+started   clock 00:00:00.000  start-to-audio 1.5 s
+run summary  ended stop  clock 00:00:39.668
+1       {9449} 00:00:39.6  0.0           +0.3                0            0          -
+2       {89a2} 00:00:39.6  0.0           +0.3                0            0          -
+=== ac01-start-05  exit 0  41472 ms
+step '^started ' NOT SEEN at 40025 ms
+TIMEOUT after 40 s: sending stop
+output 1  track 1 (ukr 5.1 -> stereo, LFE dropped)  device Headphones (2- MOTIF II A.N.C.)  id {9449}
+output 2  track 3 (eng 5.1 -> stereo, LFE dropped 48000 -> 44100)  device Headphones (JBL Tune 520BT)  id {89a2}
+started   clock 00:00:00.000  start-to-audio 1.5 s
+run summary  ended stop  clock 00:00:39.664
+1       {9449} 00:00:39.6  0.0           -0.4                0            0          -
+2       {89a2} 00:00:39.6  0.0           -0.3                0            0          -
+=== ac01-start-06  exit 0  41491 ms
+step '^started ' NOT SEEN at 40020 ms
+TIMEOUT after 40 s: sending stop
+output 1  track 1 (ukr 5.1 -> stereo, LFE dropped)  device Headphones (2- MOTIF II A.N.C.)  id {9449}
+output 2  track 3 (eng 5.1 -> stereo, LFE dropped 48000 -> 44100)  device Headphones (JBL Tune 520BT)  id {89a2}
+started   clock 00:00:00.000  start-to-audio 1.5 s
+run summary  ended stop  clock 00:00:39.678
+1       {9449} 00:00:39.6  0.0           +0.4                0            0          -
+2       {89a2} 00:00:39.6  0.0           -0.3                0            0          -
+=== ac01-start-07  exit 0  41470 ms
+step '^started ' NOT SEEN at 40008 ms
+TIMEOUT after 40 s: sending stop
+output 1  track 1 (ukr 5.1 -> stereo, LFE dropped)  device Headphones (2- MOTIF II A.N.C.)  id {9449}
+output 2  track 3 (eng 5.1 -> stereo, LFE dropped 48000 -> 44100)  device Headphones (JBL Tune 520BT)  id {89a2}
+started   clock 00:00:00.000  start-to-audio 1.5 s
+run summary  ended stop  clock 00:00:39.645
+1       {9449} 00:00:39.6  0.0           -0.1                0            0          -
+2       {89a2} 00:00:39.6  0.0           +0.2                0            0          -
+=== ac01-start-08  exit 0  41625 ms
+step '^started ' NOT SEEN at 40034 ms
+TIMEOUT after 40 s: sending stop
+output 1  track 1 (ukr 5.1 -> stereo, LFE dropped)  device Headphones (2- MOTIF II A.N.C.)  id {9449}
+output 2  track 3 (eng 5.1 -> stereo, LFE dropped 48000 -> 44100)  device Headphones (JBL Tune 520BT)  id {89a2}
+started   clock 00:00:00.000  start-to-audio 1.5 s
+excursion  device {9449}  start 00:00:27.016  duration_ms 1002  peak_ms -42.0
+run summary  ended stop  clock 00:00:39.826
+1       {9449} 00:00:39.8  42.0          -3866.8             1            0          -
+2       {89a2} 00:00:39.8  0.0           -0.2                0            0          -
+=== ac01-start-09  exit 0  41496 ms
+step '^started ' NOT SEEN at 40035 ms
+TIMEOUT after 40 s: sending stop
+output 1  track 1 (ukr 5.1 -> stereo, LFE dropped)  device Headphones (2- MOTIF II A.N.C.)  id {9449}
+output 2  track 3 (eng 5.1 -> stereo, LFE dropped 48000 -> 44100)  device Headphones (JBL Tune 520BT)  id {89a2}
+started   clock 00:00:00.000  start-to-audio 1.5 s
+run summary  ended stop  clock 00:00:39.678
+1       {9449} 00:00:39.6  0.0           0.0                 0            0          -
+2       {89a2} 00:00:39.6  0.0           +0.3                0            0          -
+=== ac01-start-10  exit 0  41500 ms
+step '^started ' NOT SEEN at 40028 ms
+TIMEOUT after 40 s: sending stop
+output 1  track 1 (ukr 5.1 -> stereo, LFE dropped)  device Headphones (2- MOTIF II A.N.C.)  id {9449}
+output 2  track 3 (eng 5.1 -> stereo, LFE dropped 48000 -> 44100)  device Headphones (JBL Tune 520BT)  id {89a2}
+started   clock 00:00:00.000  start-to-audio 1.5 s
+run summary  ended stop  clock 00:00:39.663
+1       {9449} 00:00:39.6  0.0           -0.3                0            0          -
+2       {89a2} 00:00:39.6  0.0           -0.4                0            0          -
+
+##### ac0809
+=== ac08-09-pause-seek  exit 0  38216 ms
+saw '(?m)^started ' at 2562 ms; sent 'pause' at 7579 ms 01:45:25.363
+saw '(?m)^paused at' at 7591 ms; sent 'resume' at 11606 ms 01:45:29.389
+saw '(?m)^resumed at' at 11658 ms; sent 'seek +60' at 16669 ms 01:45:34.452
+saw '(?m)^seek confirmed at' at 17031 ms; sent 'seek -10' at 22040 ms 01:45:39.823
+saw '(?m)^seek confirmed at[\s\S]*^seek confirmed at' at 22388 ms; sent 'pause' at 27401 ms 01:45:45.185
+saw '(?m)^paused at[\s\S]*^paused at' at 27432 ms; sent 'seek +60' at 29437 ms 01:45:47.220
+saw '(?m)^position moved to' at 29778 ms; sent 'resume' at 32785 ms 01:45:50.568
+saw '(?m)^resumed at[\s\S]*^resumed at' at 32797 ms; sent 'stop' at 37802 ms 01:45:55.585
+output 1  track 1 (ukr 5.1 -> stereo, LFE dropped)  device Headphones (2- MOTIF II A.N.C.)  id {9449}
+output 2  track 3 (eng 5.1 -> stereo, LFE dropped 48000 -> 44100)  device Headphones (JBL Tune 520BT)  id {89a2}
+started   clock 00:00:00.000  start-to-audio 2.3 s
+paused at 00:00:05.382
+resumed at 00:00:05.382
+seek confirmed at 00:01:10.767
+seek confirmed at 00:01:06.118
+paused at 00:01:11.477
+position moved to 00:02:11.477, still paused
+resumed at 00:02:11.477
+run summary  ended stop  clock 00:02:16.808
+output  device                     played      max_drift_ms  clock_mismatch_ppm  corrections  underruns  device_lost
+1       {9449} 00:00:26.8  0.0           +0.2                0            0          -
+2       {89a2} 00:00:26.8  0.0           -0.2                0            0          -
+
+##### ac10
+=== ac10-seek-past-end  exit 0  6122 ms
+saw '(?m)^started ' at 2581 ms; sent 'seek 99:00:00' at 5592 ms 01:46:15.271
+output 1  track 1 (ukr 5.1 -> stereo, LFE dropped)  device Headphones (2- MOTIF II A.N.C.)  id {9449}
+output 2  track 3 (eng 5.1 -> stereo, LFE dropped 48000 -> 44100)  device Headphones (JBL Tune 520BT)  id {89a2}
+started   clock 00:00:00.000  start-to-audio 2.2 s
+warning: target was outside the file
+run summary  ended seek-past-end  clock 03:00:00.314
+output  device                     played      max_drift_ms  clock_mismatch_ppm  corrections  underruns  device_lost
+1       {9449} 00:00:03.0  0.0           -4.2                0            0          -
+2       {89a2} 00:00:03.0  0.0           -6.2                0            0          -
+
+##### preroll
+=== preroll-01  exit 0  1641 ms
+saw '(?m)^output 2 ' at 1096 ms; sent 'stop' at 1556 ms 01:46:35.889
+run summary  ended stop  clock 00:00:00.000
+1       {9449} 00:00:00.0  0.0           0.0                 0            0          -
+2       {89a2} 00:00:00.0  0.0           0.0                 0            0          -
+LOG started-run 01:46:35.408 released 01:46:35.780 [2 of 2] started-line - ended 01:46:35.908 masterclock 0.000
+=== preroll-02  exit 0  1667 ms
+saw '(?m)^output 2 ' at 1099 ms; sent 'stop' at 1566 ms 01:46:39.060
+run summary  ended stop  clock 00:00:00.000
+1       {9449} 00:00:00.0  0.0           0.0                 0            0          -
+2       {89a2} 00:00:00.0  0.0           0.0                 0            0          -
+LOG started-run 01:46:38.575 released 01:46:38.881 [2 of 2] started-line - ended 01:46:39.080 masterclock 0.000
+=== preroll-03  exit 0  1640 ms
+saw '(?m)^output 2 ' at 1102 ms; sent 'stop' at 1548 ms 01:46:42.112
+run summary  ended stop  clock 00:00:00.000
+1       {9449} 00:00:00.0  0.0           0.0                 0            0          -
+2       {89a2} 00:00:00.0  0.0           0.0                 0            0          -
+LOG started-run 01:46:41.650 released 01:46:41.952 [2 of 2] started-line - ended 01:46:42.128 masterclock 0.000
+=== preroll-04  exit 0  1636 ms
+saw '(?m)^output 2 ' at 1086 ms; sent 'stop' at 1539 ms 01:46:45.149
+run summary  ended stop  clock 00:00:00.000
+1       {9449} 00:00:00.0  0.0           0.0                 0            0          -
+2       {89a2} 00:00:00.0  0.0           0.0                 0            0          -
+LOG started-run 01:46:44.678 released 01:46:44.975 [2 of 2] started-line - ended 01:46:45.171 masterclock 0.000
+=== preroll-05  exit 0  1656 ms
+saw '(?m)^output 2 ' at 1106 ms; sent 'stop' at 1556 ms 01:46:48.175
+run summary  ended stop  clock 00:00:00.000
+1       {9449} 00:00:00.0  0.0           0.0                 0            0          -
+2       {89a2} 00:00:00.0  0.0           0.0                 0            0          -
+LOG started-run 01:46:47.711 released 01:46:48.014 [2 of 2] started-line - ended 01:46:48.201 masterclock 0.000
+=== preroll-06  exit 0  1640 ms
+saw '(?m)^output 2 ' at 1091 ms; sent 'stop' at 1540 ms 01:46:51.314
+run summary  ended stop  clock 00:00:00.000
+1       {9449} 00:00:00.0  0.0           0.0                 0            0          -
+2       {89a2} 00:00:00.0  0.0           0.0                 0            0          -
+LOG started-run 01:46:50.847 released 01:46:51.151 [2 of 2] started-line - ended 01:46:51.332 masterclock 0.000
+=== preroll-07  exit 0  1650 ms
+saw '(?m)^output 2 ' at 1104 ms; sent 'stop' at 1553 ms 01:46:54.355
+run summary  ended stop  clock 00:00:00.000
+1       {9449} 00:00:00.0  0.0           0.0                 0            0          -
+2       {89a2} 00:00:00.0  0.0           0.0                 0            0          -
+LOG started-run 01:46:53.886 released 01:46:54.183 [2 of 2] started-line - ended 01:46:54.376 masterclock 0.000
+=== preroll-08  exit 0  1686 ms
+saw '(?m)^output 2 ' at 1120 ms; sent 'stop' at 1585 ms 01:46:57.418
+run summary  ended stop  clock 00:00:00.000
+1       {9449} 00:00:00.0  0.0           0.0                 0            0          -
+2       {89a2} 00:00:00.0  0.0           0.0                 0            0          -
+LOG started-run 01:46:56.932 released 01:46:57.237 [2 of 2] started-line - ended 01:46:57.438 masterclock 0.000
+=== preroll-09  exit 0  1638 ms
+saw '(?m)^output 2 ' at 1089 ms; sent 'stop' at 1541 ms 01:47:00.518
+run summary  ended stop  clock 00:00:00.000
+1       {9449} 00:00:00.0  0.0           0.0                 0            0          -
+2       {89a2} 00:00:00.0  0.0           0.0                 0            0          -
+LOG started-run 01:47:00.050 released 01:47:00.354 [2 of 2] started-line - ended 01:47:00.539 masterclock 0.000
+=== preroll-10  exit 0  1642 ms
+saw '(?m)^output 2 ' at 1096 ms; sent 'stop' at 1546 ms 01:47:03.609
+run summary  ended stop  clock 00:00:00.000
+1       {9449} 00:00:00.0  0.0           0.0                 0            0          -
+2       {89a2} 00:00:00.0  0.0           0.0                 0            0          -
+LOG started-run 01:47:03.141 released 01:47:03.448 [2 of 2] started-line - ended 01:47:03.632 masterclock 0.000
+=== preroll-11  exit 0  1640 ms
+saw '(?m)^output 2 ' at 1091 ms; sent 'stop' at 1543 ms 01:47:06.678
+run summary  ended stop  clock 00:00:00.000
+1       {9449} 00:00:00.0  0.0           0.0                 0            0          -
+2       {89a2} 00:00:00.0  0.0           0.0                 0            0          -
+LOG started-run 01:47:06.207 released 01:47:06.510 [2 of 2] started-line - ended 01:47:06.697 masterclock 0.000
+=== preroll-12  exit 0  1635 ms
+saw '(?m)^output 2 ' at 1079 ms; sent 'stop' at 1530 ms 01:47:09.720
+run summary  ended stop  clock 00:00:00.000
+1       {9449} 00:00:00.0  0.0           0.0                 0            0          -
+2       {89a2} 00:00:00.0  0.0           0.0                 0            0          -
+LOG started-run 01:47:09.252 released 01:47:09.549 [2 of 2] started-line - ended 01:47:09.738 masterclock 0.000
+=== preroll-13  exit 0  1649 ms
+saw '(?m)^output 2 ' at 1108 ms; sent 'stop' at 1562 ms 01:47:12.702
+run summary  ended stop  clock 00:00:00.000
+1       {9449} 00:00:00.0  0.0           0.0                 0            0          -
+2       {89a2} 00:00:00.0  0.0           0.0                 0            0          -
+LOG started-run 01:47:12.216 released 01:47:12.524 [2 of 2] started-line - ended 01:47:12.719 masterclock 0.000
+=== preroll-14  exit 0  1656 ms
+saw '(?m)^output 2 ' at 1129 ms; sent 'stop' at 1569 ms 01:47:15.756
+run summary  ended stop  clock 00:00:00.000
+1       {9449} 00:00:00.0  0.0           0.0                 0            0          -
+2       {89a2} 00:00:00.0  0.0           0.0                 0            0          -
+LOG started-run 01:47:15.304 released 01:47:15.598 [2 of 2] started-line - ended 01:47:15.777 masterclock 0.000
+=== preroll-15  exit 0  3286 ms
+saw '(?m)^output 2 ' at 2736 ms; sent 'stop' at 3198 ms 01:49:52.948
+LOG started-run 01:49:52.465 released 01:49:52.767 [2 of 2] started-line - ended 01:49:52.965 masterclock 0.000
+=== preroll-16  exit 0  1660 ms
+saw '(?m)^output 2 ' at 1103 ms; sent 'stop' at 1554 ms 01:49:56.092
+LOG started-run 01:49:55.609 released 01:49:55.913 [2 of 2] started-line - ended 01:49:56.114 masterclock 0.000
+=== preroll-17  exit 0  1645 ms
+saw '(?m)^output 2 ' at 1087 ms; sent 'stop' at 1551 ms 01:49:59.133
+LOG started-run 01:49:58.654 released 01:49:58.956 [2 of 2] started-line - ended 01:49:59.150 masterclock 0.000
+=== preroll-18  exit 0  1638 ms
+saw '(?m)^output 2 ' at 1076 ms; sent 'stop' at 1539 ms 01:50:02.137
+LOG started-run 01:50:01.657 released 01:50:01.960 [2 of 2] started-line - ended 01:50:02.153 masterclock 0.000
+=== preroll-19  exit 0  1638 ms
+saw '(?m)^output 2 ' at 1095 ms; sent 'stop' at 1543 ms 01:50:05.179
+LOG started-run 01:50:04.700 released 01:50:05.004 [2 of 2] started-line - ended 01:50:05.197 masterclock 0.000
+
+##### ac06
+=== ac06-device-loss  exit -1  170986 ms
+output 1  track 1 (ukr 5.1 -> stereo, LFE dropped)  device Headphones (2- MOTIF II A.N.C.)  id {9449}
+output 2  track 3 (eng 5.1 -> stereo, LFE dropped 48000 -> 44100)  device Headphones (JBL Tune 520BT)  id {89a2}
+output 3  track 2 (ukr stereo 48000 -> 44100)  device Headphones (Right)  id {2584}
+started   clock 00:00:00.000  start-to-audio 2.1 s
+excursion  device {2584}  start 00:00:03.027  duration_ms 991  peak_ms -15.1
+excursion  device {2584}  start 00:00:05.016  duration_ms 3003  peak_ms -16.5
+excursion  device {9449}  start 00:00:07.017  duration_ms 2004  peak_ms -59.8
+excursion  device {9449}  start 00:00:10.022  duration_ms 1005  peak_ms -16.6
+excursion  device {2584}  start 00:00:10.022  duration_ms 1005  peak_ms -33.5
+excursion  device {9449}  start 00:00:13.017  duration_ms 1001  peak_ms -38.4
+excursion  device {2584}  start 00:00:13.017  duration_ms 1001  peak_ms -22.9
+excursion  device {9449}  start 00:00:15.020  duration_ms 998  peak_ms -36.3
+excursion  device {9449}  start 00:00:21.023  duration_ms 1003  peak_ms -17.9
+excursion  device {9449}  start 00:00:23.029  duration_ms 1002  peak_ms -35.8
+device-lost  output 2  device {89a2}  clock 00:00:25.482  others continue
+excursion  device {2584}  start 00:00:25.019  duration_ms 999  peak_ms -33.4
+device-lost  output 3  device {2584}  clock 00:01:54.920  others continue
+
+##### ac06-2
+=== ac06-device-loss-2  exit 3  82112 ms
+output 1  track 1 (ukr 5.1 -> stereo, LFE dropped)  device Headphones (2- MOTIF II A.N.C.)  id {9449}
+output 2  track 3 (eng 5.1 -> stereo, LFE dropped 48000 -> 44100)  device Headphones (JBL Tune 520BT)  id {89a2}
+output 3  track 2 (ukr stereo 48000 -> 44100)  device Headphones (Right)  id {2584}
+started   clock 00:00:00.000  start-to-audio 2.2 s
+excursion  device {2584}  start 00:00:04.014  duration_ms 1001  peak_ms -28.8
+excursion  device {2584}  start 00:00:06.022  duration_ms 990  peak_ms -29.6
+excursion  device {2584}  start 00:00:08.016  duration_ms 1005  peak_ms -30.9
+excursion  device {2584}  start 00:00:10.020  duration_ms 1004  peak_ms -32.7
+excursion  device {2584}  start 00:00:13.014  duration_ms 1006  peak_ms -22.3
+excursion  device {2584}  start 00:00:21.013  duration_ms 1005  peak_ms -11.7
+excursion  device {9449}  start 00:00:21.013  duration_ms 3005  peak_ms -153.5
+device-lost  output 2  device {89a2}  clock 00:00:25.453  others continue
+device-lost  output 3  device {2584}  clock 00:00:50.645  others continue
+device-lost  output 1  device {9449}  clock 00:01:19.577  last output, run ends
+run summary  ended all-devices-lost  clock 00:01:19.577
+output  device                     played      max_drift_ms  clock_mismatch_ppm  corrections  underruns  device_lost
+1       {9449} 00:01:19.5  153.5         -3451.1             3            0          00:01:19.577
+2       {89a2} 00:00:25.4  0.0           -0.6                0            0          00:00:25.453
+3       {2584} 00:00:50.6  32.7          -4085.1             6            0          00:00:50.645
+
