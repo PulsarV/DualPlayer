@@ -1,0 +1,247 @@
+21:01:07.929 Re-aligned {2584} in one step at master clock "00:00:14.0173944": removed -36.6 ms, the interval's average drift was -14.7 ms
+21:01:30.929 Re-aligned {2584} in one step at master clock "00:00:37.0218072": removed -31.2 ms, the interval's average drift was -31.4 ms
+21:02:16.922 Re-aligned {2584} in one step at master clock "00:01:23.0140519": removed -30.8 ms, the interval's average drift was -24.8 ms
+21:03:09.928 Re-aligned {2584} in one step at master clock "00:02:16.0203106": removed -20.2 ms, the interval's average drift was -14.2 ms
+21:03:16.919 Re-aligned {2584} in one step at master clock "00:02:23.0110798": removed -26.7 ms, the interval's average drift was -24.2 ms
+21:03:21.921 Re-aligned {2584} in one step at master clock "00:02:28.0131326": removed -22.0 ms, the interval's average drift was -20.0 ms
+21:03:23.920 Re-aligned {2584} in one step at master clock "00:02:30.0127881": removed -26.7 ms, the interval's average drift was -27.0 ms
+21:03:32.925 Re-aligned {2584} in one step at master clock "00:02:39.0173489": removed -36.9 ms, the interval's average drift was -37.1 ms
+21:03:34.933 Re-aligned {2584} in one step at master clock "00:02:41.0255048": removed -26.9 ms, the interval's average drift was -24.4 ms
+21:04:03.928 Re-aligned {2584} in one step at master clock "00:03:10.0205181": removed -26.8 ms, the interval's average drift was -27.0 ms
+21:04:07.920 Re-aligned {2584} in one step at master clock "00:03:14.0126108": removed -14.6 ms, the interval's average drift was -14.9 ms
+21:04:17.924 Re-aligned {2584} in one step at master clock "00:03:24.0165868": removed -31.1 ms, the interval's average drift was -31.3 ms
+21:04:21.924 Re-aligned {2584} in one step at master clock "00:03:28.0165591": removed -26.9 ms, the interval's average drift was -16.2 ms
+21:04:32.932 Re-aligned {2584} in one step at master clock "00:03:39.0249380": removed -24.0 ms, the interval's average drift was -12.1 ms
+21:04:35.923 Re-aligned {2584} in one step at master clock "00:03:42.0150802": removed -21.8 ms, the interval's average drift was -10.9 ms
+21:04:38.925 Re-aligned {2584} in one step at master clock "00:03:45.0175861": removed -25.7 ms, the interval's average drift was -12.9 ms
+21:04:59.922 Re-aligned {2584} in one step at master clock "00:04:06.0140671": removed -23.8 ms, the interval's average drift was -24.0 ms
+21:05:04.924 Re-aligned {2584} in one step at master clock "00:04:11.0163324": removed -22.2 ms, the interval's average drift was -22.4 ms
+21:05:05.922 Re-aligned {2584} in one step at master clock "00:04:12.0142431": removed -35.5 ms, the interval's average drift was -10.6 ms
+21:05:15.923 Re-aligned {2584} in one step at master clock "00:04:22.0153365": removed -26.4 ms, the interval's average drift was -13.2 ms
+21:05:33.930 Re-aligned {2584} in one step at master clock "00:04:40.0224365": removed -28.4 ms, the interval's average drift was -28.6 ms
+21:05:44.924 Re-aligned {2584} in one step at master clock "00:04:51.0162504": removed -19.5 ms, the interval's average drift was -19.8 ms
+21:05:48.928 Re-aligned {2584} in one step at master clock "00:04:55.0208264": removed -36.3 ms, the interval's average drift was -32.8 ms
+21:05:57.925 Re-aligned {2584} in one step at master clock "00:05:04.0171599": removed -30.1 ms, the interval's average drift was -30.4 ms
+21:06:05.923 Re-aligned {2584} in one step at master clock "00:05:12.0149402": removed -24.2 ms, the interval's average drift was -21.9 ms
+21:06:17.920 Re-aligned {2584} in one step at master clock "00:05:24.0121995": removed -42.1 ms, the interval's average drift was -42.3 ms
+21:06:23.919 Re-aligned {2584} in one step at master clock "00:05:30.0115652": removed -18.7 ms, the interval's average drift was -13.2 ms
+21:06:41.918 Re-aligned {2584} in one step at master clock "00:05:48.0104631": removed -34.3 ms, the interval's average drift was -13.8 ms
+21:06:53.931 Re-aligned {2584} in one step at master clock "00:06:00.0230147": removed -40.0 ms, the interval's average drift was -24.1 ms
+21:06:59.917 Re-aligned {2584} in one step at master clock "00:06:06.0098278": removed -26.6 ms, the interval's average drift was -18.7 ms
+21:07:21.933 Re-aligned {2584} in one step at master clock "00:06:28.0251464": removed -24.4 ms, the interval's average drift was -12.3 ms
+21:07:23.922 Re-aligned {2584} in one step at master clock "00:06:30.0147065": removed -27.6 ms, the interval's average drift was -25.0 ms
+21:07:47.918 Re-aligned {2584} in one step at master clock "00:06:54.0102655": removed -29.6 ms, the interval's average drift was -29.9 ms
+21:07:49.924 Re-aligned {2584} in one step at master clock "00:06:56.0161268": removed -32.7 ms, the interval's average drift was -13.1 ms
+21:07:58.926 Re-aligned {2584} in one step at master clock "00:07:05.0180610": removed -22.3 ms, the interval's average drift was -11.2 ms
+21:08:08.927 Re-aligned {2584} in one step at master clock "00:07:15.0199151": removed -26.5 ms, the interval's average drift was -21.3 ms
+21:08:21.918 Re-aligned {2584} in one step at master clock "00:07:28.0104161": removed -29.9 ms, the interval's average drift was -18.0 ms
+21:08:46.932 Re-aligned {2584} in one step at master clock "00:07:53.0247190": removed -42.3 ms, the interval's average drift was -16.9 ms
+21:09:04.925 Re-aligned {2584} in one step at master clock "00:08:11.0171697": removed -27.3 ms, the interval's average drift was -27.6 ms
+21:09:38.921 Re-aligned {2584} in one step at master clock "00:08:45.0134651": removed -25.6 ms, the interval's average drift was -25.8 ms
+21:10:20.921 Re-aligned {2584} in one step at master clock "00:09:27.0134453": removed -19.6 ms, the interval's average drift was -19.8 ms
+21:10:44.930 Re-aligned {2584} in one step at master clock "00:09:51.0225649": removed -30.5 ms, the interval's average drift was -27.6 ms
+21:10:50.924 Re-aligned {2584} in one step at master clock "00:09:57.0167739": removed -32.7 ms, the interval's average drift was -13.1 ms
+21:11:03.930 Re-aligned {2584} in one step at master clock "00:10:10.0219728": removed -40.0 ms, the interval's average drift was -24.1 ms
+21:11:07.918 Re-aligned {2584} in one step at master clock "00:10:14.0103039": removed -21.8 ms, the interval's average drift was -22.1 ms
+21:11:31.931 Re-aligned {2584} in one step at master clock "00:10:38.0229908": removed -30.2 ms, the interval's average drift was -30.4 ms
+21:12:51.930 Re-aligned {2584} in one step at master clock "00:11:58.0224012": removed -35.6 ms, the interval's average drift was -35.9 ms
+21:13:23.927 Re-aligned {2584} in one step at master clock "00:12:30.0193748": removed -23.2 ms, the interval's average drift was -23.5 ms
+21:13:36.925 Re-aligned {2584} in one step at master clock "00:12:43.0172754": removed -25.3 ms, the interval's average drift was -17.8 ms
+21:13:56.931 Re-aligned {2584} in one step at master clock "00:13:03.0231768": removed -22.6 ms, the interval's average drift was -22.8 ms
+21:14:08.931 Re-aligned {2584} in one step at master clock "00:13:15.0233499": removed -34.2 ms, the interval's average drift was -34.4 ms
+21:14:17.931 Re-aligned {2584} in one step at master clock "00:13:24.0232836": removed -17.5 ms, the interval's average drift was -17.7 ms
+21:14:23.922 Re-aligned {2584} in one step at master clock "00:13:30.0147761": removed -28.1 ms, the interval's average drift was -14.1 ms
+21:14:31.922 Re-aligned {2584} in one step at master clock "00:13:38.0145294": removed -47.2 ms, the interval's average drift was -47.4 ms
+21:15:33.928 Re-aligned {2584} in one step at master clock "00:14:40.0207620": removed -27.5 ms, the interval's average drift was -22.1 ms
+21:15:41.918 Re-aligned {2584} in one step at master clock "00:14:48.0100512": removed -43.2 ms, the interval's average drift was -26.0 ms
+21:16:01.930 Re-aligned {2584} in one step at master clock "00:15:08.0227901": removed -21.8 ms, the interval's average drift was -22.0 ms
+21:16:22.928 Re-aligned {2584} in one step at master clock "00:15:29.0201916": removed -22.9 ms, the interval's average drift was -23.1 ms
+21:16:27.926 Re-aligned {2584} in one step at master clock "00:15:34.0180445": removed -29.0 ms, the interval's average drift was -20.4 ms
+21:16:44.924 Re-aligned {9449} in one step at master clock "00:15:51.0163622": removed -183.4 ms, the interval's average drift was -128.2 ms
+21:16:44.924 Re-aligned {2584} in one step at master clock "00:15:51.0163622": removed -23.4 ms, the interval's average drift was -23.6 ms
+21:16:44.924 drift-trace {9449} clock="00:15:49.1151545" measured=true age=4.7ms played=45583222 queued=299.54ms drift=-0.01ms ring=1748ms correction=0.4ppm underruns=0
+21:16:44.925 drift-trace {9449} clock="00:15:49.2250567" measured=true age=4.1ms played=45588528 queued=299.00ms drift=0.00ms ring=1670ms correction=0.4ppm underruns=0
+21:16:44.925 drift-trace {9449} clock="00:15:49.3175372" measured=true age=6.4ms played=45592853 queued=298.90ms drift=-0.01ms ring=1740ms correction=0.3ppm underruns=0
+21:16:44.925 drift-trace {9449} clock="00:15:49.4129089" measured=true age=2.0ms played=45597643 queued=299.10ms drift=0.00ms ring=1736ms correction=0.3ppm underruns=0
+21:16:44.925 drift-trace {9449} clock="00:15:49.5103608" measured=true age=9.3ms played=45601972 queued=298.92ms drift=0.00ms ring=1774ms correction=0.3ppm underruns=0
+21:16:44.925 drift-trace {9449} clock="00:15:49.6186602" measured=true age=6.5ms played=45607303 queued=297.85ms drift=-0.00ms ring=1760ms correction=0.3ppm underruns=0
+21:16:44.925 drift-trace {9449} clock="00:15:49.7152683" measured=true age=4.5ms played=45612035 queued=299.27ms drift=-0.02ms ring=1756ms correction=-0.0ppm underruns=0
+21:16:44.925 drift-trace {9449} clock="00:15:49.8248799" measured=true age=4.2ms played=45617314 queued=299.29ms drift=0.01ms ring=1742ms correction=0.2ppm underruns=0
+21:16:44.925 drift-trace {9449} clock="00:15:49.9185042" measured=true age=7.7ms played=45621640 queued=299.17ms drift=-0.01ms ring=1748ms correction=0.0ppm underruns=0
+21:16:44.925 drift-trace {9449} clock="00:15:50.0128283" measured=true age=2.2ms played=45626433 queued=299.31ms drift=0.01ms ring=1744ms correction=0.2ppm underruns=0
+21:16:44.925 drift-trace {9449} clock="00:15:50.1229776" measured=true age=42.5ms played=45629783 queued=299.52ms drift=-0.01ms ring=1770ms correction=0.1ppm underruns=0
+21:16:44.925 drift-trace {9449} clock="00:15:50.2171814" measured=true age=2.9ms played=45634584 queued=299.50ms drift=-33.74ms ring=1766ms correction=-500.0ppm underruns=0
+21:16:44.925 drift-trace {9449} clock="00:15:50.3112313" measured=true age=6.7ms played=45638916 queued=299.25ms drift=-33.70ms ring=1772ms correction=-500.0ppm underruns=0
+21:16:44.925 drift-trace {9449} clock="00:15:50.4208526" measured=true age=6.4ms played=45640332 queued=379.75ms drift=-114.08ms ring=1758ms correction=-500.0ppm underruns=0
+21:16:44.926 drift-trace {9449} clock="00:15:50.5142199" measured=true age=0.0ms played=45641782 queued=439.54ms drift=-183.61ms ring=1761ms correction=-500.0ppm underruns=0
+21:16:44.926 drift-trace {9449} clock="00:15:50.6245888" measured=true age=0.4ms played=45647059 queued=449.60ms drift=-183.55ms ring=1772ms correction=-500.0ppm underruns=0
+21:16:44.926 drift-trace {9449} clock="00:15:50.7189879" measured=true age=4.6ms played=45651389 queued=449.40ms drift=-183.50ms ring=1746ms correction=-500.0ppm underruns=0
+21:16:44.926 drift-trace {9449} clock="00:15:50.8127097" measured=true age=8.3ms played=45655711 queued=449.35ms drift=-183.45ms ring=1752ms correction=-500.0ppm underruns=0
+21:16:44.926 drift-trace {9449} clock="00:15:50.9221652" measured=true age=7.7ms played=45660993 queued=449.31ms drift=-183.41ms ring=1770ms correction=-500.0ppm underruns=0
+21:16:44.926 drift-trace {9449} clock="00:15:51.0163622" measured=true age=0.5ms played=45665863 queued=447.85ms drift=-183.35ms ring=1766ms correction=-500.0ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:49.1151545" measured=true age=10.0ms played=41870765 queued=199.55ms drift=0.01ms ring=1885ms correction=0.3ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:49.2250567" measured=true age=9.7ms played=41875625 queued=199.34ms drift=0.01ms ring=1967ms correction=0.5ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:49.3175372" measured=true age=1.8ms played=41880049 queued=199.02ms drift=-0.01ms ring=1931ms correction=0.2ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:49.4129089" measured=true age=7.1ms played=41884023 queued=198.91ms drift=0.02ms ring=1841ms correction=0.5ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:49.5103608" measured=true age=4.7ms played=41888425 queued=199.09ms drift=0.02ms ring=1997ms correction=0.8ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:49.6186602" measured=true age=3.0ms played=41893276 queued=199.09ms drift=-0.00ms ring=1887ms correction=0.7ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:49.7152683" measured=true age=9.7ms played=41897243 queued=199.14ms drift=-0.02ms ring=1957ms correction=0.3ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:49.8248799" measured=true age=9.3ms played=41902094 queued=199.14ms drift=0.01ms ring=1847ms correction=0.6ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:49.9185042" measured=true age=2.9ms played=41906507 queued=199.07ms drift=0.01ms ring=1747ms correction=0.8ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:50.0128283" measured=true age=7.1ms played=41910477 queued=199.05ms drift=-0.02ms ring=1657ms correction=0.4ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:50.1229776" measured=true age=7.4ms played=41915322 queued=199.18ms drift=0.00ms ring=1803ms correction=0.4ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:50.2171814" measured=true age=1.6ms played=41919732 queued=199.18ms drift=-0.00ms ring=1703ms correction=0.3ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:50.3112313" measured=true age=6.2ms played=41923678 queued=199.71ms drift=0.01ms ring=1613ms correction=0.4ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:50.4208526" measured=true age=5.2ms played=41928556 queued=199.09ms drift=-0.01ms ring=1759ms correction=0.2ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:50.5142199" measured=true age=8.6ms played=41932524 queued=199.12ms drift=0.01ms ring=1669ms correction=0.3ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:50.6245888" measured=true age=9.3ms played=41937359 queued=199.48ms drift=0.00ms ring=1815ms correction=0.3ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:50.7189879" measured=true age=3.4ms played=41941784 queued=199.14ms drift=0.01ms ring=1715ms correction=0.4ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:50.8127097" measured=true age=7.6ms played=41945732 queued=199.61ms drift=0.01ms ring=1625ms correction=0.5ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:50.9221652" measured=true age=6.5ms played=41950609 queued=199.02ms drift=-0.00ms ring=1771ms correction=0.4ppm underruns=0
+21:16:44.926 drift-trace {89a2} clock="00:15:51.0163622" measured=true age=0.0ms played=41955047 queued=188.39ms drift=-0.02ms ring=1680ms correction=-0.0ppm underruns=0
+21:16:44.926 drift-trace {2584} clock="00:15:49.1151545" measured=true age=1.8ms played=41822691 queued=49.66ms drift=0.01ms ring=1963ms correction=-0.3ppm underruns=0
+21:16:44.926 drift-trace {2584} clock="00:15:49.2250567" measured=true age=1.4ms played=41827554 queued=49.39ms drift=-0.01ms ring=1917ms correction=-0.4ppm underruns=0
+21:16:44.926 drift-trace {2584} clock="00:15:49.3175372" measured=true age=3.6ms played=41831535 queued=49.12ms drift=0.01ms ring=1955ms correction=0.0ppm underruns=0
+21:16:44.926 drift-trace {2584} clock="00:15:49.4129089" measured=true age=9.4ms played=41835487 queued=49.50ms drift=-0.00ms ring=1961ms correction=0.1ppm underruns=0
+21:16:44.926 drift-trace {2584} clock="00:15:49.5103608" measured=true age=6.5ms played=41839912 queued=49.16ms drift=-0.00ms ring=1989ms correction=0.2ppm underruns=0
+21:16:44.926 drift-trace {2584} clock="00:15:49.6186602" measured=true age=4.7ms played=41844764 queued=49.14ms drift=-0.03ms ring=1975ms correction=-0.2ppm underruns=0
+21:16:44.926 drift-trace {2584} clock="00:15:49.7152683" measured=true age=1.6ms played=41849162 queued=49.41ms drift=0.00ms ring=1971ms correction=-0.0ppm underruns=0
+21:16:44.926 drift-trace {2584} clock="00:15:49.8248799" measured=true age=0.9ms played=41854030 queued=49.02ms drift=0.00ms ring=1957ms correction=0.2ppm underruns=0
+21:16:44.926 drift-trace {2584} clock="00:15:49.9185042" measured=true age=4.8ms played=41857985 queued=49.34ms drift=-0.01ms ring=1963ms correction=0.0ppm underruns=0
+21:16:44.926 drift-trace {2584} clock="00:15:50.0128283" measured=true age=8.9ms played=41861964 queued=49.12ms drift=0.00ms ring=1969ms correction=0.2ppm underruns=0
+21:16:44.927 drift-trace {2584} clock="00:15:50.1229776" measured=true age=5.7ms played=41865912 queued=49.59ms drift=-23.82ms ring=1975ms correction=-437.1ppm underruns=0
+21:16:44.927 drift-trace {2584} clock="00:15:50.2171814" measured=true age=0.0ms played=41870316 queued=49.73ms drift=-23.77ms ring=1970ms correction=-500.0ppm underruns=0
+21:16:44.927 drift-trace {2584} clock="00:15:50.3112313" measured=true age=3.9ms played=41874291 queued=49.59ms drift=-23.75ms ring=1976ms correction=-500.0ppm underruns=0
+21:16:44.927 drift-trace {2584} clock="00:15:50.4208526" measured=true age=3.2ms played=41879158 queued=49.23ms drift=-23.69ms ring=1962ms correction=-500.0ppm underruns=0
+21:16:44.927 drift-trace {2584} clock="00:15:50.5142199" measured=true age=6.9ms played=41883114 queued=49.52ms drift=-23.64ms ring=1968ms correction=-500.0ppm underruns=0
+21:16:44.927 drift-trace {2584} clock="00:15:50.6245888" measured=true age=6.6ms played=41887992 queued=48.91ms drift=-23.57ms ring=1986ms correction=-500.0ppm underruns=0
+21:16:44.927 drift-trace {2584} clock="00:15:50.7189879" measured=true age=2.1ms played=41892355 queued=49.98ms drift=-23.51ms ring=1950ms correction=-500.0ppm underruns=0
+21:16:44.927 drift-trace {2584} clock="00:15:50.8127097" measured=true age=5.5ms played=41896338 queued=49.66ms drift=-23.48ms ring=1956ms correction=-500.0ppm underruns=0
+21:16:44.927 drift-trace {2584} clock="00:15:50.9221652" measured=true age=4.9ms played=41901190 queued=49.64ms drift=-23.43ms ring=1974ms correction=-500.0ppm underruns=0
+21:16:44.927 drift-trace {2584} clock="00:15:51.0163622" measured=true age=9.0ms played=41905165 queued=49.50ms drift=-23.37ms ring=1980ms correction=-500.0ppm underruns=0
+21:16:45.928 drift-trace {9449} clock="00:15:51.1255199" measured=true age=0.2ms played=45671115 queued=448.44ms drift=0.07ms ring=1600ms correction=1.6ppm underruns=0
+21:16:45.928 drift-trace {9449} clock="00:15:51.2196322" measured=true age=5.1ms played=45675398 queued=449.21ms drift=0.06ms ring=1606ms correction=2.6ppm underruns=0
+21:16:45.928 drift-trace {9449} clock="00:15:51.3136478" measured=true age=8.8ms played=45679734 queued=448.88ms drift=0.05ms ring=1612ms correction=3.3ppm underruns=0
+21:16:45.928 drift-trace {9449} clock="00:15:51.4236597" measured=true age=9.3ms played=45684989 queued=449.40ms drift=0.06ms ring=1598ms correction=4.1ppm underruns=0
+21:16:45.928 drift-trace {9449} clock="00:15:51.5172682" measured=true age=2.6ms played=45689804 queued=449.08ms drift=0.07ms ring=1594ms correction=5.1ppm underruns=0
+21:16:45.928 drift-trace {9449} clock="00:15:51.6109350" measured=true age=6.6ms played=45694108 queued=449.42ms drift=0.07ms ring=1600ms correction=6.0ppm underruns=0
+21:16:45.928 drift-trace {9449} clock="00:15:51.7194356" measured=true age=4.9ms played=45699397 queued=449.23ms drift=0.04ms ring=1586ms correction=6.3ppm underruns=0
+21:16:45.928 drift-trace {9449} clock="00:15:51.8138893" measured=true age=9.4ms played=45703714 queued=449.29ms drift=0.05ms ring=1496ms correction=6.8ppm underruns=0
+21:16:45.928 drift-trace {9449} clock="00:15:51.9263161" measured=true age=1.4ms played=45709495 queued=448.85ms drift=0.05ms ring=1600ms correction=7.2ppm underruns=0
+21:16:45.928 drift-trace {9449} clock="00:15:52.0194480" measured=true age=5.0ms played=45713796 queued=449.25ms drift=0.06ms ring=1542ms correction=7.7ppm underruns=0
+21:16:45.928 drift-trace {89a2} clock="00:15:51.1255199" measured=true age=0.2ms played=41959853 queued=199.41ms drift=-0.00ms ring=1817ms correction=-0.1ppm underruns=0
+21:16:45.928 drift-trace {89a2} clock="00:15:51.2196322" measured=true age=3.7ms played=41963851 queued=198.75ms drift=-0.00ms ring=1727ms correction=-0.1ppm underruns=0
+21:16:45.928 drift-trace {89a2} clock="00:15:51.3136478" measured=true age=8.3ms played=41967792 queued=199.39ms drift=-0.02ms ring=1637ms correction=-0.4ppm underruns=0
+21:16:45.928 drift-trace {89a2} clock="00:15:51.4236597" measured=true age=7.2ms played=41972692 queued=198.28ms drift=0.01ms ring=1783ms correction=-0.2ppm underruns=0
+21:16:45.928 drift-trace {89a2} clock="00:15:51.5172682" measured=true age=1.5ms played=41977072 queued=198.96ms drift=-0.00ms ring=1683ms correction=-0.2ppm underruns=0
+21:16:45.928 drift-trace {89a2} clock="00:15:51.6109350" measured=true age=5.7ms played=41981019 queued=199.46ms drift=-0.01ms ring=1849ms correction=-0.5ppm underruns=0
+21:16:45.928 drift-trace {89a2} clock="00:15:51.7194356" measured=true age=3.9ms played=41985884 queued=199.14ms drift=0.00ms ring=1739ms correction=-0.4ppm underruns=0
+21:16:45.928 drift-trace {89a2} clock="00:15:51.8138893" measured=true age=8.2ms played=41989860 queued=198.98ms drift=0.02ms ring=1969ms correction=-0.0ppm underruns=0
+21:16:45.928 drift-trace {89a2} clock="00:15:51.9263161" measured=true age=10.8ms played=41994702 queued=199.18ms drift=0.00ms ring=1891ms correction=0.0ppm underruns=0
+21:16:45.929 drift-trace {89a2} clock="00:15:52.0194480" measured=true age=3.8ms played=41999118 queued=199.05ms drift=0.01ms ring=1951ms correction=0.2ppm underruns=0
+21:16:45.929 drift-trace {2584} clock="00:15:51.1255199" measured=true age=8.1ms played=41910020 queued=49.41ms drift=0.04ms ring=1975ms correction=-2.0ppm underruns=0
+21:16:45.929 drift-trace {2584} clock="00:15:51.2196322" measured=true age=2.1ms played=41914433 queued=49.34ms drift=0.06ms ring=1971ms correction=-1.0ppm underruns=0
+21:16:45.929 drift-trace {2584} clock="00:15:51.3136478" measured=true age=6.2ms played=41918398 queued=49.43ms drift=0.05ms ring=1977ms correction=-0.3ppm underruns=0
+21:16:45.929 drift-trace {2584} clock="00:15:51.4236597" measured=true age=6.0ms played=41923259 queued=49.21ms drift=0.05ms ring=1963ms correction=0.4ppm underruns=0
+21:16:45.929 drift-trace {2584} clock="00:15:51.5172682" measured=true age=9.8ms played=41927222 queued=49.34ms drift=0.07ms ring=1969ms correction=1.4ppm underruns=0
+21:16:45.929 drift-trace {2584} clock="00:15:51.6109350" measured=true age=3.5ms played=41931629 queued=49.41ms drift=0.05ms ring=1965ms correction=2.1ppm underruns=0
+21:16:45.929 drift-trace {2584} clock="00:15:51.7194356" measured=true age=2.1ms played=41936476 queued=49.50ms drift=0.06ms ring=1951ms correction=2.8ppm underruns=0
+21:16:45.929 drift-trace {2584} clock="00:15:51.8138893" measured=true age=6.5ms played=41940447 queued=49.46ms drift=0.07ms ring=1893ms correction=3.7ppm underruns=0
+21:16:45.929 drift-trace {2584} clock="00:15:51.9263161" measured=true age=8.6ms played=41945313 queued=49.12ms drift=0.07ms ring=1975ms correction=4.5ppm underruns=0
+21:16:45.929 drift-trace {2584} clock="00:15:52.0194480" measured=true age=1.9ms played=41949713 queued=49.34ms drift=0.06ms ring=1939ms correction=5.1ppm underruns=0
+21:16:47.919 Re-aligned {2584} in one step at master clock "00:15:54.0109759": removed -26.2 ms, the interval's average drift was -15.8 ms
+21:16:47.919 drift-trace {9449} clock="00:15:52.1128451" measured=true age=6.8ms played=45718189 queued=447.73ms drift=0.06ms ring=1612ms correction=8.2ppm underruns=0
+21:16:47.919 drift-trace {9449} clock="00:15:52.2235166" measured=true age=7.5ms played=45723470 queued=447.71ms drift=0.07ms ring=1598ms correction=8.8ppm underruns=0
+21:16:47.919 drift-trace {9449} clock="00:15:52.3178375" measured=true age=3.4ms played=45728195 queued=449.27ms drift=0.04ms ring=1498ms correction=9.0ppm underruns=0
+21:16:47.919 drift-trace {9449} clock="00:15:52.4107453" measured=true age=5.3ms played=45732564 queued=448.25ms drift=0.05ms ring=1600ms correction=9.3ppm underruns=0
+21:16:47.919 drift-trace {9449} clock="00:15:52.5197221" measured=true age=4.2ms played=45737845 queued=448.23ms drift=0.06ms ring=1554ms correction=9.7ppm underruns=0
+21:16:47.919 drift-trace {9449} clock="00:15:52.6153958" measured=true age=10.7ms played=45742126 queued=449.04ms drift=0.05ms ring=1624ms correction=10.0ppm underruns=0
+21:16:47.919 drift-trace {9449} clock="00:15:52.7101210" measured=true age=4.4ms played=45746975 queued=448.02ms drift=0.05ms ring=1588ms correction=10.1ppm underruns=0
+21:16:47.919 drift-trace {9449} clock="00:15:52.8189591" measured=true age=3.5ms played=45752242 queued=448.29ms drift=0.05ms ring=1510ms correction=10.3ppm underruns=0
+21:16:47.919 drift-trace {9449} clock="00:15:52.9142758" measured=true age=9.8ms played=45756513 queued=449.31ms drift=0.04ms ring=1612ms correction=10.3ppm underruns=0
+21:16:47.919 drift-trace {89a2} clock="00:15:52.1128451" measured=true age=7.4ms played=42003076 queued=199.30ms drift=-0.00ms ring=1957ms correction=0.1ppm underruns=0
+21:16:47.919 drift-trace {89a2} clock="00:15:52.2235166" measured=true age=8.0ms played=42007932 queued=199.18ms drift=0.01ms ring=1847ms correction=0.3ppm underruns=0
+21:16:47.919 drift-trace {89a2} clock="00:15:52.3178375" measured=true age=2.4ms played=42012337 queued=199.30ms drift=0.00ms ring=1971ms correction=0.4ppm underruns=0
+21:16:47.919 drift-trace {89a2} clock="00:15:52.4107453" measured=true age=5.2ms played=42016310 queued=199.21ms drift=-0.00ms ring=1913ms correction=0.3ppm underruns=0
+21:16:47.919 drift-trace {89a2} clock="00:15:52.5197221" measured=true age=4.2ms played=42021160 queued=199.23ms drift=0.02ms ring=1963ms correction=0.6ppm underruns=0
+21:16:47.919 drift-trace {89a2} clock="00:15:52.6153958" measured=true age=10.0ms played=42025123 queued=199.36ms drift=-0.00ms ring=1969ms correction=0.5ppm underruns=0
+21:16:47.919 drift-trace {89a2} clock="00:15:52.7101210" measured=true age=4.9ms played=42029529 queued=199.46ms drift=0.02ms ring=1869ms correction=0.8ppm underruns=0
+21:16:47.919 drift-trace {89a2} clock="00:15:52.8189591" measured=true age=3.5ms played=42034388 queued=199.27ms drift=-0.00ms ring=1951ms correction=0.7ppm underruns=0
+21:16:47.919 drift-trace {89a2} clock="00:15:52.9142758" measured=true age=8.7ms played=42038362 queued=199.16ms drift=-0.01ms ring=1925ms correction=0.4ppm underruns=0
+21:16:47.919 drift-trace {2584} clock="00:15:52.1128451" measured=true age=5.0ms played=41953695 queued=49.05ms drift=0.05ms ring=1977ms correction=5.4ppm underruns=0
+21:16:47.919 drift-trace {2584} clock="00:15:52.2235166" measured=true age=5.7ms played=41958545 queued=49.07ms drift=0.05ms ring=1963ms correction=5.6ppm underruns=0
+21:16:47.919 drift-trace {2584} clock="00:15:52.3178375" measured=true age=0.2ms played=41962949 queued=49.21ms drift=0.07ms ring=1895ms correction=6.2ppm underruns=0
+21:16:47.919 drift-trace {2584} clock="00:15:52.4107453" measured=true age=3.2ms played=41966911 queued=49.37ms drift=0.03ms ring=1965ms correction=6.2ppm underruns=0
+21:16:47.919 drift-trace {2584} clock="00:15:52.5197221" measured=true age=2.0ms played=41971771 queued=49.16ms drift=0.04ms ring=1951ms correction=6.3ppm underruns=0
+21:16:47.919 drift-trace {2584} clock="00:15:52.6153958" measured=true age=7.3ms played=41975758 queued=48.75ms drift=0.05ms ring=1989ms correction=6.4ppm underruns=0
+21:16:47.919 drift-trace {2584} clock="00:15:52.7101210" measured=true age=2.6ms played=41980141 queued=49.37ms drift=0.04ms ring=1953ms correction=6.5ppm underruns=0
+21:16:47.919 drift-trace {2584} clock="00:15:52.8189591" measured=true age=1.1ms played=41985009 queued=48.98ms drift=0.03ms ring=1907ms correction=6.5ppm underruns=0
+21:16:47.919 drift-trace {2584} clock="00:15:52.9142758" measured=true age=6.8ms played=41988958 queued=49.43ms drift=0.06ms ring=1977ms correction=6.9ppm underruns=0
+21:16:53.934 Re-aligned {2584} in one step at master clock "00:16:00.0261202": removed -54.5 ms, the interval's average drift was -54.7 ms
+21:17:11.931 Re-aligned {2584} in one step at master clock "00:16:18.0236475": removed -26.9 ms, the interval's average drift was -27.2 ms
+21:17:23.928 Re-aligned {2584} in one step at master clock "00:16:30.0205807": removed -20.9 ms, the interval's average drift was -14.7 ms
+21:18:02.918 Re-aligned {2584} in one step at master clock "00:17:09.0107724": removed -25.2 ms, the interval's average drift was -25.4 ms
+21:18:10.930 Re-aligned {2584} in one step at master clock "00:17:17.0228550": removed -21.1 ms, the interval's average drift was -17.0 ms
+21:18:14.922 Re-aligned {2584} in one step at master clock "00:17:21.0146609": removed -24.4 ms, the interval's average drift was -17.1 ms
+21:18:18.932 Re-aligned {2584} in one step at master clock "00:17:25.0244949": removed -33.8 ms, the interval's average drift was -17.0 ms
+21:18:27.918 Re-aligned {2584} in one step at master clock "00:17:34.0102776": removed -28.3 ms, the interval's average drift was -14.2 ms
+21:18:53.929 Re-aligned {2584} in one step at master clock "00:18:00.0216399": removed -25.3 ms, the interval's average drift was -17.8 ms
+21:19:01.929 Re-aligned {2584} in one step at master clock "00:18:08.0217617": removed -29.6 ms, the interval's average drift was -11.9 ms
+21:19:05.919 Re-aligned {2584} in one step at master clock "00:18:12.0116159": removed -31.8 ms, the interval's average drift was -22.4 ms
+21:19:09.931 Re-aligned {2584} in one step at master clock "00:18:16.0233946": removed -28.9 ms, the interval's average drift was -23.2 ms
+21:19:14.919 Re-aligned {2584} in one step at master clock "00:18:21.0118682": removed -22.9 ms, the interval's average drift was -20.8 ms
+21:19:16.925 Re-aligned {2584} in one step at master clock "00:18:23.0176564": removed -38.3 ms, the interval's average drift was -15.3 ms
+21:19:24.928 Re-aligned {2584} in one step at master clock "00:18:31.0207076": removed -29.6 ms, the interval's average drift was -29.8 ms
+21:19:55.925 Re-aligned {2584} in one step at master clock "00:19:02.0170327": removed -21.3 ms, the interval's average drift was -12.8 ms
+21:20:09.922 Re-aligned {2584} in one step at master clock "00:19:16.0148672": removed -22.7 ms, the interval's average drift was -13.7 ms
+21:20:16.920 Re-aligned {2584} in one step at master clock "00:19:23.0122501": removed -34.2 ms, the interval's average drift was -34.4 ms
+21:20:32.927 Re-aligned {2584} in one step at master clock "00:19:39.0197576": removed -37.0 ms, the interval's average drift was -14.8 ms
+21:20:44.920 Re-aligned {2584} in one step at master clock "00:19:51.0123536": removed -23.8 ms, the interval's average drift was -24.0 ms
+21:20:54.918 Re-aligned {2584} in one step at master clock "00:20:01.0102183": removed -24.2 ms, the interval's average drift was -24.4 ms
+21:20:59.928 Re-aligned {2584} in one step at master clock "00:20:06.0207139": removed -13.3 ms, the interval's average drift was -13.5 ms
+21:21:14.923 Re-aligned {2584} in one step at master clock "00:20:21.0149938": removed -29.4 ms, the interval's average drift was -29.6 ms
+21:21:17.927 Re-aligned {2584} in one step at master clock "00:20:24.0193197": removed -34.4 ms, the interval's average drift was -20.7 ms
+21:21:21.925 Re-aligned {2584} in one step at master clock "00:20:28.0169839": removed -22.9 ms, the interval's average drift was -20.8 ms
+21:21:24.931 Re-aligned {2584} in one step at master clock "00:20:31.0237129": removed -33.4 ms, the interval's average drift was -33.6 ms
+21:21:37.927 Re-aligned {2584} in one step at master clock "00:20:44.0194255": removed -29.9 ms, the interval's average drift was -30.1 ms
+21:21:57.925 Re-aligned {2584} in one step at master clock "00:21:04.0170870": removed -35.1 ms, the interval's average drift was -35.3 ms
+21:21:59.925 Re-aligned {2584} in one step at master clock "00:21:06.0170286": removed -28.5 ms, the interval's average drift was -28.8 ms
+21:22:20.925 Re-aligned {2584} in one step at master clock "00:21:27.0174841": removed -28.1 ms, the interval's average drift was -14.1 ms
+21:23:01.930 Re-aligned {2584} in one step at master clock "00:22:08.0223211": removed -38.6 ms, the interval's average drift was -23.3 ms
+21:23:04.923 Re-aligned {2584} in one step at master clock "00:22:11.0151564": removed -26.6 ms, the interval's average drift was -16.0 ms
+21:23:08.920 Re-aligned {2584} in one step at master clock "00:22:15.0121452": removed -27.3 ms, the interval's average drift was -27.5 ms
+21:23:13.928 Re-aligned {2584} in one step at master clock "00:22:20.0200864": removed -38.2 ms, the interval's average drift was -15.3 ms
+21:24:03.924 Re-aligned {2584} in one step at master clock "00:23:10.0167571": removed -23.5 ms, the interval's average drift was -14.2 ms
+21:24:08.919 Re-aligned {2584} in one step at master clock "00:23:15.0117961": removed -29.4 ms, the interval's average drift was -17.7 ms
+21:24:57.924 Re-aligned {2584} in one step at master clock "00:24:04.0166915": removed -29.1 ms, the interval's average drift was -23.4 ms
+21:25:07.930 Re-aligned {2584} in one step at master clock "00:24:14.0222817": removed -27.6 ms, the interval's average drift was -27.8 ms
+21:25:19.927 Re-aligned {2584} in one step at master clock "00:24:26.0196919": removed -24.4 ms, the interval's average drift was -24.6 ms
+21:25:23.931 Re-aligned {2584} in one step at master clock "00:24:30.0236993": removed -29.1 ms, the interval's average drift was -26.4 ms
+21:25:26.929 Re-aligned {2584} in one step at master clock "00:24:33.0215639": removed -23.0 ms, the interval's average drift was -13.9 ms
+21:25:29.920 Re-aligned {2584} in one step at master clock "00:24:36.0120806": removed -34.3 ms, the interval's average drift was -17.2 ms
+21:25:45.932 Re-aligned {2584} in one step at master clock "00:24:52.0248930": removed -31.5 ms, the interval's average drift was -31.8 ms
+21:25:50.919 Re-aligned {2584} in one step at master clock "00:24:57.0113717": removed -30.8 ms, the interval's average drift was -31.0 ms
+21:25:56.918 Re-aligned {2584} in one step at master clock "00:25:03.0103199": removed -38.4 ms, the interval's average drift was -23.1 ms
+21:25:59.933 Re-aligned {2584} in one step at master clock "00:25:06.0250768": removed -36.6 ms, the interval's average drift was -22.0 ms
+21:26:04.922 Re-aligned {2584} in one step at master clock "00:25:11.0146037": removed -34.2 ms, the interval's average drift was -20.6 ms
+21:26:21.930 Re-aligned {2584} in one step at master clock "00:25:28.0226685": removed -24.2 ms, the interval's average drift was -24.4 ms
+21:26:57.930 Re-aligned {2584} in one step at master clock "00:26:04.0224344": removed -35.1 ms, the interval's average drift was -28.2 ms
+21:27:20.926 Re-aligned {2584} in one step at master clock "00:26:27.0187399": removed -27.1 ms, the interval's average drift was -19.1 ms
+21:28:09.924 Re-aligned {2584} in one step at master clock "00:27:16.0162665": removed -41.5 ms, the interval's average drift was -29.2 ms
+21:28:16.925 Re-aligned {2584} in one step at master clock "00:27:23.0171121": removed -24.2 ms, the interval's average drift was -12.1 ms
+21:28:26.921 Re-aligned {2584} in one step at master clock "00:27:33.0137526": removed -27.1 ms, the interval's average drift was -21.8 ms
+21:28:36.926 Re-aligned {2584} in one step at master clock "00:27:43.0180593": removed -37.2 ms, the interval's average drift was -22.4 ms
+21:28:50.929 Re-aligned {2584} in one step at master clock "00:27:57.0209741": removed -25.3 ms, the interval's average drift was -25.5 ms
+21:28:53.930 Re-aligned {2584} in one step at master clock "00:28:00.0221281": removed -31.5 ms, the interval's average drift was -31.8 ms
+21:29:18.922 Re-aligned {2584} in one step at master clock "00:28:25.0145671": removed -24.2 ms, the interval's average drift was -12.1 ms
+21:29:22.921 Re-aligned {2584} in one step at master clock "00:28:29.0130010": removed -28.7 ms, the interval's average drift was -23.1 ms
+21:29:31.930 Re-aligned {2584} in one step at master clock "00:28:38.0223503": removed -45.3 ms, the interval's average drift was -45.5 ms
+21:29:56.920 Re-aligned {2584} in one step at master clock "00:29:03.0121171": removed -24.9 ms, the interval's average drift was -25.1 ms
+21:30:06.920 Re-aligned {2584} in one step at master clock "00:29:13.0126724": removed -31.5 ms, the interval's average drift was -28.5 ms
+21:30:09.924 Re-aligned {2584} in one step at master clock "00:29:16.0164576": removed -27.7 ms, the interval's average drift was -19.5 ms
+21:30:14.921 Re-aligned {2584} in one step at master clock "00:29:21.0129819": removed -32.7 ms, the interval's average drift was -32.9 ms
+21:30:18.918 Re-aligned {2584} in one step at master clock "00:29:25.0102530": removed -30.4 ms, the interval's average drift was -15.2 ms
+21:30:22.920 Re-aligned {2584} in one step at master clock "00:29:29.0127657": removed -35.1 ms, the interval's average drift was -31.8 ms
+21:30:29.927 Re-aligned {2584} in one step at master clock "00:29:36.0196106": removed -26.8 ms, the interval's average drift was -24.3 ms
+21:30:42.920 Re-aligned {2584} in one step at master clock "00:29:49.0123621": removed -34.3 ms, the interval's average drift was -34.5 ms
+21:30:56.929 Re-aligned {2584} in one step at master clock "00:30:03.0213372": removed -27.3 ms, the interval's average drift was -27.5 ms
