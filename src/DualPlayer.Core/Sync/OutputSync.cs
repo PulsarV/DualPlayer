@@ -17,9 +17,18 @@ public sealed class OutputSync(MasterClock clock, TimeSpan driftTolerance)
     public static readonly TimeSpan RateCorrectableDrift =
         TimeSpan.FromSeconds(DriftController.MaxCorrectionPpm * 1e-6 * RecoveryTime.TotalSeconds);
 
+    /// <summary>
+    /// A drift step is confirmed by this many readings in a row beyond <see cref="RealignThreshold"/> on the same side:
+    /// one stray reading does not move the output, and at one reading per 100 ms the step is removed within the 0.5 s
+    /// of spec §6.
+    /// </summary>
+    public const int StepReadings = 3;
+
     private readonly DriftMeter _meter = new(clock);
     private readonly DriftController _controller = new();
     private TimeSpan _latestDrift;
+    private int _readingsBeyond;
+    private int _beyondSide;
 
     /// <summary>
     /// Gets the drift beyond which the rate adjustment cannot bring the output back within the tolerance in
@@ -42,9 +51,27 @@ public sealed class OutputSync(MasterClock clock, TimeSpan driftTolerance)
         if (correct)
         {
             _controller.Update(_latestDrift, elapsed);
+            CountBeyond();
         }
 
         return _latestDrift;
+    }
+
+    /// <summary>
+    /// A drift step (the device stopped taking audio for a moment, or its position jumped): when
+    /// <paramref name="mayRealign"/> and the last <see cref="StepReadings"/> rate-corrected readings were all beyond
+    /// <see cref="RealignThreshold"/> on the same side, returns the latest drift as the whole error to remove in one
+    /// step now, without waiting for the record interval to close; the caller applies it and counts one correction.
+    /// Zero for none.
+    /// </summary>
+    public TimeSpan TakeStepRealignment(bool mayRealign)
+    {
+        if (!mayRealign || _readingsBeyond < StepReadings)
+        {
+            return TimeSpan.Zero;
+        }
+
+        return TakeRealignment();
     }
 
     /// <summary>
@@ -60,12 +87,29 @@ public sealed class OutputSync(MasterClock clock, TimeSpan driftTolerance)
             return new SyncInterval(average, TimeSpan.Zero);
         }
 
-        var realignment = _latestDrift;
-        _controller.Realigned(_controller.FilteredDrift); // the error is gone: the filter must not keep pushing on it
-        _latestDrift = TimeSpan.Zero;
-        return new SyncInterval(average, realignment);
+        return new SyncInterval(average, TakeRealignment());
     }
 
     /// <summary>Back to unity rate; call on start, resume and seek.</summary>
-    public void Reset() => _controller.Reset();
+    public void Reset()
+    {
+        _controller.Reset();
+        _readingsBeyond = 0;
+    }
+
+    private void CountBeyond()
+    {
+        var side = _latestDrift.Duration() <= RealignThreshold ? 0 : Math.Sign(_latestDrift.Ticks);
+        _readingsBeyond = side == 0 ? 0 : side == _beyondSide ? _readingsBeyond + 1 : 1;
+        _beyondSide = side;
+    }
+
+    private TimeSpan TakeRealignment()
+    {
+        var realignment = _latestDrift;
+        _controller.Realigned(_controller.FilteredDrift); // the error is gone: the filter must not keep pushing on it
+        _latestDrift = TimeSpan.Zero;
+        _readingsBeyond = 0;
+        return realignment;
+    }
 }

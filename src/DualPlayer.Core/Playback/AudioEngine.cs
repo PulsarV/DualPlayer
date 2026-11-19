@@ -874,6 +874,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             if (!output.AlignPending)
             {
                 source.SetResamplerRatio(sync.ResamplerRatio);
+                RealignStep(run, output, now);
             }
         }
 
@@ -887,6 +888,27 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
             TimeSpan.FromSeconds((double)output.Ring.FramesAvailable / output.Format.SampleRate),
             sync.CorrectionPpm,
             source.UnderrunCount));
+    }
+
+    /// <summary>
+    /// A drift step confirmed by consecutive readings is removed at once, not at the end of the record interval
+    /// (spec §6: back within the tolerance 0.5 s after the step). Not inside a recovery window, where the alignment
+    /// after the command is still settling.
+    /// </summary>
+    private void RealignStep(Run run, Output output, long now)
+    {
+        var source = output.Source;
+        var mayRealign = now >= run.RecoveryUntil && source.RealignsApplied >= output.RealignsRequested;
+        var step = output.Sync!.TakeStepRealignment(mayRealign);
+        if (step == TimeSpan.Zero)
+        {
+            return;
+        }
+
+        source.RequestRealign(DriftController.ResamplerRealignFrames(step, output.Format.SampleRate));
+        output.RealignsRequested++;
+        run.Summary.RecordCorrection(output.DeviceId);
+        LogStepRealigned(output.DeviceId, run.Clock!.PositionAt(now), step.TotalMilliseconds, OutputSync.StepReadings);
     }
 
     /// <summary>
@@ -1097,6 +1119,9 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Re-aligned {DeviceId} in one step at master clock {ClockPosition}: removed {RealignMs:F1} ms, the interval's average drift was {AverageDriftMs:F1} ms")]
     private partial void LogRealigned(string deviceId, TimeSpan clockPosition, double realignMs, double averageDriftMs);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Re-aligned {DeviceId} in one step at master clock {ClockPosition}: removed {RealignMs:F1} ms after {Readings} readings beyond the threshold")]
+    private partial void LogStepRealigned(string deviceId, TimeSpan clockPosition, double realignMs, int readings);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Aligned {DeviceId} after a start, seek or resume at master clock {ClockPosition}: removed {RealignMs:F1} ms (round {Round})")]
     private partial void LogAligned(string deviceId, TimeSpan clockPosition, double realignMs, int round);

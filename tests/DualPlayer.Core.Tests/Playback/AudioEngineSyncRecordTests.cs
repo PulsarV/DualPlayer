@@ -370,6 +370,27 @@ public sealed class AudioEngineSyncRecordTests
     }
 
     [Fact]
+    public void A_step_error_is_re_aligned_within_half_a_second_without_waiting_for_the_end_of_the_record_interval()
+    {
+        using var rig = new Rig(0, 0);
+        rig.Start(2);
+        rig.Render(410); // just after a record interval closed: the next one closes 0.9 s later
+
+        rig.Backend.Devices["dev-1"].StepPosition(2880); // 60 ms, at master clock 00:00:04.1
+        rig.Render(600);
+        rig.WaitFor(() => rig.Records.Count == 2 * 10).ShouldBeTrue($"records: {rig.Records.Count}");
+        rig.Stop(RunEndReason.Stop);
+
+        var realigned = rig.Log.With("DeviceId", "ClockPosition", "RealignMs", "Readings")
+            .ShouldHaveSingleItem("one-step re-alignments in the log");
+        realigned["DeviceId"].ShouldBe("dev-1");
+        Math.Abs((double)realigned["RealignMs"]!).ShouldBe(60, 5);
+        ((TimeSpan)realigned["ClockPosition"]!).ShouldBeLessThanOrEqualTo(TimeSpan.FromSeconds(4.6), "spec §6: back within the tolerance 0.5 s after the step");
+        rig.Summary.ShouldNotBeNull().Outputs.Single(o => o.DeviceId == "dev-1").Corrections.ShouldBe(1);
+        rig.RecordsOf("dev-1").Where(r => r.ClockPosition > TimeSpan.FromSeconds(5.5)).ShouldAllBe(r => Math.Abs(r.DriftMs) < 2);
+    }
+
+    [Fact]
     public void An_injected_step_error_logs_the_one_step_re_alignment_and_the_raw_readings_of_every_output_around_it()
     {
         using var rig = new Rig(0, 0);
@@ -382,7 +403,7 @@ public sealed class AudioEngineSyncRecordTests
         rig.Stop(RunEndReason.Stop);
 
         // The correction counted in the summary is in the log with its size and where the master clock was.
-        var realigned = rig.Log.With("DeviceId", "ClockPosition", "RealignMs", "AverageDriftMs")
+        var realigned = rig.Log.With("DeviceId", "ClockPosition", "RealignMs", "Readings")
             .ShouldHaveSingleItem("one-step re-alignments in the log");
         realigned["DeviceId"].ShouldBe("dev-1");
         Math.Abs((double)realigned["RealignMs"]!).ShouldBe(60, 5);
