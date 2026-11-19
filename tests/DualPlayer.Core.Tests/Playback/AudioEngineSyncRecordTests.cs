@@ -369,6 +369,43 @@ public sealed class AudioEngineSyncRecordTests
         rig.RecordsOf("dev-1")[^1].DriftMs.ShouldBe(0, 2);
     }
 
+    [Fact]
+    public void An_injected_step_error_logs_the_one_step_re_alignment_and_the_raw_readings_of_every_output_around_it()
+    {
+        using var rig = new Rig(0, 0);
+        rig.Start(2);
+        rig.Render(450);
+
+        rig.Backend.Devices["dev-1"].StepPosition(2880); // 60 ms
+        rig.Render(600);
+        rig.WaitFor(() => rig.Records.Count == 2 * 10).ShouldBeTrue($"records: {rig.Records.Count}");
+        rig.Stop(RunEndReason.Stop);
+
+        // The correction counted in the summary is in the log with its size and where the master clock was.
+        var realigned = rig.Log.With("DeviceId", "ClockPosition", "RealignMs", "AverageDriftMs")
+            .ShouldHaveSingleItem("one-step re-alignments in the log");
+        realigned["DeviceId"].ShouldBe("dev-1");
+        Math.Abs((double)realigned["RealignMs"]!).ShouldBe(60, 5);
+        ((TimeSpan)realigned["ClockPosition"]!).ShouldBeGreaterThan(TimeSpan.FromSeconds(4));
+
+        // The 100 ms readings from the second before the step to the second after it, for both outputs.
+        IReadOnlyList<IReadOnlyDictionary<string, object?>> Trace(string id) =>
+            [.. rig.Log.With("DeviceId", "ClockPosition", "Measured", "PositionAgeMs", "PlayedFrames", "QueuedMs", "DriftMs", "RingMs")
+                .Where(e => (string)e["DeviceId"]! == id)];
+        var stepped = Trace("dev-1");
+        stepped.Count.ShouldBeInRange(25, 30);
+        var clocks = stepped.Select(e => (TimeSpan)e["ClockPosition"]!).ToList();
+        clocks.ShouldBe(clocks.Order().Distinct().ToList(), "each reading once, in order");
+        Math.Abs((double)stepped[0]["DriftMs"]!).ShouldBeLessThan(2, "the trace starts before the step");
+        stepped.Count(e => (bool)e["Measured"]! && Math.Abs((double)e["DriftMs"]!) > 50).ShouldBeGreaterThanOrEqualTo(3, "readings that show the step");
+        Math.Abs((double)stepped[^1]["DriftMs"]!).ShouldBeLessThan(2, "the trace ends after the re-alignment");
+        stepped.ShouldAllBe(e => (long)e["PlayedFrames"]! > 0 && (double)e["RingMs"]! > 0);
+
+        var other = Trace("dev-2");
+        other.Count.ShouldBe(stepped.Count);
+        other.ShouldAllBe(e => (bool)e["Measured"]! && Math.Abs((double)e["DriftMs"]!) < 2);
+    }
+
 #pragma warning disable xUnit1031 // the fake clock is driven from this thread, so the seek has to be awaited synchronously
     [Theory]
     [InlineData(60)]
