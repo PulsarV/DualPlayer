@@ -353,9 +353,15 @@ sequenceDiagram
             S-->>X: silence, underrun counter increases
         end
     end
+    loop every 100 ms, on the engine-control loop
+        S->>S: take a drift reading of every output, update its rate ratio
+        opt three readings in a row beyond what the rate adjustment can remove (a drift step)
+            S->>S: re-align that output's position in one step, count a correction
+        end
+    end
     loop once per second, on the engine-control loop
         S->>S: snapshot the counters of every output
-        opt drift too large for the rate adjustment
+        opt drift still too large for the rate adjustment
             S->>S: re-align that output's position in one step, count a correction
         end
         S-->>C: one sync record per device as an engine event
