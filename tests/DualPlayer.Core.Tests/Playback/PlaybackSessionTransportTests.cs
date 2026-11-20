@@ -162,4 +162,30 @@ public sealed class PlaybackSessionTransportTests
         rig.Session.State.ShouldBe(PlaybackState.Playing);
         rig.Renderer.IsPlaying.ShouldBeTrue();
     }
+
+    [Fact]
+    public void Pause_resume_and_pause_again_before_the_picture_froze_keeps_the_picture_paused_and_the_next_resume_realigns_it_AC_04()
+    {
+        using var rig = PlayingRig();
+        rig.Engine.Call(() => rig.Session.Pause()).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(2);
+        rig.Renderer.IsPlaying.ShouldBeTrue("the picture should still be running up to the freeze point");
+
+        // Resume and pause again while the picture is still running up to the first freeze point.
+        rig.Engine.Call(() => rig.Session.Resume()).IsSuccess.ShouldBeTrue();
+        rig.Engine.Call(() => rig.Session.Pause()).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(100);
+
+        rig.Session.State.ShouldBe(PlaybackState.Paused);
+        rig.Renderer.IsPlaying.ShouldBeFalse("the picture started while the sound was paused");
+        var frozen = Shown(rig);
+        rig.Engine.Render(50);
+        Shown(rig).ShouldBe(frozen);
+
+        rig.Engine.Call(() => rig.Session.Resume()).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(150);
+
+        rig.Renderer.IsPlaying.ShouldBeTrue("the last resume never started the picture again");
+        Shown(rig).ShouldBeGreaterThan(frozen);
+    }
 }

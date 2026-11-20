@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-20 (F2)"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-20. Work from what is inlined here; the source always wins.
@@ -29,6 +29,6 @@ See [spec.md](../spec.md) §5 AC-04.
 
 ## Definition of Done
 
-- [ ] A Pause clears any pending align; Pause → Resume → Pause → (freeze) → Resume leaves the picture paused through the second pause and aligned with the sound after the last resume.
-- [ ] Test for that exact sequence with the fake clock and renderer; it fails on the current code.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] A Pause clears any pending align; Pause → Resume → Pause → (freeze) → Resume leaves the picture paused through the second pause and aligned with the sound after the last resume.
+- [x] Test for that exact sequence with the fake clock and renderer; it fails on the current code.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

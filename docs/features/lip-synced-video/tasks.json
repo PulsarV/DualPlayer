@@ -579,7 +579,7 @@
         "tests/DualPlayer.Core.Tests/Playback/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T26-re-align-the-picture-on-a-resume-after-a-pause-resume-and-pause-before-the-freeze.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-20: F2"
     },
     {

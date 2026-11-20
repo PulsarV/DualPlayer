@@ -520,6 +520,9 @@ public sealed partial class PlaybackSession : IDisposable
             version = ++_freezeVersion;
             _freezeTimer?.Dispose();
             _freezeTimer = null;
+
+            // A resume that has not yet aligned the picture is overtaken by this pause: the next resume aligns it.
+            _pendingAlign = null;
             if (remaining > TimeSpan.Zero)
             {
                 _freezeTimer = _time.CreateTimer(_ => _loop.Post(() => FreezePicture(version, freeze)), null, remaining, Timeout.InfiniteTimeSpan);
