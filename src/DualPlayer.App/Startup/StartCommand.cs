@@ -66,13 +66,14 @@ internal static class StartCommand
             : Result<StartRequest>.Success(new StartRequest(args[1], outputs, screen));
     }
 
-    /// <summary>Checks in contract order: file, picture, tracks, devices, screen. First failure wins.</summary>
+    /// <summary>Checks in contract order: file, picture, tracks, devices, screen, then the video renderer library. First failure wins.</summary>
     public static Result<ValidatedStart> Validate(
         StartRequest request,
         IPictureProbe probe,
         IAudioDecoder decoder,
         DeviceCatalog devices,
-        IScreenCatalog screens)
+        IScreenCatalog screens,
+        Func<Result>? videoRenderer = null)
     {
         var picture = probe.Probe(request.File, StartBudget);
         if (!picture.IsSuccess)
@@ -103,6 +104,12 @@ internal static class StartCommand
             return Result<ValidatedStart>.Failure(
                 "start.screen_not_found",
                 $"{wanted} was not found. Connected screens: {described}");
+        }
+
+        // Last: the video renderer library beside the executable, loaded with its version check (ADR-0001, T2).
+        if (videoRenderer?.Invoke() is { IsSuccess: false } renderer)
+        {
+            return Result<ValidatedStart>.Failure(renderer.Error);
         }
 
         return Result<ValidatedStart>.Success(new ValidatedStart(request.File, picture.Value, resolved.Value, screen));

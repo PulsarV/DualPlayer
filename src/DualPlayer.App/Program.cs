@@ -26,7 +26,7 @@ internal static class Program
         var parsed = StartCommand.Parse(args);
         if (!parsed.IsSuccess)
         {
-            Console.Error.WriteLine(StartExitCodes.FormatError(parsed.Error));
+            StartErrors.Report(parsed.Error, Console.Error, log);
             return StartExitCodes.For(parsed.Error);
         }
 

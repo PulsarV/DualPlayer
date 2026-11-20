@@ -6,8 +6,10 @@ using Avalonia.Threading;
 using DualPlayer.App.Startup;
 using DualPlayer.App.ViewModels;
 using DualPlayer.App.Views;
+using DualPlayer.Core;
 using DualPlayer.Core.Outputs;
 using DualPlayer.Core.Playback;
+using DualPlayer.Media.Video;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using CoreStartRequest = DualPlayer.Core.Playback.StartRequest;
@@ -27,6 +29,12 @@ public partial class App : Application
     internal static long? CommandTimestamp { get; set; }
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
+
+    private static Result VideoRendererLibrary()
+    {
+        var loaded = MpvLibrary.Load();
+        return loaded.IsSuccess ? Result.Success() : Result.Failure(loaded.Error);
+    }
 
     public override void OnFrameworkInitializationCompleted()
     {
@@ -50,11 +58,12 @@ public partial class App : Application
                 services.GetRequiredService<IPictureProbe>(),
                 services.GetRequiredService<IAudioDecoder>(),
                 new DeviceCatalog(services.GetRequiredService<IAudioBackend>().ListDevices()),
-                services.GetRequiredService<IScreenCatalog>())).ConfigureAwait(true);
+                services.GetRequiredService<IScreenCatalog>(),
+                VideoRendererLibrary)).ConfigureAwait(true);
 
             if (!validated.IsSuccess)
             {
-                await Console.Error.WriteLineAsync(StartExitCodes.FormatError(validated.Error)).ConfigureAwait(true);
+                StartErrors.Report(validated.Error, Console.Error, log);
                 desktop.Shutdown(StartExitCodes.For(validated.Error));
                 return;
             }
@@ -107,6 +116,7 @@ public partial class App : Application
         });
         window.Closed += (_, _) =>
         {
+            Volatile.Write(ref closing, true);
             // Closed by the OS or Alt+F4 is the same as Esc: the session ends, the run summary prints, the exit code is 0.
             controls.ExitNow();
             sessionLog.Dispose();
@@ -130,10 +140,11 @@ public partial class App : Application
                     // The devices as validated, by OS id: every later start (a file change) keeps them even if the list is renumbered.
                     var outputs = validated.Outputs.Select(o => new OutputAssignment(o.TrackNumber, DeviceRef.ById(o.DeviceId))).ToList();
                     var started = session.Start(new CoreStartRequest(validated.File, outputs, request.Screen) { CommandTimestamp = CommandTimestamp });
-                    if (!started.IsSuccess)
+
+                    // Esc during the start: the session ran Exit after this start, so nothing plays on; no error, exit 0.
+                    if (StartErrors.AfterSessionStart(started, Volatile.Read(ref closing), Console.Error, log) is { } code)
                     {
-                        Console.Error.WriteLine(StartExitCodes.FormatError(started.Error));
-                        exitCode = StartExitCodes.For(started.Error);
+                        exitCode = code;
                         CloseWindow();
                     }
                 }

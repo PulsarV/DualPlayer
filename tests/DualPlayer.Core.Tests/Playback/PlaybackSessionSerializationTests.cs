@@ -115,4 +115,30 @@ public sealed class PlaybackSessionSerializationTests
             Directory.Delete(folder, recursive: true);
         }
     }
+
+    [Fact]
+    public async Task Exit_during_the_start_waits_for_the_start_and_only_then_disposes_the_renderer_and_stops_the_sound()
+    {
+        using var rig = new SessionRig(TwoDevices, null, 600);
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        rig.Renderer.AfterLoad = () =>
+        {
+            entered.Set();
+            release.Wait(TimeSpan.FromSeconds(10));
+        };
+        var start = Task.Factory.StartNew(() => rig.Engine.Call(() => rig.Session.Start(rig.Request(2))), TestContext.Current.CancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        entered.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken).ShouldBeTrue();
+
+        var exit = Task.Factory.StartNew(rig.Session.Exit, TestContext.Current.CancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        (await RigLoops.CompletesWithin(exit, TimeSpan.FromMilliseconds(300))).ShouldBeFalse("Esc ran inside the start");
+        rig.Renderer.IsDisposed.ShouldBeFalse("the renderer was disposed under the start");
+
+        release.Set();
+        (await RigLoops.CompletesWithin(start, TimeSpan.FromSeconds(30))).ShouldBeTrue();
+        (await RigLoops.CompletesWithin(exit, TimeSpan.FromSeconds(10))).ShouldBeTrue();
+        rig.Renderer.IsDisposed.ShouldBeTrue();
+        rig.Session.State.ShouldBe(PlaybackState.Ended);
+        rig.Engine.WaitFor(() => rig.Engine.Summary is not null).ShouldBeTrue("the sound was not stopped after the start");
+    }
 }

@@ -160,6 +160,34 @@ public sealed class StartCommandTests
     private static StartRequest Request(int? screen = null) =>
         new(File, [new OutputAssignment(1, DeviceRef.ByNumber(1)), new OutputAssignment(2, DeviceRef.ByNumber(2))], screen);
 
+    [Fact]
+    public void A_missing_or_wrong_video_renderer_library_is_refused_before_any_window_opens()
+    {
+        var rig = new Rig();
+
+        var r = StartCommand.Validate(
+            Request(),
+            rig.Probe,
+            rig.Decoder,
+            new DeviceCatalog([DevA, DevB]),
+            rig.Screens,
+            () => Result.Failure("mpv.not_found", "libmpv-2.dll was not found beside the executable."));
+
+        r.IsSuccess.ShouldBeFalse();
+        r.Error.Code.ShouldBe("mpv.not_found");
+        StartExitCodes.For(r.Error).ShouldBe(2);
+    }
+
+    [Fact]
+    public void A_present_video_renderer_library_lets_the_start_through()
+    {
+        var rig = new Rig();
+
+        var r = StartCommand.Validate(Request(), rig.Probe, rig.Decoder, new DeviceCatalog([DevA, DevB]), rig.Screens, Result.Success);
+
+        r.IsSuccess.ShouldBeTrue();
+    }
+
     private static Result<ValidatedStart> Validate(StartRequest request, Rig rig) =>
         StartCommand.Validate(request, rig.Probe, rig.Decoder, new DeviceCatalog([DevA, DevB]), rig.Screens);
 
