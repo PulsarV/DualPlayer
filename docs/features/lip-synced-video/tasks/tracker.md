@@ -9,7 +9,7 @@
 | # | Task | Layer | Owner | Estimate | Blocked by | Status | Step |
 |---|---|---|---|---|---|---|---|
 | T1 | [Define the IVideoRenderer port and a scripted fake renderer in Core](./T1-define-the-video-renderer-port.md) | domain | Volodymyr Kravchuk | S | — | done | COMMIT |
-| T2 | [Fetch a pinned libmpv, copy it beside the executables, and load it with a version check](./T2-fetch-and-load-libmpv.md) | infra | Volodymyr Kravchuk | M | — | blocked | GATE — full dotnet test has 46 FFmpeg failures (env: brew install ffmpeg@8 && brew link --force ffmpeg@8); task tests, build, lint green |
+| T2 | [Fetch a pinned libmpv, copy it beside the executables, and load it with a version check](./T2-fetch-and-load-libmpv.md) | infra | Volodymyr Kravchuk | M | — | done | COMMIT |
 | T3 | [Steer the picture to clock minus picture delay with a Core picture-sync loop](./T3-picture-sync-loop.md) | domain | Volodymyr Kravchuk | M | T1 | todo | — |
 | T4 | [Implement the hardened libmpv video renderer with presented-position snapshots and OSD notes](./T4-libmpv-video-renderer.md) | infra | Volodymyr Kravchuk | L | T1, T2 | todo | — |
 | T5 | [Spike libmpv precision on the target PC against the ADR-0002 kill criterion and record the D1 verdict](./T5-spike-libmpv-precision-on-the-target-pc.md) | tests | Volodymyr Kravchuk | M | T3, T4 | todo | — |

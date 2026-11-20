@@ -16,4 +16,8 @@
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)../../build/ffmpeg/*.dll" CopyToOutputDirectory="PreserveNewest" Link="%(Filename)%(Extension)" Visible="false" />
   </ItemGroup>
+  <!-- libmpv-2.dll fetched by build/fetch-libmpv.ps1 (Windows); flows beside every referencing exe. -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../../build/mpv/*.dll" CopyToOutputDirectory="PreserveNewest" Link="%(Filename)%(Extension)" Visible="false" />
+  </ItemGroup>
 </Project>

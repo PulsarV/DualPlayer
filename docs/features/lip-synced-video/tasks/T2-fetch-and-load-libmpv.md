@@ -9,8 +9,8 @@ files_hint: ["build/fetch-libmpv.ps1", ".gitignore", ".github/workflows/ci.yml",
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "S"
-status: "blocked"
-step: "GATE — full dotnet test has 46 FFmpeg failures (env: brew install ffmpeg@8 && brew link --force ffmpeg@8); task tests, build, lint green"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Self-contained task: work from what is inlined here. Every quoted chunk ends with its provenance
