@@ -12,6 +12,8 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        // The start command's time, before anything else runs: the start budget is measured from here (spec §6).
+        App.CommandTimestamp = TimeProvider.System.GetTimestamp();
         var paths = CompositionRoot.PathsForCurrentUser();
         using var serilog = CreateSerilog(paths);
         using var loggerFactory = new SerilogLoggerFactory(serilog);

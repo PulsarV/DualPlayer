@@ -8,6 +8,9 @@ public readonly record struct PictureTiming(TimeSpan Due, TimeSpan Presented)
     /// <summary>Gets the master-clock position at the snapshot's time (due plus the picture delay then).</summary>
     public TimeSpan Clock { get; init; }
 
+    /// <summary>Gets when the presented frame was on screen (the snapshot's timestamp).</summary>
+    public long Timestamp { get; init; }
+
     /// <summary>Gets presented minus due; positive = picture ahead of due.</summary>
     public TimeSpan Error => Presented - Due;
 
@@ -193,7 +196,7 @@ public sealed class PictureSync : IDisposable
             return null;
         }
 
-        return new PictureTiming(due, presented.Position) { Clock = clock };
+        return new PictureTiming(due, presented.Position) { Clock = clock, Timestamp = presented.Timestamp };
     }
 
     /// <summary>Moves the picture delay to <paramref name="newPictureDelay"/> at ≤ 0.2 % speed change; retargets a move under way.</summary>

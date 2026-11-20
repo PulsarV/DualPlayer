@@ -52,12 +52,24 @@ public sealed partial class PlaybackSession : IDisposable
     private readonly HashSet<string> _lost = new(StringComparer.Ordinal);
     private static readonly TimeSpan HealthInterval = TimeSpan.FromSeconds(1);
 
+    // "Lip-synced again": the picture presented within this of due (sad.md §10, quality scenario 2b).
+    private const double LipSyncedMs = 20;
+
     // How often the picture-sync loop looks at the presented frame and steers it (the D1 spike ticked every few ms;
     // mpv's snapshot changes once a frame, so a tick every 5 ms sees every frame).
     private static readonly TimeSpan SyncInterval = TimeSpan.FromMilliseconds(5);
     private ITimer? _syncTimer;
     private int _syncTickPending;
     private bool _timingPending;
+
+    // The command whose "lip-synced again" record is still owed (sad.md flow 4), and when it was given.
+    private (string Command, long At)? _resync;
+
+    // Start timings measured as they happen: the command time, then the first frame presented and each output's first audio.
+    private (long CommandAt, IReadOnlyList<OutputLatency> Outputs)? _startTimings;
+
+    // Offset changes not yet saved: recorded again with their save time once the debounced save lands.
+    private readonly List<OffsetChanged> _unsaved = [];
     private const int TicksPerCounterReport = 60;
     private const string PictureFailedNote = "The picture could not be decoded further - film ended";
     private ITimer? _healthTimer;
@@ -98,6 +110,7 @@ public sealed partial class PlaybackSession : IDisposable
         _engine.Events.Subscribe(new EngineObserver(this));
         _renderer.DecodeFailed += error => _loop.Post(() => OnPictureFailed(error.Message));
         _renderer.HardwareDecodingInactive += () => _loop.Post(() => OnPictureFailed("Hardware decoding is not active"));
+        _offsets.Saved += savedAt => _loop.Post(() => OnOffsetsSaved(savedAt));
     }
 
     public IObservable<SessionEvent> Events => _events;
@@ -134,7 +147,7 @@ public sealed partial class PlaybackSession : IDisposable
     /// </summary>
     private Result StartCore(StartRequest request, bool keepLost = false)
     {
-        var commandAt = _time.GetTimestamp();
+        var commandAt = request.CommandTimestamp ?? _time.GetTimestamp();
 
         LoadOffsetsOnce();
 
@@ -150,6 +163,7 @@ public sealed partial class PlaybackSession : IDisposable
         var resolved = new List<OutputAssignment>();
         var playing = new List<OutputAssignment>();
         var outputs = new List<(string DeviceId, DeviceType Type, int ReportedMs, int OffsetMs)>();
+        var sources = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var assignment in request.Outputs)
         {
             if (assignment.Device.Id is { } lostId && lost.Contains(lostId))
@@ -167,6 +181,17 @@ public sealed partial class PlaybackSession : IDisposable
             resolved.Add(byId);
             playing.Add(byId);
             var probed = _probe.Probe(device.Id);
+            if (probed.IsSuccess)
+            {
+                sources[device.Id] = probed.Value.Source;
+            }
+            else
+            {
+                // ADR-0004: no reported part and an unknown type; the fallback is said, not silent.
+                sources[device.Id] = $"probe failed ({probed.Error.Code}): reported 0 ms, type Other";
+                LogProbeFailed(device.Id, probed.Error.Code, probed.Error.Message);
+            }
+
             var (type, reportedMs) = probed.IsSuccess
                 ? (DeviceTypeClassifier.Classify(probed.Value.Connection, probed.Value.FormFactor), (int)Math.Round(probed.Value.ReportedLatency.TotalMilliseconds))
                 : (DeviceType.Other, 0);
@@ -178,7 +203,8 @@ public sealed partial class PlaybackSession : IDisposable
             return Result.Failure("outputs.all_lost", "Every output has been lost.");
         }
 
-        var estimate = LatencyModel.Estimate(outputs);
+        var estimated = LatencyModel.Estimate(outputs);
+        var estimate = new LatencyEstimate([.. estimated.Outputs.Select(o => o with { Source = sources[o.DeviceId] })], estimated.PictureDelayMs);
 
         // Lost outputs keep their place (and so their output number and keys) with the estimate they had when lost.
         var full = new LatencyEstimate(
@@ -193,7 +219,7 @@ public sealed partial class PlaybackSession : IDisposable
         _events.Publish(new LatencyEstimated(full));
         foreach (var output in estimate.Outputs)
         {
-            LogLatency(output.DeviceId, output.Type, output.ReportedMs, output.TypeDefaultMs, output.OffsetMs, output.AssumedMs, output.LagMs, estimate.PictureDelayMs);
+            LogLatency(output.DeviceId, output.Type, output.ReportedMs, output.Source, output.TypeDefaultMs, output.OffsetMs, output.AssumedMs, output.LagMs, estimate.PictureDelayMs);
         }
 
         return Starting(() => StartRun(request with { Outputs = playing }, estimate, commandAt, lost, returning: false));
@@ -291,9 +317,12 @@ public sealed partial class PlaybackSession : IDisposable
         if (!returning)
         {
             sync.AlignAt(TimeSpan.Zero, clockStart);
-            var pictureAt = clockStart + ToTimestamp(pictureDelay);
-            var heard = estimate.Outputs.ToDictionary(o => o.DeviceId, _ => pictureAt, StringComparer.Ordinal);
-            _events.Publish(new StartTimings(commandAt, pictureAt, heard));
+            lock (_gate)
+            {
+                // Measured by the sync ticks: the first frame on screen and each output's first audio plus its latency.
+                _startTimings = (commandAt, estimate.Outputs);
+                _resync = ("start", commandAt);
+            }
         }
 
         PictureSync? previous;
@@ -341,10 +370,13 @@ public sealed partial class PlaybackSession : IDisposable
 
     private Result ChangeFile(NeighbourDirection direction)
     {
+        var commandAt = _time.GetTimestamp();
         StartRequest? request;
+        LatencyEstimate? estimateBefore;
         lock (_gate)
         {
             request = _state == PlaybackState.Idle ? null : _request;
+            estimateBefore = _estimate;
         }
 
         if (request is null)
@@ -401,7 +433,8 @@ public sealed partial class PlaybackSession : IDisposable
             CancelFreeze();
         }
 
-        _engine.Stop(RunEndReason.Stop);
+        var previousDelay = estimateBefore?.PictureDelayMs ?? 0;
+        _engine.Stop(RunEndReason.FileChange);
         lock (_gate)
         {
             _state = PlaybackState.Idle;
@@ -425,6 +458,18 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         _events.Publish(new FileChanged(target, request.File));
+        LatencyEstimate? now;
+        lock (_gate)
+        {
+            now = _estimate;
+            _resync = ("file-change", commandAt);
+        }
+
+        if (now is not null)
+        {
+            _events.Publish(new PictureDelayChanged(TimeSpan.Zero, PictureDelayCause.FileChange, previousDelay, now.PictureDelayMs, now.Outputs));
+        }
+
         return Result.Success();
     }
 
@@ -515,10 +560,17 @@ public sealed partial class PlaybackSession : IDisposable
             _estimate = new LatencyEstimate([.. estimate.Outputs.Select(o => updated.Outputs.FirstOrDefault(u => u.DeviceId == o.DeviceId) ?? o)], updated.PictureDelayMs);
         }
 
-        _events.Publish(new OffsetChanged(outputNumber, deviceId, oldOffset, step.OffsetMs, null));
+        var changed = new OffsetChanged(outputNumber, deviceId, oldOffset, step.OffsetMs, null);
+        lock (_gate)
+        {
+            _unsaved.RemoveAll(c => c.DeviceId == deviceId);
+            _unsaved.Add(changed);
+        }
+
+        _events.Publish(changed);
         _events.Publish(new NoteShown($"Output {outputNumber}: {step.OffsetMs:+0;-0;0} ms", NoteStyle.Info));
         var output = updated.Outputs.First(o => o.DeviceId == deviceId);
-        LogLatency(output.DeviceId, output.Type, output.ReportedMs, output.TypeDefaultMs, output.OffsetMs, output.AssumedMs, output.LagMs, updated.PictureDelayMs);
+        LogLatency(output.DeviceId, output.Type, output.ReportedMs, output.Source, output.TypeDefaultMs, output.OffsetMs, output.AssumedMs, output.LagMs, updated.PictureDelayMs);
 
         var clockPosition = clock.PositionAt(_time.GetTimestamp());
         _events.Publish(new PictureDelayChanged(clockPosition, PictureDelayCause.Offset, estimate.PictureDelayMs, updated.PictureDelayMs, updated.Outputs));
@@ -684,6 +736,11 @@ public sealed partial class PlaybackSession : IDisposable
             _state = PlaybackState.Playing;
         }
 
+        lock (_gate)
+        {
+            _resync = ("resume", now);
+        }
+
         PublishDelay(position, PictureDelayCause.Resume, delay);
         ReportTiming(sync);
         return Result.Success();
@@ -780,6 +837,11 @@ public sealed partial class PlaybackSession : IDisposable
             }
 
             sync.AlignAt(position, now);
+            lock (_gate)
+            {
+                _resync = ("seek", now);
+            }
+
             ReportTiming(sync);
         }
 
@@ -883,15 +945,73 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         bool report;
+        (string Command, long At)? resynced = null;
+        (long CommandAt, IReadOnlyList<OutputLatency> Outputs)? starting;
         lock (_gate)
         {
             report = _timingPending;
             _timingPending = false;
+            if (_resync is { } owed && Math.Abs(timing.ErrorMs) <= LipSyncedMs && timing.Timestamp >= owed.At)
+            {
+                resynced = owed;
+                _resync = null;
+            }
+
+            starting = _startTimings;
         }
 
         if (report)
         {
             Publish(timing);
+        }
+
+        if (resynced is var (command, at))
+        {
+            _events.Publish(new LipSyncedAgain(timing.Clock, command, _time.GetElapsedTime(at, timing.Timestamp).TotalMilliseconds, timing.ErrorMs));
+        }
+
+        if (starting is var (commandAt, outputs) && timing.Presented > TimeSpan.Zero)
+        {
+            PublishStartTimings(commandAt, outputs, timing);
+        }
+    }
+
+    // The picture moving from frame 0 dates its first present; each output is heard its assumed latency after its
+    // first audio. Published once every output has handed over its first audio.
+    private void PublishStartTimings(long commandAt, IReadOnlyList<OutputLatency> outputs, PictureTiming timing)
+    {
+        var heard = new Dictionary<string, long>(StringComparer.Ordinal);
+        foreach (var output in outputs)
+        {
+            if (_lags.FirstAudioTimestamp(output.DeviceId) is not { } given)
+            {
+                return; // not every output has started yet: a later tick tries again
+            }
+
+            heard[output.DeviceId] = given + ToTimestamp(TimeSpan.FromMilliseconds(output.AssumedMs));
+        }
+
+        lock (_gate)
+        {
+            _startTimings = null;
+        }
+
+        var firstFrame = timing.Timestamp - ToTimestamp(timing.Presented);
+        _events.Publish(new StartTimings(commandAt, firstFrame, heard));
+    }
+
+    private void OnOffsetsSaved(DateTimeOffset savedAt)
+    {
+        OffsetChanged[] saved;
+        lock (_gate)
+        {
+            saved = [.. _unsaved];
+            _unsaved.Clear();
+        }
+
+        foreach (var change in saved)
+        {
+            _events.Publish(change with { SavedAt = savedAt });
         }
     }
 
@@ -940,7 +1060,7 @@ public sealed partial class PlaybackSession : IDisposable
         _events.Publish(new PictureFailed(position, reason));
         _events.Publish(new NoteShown(PictureFailedNote, NoteStyle.Warning));
         _renderer.ShowNote(PictureFailedNote, NoteStyle.Warning);
-        _engine.Stop(RunEndReason.Stop);
+        _engine.Stop(RunEndReason.PictureFailed);
     }
 
     // Once a second: the picture timing, the damaged-stretch book-keeping and, every minute, the frame counters.
@@ -1134,8 +1254,11 @@ public sealed partial class PlaybackSession : IDisposable
         ReportTiming(sync);
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Latency for {DeviceId}: type {Type}, reported {ReportedMs} ms, default {DefaultMs} ms, offset {OffsetMs} ms, assumed {AssumedMs} ms, lag {LagMs} ms; picture delay {PictureDelayMs} ms")]
-    private partial void LogLatency(string deviceId, DeviceType type, int reportedMs, int defaultMs, int offsetMs, int assumedMs, int lagMs, int pictureDelayMs);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Latency for {DeviceId}: type {Type}, reported {ReportedMs} ms ({Source}), default {DefaultMs} ms, offset {OffsetMs} ms, assumed {AssumedMs} ms, lag {LagMs} ms; picture delay {PictureDelayMs} ms")]
+    private partial void LogLatency(string deviceId, DeviceType type, int reportedMs, string? source, int defaultMs, int offsetMs, int assumedMs, int lagMs, int pictureDelayMs);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Latency probe failed for {DeviceId} ({Code}): {Message}; reported 0 ms, type Other")]
+    private partial void LogProbeFailed(string deviceId, string code, string message);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Playback session command or callback failed")]
     private partial void LogLoopFault(Exception exception);

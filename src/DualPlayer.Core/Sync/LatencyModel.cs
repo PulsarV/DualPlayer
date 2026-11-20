@@ -8,7 +8,11 @@ public sealed record OutputLatency(
     int TypeDefaultMs,
     int OffsetMs,
     int AssumedMs,
-    int LagMs);
+    int LagMs)
+{
+    /// <summary>Where the reported part came from (the probe's source), or why it is missing (a failed probe).</summary>
+    public string? Source { get; init; }
+}
 
 public sealed record LatencyEstimate(IReadOnlyList<OutputLatency> Outputs, int PictureDelayMs);
 

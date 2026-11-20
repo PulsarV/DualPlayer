@@ -77,6 +77,8 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
 
     public TimeSpan? CurrentLag(string deviceId) => _loop.Execute(() => FindOutput(deviceId)?.Sync?.Lag);
 
+    public long? FirstAudioTimestamp(string deviceId) => _loop.Execute(() => FindOutput(deviceId)?.Gate.FirstAudioTimestamp);
+
     public long? FrameZeroTimestamp => _loop.Execute(() => _run?.FrameZeroTimestamp);
 
     public bool IsRamping => _loop.Execute(() => _run is { } run && run.Outputs.Any(o => !o.Lost && o.Sync is { IsLagMoving: true }));

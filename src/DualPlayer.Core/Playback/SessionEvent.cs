@@ -65,5 +65,11 @@ public sealed record PictureFailed(TimeSpan Clock, string Reason) : SessionEvent
 /// <summary>A warning about the remembered offsets (<c>state.*</c>, <c>offsets.clamped</c>); the film starts anyway.</summary>
 public sealed record OffsetsWarning(Error Warning) : SessionEvent;
 
+/// <summary>
+/// After a command, the first picture presented within 20 ms of due (sad.md flow 4, "lip-synced again"):
+/// <paramref name="Command"/> names it (<c>start</c>, <c>seek</c>, <c>resume</c>, <c>file-change</c>).
+/// </summary>
+public sealed record LipSyncedAgain(TimeSpan Clock, string Command, double AfterCommandMs, double ErrorMs) : SessionEvent;
+
 /// <summary>A stretch of damaged frames was skipped: where it began and how long it lasted (AC-06b).</summary>
 public sealed record DamagedStretchSkipped(TimeSpan Position, TimeSpan Length, long Frames) : SessionEvent;

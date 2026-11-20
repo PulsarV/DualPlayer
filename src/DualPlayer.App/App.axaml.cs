@@ -23,6 +23,9 @@ public partial class App : Application
     /// <summary>The parsed <c>play</c> command; set by <see cref="Program.Main"/>.</summary>
     internal static StartRequest? Request { get; set; }
 
+    /// <summary>When the process received the start command (<see cref="TimeProvider.System"/> timestamps); set by <see cref="Program.Main"/>.</summary>
+    internal static long? CommandTimestamp { get; set; }
+
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
     public override void OnFrameworkInitializationCompleted()
@@ -126,7 +129,7 @@ public partial class App : Application
                 {
                     // The devices as validated, by OS id: every later start (a file change) keeps them even if the list is renumbered.
                     var outputs = validated.Outputs.Select(o => new OutputAssignment(o.TrackNumber, DeviceRef.ById(o.DeviceId))).ToList();
-                    var started = session.Start(new CoreStartRequest(validated.File, outputs, request.Screen));
+                    var started = session.Start(new CoreStartRequest(validated.File, outputs, request.Screen) { CommandTimestamp = CommandTimestamp });
                     if (!started.IsSuccess)
                     {
                         Console.Error.WriteLine(StartExitCodes.FormatError(started.Error));

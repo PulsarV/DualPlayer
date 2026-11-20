@@ -6,7 +6,8 @@ namespace DualPlayer.App.Startup;
 
 /// <summary>
 /// Writes the session events of contracts/cli.md section 3 to the log as structured events carrying the contract's field names
-/// (LatencyEstimated, PictureDelayChanged, OffsetChanged, PictureTiming, FrameCounters, StartTimings). Independent of the terminal printer.
+/// (LatencyEstimated, PictureDelayChanged, OffsetChanged, PictureTiming, FrameCounters, StartTimings), plus the
+/// lip-synced-again and damaged-stretch records of sad.md flows 4 and 7. Independent of the terminal printer.
 /// </summary>
 internal sealed class SessionEventLogWriter : IDisposable
 {
@@ -73,6 +74,21 @@ internal sealed class SessionEventLogWriter : IDisposable
                     s.FirstFramePresented,
                     string.Join(' ', s.FirstAudioHeard.Select(p => $"{p.Key}={p.Value}")));
                 break;
+            case LipSyncedAgain a:
+                _log.LogInformation(
+                    "LipSyncedAgain Clock={Clock} Command={Command} AfterCommandMs={AfterCommandMs} ErrorMs={ErrorMs}",
+                    Clock(a.Clock),
+                    a.Command,
+                    a.AfterCommandMs,
+                    a.ErrorMs);
+                break;
+            case DamagedStretchSkipped d:
+                _log.LogInformation(
+                    "DamagedStretchSkipped Clock={Clock} LengthMs={LengthMs} Frames={Frames}",
+                    Clock(d.Position),
+                    d.Length.TotalMilliseconds,
+                    d.Frames);
+                break;
             default:
                 break;
         }
@@ -84,12 +100,13 @@ internal sealed class SessionEventLogWriter : IDisposable
         {
             var o = outputs[i];
             _log.LogInformation(
-                "{Event} Output={Output} DeviceId={DeviceId} Type={Type} ReportedMs={ReportedMs} DefaultMs={DefaultMs} OffsetMs={OffsetMs} AssumedMs={AssumedMs} LagMs={LagMs} PictureDelayMs={PictureDelayMs}",
+                "{Event} Output={Output} DeviceId={DeviceId} Type={Type} ReportedMs={ReportedMs} Source={Source} DefaultMs={DefaultMs} OffsetMs={OffsetMs} AssumedMs={AssumedMs} LagMs={LagMs} PictureDelayMs={PictureDelayMs}",
                 name,
                 i + 1,
                 o.DeviceId,
                 o.Type.ToString(),
                 o.ReportedMs,
+                o.Source,
                 o.TypeDefaultMs,
                 o.OffsetMs,
                 o.AssumedMs,

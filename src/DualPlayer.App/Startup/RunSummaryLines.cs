@@ -38,6 +38,8 @@ internal static class RunSummaryLines
     {
         RunEndReason.FileEnd or RunEndReason.SeekPastEnd => "end",
         RunEndReason.AllDevicesLost => "last-output-lost",
+        RunEndReason.FileChange => "file-change",
+        RunEndReason.PictureFailed => "picture-failed",
         _ => "exit",
     };
 

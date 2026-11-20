@@ -15,6 +15,7 @@ public sealed class OffsetBook : IDisposable
     private static readonly TimeSpan SaveDelay = TimeSpan.FromSeconds(1);
 
     private readonly IStateStore _store;
+    private readonly TimeProvider _time;
     private readonly ILogger<OffsetBook> _logger;
     private readonly Lock _gate = new();
     private readonly Dictionary<string, int> _offsets = [];
@@ -24,9 +25,13 @@ public sealed class OffsetBook : IDisposable
     public OffsetBook(IStateStore store, TimeProvider time, ILogger<OffsetBook> logger)
     {
         _store = store;
+        _time = time;
         _logger = logger;
         _saveTimer = time.CreateTimer(_ => Save(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
     }
+
+    /// <summary>Raised when a debounced save has written the file; carries when (the book's clock).</summary>
+    public event Action<DateTimeOffset>? Saved;
 
     /// <summary>Raised when a debounced save fails; the in-memory offset is kept.</summary>
     public event Action<Error>? SaveFailed;
@@ -133,6 +138,9 @@ public sealed class OffsetBook : IDisposable
         {
             _logger.LogWarning("Saving offsets failed ({Code}): {Message}", result.Error.Code, result.Error.Message);
             SaveFailed?.Invoke(result.Error);
+            return;
         }
+
+        Saved?.Invoke(_time.GetUtcNow());
     }
 }

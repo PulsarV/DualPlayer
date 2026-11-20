@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
 origin: "review-2026-11-20 (F9, F12, F13, F16)"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-20. Work from what is inlined here; the source always wins.
@@ -32,9 +32,9 @@ See [spec.md](../spec.md) §5 AC-01, AC-06, AC-06b, AC-07, AC-17.
 
 ## Definition of Done
 
-- [ ] File change and picture failure end the run with reasons that print `file-change` / `picture-failed` (cli.md §2.1); the engine's own reasons are unchanged.
-- [ ] Emitted and logged: `PictureDelayChanged` with cause `FileChange`; a "lip-synced again" record once the picture is within 20 ms after a command (from the T25 tick); `OffsetChanged.SavedAt` set when the debounced save lands; `DamagedStretchSkipped` written by the log writer.
-- [ ] `StartTimings` carries the command time from `Program`/App (before validation) and the measured first presented frame and first audio per output (engine `AudioStarted` / renderer), not the plan.
-- [ ] The latency log line carries the report's `Source`; a failed probe logs a warning with the error and the fallback used.
-- [ ] Tests for each record, asserting the measured values differ from the plan when the fakes say so.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] File change and picture failure end the run with reasons that print `file-change` / `picture-failed` (cli.md §2.1); the engine's own reasons are unchanged.
+- [x] Emitted and logged: `PictureDelayChanged` with cause `FileChange`; a "lip-synced again" record once the picture is within 20 ms after a command (from the T25 tick); `OffsetChanged.SavedAt` set when the debounced save lands; `DamagedStretchSkipped` written by the log writer.
+- [x] `StartTimings` carries the command time from `Program`/App (before validation) and the measured first presented frame and first audio per output (engine `AudioStarted` / renderer), not the plan.
+- [x] The latency log line carries the report's `Source`; a failed probe logs a warning with the error and the fallback used.
+- [x] Tests for each record, asserting the measured values differ from the plan when the fakes say so.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

@@ -162,8 +162,12 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
         return Result.Success();
     }
 
+    /// <summary>The picture starts this much later than a <see cref="PlayAt"/> asks (a slow first present).</summary>
+    public TimeSpan PresentsLateBy { get; set; }
+
     public void PlayAt(TimeSpan position, long startTimestamp)
     {
+        startTimestamp += (long)Math.Round(PresentsLateBy.TotalSeconds * time.TimestampFrequency);
         lock (_gate)
         {
             Sample(position);

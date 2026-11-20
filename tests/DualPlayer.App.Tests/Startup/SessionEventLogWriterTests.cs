@@ -79,6 +79,51 @@ public sealed class SessionEventLogWriterTests
         h.Log.Entries.ShouldBeEmpty();
     }
 
+    [Fact]
+    public void Each_output_latency_is_logged_with_its_source()
+    {
+        var h = new Harness();
+        h.Feed.Publish(new LatencyEstimated(new LatencyEstimate([Out with { Source = "wasapi-stream-latency" }], 200)));
+
+        h.Log.Entries.ShouldHaveSingleItem()["Source"].ShouldBe("wasapi-stream-latency");
+    }
+
+    [Fact]
+    public void Lip_synced_again_is_logged_with_the_command_and_how_long_after_it()
+    {
+        var h = new Harness();
+        h.Feed.Publish(new LipSyncedAgain(TimeSpan.FromSeconds(75), "seek", 420.5, -3.25));
+
+        var e = h.Log.Entries.ShouldHaveSingleItem();
+        e["{OriginalFormat}"]!.ToString()!.ShouldStartWith("LipSyncedAgain");
+        e["Clock"].ShouldBe("00:01:15.000");
+        e["Command"].ShouldBe("seek");
+        e["AfterCommandMs"].ShouldBe(420.5);
+        e["ErrorMs"].ShouldBe(-3.25);
+    }
+
+    [Fact]
+    public void A_skipped_damaged_stretch_is_logged_with_where_how_long_and_how_many_frames()
+    {
+        var h = new Harness();
+        h.Feed.Publish(new DamagedStretchSkipped(TimeSpan.FromSeconds(75), TimeSpan.FromMilliseconds(400), 12));
+
+        var e = h.Log.Entries.ShouldHaveSingleItem();
+        e["{OriginalFormat}"]!.ToString()!.ShouldStartWith("DamagedStretchSkipped");
+        e["Clock"].ShouldBe("00:01:15.000");
+        e["LengthMs"].ShouldBe(400.0);
+        e["Frames"].ShouldBe(12L);
+    }
+
+    [Theory]
+    [InlineData(DualPlayer.Core.Diagnostics.RunEndReason.FileChange, "file-change")]
+    [InlineData(DualPlayer.Core.Diagnostics.RunEndReason.PictureFailed, "picture-failed")]
+    [InlineData(DualPlayer.Core.Diagnostics.RunEndReason.Stop, "exit")]
+    [InlineData(DualPlayer.Core.Diagnostics.RunEndReason.FileEnd, "end")]
+    [InlineData(DualPlayer.Core.Diagnostics.RunEndReason.AllDevicesLost, "last-output-lost")]
+    public void The_run_summary_reason_is_printed_as_cli_md_names_it(DualPlayer.Core.Diagnostics.RunEndReason reason, string printed) =>
+        RunSummaryLines.Reason(reason).ShouldBe(printed);
+
     private sealed class Harness
     {
         public Harness()

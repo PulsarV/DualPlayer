@@ -24,6 +24,12 @@ public interface IOutputLagControl
     /// </summary>
     long? FrameZeroTimestamp { get; }
 
+    /// <summary>
+    /// Gets when the output first handed film audio to its device (the engine's <c>TimeProvider</c> timeline); null
+    /// before that and when the output is not in the run. Heard = this plus the output's assumed latency.
+    /// </summary>
+    long? FirstAudioTimestamp(string deviceId);
+
     /// <summary>Gets a value indicating whether any output's lag is still moving toward its target.</summary>
     bool IsRamping { get; }
 }
