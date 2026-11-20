@@ -1,8 +1,10 @@
 using DualPlayer.App;
+using DualPlayer.App.Startup;
 using DualPlayer.App.ViewModels;
 using DualPlayer.Core;
 using DualPlayer.Core.Playback;
 using DualPlayer.Core.Settings;
+using DualPlayer.Core.Sync;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -20,5 +22,17 @@ public sealed class CompositionRootSmokeTests
         services.GetRequiredService<MainWindowViewModel>().Title.ShouldBe("DualPlayer");
         services.GetRequiredService<IStateStore>().ShouldNotBeNull();
         services.GetRequiredService<IAudioEngine>().ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void Container_resolves_the_playback_view_model_screen_catalog_and_latency_probe_for_the_play_command()
+    {
+        var paths = AppPaths.FromRoot(Path.Combine(Path.GetTempPath(), "DualPlayer.Tests", Guid.NewGuid().ToString("N")));
+
+        using var services = CompositionRoot.Build(paths, NullLoggerFactory.Instance);
+
+        services.GetService<PlaybackViewModel>().ShouldNotBeNull();
+        services.GetService<IScreenCatalog>().ShouldNotBeNull().GetType().Name.ShouldBe("AvaloniaScreenCatalog");
+        services.GetService<IDeviceLatencyProbe>().ShouldNotBeNull();
     }
 }

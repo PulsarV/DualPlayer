@@ -1,6 +1,9 @@
+using DualPlayer.App.Startup;
 using DualPlayer.App.ViewModels;
 using DualPlayer.Core;
+using DualPlayer.Core.Playback;
 using DualPlayer.Media;
+using DualPlayer.Media.Video;
 using DualPlayer.Platform.MacOS;
 using DualPlayer.Platform.Windows;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,6 +34,12 @@ public static class CompositionRoot
         services.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
 
         services.AddCore(paths.StateDirectory);
+
+        // The picture goes into the playback window: registered before AddMedia, whose renderer is only a fallback.
+        services.AddSingleton<VideoSurface>();
+        services.AddSingleton<IVideoRenderer>(sp => new WindowBoundRenderer(
+            new MpvVideoRenderer(sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<ILogger<MpvVideoRenderer>>()),
+            sp.GetRequiredService<VideoSurface>()));
         services.AddMedia();
         if (OperatingSystem.IsWindows())
         {
@@ -41,7 +50,11 @@ public static class CompositionRoot
             services.AddMacOSPlatform();
         }
 
+        services.AddSingleton<IScreenCatalog, AvaloniaScreenCatalog>();
+        services.AddSingleton<PlaybackControls>();
+        services.AddSingleton<IPlaybackControls>(sp => sp.GetRequiredService<PlaybackControls>());
         services.AddTransient<MainWindowViewModel>();
+        services.AddTransient<PlaybackViewModel>();
 
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
     }

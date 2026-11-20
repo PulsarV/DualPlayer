@@ -477,7 +477,7 @@
         "tests/DualPlayer.App.Tests/CompositionRootSmokeTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T22-wire-the-app-composition-root-and-host.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T23",

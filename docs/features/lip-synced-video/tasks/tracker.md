@@ -29,7 +29,7 @@
 | T19 | [Parse and validate the play start command in the App executable before any window opens](./T19-start-command-parse-and-validate.md) | ports | Volodymyr Kravchuk | M | T9 | done | COMMIT |
 | T20 | [Build the fullscreen playback window hosting mpv's video, mapping the fixed keys and styling notes from tokens](./T20-playback-window-keys-and-notes.md) | ui | Volodymyr Kravchuk | M | T4, T15, T17 | done | COMMIT |
 | T21 | [Print start lines, warnings, running lines and run summaries to the terminal and the log](./T21-terminal-lines-and-run-summaries.md) | ports | Volodymyr Kravchuk | M | T13, T19 | done | COMMIT |
-| T22 | [Wire the App composition root and host: validate, open the window on the screen, run the session, exit with the right code](./T22-wire-the-app-composition-root-and-host.md) | wiring | Volodymyr Kravchuk | M | T10, T16, T18, T20, T21 | todo | — |
+| T22 | [Wire the App composition root and host: validate, open the window on the screen, run the session, exit with the right code](./T22-wire-the-app-composition-root-and-host.md) | wiring | Volodymyr Kravchuk | M | T10, T16, T18, T20, T21 | done | COMMIT |
 | T23 | [Measure lip-sync per output on the target PC with a click-and-flash video and record the acceptance evidence](./T23-measure-lip-sync-on-the-target-pc.md) | tests | Volodymyr Kravchuk | M | T22 | todo | — |
 
 **Total:** 23 tasks, ~21.5 person-days (S = ½ day, M/L = 1 day; T5 and T23 also need the owner's time on the target PC).

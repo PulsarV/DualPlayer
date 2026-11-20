@@ -1,4 +1,5 @@
 using Avalonia;
+using DualPlayer.App.Startup;
 using DualPlayer.Core;
 using Microsoft.Extensions.Logging;
 using Serilog;
@@ -20,16 +21,24 @@ internal static class Program
             typeof(Program).Assembly.GetName().Version,
             System.Runtime.InteropServices.RuntimeInformation.OSDescription);
 
+        var parsed = StartCommand.Parse(args);
+        if (!parsed.IsSuccess)
+        {
+            Console.Error.WriteLine(StartExitCodes.FormatError(parsed.Error));
+            return StartExitCodes.For(parsed.Error);
+        }
+
         try
         {
             using var services = CompositionRoot.Build(paths, loggerFactory);
             App.Services = services;
+            App.Request = parsed.Value;
             return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
         catch (Exception ex)
         {
             log.LogCritical(ex, "DualPlayer terminated unexpectedly");
-            throw;
+            return 1;
         }
         finally
         {
