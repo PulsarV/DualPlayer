@@ -105,7 +105,7 @@ public partial class App : Application
         window.Closed += (_, _) =>
         {
             // Closed by the OS or Alt+F4 is the same as Esc: the session ends, the run summary prints, the exit code is 0.
-            controls.Exit();
+            controls.ExitNow();
             sessionLog.Dispose();
             printer.Dispose();
             desktop.Shutdown(exitCode);

@@ -222,8 +222,17 @@ internal sealed class EngineRig : IDisposable
         });
     }
 
-    /// <summary>Waits until the engine has handled everything queued so far (a start while running is refused on the loop).</summary>
+    /// <summary>
+    /// Waits until the engine has handled everything queued so far (a start while running is refused on the loop), then
+    /// runs <see cref="AfterStep"/>.
+    /// </summary>
     public void Barrier()
+    {
+        EngineBarrier();
+        AfterStep?.Invoke();
+    }
+
+    private void EngineBarrier()
     {
         if (EndedOnItsOwn)
         {
@@ -285,6 +294,9 @@ internal sealed class EngineRig : IDisposable
         return max;
     }
 
+    /// <summary>Runs after every <see cref="Render"/> step (a session rig waits there for what the step posted to the session).</summary>
+    public Action? AfterStep { get; set; }
+
     public void Dispose() => Engine.Dispose();
 
     private void Advance(bool barrier)
@@ -303,7 +315,12 @@ internal sealed class EngineRig : IDisposable
 
         if (barrier && ++_steps % _barrierEvery == 0)
         {
-            Barrier();
+            EngineBarrier();
+        }
+
+        if (barrier)
+        {
+            AfterStep?.Invoke();
         }
     }
 

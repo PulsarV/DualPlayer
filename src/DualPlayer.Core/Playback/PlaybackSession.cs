@@ -14,8 +14,12 @@ public enum PlaybackState
     Ended,
 }
 
-/// <summary>Use case: starts a lip-synced film, ends it at its natural end or on exit.</summary>
-public sealed partial class PlaybackSession
+/// <summary>
+/// Use case: starts a lip-synced film, ends it at its natural end or on exit. Every command, timer callback, engine
+/// event and renderer event runs on the session's own control thread, one at a time in posting order (sad.md §8,
+/// threading): a command waits for the one before it, and an event or timer never waits for a command.
+/// </summary>
+public sealed partial class PlaybackSession : IDisposable
 {
     private readonly IAudioEngine _engine;
     private readonly IOutputLagControl _lags;
@@ -29,6 +33,10 @@ public sealed partial class PlaybackSession
     private readonly ILogger<PlaybackSession> _logger;
     private readonly SessionEventPublisher _events = new();
     private readonly Lock _gate = new();
+    private readonly EngineControlLoop _loop;
+
+    // Which run the engine's events belong to: a summary or loss from a run the session already left is ignored.
+    private long _runToken;
     private PictureSync? _pictureSync;
     private PlaybackState _state = PlaybackState.Idle;
     private bool _offsetsLoaded;
@@ -79,9 +87,10 @@ public sealed partial class PlaybackSession
         _backend = backend;
         _time = time;
         _logger = logger;
+        _loop = new EngineControlLoop(static () => { }, LogLoopFault, "PlaybackSession");
         _engine.Events.Subscribe(new EngineObserver(this));
-        _renderer.DecodeFailed += error => OnPictureFailed(error.Message);
-        _renderer.HardwareDecodingInactive += () => OnPictureFailed("Hardware decoding is not active");
+        _renderer.DecodeFailed += error => _loop.Post(() => OnPictureFailed(error.Message));
+        _renderer.HardwareDecodingInactive += () => _loop.Post(() => OnPictureFailed("Hardware decoding is not active"));
     }
 
     public IObservable<SessionEvent> Events => _events;
@@ -100,6 +109,19 @@ public sealed partial class PlaybackSession
     public Result Start(StartRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
+        return Run(() => StartCore(request));
+    }
+
+    /// <summary>Waits until every command and event posted so far has run.</summary>
+    public void Flush() => _loop.TryExecute(static () => { });
+
+    public void Dispose() => _loop.Dispose();
+
+    private Result Run(Func<Result> command) =>
+        _loop.TryExecute(command, out var result) ? result : Result.Failure("playback.no_run", "No film is playing.");
+
+    private Result StartCore(StartRequest request)
+    {
         var commandAt = _time.GetTimestamp();
 
         LoadOffsetsOnce();
@@ -160,6 +182,7 @@ public sealed partial class PlaybackSession
         }
 
         var lags = estimate.Outputs.ToDictionary(o => o.DeviceId, o => TimeSpan.FromMilliseconds(o.LagMs), StringComparer.Ordinal);
+        Interlocked.Increment(ref _runToken);
         var started = _engine.StartRun(request.File, request.Outputs, new EngineOptions { InitialLags = lags });
         if (!started.IsSuccess)
         {
@@ -201,7 +224,7 @@ public sealed partial class PlaybackSession
             _previousTickClock = clock.PositionAt(_time.GetTimestamp());
             _stretch = null;
             _healthTimer?.Dispose();
-            _healthTimer = _time.CreateTimer(_ => OnHealthTick(), null, HealthInterval, HealthInterval);
+            _healthTimer = _time.CreateTimer(_ => _loop.Post(OnHealthTick), null, HealthInterval, HealthInterval);
             if (_state != PlaybackState.Ended)
             {
                 _state = PlaybackState.Playing;
@@ -222,10 +245,10 @@ public sealed partial class PlaybackSession
     }
 
     /// <summary>Moves to the next playable file in the folder (T17).</summary>
-    public Result NextFile() => ChangeFile(NeighbourDirection.Next);
+    public Result NextFile() => Run(() => ChangeFile(NeighbourDirection.Next));
 
     /// <summary>Moves to the previous playable file in the folder (T17).</summary>
-    public Result PreviousFile() => ChangeFile(NeighbourDirection.Previous);
+    public Result PreviousFile() => Run(() => ChangeFile(NeighbourDirection.Previous));
 
     private Result ChangeFile(NeighbourDirection direction)
     {
@@ -295,7 +318,7 @@ public sealed partial class PlaybackSession
             _state = PlaybackState.Idle;
         }
 
-        var started = Start(request with { File = target });
+        var started = StartCore(request with { File = target });
         if (!started.IsSuccess)
         {
             return started;
@@ -345,7 +368,9 @@ public sealed partial class PlaybackSession
     };
 
     /// <summary>Steps an output's offset by <paramref name="deltaMs"/> (outputs are numbered from 1).</summary>
-    public Result ChangeOffset(int outputNumber, int deltaMs)
+    public Result ChangeOffset(int outputNumber, int deltaMs) => Run(() => ChangeOffsetCore(outputNumber, deltaMs));
+
+    private Result ChangeOffsetCore(int outputNumber, int deltaMs)
     {
         PlaybackState state;
         LatencyEstimate? estimate;
@@ -444,7 +469,9 @@ public sealed partial class PlaybackSession
         sync.SetAtOnce(TimeSpan.FromMilliseconds(estimate.PictureDelayMs));
     }
 
-    public Result Pause()
+    public Result Pause() => Run(PauseCore);
+
+    private Result PauseCore()
     {
         PictureSync sync;
         MasterClock clock;
@@ -484,7 +511,7 @@ public sealed partial class PlaybackSession
             _freezeTimer = null;
             if (remaining > TimeSpan.Zero)
             {
-                _freezeTimer = _time.CreateTimer(_ => FreezePicture(version, freeze), null, remaining, Timeout.InfiniteTimeSpan);
+                _freezeTimer = _time.CreateTimer(_ => _loop.Post(() => FreezePicture(version, freeze)), null, remaining, Timeout.InfiniteTimeSpan);
             }
         }
 
@@ -498,7 +525,9 @@ public sealed partial class PlaybackSession
         return Result.Success();
     }
 
-    public Result Resume()
+    public Result Resume() => Run(ResumeCore);
+
+    private Result ResumeCore()
     {
         PictureSync sync;
         MasterClock clock;
@@ -553,7 +582,9 @@ public sealed partial class PlaybackSession
     }
 
     /// <summary>Seeks by <paramref name="step"/> relative to the current position (negative = backward).</summary>
-    public Result Seek(TimeSpan step)
+    public Result Seek(TimeSpan step) => Run(() => SeekCore(step));
+
+    private Result SeekCore(TimeSpan step)
     {
         PlaybackState state;
         TimeSpan current;
@@ -579,7 +610,7 @@ public sealed partial class PlaybackSession
                     _state = PlaybackState.Idle;
                 }
 
-                var restarted = Start(_request);
+                var restarted = StartCore(_request);
                 return restarted.IsSuccess ? SeekTo(current + step) : restarted;
             default:
                 return SeekTo(current + step);
@@ -603,9 +634,16 @@ public sealed partial class PlaybackSession
 
         ApplyPendingTargets(sync);
         var delay = sync.PictureDelay;
-        if (State == PlaybackState.Ended)
+        if (seeked.Value.OutsideFile && target > TimeSpan.Zero)
         {
-            // Past the end: stop the picture as at the natural end.
+            // Past the end: the engine has ended the run; stop the picture as at the natural end.
+            lock (_gate)
+            {
+                _endPosition = seeked.Value.Position;
+                _state = PlaybackState.Ended;
+                CancelFreeze();
+            }
+
             clock.StopAt(_time.GetTimestamp());
             _renderer.Pause();
             return Result.Success();
@@ -795,7 +833,9 @@ public sealed partial class PlaybackSession
         }
     }
 
-    public void Exit()
+    public void Exit() => _loop.TryExecute(ExitCore);
+
+    private void ExitCore()
     {
         _engine.Stop(RunEndReason.Stop);
         PictureSync? sync;
@@ -834,8 +874,13 @@ public sealed partial class PlaybackSession
 
     private long ToTimestamp(TimeSpan span) => (long)Math.Round(span.TotalSeconds * _time.TimestampFrequency);
 
-    private void OnEngineEvent(EngineEvent engineEvent)
+    private void OnEngineEvent(EngineEvent engineEvent, long runToken)
     {
+        if (runToken != Interlocked.Read(ref _runToken))
+        {
+            return; // from a run the session has already left
+        }
+
         if (engineEvent is DeviceLost lost)
         {
             OnDeviceLost(lost);
@@ -925,6 +970,9 @@ public sealed partial class PlaybackSession
     [LoggerMessage(Level = LogLevel.Information, Message = "Latency for {DeviceId}: type {Type}, reported {ReportedMs} ms, default {DefaultMs} ms, offset {OffsetMs} ms, assumed {AssumedMs} ms, lag {LagMs} ms; picture delay {PictureDelayMs} ms")]
     private partial void LogLatency(string deviceId, DeviceType type, int reportedMs, int defaultMs, int offsetMs, int assumedMs, int lagMs, int pictureDelayMs);
 
+    [LoggerMessage(Level = LogLevel.Error, Message = "Playback session command or callback failed")]
+    private partial void LogLoopFault(Exception exception);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipped {File}: {Reason} (output {OutputNumber}, track {Track})")]
     private partial void LogSkipped(string file, string reason, int? outputNumber, int? track);
 
@@ -938,7 +986,12 @@ public sealed partial class PlaybackSession
         {
         }
 
-        public void OnNext(EngineEvent value) => owner.OnEngineEvent(value);
+        // Runs on the engine's thread: read which run the event belongs to now, handle it on the session's thread.
+        public void OnNext(EngineEvent value)
+        {
+            var runToken = Interlocked.Read(ref owner._runToken);
+            owner._loop.Post(() => owner.OnEngineEvent(value, runToken));
+        }
     }
 
     private sealed class SessionEventPublisher : IObservable<SessionEvent>

@@ -38,7 +38,11 @@ internal sealed class SessionRig : IDisposable
             Engine.Time,
             NullLogger<PlaybackSession>.Instance);
         Session.Events.Subscribe(new Collector(this));
+        Engine.AfterStep = Session.Flush;
     }
+
+    /// <summary>Waits until the session has handled every command, timer and event posted so far.</summary>
+    public void Flush() => Session.Flush();
 
     public EngineRig Engine { get; }
 
@@ -71,6 +75,7 @@ internal sealed class SessionRig : IDisposable
 
     public void Dispose()
     {
+        Session.Dispose();
         _offsets.Dispose();
         Engine.Dispose();
     }
@@ -147,8 +152,12 @@ internal sealed class TrackListingDecoder : IAudioDecoder
 
     public void Script(string fileName, params int[] trackNumbers) => _tracks[fileName] = trackNumbers;
 
+    /// <summary>When set, runs at the start of every <see cref="ListTracks"/> (a test can block a command there).</summary>
+    public Action? BeforeList { get; set; }
+
     public Result<IReadOnlyList<AudioTrackInfo>> ListTracks(string path)
     {
+        BeforeList?.Invoke();
         var numbers = _tracks.TryGetValue(Path.GetFileName(path), out var scripted) ? scripted : [1, 2];
         return Result<IReadOnlyList<AudioTrackInfo>>.Success([.. numbers.Select(n => new AudioTrackInfo(n, "und", ChannelLayout.Stereo, 48_000))]);
     }

@@ -18,31 +18,31 @@ public sealed partial class PlaybackViewModel : ObservableObject
         _controls.Events.Subscribe(new NoteObserver(this));
     }
 
-    /// <summary>Maps a Viewer key to a session command; returns whether the key is one of the fixed keys.</summary>
+    /// <summary>Maps a Viewer key to a queued session command; returns whether the key is one of the fixed keys. Never waits for the session.</summary>
     public bool HandleKey(Key key)
     {
         switch (key)
         {
             case Key.Space:
-                _ = _controls.State == PlaybackState.Paused ? _controls.Resume() : _controls.Pause();
+                _controls.TogglePause();
                 return true;
             case Key.Left:
-                _ = _controls.Seek(TimeSpan.FromSeconds(-10));
+                _controls.Seek(TimeSpan.FromSeconds(-10));
                 return true;
             case Key.Right:
-                _ = _controls.Seek(TimeSpan.FromSeconds(10));
+                _controls.Seek(TimeSpan.FromSeconds(10));
                 return true;
             case Key.Down:
-                _ = _controls.Seek(TimeSpan.FromSeconds(-60));
+                _controls.Seek(TimeSpan.FromSeconds(-60));
                 return true;
             case Key.Up:
-                _ = _controls.Seek(TimeSpan.FromSeconds(60));
+                _controls.Seek(TimeSpan.FromSeconds(60));
                 return true;
             case Key.PageUp:
-                _ = _controls.PreviousFile();
+                _controls.PreviousFile();
                 return true;
             case Key.PageDown:
-                _ = _controls.NextFile();
+                _controls.NextFile();
                 return true;
             case Key.Escape:
                 _controls.Exit();
@@ -66,7 +66,7 @@ public sealed partial class PlaybackViewModel : ObservableObject
 
     private bool Offset(int output, int deltaMs)
     {
-        _ = _controls.ChangeOffset(output, deltaMs);
+        _controls.ChangeOffset(output, deltaMs);
         return true;
     }
 

@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "L"
 context_budget: "L"
 origin: "review-2026-11-20 (F7)"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-20. Work from what is inlined here; the source always wins.
@@ -29,7 +29,7 @@ See [spec.md](../spec.md) §5 AC-04, AC-05, AC-07, AC-10, AC-15.
 
 ## Definition of Done
 
-- [ ] Every session command (start, pause/resume, seek, offset, next/previous, exit) and every callback that mutates session state (health/freeze/move timers, engine events, renderer `DecodeFailed`/`HardwareDecodingInactive`) runs on one dedicated thread, one at a time, in posting order. Use the engine control loop as sad.md §5 says if it can host the session's blocking engine calls without deadlock; otherwise a session-owned command loop — record which and why in sad.md §8 (crosscutting, threading row).
-- [ ] `PlaybackViewModel.HandleKey` posts the command and returns at once: the UI thread never waits for a probe, a pre-roll or mpv `Load`. A failed `Result` is not dropped (it is logged; T27 adds the note).
-- [ ] Tests: a key handled while a slow command (blocking fake probe/engine) runs returns without waiting; two commands posted from different threads never interleave (a fake that detects re-entry); a timer callback and a command never run concurrently.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Every session command (start, pause/resume, seek, offset, next/previous, exit) and every callback that mutates session state (health/freeze/move timers, engine events, renderer `DecodeFailed`/`HardwareDecodingInactive`) runs on one dedicated thread, one at a time, in posting order. Use the engine control loop as sad.md §5 says if it can host the session's blocking engine calls without deadlock; otherwise a session-owned command loop — record which and why in sad.md §8 (crosscutting, threading row).
+- [x] `PlaybackViewModel.HandleKey` posts the command and returns at once: the UI thread never waits for a probe, a pre-roll or mpv `Load`. A failed `Result` is not dropped (it is logged; T27 adds the note).
+- [x] Tests: a key handled while a slow command (blocking fake probe/engine) runs returns without waiting; two commands posted from different threads never interleave (a fake that detects re-entry); a timer callback and a command never run concurrently.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

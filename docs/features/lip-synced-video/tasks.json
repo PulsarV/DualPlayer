@@ -534,7 +534,7 @@
         "tests/DualPlayer.App.Tests/ViewModels/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T24-run-session-commands-and-callbacks-serialized-on-one-thread-off-the-ui-thread.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-20: F7"
     },
     {

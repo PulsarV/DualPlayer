@@ -1,6 +1,5 @@
 using Avalonia.Input;
 using DualPlayer.App.ViewModels;
-using DualPlayer.Core;
 using DualPlayer.Core.Playback;
 using NSubstitute;
 
@@ -42,35 +41,15 @@ public sealed class PlaybackViewModelTests
     public PlaybackViewModelTests()
     {
         _controls.Events.Returns(_events);
-        _controls.Pause().Returns(Result.Success());
-        _controls.Resume().Returns(Result.Success());
-        _controls.Seek(Arg.Any<TimeSpan>()).Returns(Result.Success());
-        _controls.NextFile().Returns(Result.Success());
-        _controls.PreviousFile().Returns(Result.Success());
-        _controls.ChangeOffset(Arg.Any<int>(), Arg.Any<int>()).Returns(Result.Success());
         _vm = new PlaybackViewModel(_controls, _renderer);
     }
 
     [Fact]
-    public void Space_while_playing_pauses()
+    public void Space_toggles_pause()
     {
-        _controls.State.Returns(PlaybackState.Playing);
-
         _vm.HandleKey(Key.Space).ShouldBeTrue();
 
-        _controls.Received(1).Pause();
-        _controls.DidNotReceive().Resume();
-    }
-
-    [Fact]
-    public void Space_while_paused_resumes()
-    {
-        _controls.State.Returns(PlaybackState.Paused);
-
-        _vm.HandleKey(Key.Space).ShouldBeTrue();
-
-        _controls.Received(1).Resume();
-        _controls.DidNotReceive().Pause();
+        _controls.Received(1).TogglePause();
     }
 
     [Theory]
