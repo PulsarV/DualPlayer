@@ -484,7 +484,22 @@
       "title": "Measure lip-sync per output on the target PC with a click-and-flash video and record the acceptance evidence",
       "layer": "tests",
       "deps": [
-        "T22"
+        "T22",
+        "T24",
+        "T25",
+        "T26",
+        "T27",
+        "T28",
+        "T29",
+        "T30",
+        "T31",
+        "T32",
+        "T33",
+        "T34",
+        "T35",
+        "T36",
+        "T37",
+        "T38"
       ],
       "acs": [
         "AC-16",
@@ -497,6 +512,356 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T23-measure-lip-sync-on-the-target-pc.md",
       "status": "todo"
+    },
+    {
+      "id": "T24",
+      "title": "Run session commands and callbacks serialized on one thread off the UI thread",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-04",
+        "AC-05",
+        "AC-07",
+        "AC-10",
+        "AC-15"
+      ],
+      "dod": "Every session command (start, pause/resume, seek, offset, next/previous, exit) and every callback that mutates session state (health/freeze/move timers, engine events, renderer DecodeFailed/HardwareDecodingInactive) runs on one dedicated thread, one at a time, in posting order. Use the engine control loop as sad.md §5 says if it can host the session's blocking engine calls without deadlock; otherw; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.App/ViewModels/PlaybackViewModel.cs",
+        "src/DualPlayer.App/App.axaml.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.App.Tests/ViewModels/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T24-run-session-commands-and-callbacks-serialized-on-one-thread-off-the-ui-thread.md",
+      "status": "todo",
+      "origin": "review-2026-11-20: F7"
+    },
+    {
+      "id": "T25",
+      "title": "Tick the picture-sync loop in production and measure picture error at the snapshot's own time",
+      "layer": "app",
+      "deps": [
+        "T24"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-04",
+        "AC-05",
+        "AC-14",
+        "AC-17"
+      ],
+      "dod": "The session ticks PictureSync on the serialized session thread (T24) at the D1-spike cadence while playing; the logged PictureTimingReported comes from the tick's PictureTiming (due at presented.Timestamp), not a separate now-based computation.; The pause freeze projects the presented position to now (presented.Position + (now − presented.Timestamp) × speed) before computing the remaining run-out.; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Sync/PictureSync.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/FakeVideoRenderer.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.Core.Tests/Sync/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T25-tick-the-picture-sync-loop-in-production-and-measure-picture-error-at-the-snapshot-s-own-t.md",
+      "status": "todo",
+      "origin": "review-2026-11-20: F1, F11"
+    },
+    {
+      "id": "T26",
+      "title": "Re-align the picture on a resume after a pause, resume and pause before the freeze",
+      "layer": "app",
+      "deps": [
+        "T25"
+      ],
+      "acs": [
+        "AC-04"
+      ],
+      "dod": "A Pause clears any pending align; Pause → Resume → Pause → (freeze) → Resume leaves the picture paused through the second pause and aligned with the sound after the last resume.; Test for that exact sequence with the fake clock and renderer; it fails on the current code.; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T26-re-align-the-picture-on-a-resume-after-a-pause-resume-and-pause-before-the-freeze.md",
+      "status": "todo",
+      "origin": "review-2026-11-20: F2"
+    },
+    {
+      "id": "T27",
+      "title": "Keep the validated devices across file changes and surface a failed file change",
+      "layer": "app",
+      "deps": [
+        "T26"
+      ],
+      "acs": [
+        "AC-07",
+        "AC-12",
+        "AC-15b"
+      ],
+      "dod": "The App passes the validated device ids (ValidatedStart.Outputs) to the session; every later start reuses those ids, never --out numbers. A device list that changes between files (renumbering) keeps each track on its device and its offset.; Lost outputs stay lost across a file change (not reopened); when every remaining device is lost the film ends as for AC-15b.; A file change whose start fails l; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Playback/StartRequest.cs",
+        "src/DualPlayer.App/App.axaml.cs",
+        "src/DualPlayer.App/ViewModels/PlaybackViewModel.cs",
+        "tests/DualPlayer.Core.Tests/Playback/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T27-keep-the-validated-devices-across-file-changes-and-surface-a-failed-file-change.md",
+      "status": "todo",
+      "origin": "review-2026-11-20: F3, F4"
+    },
+    {
+      "id": "T28",
+      "title": "Hold the last frame at the end and on a seek past it, and return into the film without a restart",
+      "layer": "integration",
+      "deps": [
+        "T27"
+      ],
+      "acs": [
+        "AC-05",
+        "AC-06",
+        "AC-06b",
+        "AC-08"
+      ],
+      "dod": "mpv keeps the last frame on screen at the natural end and after a seek past the end (keep-open that pauses on the last frame); notes still draw over it.; A seek past the end shows the last frame, not the current one.; A backward seek at the end returns into the film at the target as a seek does (picture and sound together), without showing frame 0, without a second set of start lines and without r; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Media/Video/MpvVideoRenderer.cs",
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Playback/IVideoRenderer.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/FakeVideoRenderer.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.Media.Tests/Video/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T28-hold-the-last-frame-at-the-end-and-on-a-seek-past-it-and-return-into-the-film-without-a-re.md",
+      "status": "todo",
+      "origin": "review-2026-11-20: F5, F6"
+    },
+    {
+      "id": "T29",
+      "title": "Log the right end reason, the start timings as measured, and the missing session records",
+      "layer": "app",
+      "deps": [
+        "T28"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-06",
+        "AC-06b",
+        "AC-07",
+        "AC-17"
+      ],
+      "dod": "File change and picture failure end the run with reasons that print file-change / picture-failed (cli.md §2.1); the engine's own reasons are unchanged.; Emitted and logged: PictureDelayChanged with cause FileChange; a \"lip-synced again\" record once the picture is within 20 ms after a command (from the T25 tick); OffsetChanged.SavedAt set when the debounced save lands; DamagedStretchSkipped written; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Diagnostics/",
+        "src/DualPlayer.Core/Sync/LatencyModel.cs",
+        "src/DualPlayer.App/Startup/RunSummaryLines.cs",
+        "src/DualPlayer.App/Startup/SessionEventLogWriter.cs",
+        "src/DualPlayer.App/App.axaml.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.App.Tests/Startup/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T29-log-the-right-end-reason-the-start-timings-as-measured-and-the-missing-session-records.md",
+      "status": "todo",
+      "origin": "review-2026-11-20: F9, F12, F13, F16"
+    },
+    {
+      "id": "T30",
+      "title": "Count a frame late when it is presented more than 20 ms after its due time",
+      "layer": "integration",
+      "deps": [
+        "T29"
+      ],
+      "acs": [
+        "AC-17"
+      ],
+      "dod": "FrameCounters.Late counts frames presented more than 20 ms after due per spec §6 (due follows the picture delay; a deliberate ≤ 0.2 % move is not lateness) — computed from the presentation schedule / T25 tick errors, not from vo-delayed-frame-count.; Unit test with the fake renderer and clock: frames > 20 ms late are counted, ≤ 20 ms and during a move are not; fails on the current code.; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Media/Video/MpvVideoRenderer.cs",
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Playback/IVideoRenderer.cs",
+        "tests/DualPlayer.Media.Tests/Video/",
+        "tests/DualPlayer.Core.Tests/Playback/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T30-count-a-frame-late-when-it-is-presented-more-than-20-ms-after-its-due-time.md",
+      "status": "todo",
+      "origin": "review-2026-11-20: F14"
+    },
+    {
+      "id": "T31",
+      "title": "Draw OSD notes from the OsdNote tokens at the bottom centre",
+      "layer": "ui",
+      "deps": [
+        "T30"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-15"
+      ],
+      "dod": "The renderer takes the note style (size, colours, box, margin) from the OsdNote* tokens via an options object the App fills from Tokens.axaml; size is converted to mpv's 720-line OSD scale so it renders at the token px at 1080p.; osd-align-x=center, osd-align-y=bottom set; the box is opaque per the token (contrast ≥ 7:1).; Test asserts the mpv option values derived from given tokens (not just that; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Media/Video/MpvVideoRenderer.cs",
+        "src/DualPlayer.App/Themes/Tokens.axaml",
+        "src/DualPlayer.App/Startup/",
+        "tests/DualPlayer.Media.Tests/Video/",
+        "tests/DualPlayer.App.Tests/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T31-draw-osd-notes-from-the-osdnote-tokens-at-the-bottom-centre.md",
+      "status": "todo",
+      "origin": "review-2026-11-20: F10"
+    },
+    {
+      "id": "T32",
+      "title": "Print the terminal lines exactly as cli.md specifies",
+      "layer": "ports",
+      "deps": [
+        "T29"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-15"
+      ],
+      "dod": "Every line in cli.md §1.1/§2.2/§2.3 is printed in its contract form for the events the session really emits (direction for previous, file names not paths, codec/profile on skipped, picture-delay a -> b on device-lost, the clamp line format).; Tests drive the printer with the events a real PlaybackSession emits (or the session itself with fakes) and compare with literal lines copied from cli.md.; gate clean",
+      "files_hint": [
+        "src/DualPlayer.App/Startup/TerminalPrinter.cs",
+        "src/DualPlayer.Core/Sync/OffsetBook.cs",
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.App.Tests/Startup/TerminalPrinterTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T32-print-the-terminal-lines-exactly-as-cli-md-specifies.md",
+      "status": "todo",
+      "origin": "review-2026-11-20: F15"
+    },
+    {
+      "id": "T33",
+      "title": "Reject an offsets file without the offsets key and clamp huge stored offsets to the right bound",
+      "layer": "infra",
+      "deps": [
+        "T32"
+      ],
+      "acs": [
+        "AC-12"
+      ],
+      "dod": "A file without offsets gives the same state.invalid warning and handling as offsets: null (per data-model.md).; Stored offsets near int.MaxValue / int.MinValue clamp to +limit / −limit (no overflow; checked arithmetic or long).; Tests for both; they fail on the current code.; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Settings/DeviceOffsetsFile.cs",
+        "src/DualPlayer.Core/Sync/OffsetBook.cs",
+        "tests/DualPlayer.Core.Tests/Settings/",
+        "tests/DualPlayer.Core.Tests/Sync/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T33-reject-an-offsets-file-without-the-offsets-key-and-clamp-huge-stored-offsets-to-the-right.md",
+      "status": "todo",
+      "origin": "review-2026-11-20: F18, F26"
+    },
+    {
+      "id": "T34",
+      "title": "Check libmpv before the window opens, log start errors, and let Esc during the start exit cleanly",
+      "layer": "wiring",
+      "deps": [
+        "T24"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02"
+      ],
+      "dod": "Validation checks that libmpv loads with the expected version (the T2 loader) before any window; a failure prints the contract error and exits with the cli.md code, no window shown.; Every start error printed to stderr is also logged (parse, validation, session start).; Esc/close while the session is still starting cancels the start: exit code 0, no error line, no audio after the window is gone (t; gate clean",
+      "files_hint": [
+        "src/DualPlayer.App/Startup/StartCommand.cs",
+        "src/DualPlayer.App/App.axaml.cs",
+        "src/DualPlayer.App/Program.cs",
+        "src/DualPlayer.Media/Video/MpvVideoRenderer.cs",
+        "tests/DualPlayer.App.Tests/Startup/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T34-check-libmpv-before-the-window-opens-log-start-errors-and-let-esc-during-the-start-exit-cl.md",
+      "status": "todo",
+      "origin": "review-2026-11-20: F8, F17, F25"
+    },
+    {
+      "id": "T35",
+      "title": "Guard the session's timer callbacks and start the clock from the outputs still connected",
+      "layer": "app",
+      "deps": [
+        "T27"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-15b"
+      ],
+      "dod": "Every timer/background callback in the session and picture sync catches, logs the exception at the top and keeps the session usable (if T24 routes them through a loop that already does this, a test proves it).; The clock start uses the same lag the engine used (connected outputs only — exposed by the engine, not recomputed); a test loses an output during pre-roll and checks the picture start.; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Sync/PictureSync.cs",
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "tests/DualPlayer.Core.Tests/Playback/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T35-guard-the-session-s-timer-callbacks-and-start-the-clock-from-the-outputs-still-connected.md",
+      "status": "todo",
+      "origin": "review-2026-11-20: F21, F24"
+    },
+    {
+      "id": "T36",
+      "title": "Restore the strict EngineRig barrier for the engine tests",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "Barrier() is strict again for the step-3 engine tests (fails on an unexpected end); the session tests that need the lenient path use an explicit, separately named helper.; No phantom zero-output run; all step-3 and session tests still pass.; gate clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs",
+        "tests/DualPlayer.Core.Tests/Playback/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T36-restore-the-strict-enginerig-barrier-for-the-engine-tests.md",
+      "status": "todo",
+      "origin": "review-2026-11-20: F22"
+    },
+    {
+      "id": "T37",
+      "title": "Decorate the video renderer independent of registration order",
+      "layer": "wiring",
+      "deps": [
+        "T34"
+      ],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "AddMedia() registers the renderer; the App replaces/decorates IVideoRenderer explicitly after it (no reliance on TryAdd order). The smoke test resolves IVideoRenderer as WindowBoundRenderer regardless of order.; gate clean",
+      "files_hint": [
+        "src/DualPlayer.App/CompositionRoot.cs",
+        "src/DualPlayer.Media/MediaServiceCollectionExtensions.cs",
+        "tests/DualPlayer.App.Tests/CompositionRootSmokeTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T37-decorate-the-video-renderer-independent-of-registration-order.md",
+      "status": "todo",
+      "origin": "review-2026-11-20: F23"
+    },
+    {
+      "id": "T38",
+      "title": "Add the App-entry, end-to-end and window key tests the test plan lists",
+      "layer": "test",
+      "deps": [
+        "T27",
+        "T28",
+        "T31",
+        "T33",
+        "T35",
+        "T37"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-03",
+        "AC-04",
+        "AC-05",
+        "AC-06",
+        "AC-07",
+        "AC-10",
+        "AC-15b"
+      ],
+      "dod": "Every App-entry / e2e / headless-window row in test-plan.md §34-101 has a test (Avalonia headless where a window is needed, fakes for audio and renderer), or is re-planned in test-plan.md with a reason.; PlaceOnScreen tested behaviourally (window bounds on the named screen), not by reflection.; The T22 manual run is folded into the T23 run guide as a checklist item (evidence lands with T23).; gate clean",
+      "files_hint": [
+        "tests/DualPlayer.App.Tests/",
+        "docs/features/lip-synced-video/test-plan.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T38-add-the-app-entry-end-to-end-and-window-key-tests-the-test-plan-lists.md",
+      "status": "todo",
+      "origin": "review-2026-11-20: F19"
     }
   ]
 }
