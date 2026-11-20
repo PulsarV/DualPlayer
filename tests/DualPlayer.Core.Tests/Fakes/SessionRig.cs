@@ -12,6 +12,8 @@ namespace DualPlayer.Core.Tests.Fakes;
 internal sealed class SessionRig : IDisposable
 {
     private readonly List<SessionEvent> _events = [];
+    private readonly List<string> _runFiles = [];
+    private readonly List<TimeSpan> _seekTargets = [];
     private readonly Lock _gate = new();
     private readonly OffsetBook _offsets;
 
@@ -32,7 +34,7 @@ internal sealed class SessionRig : IDisposable
         store.Save(DeviceOffsetsFile.Definition, Arg.Any<DeviceOffsets>()).Returns(Result.Success());
         _offsets = new OffsetBook(store, Engine.Time, NullLogger<OffsetBook>.Instance);
         Session = new PlaybackSession(
-            new FollowingEngine(Engine),
+            new FollowingEngine(this),
             wrapLags is null ? Engine.Engine : wrapLags(Engine.Engine),
             Renderer,
             Decoder,
@@ -50,6 +52,30 @@ internal sealed class SessionRig : IDisposable
     public void Flush() => Session.Flush();
 
     public EngineRig Engine { get; }
+
+    /// <summary>The files the session started an engine run for, in order (what the audio of each run was opened from).</summary>
+    public IReadOnlyList<string> EngineRunFiles
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return [.. _runFiles];
+            }
+        }
+    }
+
+    /// <summary>The targets the session asked the engine to seek to, in order.</summary>
+    public IReadOnlyList<TimeSpan> EngineSeekTargets
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return [.. _seekTargets];
+            }
+        }
+    }
 
     public FakeVideoRenderer Renderer { get; }
 
@@ -86,19 +112,28 @@ internal sealed class SessionRig : IDisposable
     }
 
     /// <summary>The engine as the session sees it; every transport command also tells the rig where the master clock stands.</summary>
-    private sealed class FollowingEngine(EngineRig rig) : IAudioEngine
+    private sealed class FollowingEngine(SessionRig owner) : IAudioEngine
     {
-        public IObservable<EngineEvent> Events => rig.Engine.Events;
+        private EngineRig Rig => owner.Engine;
 
-        public Result<RunStarted> StartRun(string file, IReadOnlyList<OutputAssignment> assignments, EngineOptions options) =>
-            rig.Engine.StartRun(file, assignments, options);
+        public IObservable<EngineEvent> Events => Rig.Engine.Events;
+
+        public Result<RunStarted> StartRun(string file, IReadOnlyList<OutputAssignment> assignments, EngineOptions options)
+        {
+            lock (owner._gate)
+            {
+                owner._runFiles.Add(file);
+            }
+
+            return Rig.Engine.StartRun(file, assignments, options);
+        }
 
         public Result<TimeSpan> Pause()
         {
-            var result = rig.Engine.Pause();
+            var result = Rig.Engine.Pause();
             if (result.IsSuccess)
             {
-                rig.CommandDone(result.Value, paused: true);
+                Rig.CommandDone(result.Value, paused: true);
             }
 
             return result;
@@ -106,10 +141,10 @@ internal sealed class SessionRig : IDisposable
 
         public Result<TimeSpan> Resume()
         {
-            var result = rig.Engine.Resume();
+            var result = Rig.Engine.Resume();
             if (result.IsSuccess)
             {
-                rig.CommandDone(result.Value, paused: false);
+                Rig.CommandDone(result.Value, paused: false);
             }
 
             return result;
@@ -117,17 +152,22 @@ internal sealed class SessionRig : IDisposable
 
         public Result<SeekResult> Seek(TimeSpan target)
         {
-            rig.CommandStarting(target < TimeSpan.Zero ? TimeSpan.Zero : target);
-            var result = rig.Engine.Seek(target);
+            lock (owner._gate)
+            {
+                owner._seekTargets.Add(target);
+            }
+
+            Rig.CommandStarting(target < TimeSpan.Zero ? TimeSpan.Zero : target);
+            var result = Rig.Engine.Seek(target);
             if (result.IsSuccess)
             {
-                rig.CommandDone(result.Value.Position, result.Value.Paused);
+                Rig.CommandDone(result.Value.Position, result.Value.Paused);
             }
 
             return result;
         }
 
-        public void Stop(RunEndReason reason) => rig.Engine.Stop(reason);
+        public void Stop(RunEndReason reason) => Rig.Engine.Stop(reason);
     }
 
     private sealed class Collector(SessionRig rig) : IObserver<SessionEvent>

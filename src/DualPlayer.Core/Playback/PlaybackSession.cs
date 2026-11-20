@@ -81,6 +81,9 @@ public sealed partial class PlaybackSession : IDisposable
     private bool _pictureFailed;
     private bool _starting;
     private bool _exited;
+
+    // Whether the renderer holds the film _request names: a file change that failed to load leaves it holding none.
+    private bool _filmLoaded;
     private string? _failureDuringStart;
     private int _healthTicks;
     private long _damagedSeen;
@@ -308,10 +311,20 @@ public sealed partial class PlaybackSession : IDisposable
     {
         if (!returning)
         {
+            lock (_gate)
+            {
+                _filmLoaded = false;
+            }
+
             var loaded = _renderer.Load(request.File, nint.Zero, startPaused: true);
             if (!loaded.IsSuccess)
             {
                 return loaded;
+            }
+
+            lock (_gate)
+            {
+                _filmLoaded = true;
             }
         }
 
@@ -466,6 +479,10 @@ public sealed partial class PlaybackSession : IDisposable
 
         var previousDelay = estimateBefore?.PictureDelayMs ?? 0;
         _engine.Stop(RunEndReason.FileChange);
+
+        // The old run's summary was raised during the stop with the old token: moving on makes it stale, so it cannot
+        // overwrite the end position even when the new file never starts a run.
+        Interlocked.Increment(ref _runToken);
         lock (_gate)
         {
             _state = PlaybackState.Idle;
@@ -828,8 +845,9 @@ public sealed partial class PlaybackSession : IDisposable
             case PlaybackState.Idle:
                 return Result.Failure("playback.no_run", "No film is playing.");
             case PlaybackState.Ended:
-                if (step >= TimeSpan.Zero || _request is null)
+                if (step >= TimeSpan.Zero || _request is null || !_filmLoaded)
                 {
+                    // Nothing to return into: the renderer holds no film (a file change failed to load).
                     return Result.Success();
                 }
 
@@ -841,7 +859,20 @@ public sealed partial class PlaybackSession : IDisposable
 
                 var target = current + step;
                 var restarted = ReturnIntoFilm();
-                return restarted.IsSuccess ? SeekTo(target < TimeSpan.Zero ? TimeSpan.Zero : target) : restarted;
+                if (!restarted.IsSuccess)
+                {
+                    // The film stays ended and the keys keep answering; say why.
+                    lock (_gate)
+                    {
+                        _state = PlaybackState.Ended;
+                    }
+
+                    LogReturnFailed(restarted.Error.Code, restarted.Error.Message);
+                    _events.Publish(new NoteShown($"Could not go back: {restarted.Error.Message}", NoteStyle.Warning));
+                    return restarted;
+                }
+
+                return SeekTo(target < TimeSpan.Zero ? TimeSpan.Zero : target);
             default:
                 return SeekTo(current + step);
         }
@@ -1354,6 +1385,9 @@ public sealed partial class PlaybackSession : IDisposable
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Could not change to {File}: {Code} {Message}")]
     private partial void LogFileChangeFailed(string file, string code, string message);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not return into the film: {Code} {Message}")]
+    private partial void LogReturnFailed(string code, string message);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipped {File}: {Reason} (output {OutputNumber}, track {Track})")]
     private partial void LogSkipped(string file, string reason, int? outputNumber, int? track);
