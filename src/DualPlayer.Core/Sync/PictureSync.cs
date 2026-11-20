@@ -5,6 +5,9 @@ namespace DualPlayer.Core.Sync;
 /// <summary>One look at the picture: the content position it should show (due) and the one it showed (presented).</summary>
 public readonly record struct PictureTiming(TimeSpan Due, TimeSpan Presented)
 {
+    /// <summary>Gets the master-clock position at the snapshot's time (due plus the picture delay then).</summary>
+    public TimeSpan Clock { get; init; }
+
     /// <summary>Gets presented minus due; positive = picture ahead of due.</summary>
     public TimeSpan Error => Presented - Due;
 
@@ -137,21 +140,12 @@ public sealed class PictureSync : IDisposable
     {
         lock (_gate)
         {
-            if (_renderer.Presented is not { } presented)
+            if (MeasureCore() is not { } timing)
             {
                 return null;
             }
 
             var now = _time.GetTimestamp();
-            var due = _clock.PositionAt(presented.Timestamp) - DelayAt(presented.Timestamp);
-            if (!_clock.IsRunning || presented.Timestamp < _holdUntil || presented.Timestamp < _commandedAt || due < TimeSpan.Zero)
-            {
-                // The held first frame is not an error, a picture from before the last command is not the commanded one,
-                // and there is no content before position zero to steer or seek to.
-                return null;
-            }
-
-            var timing = new PictureTiming(due, presented.Position);
 
             if (_moving && _time.GetElapsedTime(_moveStart, now) >= _moveDuration)
             {
@@ -169,6 +163,37 @@ public sealed class PictureSync : IDisposable
             ApplySpeed(speed);
             return timing;
         }
+    }
+
+    /// <summary>
+    /// The picture's timing as <see cref="Tick"/> sees it — the snapshot against the due position at the snapshot's own
+    /// time — without steering anything; <c>null</c> when <see cref="Tick"/> would have nothing to measure.
+    /// </summary>
+    public PictureTiming? Measure()
+    {
+        lock (_gate)
+        {
+            return MeasureCore();
+        }
+    }
+
+    private PictureTiming? MeasureCore()
+    {
+        if (_renderer.Presented is not { } presented)
+        {
+            return null;
+        }
+
+        var clock = _clock.PositionAt(presented.Timestamp);
+        var due = clock - DelayAt(presented.Timestamp);
+        if (!_clock.IsRunning || presented.Timestamp < _holdUntil || presented.Timestamp < _commandedAt || due < TimeSpan.Zero)
+        {
+            // The held first frame is not an error, a picture from before the last command is not the commanded one,
+            // and there is no content before position zero to steer or seek to.
+            return null;
+        }
+
+        return new PictureTiming(due, presented.Position) { Clock = clock };
     }
 
     /// <summary>Moves the picture delay to <paramref name="newPictureDelay"/> at ≤ 0.2 % speed change; retargets a move under way.</summary>

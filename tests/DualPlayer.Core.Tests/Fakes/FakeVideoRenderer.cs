@@ -21,6 +21,35 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
     /// </summary>
     public bool StampsHeldFrameWithItsStart { get; set; }
 
+    /// <summary>The picture's own clock error: it runs at speed × (1 + RateError), as a video clock that drifts from the audio clock.</summary>
+    public double RateError { get; set; }
+
+    /// <summary>How old every snapshot is: <see cref="Presented"/> shows the picture as it was this long ago, stamped then.</summary>
+    public TimeSpan SnapshotAge { get; set; }
+
+    /// <summary>The content position on screen right now (what a camera would see), independent of <see cref="SnapshotAge"/>.</summary>
+    public TimeSpan ShownNow
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return PositionAt(time.GetTimestamp());
+            }
+        }
+    }
+
+    /// <summary>Moves the picture by <paramref name="by"/> at once (negative = it falls behind), as a stall or a skipped stretch does.</summary>
+    public void Jump(TimeSpan by)
+    {
+        lock (_gate)
+        {
+            var now = time.GetTimestamp();
+            _anchorPosition = PositionAt(now) + by;
+            _anchorTimestamp = Math.Max(now, _anchorTimestamp);
+        }
+    }
+
     /// <summary>When set, <see cref="Load"/> fails with this error.</summary>
     public Error? LoadError { get; set; }
 
@@ -74,7 +103,8 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
                     return new PresentedPicture(_anchorPosition, _anchorTimestamp);
                 }
 
-                return new PresentedPicture(PositionAt(now), now);
+                var at = now - (long)Math.Round(SnapshotAge.TotalSeconds * time.TimestampFrequency);
+                return new PresentedPicture(PositionAt(at), at);
             }
         }
     }
@@ -215,6 +245,6 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
             return _anchorPosition;
         }
 
-        return _anchorPosition + (time.GetElapsedTime(_anchorTimestamp, now) * _speed);
+        return _anchorPosition + (time.GetElapsedTime(_anchorTimestamp, now) * (_speed * (1 + RateError)));
     }
 }

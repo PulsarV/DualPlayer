@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
 origin: "review-2026-11-20 (F1, F11)"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-20. Work from what is inlined here; the source always wins.
@@ -30,7 +30,7 @@ See [spec.md](../spec.md) §5 AC-01, AC-04, AC-05, AC-14, AC-17.
 
 ## Definition of Done
 
-- [ ] The session ticks `PictureSync` on the serialized session thread (T24) at the D1-spike cadence while playing; the logged `PictureTimingReported` comes from the tick's `PictureTiming` (due at `presented.Timestamp`), not a separate now-based computation.
-- [ ] The pause freeze projects the presented position to now (`presented.Position + (now − presented.Timestamp) × speed`) before computing the remaining run-out.
-- [ ] `FakeVideoRenderer` can return aged and future-stamped snapshots and a picture that drifts or lags; a session test shows a late/drifting renderer steered back within 20 ms in ≤ 1 s, and a > 100 ms error corrected by a seek — both fail on the current code.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The session ticks `PictureSync` on the serialized session thread (T24) at the D1-spike cadence while playing; the logged `PictureTimingReported` comes from the tick's `PictureTiming` (due at `presented.Timestamp`), not a separate now-based computation.
+- [x] The pause freeze projects the presented position to now (`presented.Position + (now − presented.Timestamp) × speed`) before computing the remaining run-out.
+- [x] `FakeVideoRenderer` can return aged and future-stamped snapshots and a picture that drifts or lags; a session test shows a late/drifting renderer steered back within 20 ms in ≤ 1 s, and a > 100 ms error corrected by a seek — both fail on the current code.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

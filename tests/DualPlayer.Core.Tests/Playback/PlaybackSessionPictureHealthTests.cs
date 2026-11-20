@@ -117,6 +117,9 @@ public sealed class PlaybackSessionPictureHealthTests
         afterPause.ShouldBeGreaterThan(before);
 
         rig.Engine.Call(() => rig.Session.Resume()).IsSuccess.ShouldBeTrue();
+
+        // The picture is held until it starts with the sound one picture delay later: the first frame measured then is logged.
+        rig.Engine.Render(30);
         rig.Events.OfType<PictureTimingReported>().Count().ShouldBeGreaterThan(afterPause);
     }
 }

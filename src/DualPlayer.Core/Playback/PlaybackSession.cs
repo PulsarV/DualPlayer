@@ -51,6 +51,13 @@ public sealed partial class PlaybackSession : IDisposable
     private static readonly TimeSpan PictureProbeLimit = TimeSpan.FromSeconds(2);
     private readonly HashSet<string> _lost = new(StringComparer.Ordinal);
     private static readonly TimeSpan HealthInterval = TimeSpan.FromSeconds(1);
+
+    // How often the picture-sync loop looks at the presented frame and steers it (the D1 spike ticked every few ms;
+    // mpv's snapshot changes once a frame, so a tick every 5 ms sees every frame).
+    private static readonly TimeSpan SyncInterval = TimeSpan.FromMilliseconds(5);
+    private ITimer? _syncTimer;
+    private int _syncTickPending;
+    private bool _timingPending;
     private const int TicksPerCounterReport = 60;
     private const string PictureFailedNote = "The picture could not be decoded further - film ended";
     private ITimer? _healthTimer;
@@ -225,6 +232,8 @@ public sealed partial class PlaybackSession : IDisposable
             _stretch = null;
             _healthTimer?.Dispose();
             _healthTimer = _time.CreateTimer(_ => _loop.Post(OnHealthTick), null, HealthInterval, HealthInterval);
+            _syncTimer?.Dispose();
+            _syncTimer = _time.CreateTimer(_ => PostSyncTick(), null, SyncInterval, SyncInterval);
             if (_state != PlaybackState.Ended)
             {
                 _state = PlaybackState.Playing;
@@ -441,7 +450,7 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         sync.MoveTo(TimeSpan.FromMilliseconds(updated.PictureDelayMs));
-        PublishTiming(clock, sync, _time.GetTimestamp());
+        ReportTiming(sync);
         return Result.Success();
     }
 
@@ -496,12 +505,14 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         var freeze = paused.Value;
+        var atKey = sync.Measure();
         clock.StopAt(_time.GetTimestamp());
         clock.JumpTo(freeze);
         var delay = sync.PictureDelay;
 
-        // The sound already inside the devices plays out; the picture runs on until it reaches the freeze point.
-        var remaining = _renderer.Presented is { } presented ? freeze - presented.Position : TimeSpan.Zero;
+        // The sound already inside the devices plays out; the picture runs on until it reaches the freeze point. The
+        // snapshot is from when the frame was presented: project it to now.
+        var remaining = _renderer.Presented is { } presented ? freeze - ProjectToNow(presented) : TimeSpan.Zero;
         long version;
         lock (_gate)
         {
@@ -521,7 +532,10 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         PublishDelay(freeze, PictureDelayCause.Pause, delay);
-        PublishTiming(clock, sync, _time.GetTimestamp());
+        if (atKey is { } timing)
+        {
+            Publish(timing);
+        }
         return Result.Success();
     }
 
@@ -577,7 +591,7 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         PublishDelay(position, PictureDelayCause.Resume, delay);
-        PublishTiming(clock, sync, now);
+        ReportTiming(sync);
         return Result.Success();
     }
 
@@ -670,7 +684,7 @@ public sealed partial class PlaybackSession : IDisposable
             }
 
             sync.AlignAt(position, now);
-            PublishTiming(clock, sync, now);
+            ReportTiming(sync);
         }
 
         PublishDelay(position, PictureDelayCause.Seek, delay);
@@ -721,15 +735,68 @@ public sealed partial class PlaybackSession : IDisposable
         _events.Publish(new PictureDelayChanged(clock, cause, ms, ms, _estimate?.Outputs ?? []));
     }
 
-    private void PublishTiming(MasterClock clock, PictureSync sync, long now)
+    private TimeSpan ProjectToNow(PresentedPicture presented)
     {
-        if (_renderer.Presented is not { } presented)
+        var now = _time.GetTimestamp();
+        return presented.Timestamp >= now
+            ? presented.Position
+            : presented.Position + _time.GetElapsedTime(presented.Timestamp, now);
+    }
+
+    // The picture is measured against the due position at the snapshot's own time, never against now (review F11).
+    // While the picture is still held for a scheduled start there is nothing to measure yet: the first tick that can
+    // measure it reports it.
+    private void ReportTiming(PictureSync sync)
+    {
+        if (sync.Measure() is { } timing)
+        {
+            Publish(timing);
+            return;
+        }
+
+        lock (_gate)
+        {
+            _timingPending = true;
+        }
+    }
+
+    private void Publish(PictureTiming timing) =>
+        _events.Publish(new PictureTimingReported(timing.Clock, timing.Due, timing.Presented, timing.ErrorMs));
+
+    // At most one tick waits on the session thread: ticks that fall due while a command runs are not queued up.
+    private void PostSyncTick()
+    {
+        if (Interlocked.Exchange(ref _syncTickPending, 1) == 0)
+        {
+            _loop.Post(OnSyncTick);
+        }
+    }
+
+    private void OnSyncTick()
+    {
+        Volatile.Write(ref _syncTickPending, 0);
+        PictureSync? sync;
+        lock (_gate)
+        {
+            sync = _state == PlaybackState.Playing ? _pictureSync : null;
+        }
+
+        if (sync?.Tick() is not { } timing)
         {
             return;
         }
 
-        var due = clock.PositionAt(now) - sync.PictureDelay;
-        _events.Publish(new PictureTimingReported(clock.PositionAt(now), due, presented.Position, (presented.Position - due).TotalMilliseconds));
+        bool report;
+        lock (_gate)
+        {
+            report = _timingPending;
+            _timingPending = false;
+        }
+
+        if (report)
+        {
+            Publish(timing);
+        }
     }
 
     private void OnPictureFailed(string reason)
@@ -769,6 +836,8 @@ public sealed partial class PlaybackSession : IDisposable
             CancelFreeze();
             _healthTimer?.Dispose();
             _healthTimer = null;
+            _syncTimer?.Dispose();
+            _syncTimer = null;
         }
 
         _renderer.Pause();
@@ -824,7 +893,7 @@ public sealed partial class PlaybackSession : IDisposable
 
         if (state == PlaybackState.Playing)
         {
-            PublishTiming(clock, sync, now);
+            ReportTiming(sync);
         }
 
         if (ticks % TicksPerCounterReport == 0)
@@ -844,6 +913,8 @@ public sealed partial class PlaybackSession : IDisposable
             CancelFreeze();
             _healthTimer?.Dispose();
             _healthTimer = null;
+            _syncTimer?.Dispose();
+            _syncTimer = null;
             sync = _pictureSync;
             _pictureSync = null;
             _state = PlaybackState.Ended;
@@ -964,7 +1035,7 @@ public sealed partial class PlaybackSession : IDisposable
 
         _lags.SetLagTargets(updated.Outputs.ToDictionary(o => o.DeviceId, o => TimeSpan.FromMilliseconds(o.LagMs), StringComparer.Ordinal), LagChangeMode.Ramp);
         sync.MoveTo(TimeSpan.FromMilliseconds(updated.PictureDelayMs));
-        PublishTiming(clock, sync, _time.GetTimestamp());
+        ReportTiming(sync);
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Latency for {DeviceId}: type {Type}, reported {ReportedMs} ms, default {DefaultMs} ms, offset {OffsetMs} ms, assumed {AssumedMs} ms, lag {LagMs} ms; picture delay {PictureDelayMs} ms")]

@@ -560,7 +560,7 @@
         "tests/DualPlayer.Core.Tests/Sync/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T25-tick-the-picture-sync-loop-in-production-and-measure-picture-error-at-the-snapshot-s-own-t.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-20: F1, F11"
     },
     {
