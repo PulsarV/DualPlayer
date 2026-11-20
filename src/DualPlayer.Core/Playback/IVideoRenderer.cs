@@ -1,0 +1,59 @@
+namespace DualPlayer.Core.Playback;
+
+/// <summary>
+/// The picture on screen at one instant: the content position of the frame being shown and the monotonic
+/// timestamp (<see cref="TimeProvider.GetTimestamp"/> time base) at which the renderer read it.
+/// </summary>
+public sealed record PresentedPicture(TimeSpan Position, long Timestamp);
+
+/// <summary>Frames the renderer reports as late, dropped or skipped because they were damaged, since load.</summary>
+public sealed record FrameCounters(long Late, long Dropped, long SkippedDamaged)
+{
+    public static FrameCounters None { get; } = new(0, 0, 0);
+}
+
+/// <summary>How an on-screen note is drawn.</summary>
+public enum NoteStyle
+{
+    Info,
+    Warning,
+}
+
+/// <summary>
+/// Shows the picture and reports where it is; Core owns every timing decision. The adapter applies commands and
+/// publishes immutable snapshots. Events may be raised on the renderer's own event thread, not the caller's.
+/// Expected failures (library missing, file rejected, decode error) are returned as <see cref="Result"/>
+/// (<c>mpv.not_found</c>, <c>mpv.load_failed</c>, <c>video.decode_failed</c>) and never thrown.
+/// </summary>
+public interface IVideoRenderer : IDisposable
+{
+    /// <summary>Opens <paramref name="file"/> into the window <paramref name="nativeWindowHandle"/>, optionally held paused on the first frame.</summary>
+    Result Load(string file, nint nativeWindowHandle, bool startPaused);
+
+    /// <summary>Starts playing from content <paramref name="position"/> so that it is shown at monotonic time <paramref name="startTimestamp"/>.</summary>
+    void PlayAt(TimeSpan position, long startTimestamp);
+
+    void Pause();
+
+    void Seek(TimeSpan position);
+
+    /// <summary>Playback speed factor, 1.0 = natural.</summary>
+    void SetSpeed(double speed);
+
+    /// <summary>The latest presented picture, or <c>null</c> before the first frame (never a default zero position).</summary>
+    PresentedPicture? Presented { get; }
+
+    FrameCounters Counters { get; }
+
+    /// <summary>Draws an on-screen note over the picture.</summary>
+    void ShowNote(string text, NoteStyle style);
+
+    /// <summary>The file cannot be decoded (further).</summary>
+    event Action<Error>? DecodeFailed;
+
+    /// <summary>The picture is being decoded in software instead of on the GPU.</summary>
+    event Action? HardwareDecodingInactive;
+
+    /// <summary>The picture reached the end of the file.</summary>
+    event Action? EndOfFile;
+}

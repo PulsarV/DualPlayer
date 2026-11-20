@@ -1,0 +1,167 @@
+using DualPlayer.Core.Playback;
+using Microsoft.Extensions.Time.Testing;
+using Shouldly;
+
+namespace DualPlayer.Core.Tests.Fakes;
+
+public class FakeVideoRendererTests
+{
+    private static (FakeTimeProvider Time, FakeVideoRenderer Renderer) Loaded(bool startPaused = true)
+    {
+        var time = new FakeTimeProvider();
+        var renderer = new FakeVideoRenderer(time);
+        renderer.Load("film.mkv", 0, startPaused).IsSuccess.ShouldBeTrue();
+        return (time, renderer);
+    }
+
+    [Fact]
+    public void Presented_position_is_absent_before_the_first_frame()
+    {
+        var (_, renderer) = Loaded();
+
+        renderer.Presented.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Presented_position_follows_the_clock_after_play_at()
+    {
+        var (time, renderer) = Loaded();
+
+        renderer.PlayAt(TimeSpan.FromSeconds(5), time.GetTimestamp());
+        time.Advance(TimeSpan.FromSeconds(2));
+
+        var presented = renderer.Presented.ShouldNotBeNull();
+        presented.Position.ShouldBe(TimeSpan.FromSeconds(7));
+        presented.Timestamp.ShouldBe(time.GetTimestamp());
+    }
+
+    [Fact]
+    public void Presented_position_does_not_move_before_the_scheduled_start_timestamp()
+    {
+        var (time, renderer) = Loaded();
+
+        renderer.PlayAt(TimeSpan.FromSeconds(5), time.GetTimestamp() + time.TimestampFrequency);
+        time.Advance(TimeSpan.FromMilliseconds(500));
+
+        renderer.Presented!.Position.ShouldBe(TimeSpan.FromSeconds(5));
+
+        time.Advance(TimeSpan.FromSeconds(1));
+
+        renderer.Presented!.Position.ShouldBe(TimeSpan.FromSeconds(5.5));
+    }
+
+    [Fact]
+    public void Presented_position_advances_at_clock_times_speed()
+    {
+        var (time, renderer) = Loaded();
+        renderer.PlayAt(TimeSpan.Zero, time.GetTimestamp());
+
+        time.Advance(TimeSpan.FromSeconds(1));
+        renderer.SetSpeed(1.002);
+        time.Advance(TimeSpan.FromSeconds(10));
+
+        renderer.Speed.ShouldBe(1.002);
+        renderer.Presented!.Position.ShouldBe(TimeSpan.FromSeconds(1 + 10.02), TimeSpan.FromMilliseconds(0.1));
+    }
+
+    [Fact]
+    public void Pause_holds_the_presented_position()
+    {
+        var (time, renderer) = Loaded();
+        renderer.PlayAt(TimeSpan.Zero, time.GetTimestamp());
+        time.Advance(TimeSpan.FromSeconds(3));
+
+        renderer.Pause();
+        time.Advance(TimeSpan.FromSeconds(10));
+
+        renderer.IsPlaying.ShouldBeFalse();
+        renderer.Presented!.Position.ShouldBe(TimeSpan.FromSeconds(3));
+        renderer.Presented!.Timestamp.ShouldBe(time.GetTimestamp());
+    }
+
+    [Fact]
+    public void Seek_jumps_the_position_and_keeps_playing()
+    {
+        var (time, renderer) = Loaded();
+        renderer.PlayAt(TimeSpan.Zero, time.GetTimestamp());
+        time.Advance(TimeSpan.FromSeconds(3));
+
+        renderer.Seek(TimeSpan.FromSeconds(60));
+        time.Advance(TimeSpan.FromSeconds(1));
+
+        renderer.Presented!.Position.ShouldBe(TimeSpan.FromSeconds(61));
+    }
+
+    [Fact]
+    public void Seek_while_paused_jumps_and_stays_paused()
+    {
+        var (time, renderer) = Loaded();
+        renderer.PlayAt(TimeSpan.Zero, time.GetTimestamp());
+        time.Advance(TimeSpan.FromSeconds(3));
+        renderer.Pause();
+
+        renderer.Seek(TimeSpan.FromSeconds(60));
+        time.Advance(TimeSpan.FromSeconds(5));
+
+        renderer.Presented!.Position.ShouldBe(TimeSpan.FromSeconds(60));
+    }
+
+    [Fact]
+    public void Load_failure_is_returned_as_a_result_and_never_thrown()
+    {
+        var renderer = new FakeVideoRenderer(new FakeTimeProvider())
+        {
+            LoadError = new Error("mpv.not_found", "libmpv is missing."),
+        };
+
+        var result = renderer.Load("film.mkv", 0, startPaused: false);
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Error!.Code.ShouldBe("mpv.not_found");
+        renderer.Presented.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Each_injected_event_is_raised_once()
+    {
+        var (_, renderer) = Loaded();
+        var failures = new List<Error>();
+        var inactive = 0;
+        var ended = 0;
+        renderer.DecodeFailed += failures.Add;
+        renderer.HardwareDecodingInactive += () => inactive++;
+        renderer.EndOfFile += () => ended++;
+
+        renderer.InjectDecodeFailure(new Error("video.decode_failed", "Bad frame."));
+        renderer.InjectHardwareDecodingInactive();
+        renderer.InjectEndOfFile();
+
+        failures.Count.ShouldBe(1);
+        failures[0].Code.ShouldBe("video.decode_failed");
+        inactive.ShouldBe(1);
+        ended.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Injected_late_and_dropped_frames_accumulate_in_the_counters()
+    {
+        var (_, renderer) = Loaded();
+
+        renderer.Counters.ShouldBe(FrameCounters.None);
+
+        renderer.InjectFrames(late: 2, dropped: 1);
+        renderer.InjectFrames(late: 1, skippedDamaged: 4);
+
+        renderer.Counters.ShouldBe(new FrameCounters(Late: 3, Dropped: 1, SkippedDamaged: 4));
+    }
+
+    [Fact]
+    public void Shown_notes_are_recorded_with_their_style()
+    {
+        var (_, renderer) = Loaded();
+
+        renderer.ShowNote("Picture is late", NoteStyle.Warning);
+
+        renderer.Notes.ShouldBe([("Picture is late", NoteStyle.Warning)]);
+    }
+}
