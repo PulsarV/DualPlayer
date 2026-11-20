@@ -48,6 +48,9 @@ public sealed class PictureSync : IDisposable
     // While the clock is before this timestamp the renderer holds the first frame: there is no error to correct.
     private long _holdUntil = long.MinValue;
 
+    // When the picture was last re-aligned or moved by a seek: a snapshot stamped before it shows the picture from before.
+    private long _commandedAt = long.MinValue;
+
     public PictureSync(MasterClock clock, IVideoRenderer renderer, TimeProvider time, TimeSpan pictureDelay)
     {
         _clock = clock;
@@ -102,6 +105,7 @@ public sealed class PictureSync : IDisposable
 
             var delay = _pictureDelay;
             _holdUntil = long.MinValue;
+            _commandedAt = _time.GetTimestamp();
             if (delay > TimeSpan.Zero && clockPosition < delay)
             {
                 // Before the start of the film: hold the first frame until the clock catches up with the delay.
@@ -122,7 +126,13 @@ public sealed class PictureSync : IDisposable
         }
     }
 
-    /// <summary>One loop step; <c>null</c> when the renderer has no frame yet or is still holding the first frame for a positive picture delay.</summary>
+    /// <summary>
+    /// One loop step; <c>null</c> when there is nothing to measure: the renderer has no frame yet, the clock is stopped, the
+    /// picture is still held for the start of the film, or the snapshot was stamped before the last align or correcting
+    /// seek (it shows the picture from before). A renderer that holds a frame paused for a scheduled start and stamps it
+    /// with the moment the start reaches it (<see cref="PresentedPicture"/>) yields a timing with zero error by
+    /// construction: that is a prediction, not a measurement of the screen.
+    /// </summary>
     public PictureTiming? Tick()
     {
         lock (_gate)
@@ -134,9 +144,10 @@ public sealed class PictureSync : IDisposable
 
             var now = _time.GetTimestamp();
             var due = _clock.PositionAt(presented.Timestamp) - DelayAt(presented.Timestamp);
-            if (!_clock.IsRunning || presented.Timestamp < _holdUntil || due < TimeSpan.Zero)
+            if (!_clock.IsRunning || presented.Timestamp < _holdUntil || presented.Timestamp < _commandedAt || due < TimeSpan.Zero)
             {
-                // The held first frame is not an error, and there is no content before position zero to steer or seek to.
+                // The held first frame is not an error, a picture from before the last command is not the commanded one,
+                // and there is no content before position zero to steer or seek to.
                 return null;
             }
 
@@ -151,6 +162,7 @@ public sealed class PictureSync : IDisposable
             if (timing.Error.Duration() > SeekThreshold)
             {
                 _renderer.Seek(TimeSpan.FromTicks(Math.Max(0, (_clock.PositionAt(now) - DelayAt(now)).Ticks)));
+                _commandedAt = now;
                 speed = _moving ? MoveSpeed() : 1.0;
             }
 

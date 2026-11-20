@@ -347,6 +347,69 @@ public sealed class PictureSyncTests
         renderer.DidNotReceiveWithAnyArgs().PlayAt(default, default);
     }
 
+    [Fact]
+    public void A_first_frame_held_for_a_scheduled_start_and_stamped_with_that_start_is_measured_with_zero_error()
+    {
+        // A renderer that holds the frame paused for the start stamps it with the moment the start reaches it (a
+        // prediction): the timing is measured, with zero error by construction, and nothing is corrected.
+        _renderer.StampsHeldFrameWithItsStart = true;
+        var pd = TimeSpan.FromMilliseconds(200);
+        var start = _time.GetTimestamp();
+        var sync = StartedAt(pd);
+        _time.Advance(TimeSpan.FromMilliseconds(100));
+
+        _renderer.Presented.ShouldBe(new PresentedPicture(TimeSpan.Zero, start + (long)(0.2 * _time.TimestampFrequency)));
+        var timing = sync.Tick().ShouldNotBeNull();
+
+        timing.Error.ShouldBe(TimeSpan.Zero);
+        _renderer.Speed.ShouldBe(1.0);
+        _renderer.Presented!.Position.ShouldBe(TimeSpan.Zero);
+    }
+
+    [Fact]
+    public void A_snapshot_stamped_before_the_last_align_is_not_measured_against_the_new_schedule()
+    {
+        var renderer = Substitute.For<IVideoRenderer>();
+        var sync = new PictureSync(_clock, renderer, _time, TimeSpan.FromMilliseconds(100));
+        _clock.Start();
+        sync.AlignAt(TimeSpan.Zero, _time.GetTimestamp());
+        _time.Advance(TimeSpan.FromSeconds(3));
+        var pausedAt = _time.GetTimestamp();
+        _clock.StopAt(pausedAt);
+        renderer.Presented.Returns(new PresentedPicture(TimeSpan.FromSeconds(2.9), pausedAt));
+        _time.Advance(TimeSpan.FromSeconds(1));
+
+        // Resume: right after the align the renderer still shows the snapshot from before the pause.
+        _clock.Start();
+        sync.AlignAt(_clock.PositionAt(_time.GetTimestamp()), _time.GetTimestamp());
+        renderer.ClearReceivedCalls();
+        _time.Advance(TimeSpan.FromMilliseconds(10));
+
+        sync.Tick().ShouldBeNull();
+        renderer.DidNotReceiveWithAnyArgs().Seek(default);
+
+        renderer.Presented.Returns(new PresentedPicture(TimeSpan.FromSeconds(2.91), _time.GetTimestamp()));
+        sync.Tick().ShouldNotBeNull().ErrorMs.ShouldBe(0, 0.5);
+    }
+
+    [Fact]
+    public void After_a_correcting_seek_the_snapshot_from_before_it_does_not_trigger_another_seek()
+    {
+        var renderer = Substitute.For<IVideoRenderer>();
+        var sync = new PictureSync(_clock, renderer, _time, TimeSpan.Zero);
+        _clock.Start();
+        sync.AlignAt(TimeSpan.Zero, _time.GetTimestamp());
+        _time.Advance(TimeSpan.FromSeconds(10));
+        renderer.Presented.Returns(new PresentedPicture(TimeSpan.FromSeconds(12), _time.GetTimestamp()));
+        _time.Advance(TimeSpan.FromMilliseconds(5));
+
+        sync.Tick().ShouldNotBeNull().ErrorMs.ShouldBe(2000, 0.5);
+        _time.Advance(TimeSpan.FromMilliseconds(5));
+        sync.Tick().ShouldBeNull();
+
+        renderer.ReceivedWithAnyArgs(1).Seek(default);
+    }
+
     // ---- AC-14: picture delay moves ----
 
     [Fact]

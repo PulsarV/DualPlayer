@@ -70,6 +70,21 @@ public class FakeVideoRendererTests
     }
 
     [Fact]
+    public void In_held_start_mode_a_frame_held_for_a_scheduled_start_is_stamped_with_that_start()
+    {
+        var time = new FakeTimeProvider();
+        var renderer = new FakeVideoRenderer(time) { StampsHeldFrameWithItsStart = true };
+        renderer.Load("film.mkv", 0, startPaused: true);
+        var start = time.GetTimestamp() + time.TimestampFrequency;
+
+        renderer.PlayAt(TimeSpan.FromSeconds(5), start);
+
+        renderer.Presented.ShouldBe(new PresentedPicture(TimeSpan.FromSeconds(5), start));
+        time.Advance(TimeSpan.FromSeconds(2));
+        renderer.Presented.ShouldBe(new PresentedPicture(TimeSpan.FromSeconds(6), time.GetTimestamp()));
+    }
+
+    [Fact]
     public void Presented_position_advances_at_clock_times_speed()
     {
         var (time, renderer) = Loaded();

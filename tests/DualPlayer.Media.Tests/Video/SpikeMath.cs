@@ -48,12 +48,19 @@ public static class SpikeMath
     /// Time of the first sample from which every later sample is within <paramref name="toleranceMs"/>;
     /// <c>null</c> when there are no samples or the last one is still out.
     /// </summary>
-    public static double? RecoveryTimeMs(IReadOnlyList<(double AtMs, double ErrorMs)> samples, double toleranceMs)
+    public static double? RecoveryTimeMs(IReadOnlyList<(double AtMs, double ErrorMs)> samples, double toleranceMs) =>
+        HeldAwareRecoveryTimeMs(samples.Select(s => (s.AtMs, s.ErrorMs, Held: false)).ToList(), toleranceMs);
+
+    /// <summary>
+    /// As above, but a sample taken while the picture was held paused for a start (<c>Held</c>) never counts as back:
+    /// its frame is stamped with the planned start, so its error is ~0 by construction while the screen is frozen.
+    /// </summary>
+    public static double? HeldAwareRecoveryTimeMs(IReadOnlyList<(double AtMs, double ErrorMs, bool Held)> samples, double toleranceMs)
     {
         double? start = null;
-        foreach (var (atMs, errorMs) in samples)
+        foreach (var (atMs, errorMs, held) in samples)
         {
-            if (Math.Abs(errorMs) <= toleranceMs)
+            if (!held && Math.Abs(errorMs) <= toleranceMs)
             {
                 start ??= atMs;
             }
@@ -65,6 +72,12 @@ public static class SpikeMath
 
         return start;
     }
+
+    /// <summary>The report line on mpv's presentation feedback; zero samples is stated, never left out.</summary>
+    public static string PresentationDelayText(int samples, int used, double? medianMs) =>
+        medianMs is { } median && samples > 0
+            ? FormattableString.Invariant($"presentation-delay samples: {samples} (used {used}), median {median:0.0} ms")
+            : FormattableString.Invariant($"presentation-delay samples: {samples} (used {used}), median n/a - mpv gave no presentation feedback (property missing or not provided by the output); the display schedule ran uncorrected");
 
     public static SpikeVerdict SteadyVerdict(double maxAbsErrorMs) =>
         maxAbsErrorMs <= SteadyLimitMs ? SpikeVerdict.Pass : SpikeVerdict.Fail;

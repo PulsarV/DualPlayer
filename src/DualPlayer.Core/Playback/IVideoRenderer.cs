@@ -1,9 +1,15 @@
 namespace DualPlayer.Core.Playback;
 
 /// <summary>
-/// The picture on screen at one instant: the content position of the frame being shown and the monotonic
-/// timestamp (<see cref="TimeProvider.GetTimestamp"/> time base) at which the renderer read it.
+/// The picture on screen: the content position of a frame and the monotonic timestamp
+/// (<see cref="TimeProvider.GetTimestamp"/> time base) at which it was shown.
 /// </summary>
+/// <remarks>
+/// While a start (<see cref="IVideoRenderer.PlayAt"/>, or a seek while playing) is being prepared, the snapshot is a
+/// prediction, not a frame on screen: the seek target, then the frame the seek landed on, stamped with the moment the
+/// start reaches it (which can be ahead of now), while the screen still shows the paused picture until the renderer
+/// resumes. Measured against the schedule it was planned on, such a snapshot has no error by construction.
+/// </remarks>
 public sealed record PresentedPicture(TimeSpan Position, long Timestamp);
 
 /// <summary>Frames the renderer reports as late, dropped or skipped because they were damaged, since load.</summary>
@@ -29,7 +35,8 @@ public interface IVideoRenderer : IDisposable
 {
     /// <summary>
     /// Opens <paramref name="file"/> into the window <paramref name="nativeWindowHandle"/>, optionally held paused on the
-    /// first frame. Once the first frame is up, <see cref="Presented"/> is position zero stamped with that moment.
+    /// first frame. Once the first frame is up, <see cref="Presented"/> is position zero stamped with that moment; a playing
+    /// load may hold it briefly and start from it as a scheduled start.
     /// </summary>
     Result Load(string file, nint nativeWindowHandle, bool startPaused);
 
@@ -38,6 +45,11 @@ public interface IVideoRenderer : IDisposable
 
     void Pause();
 
+    /// <summary>
+    /// Moves the picture to content <paramref name="position"/>. Paused, it stays paused there. Playing,
+    /// <paramref name="position"/> is due at the moment of the call and the picture continues on that schedule. During a
+    /// scheduled start, the start keeps its moment.
+    /// </summary>
     void Seek(TimeSpan position);
 
     /// <summary>Playback speed factor, 1.0 = natural.</summary>

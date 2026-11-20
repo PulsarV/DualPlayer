@@ -69,14 +69,15 @@ public sealed class MpvSpikeTests
             $"- Steady play: {steady.TotalSeconds:0} s; cycles: {cycles}; largest picture-delay move: {moveMaxMs:0} ms\n" +
             (OperatingSystem.IsWindows() ? string.Empty : "- **Not the target PC: numbers from this machine are a smoke run, not evidence.**\n"));
 
-        // Phase 0: scheduled start, then settle into steady play.
+        // Phase 0: scheduled start, then settle into steady play. Recovery counts from the scheduled start; samples taken
+        // while the picture is still held paused for the start never count as back (their error is ~0 by construction).
         var startTimestamp = time.GetTimestamp() + (long)(0.3 * time.TimestampFrequency);
         clock.StartAt(startTimestamp);
         sync.AlignAt(TimeSpan.Zero, startTimestamp);
         var baseline = Total(renderer.Counters);
-        var startError = run.WaitForStart(startTimestamp);
         var settle = run.Sample(TimeSpan.FromSeconds(3));
-        var startRecovery = SpikeMath.RecoveryTimeMs(settle.Samples, SpikeMath.RecoveryToleranceMs);
+        var startRecovery = SpikeMath.HeldAwareRecoveryTimeMs(settle.Samples, SpikeMath.RecoveryToleranceMs) -
+            time.GetElapsedTime(settle.Started, startTimestamp).TotalMilliseconds;
 
         // Phase 1: steady play.
         var steadyBefore = Total(renderer.Counters);
@@ -86,23 +87,29 @@ public sealed class MpvSpikeTests
 
         // Phase 2: pause / resume.
         var pauseRecoveries = new List<double?>();
+        var pauseStarts = new List<IReadOnlyList<StartRecord>>();
         for (var i = 0; i < cycles; i++)
         {
             run.Pause();
             Thread.Sleep(1000);
             run.Resume();
-            pauseRecoveries.Add(SpikeMath.RecoveryTimeMs(run.Sample(Settle).Samples, SpikeMath.RecoveryToleranceMs));
+            var sampled = run.Sample(Settle);
+            pauseRecoveries.Add(SpikeMath.HeldAwareRecoveryTimeMs(sampled.Samples, SpikeMath.RecoveryToleranceMs));
+            pauseStarts.Add(sampled.Starts);
         }
 
         // Phase 3: seeks.
         var seekRecoveries = new List<double?>();
+        var seekStarts = new List<IReadOnlyList<StartRecord>>();
         double[] seekSeconds = [60, -60, 10, -10];
         for (var i = 0; i < cycles; i++)
         {
             foreach (var delta in seekSeconds)
             {
                 run.SeekBy(TimeSpan.FromSeconds(delta));
-                seekRecoveries.Add(SpikeMath.RecoveryTimeMs(run.Sample(Settle).Samples, SpikeMath.RecoveryToleranceMs));
+                var sampled = run.Sample(Settle);
+                seekRecoveries.Add(SpikeMath.HeldAwareRecoveryTimeMs(sampled.Samples, SpikeMath.RecoveryToleranceMs));
+                seekStarts.Add(sampled.Starts);
             }
         }
 
@@ -130,6 +137,7 @@ public sealed class MpvSpikeTests
         var playing = run.SampledTime;
         var lateDropped = Total(renderer.Counters) - baseline;
         var moveSummary = SpikeMath.Summarize(moveErrors);
+        var feedback = renderer.PresentationDelays;
 
         // Mpv's own window and the picture are watched by the owner during the moves; the numbers below are the proxy.
         var scheduled = OperatingSystem.IsWindows() ? MeasureTimers(renderer, time, 10) : MeasureStarts(renderer, time, 10);
@@ -161,17 +169,25 @@ public sealed class MpvSpikeTests
 
         report.AddSection("Other measurements", [
             Invariant($"mpv load time (Load until first frame): {loadMs:0} ms (budget context: start <= 3 s, sad.md section 11)"),
-            Invariant($"scheduled-start error of the first start: {startError:0.0} ms (event time minus due start; includes up to one frame interval)"),
-            startRecovery is { } r ? Invariant($"within 20 ms of due {r:0} ms after the first start") : "never within 20 ms of due in the 3 s after the first start",
+            "first start (and any correcting seek after it): " + StartsText(settle.Starts, time),
+            startRecovery is { } r ? Invariant($"within 20 ms of due {r:0} ms after the scheduled first start (held samples not counted)") : "never within 20 ms of due in the 3 s after the first start",
+            SpikeMath.PresentationDelayText(feedback.Samples, feedback.Used, feedback.MedianMs),
+            Invariant($"ticks while the picture was held paused for a start (excluded from error figures): {run.HeldTicks}"),
             Invariant($"counters at the end: late {renderer.Counters.Late}, dropped {renderer.Counters.Dropped}, skipped damaged {renderer.Counters.SkippedDamaged}"),
             $"EndOfFile raised: {events.EndOfFile}; DecodeFailed raised: {events.DecodeFailed ?? "no"}",
         ]);
         report.AddSection("Scheduled starts and timer granularity", scheduled);
         report.AddSection("Picture-delay moves", moveLines);
-        report.AddSection("Recoveries (ms, null = never within 20 ms)", [
+        report.AddSection("Recoveries (ms from the align to back within 20 ms after the actual resume, null = never)", [
             "pause/resume: " + string.Join(", ", pauseRecoveries.Select(Format)),
             "seek: " + string.Join(", ", seekRecoveries.Select(Format)),
         ]);
+        report.AddSection(
+            "Starts behind the recoveries (unpause command latency = mpv applied the unpause minus the moment the held frame was due)",
+            [
+                .. pauseStarts.Select((starts, i) => Invariant($"resume {i + 1}: ") + StartsText(starts, time)),
+                .. seekStarts.Select((starts, i) => Invariant($"seek {i + 1}: ") + StartsText(starts, time)),
+            ]);
 
         var path = WriteReport(report, "d1-spike-report");
         TestContext.Current.SendDiagnosticMessage($"D1 spike report written to {path}; overall: {report.Overall}");
@@ -237,25 +253,32 @@ public sealed class MpvSpikeTests
         return lines;
     }
 
+    /// <summary>
+    /// Scheduled starts 250 ms ahead: the unpause command latency (mpv applied the unpause minus the moment the held frame
+    /// was due) with the seek budget and the measured seek time of each start. Presented is not used: a held frame is
+    /// stamped with its planned moment, so it would show ~0 by construction.
+    /// </summary>
     private static List<string> MeasureStarts(MpvVideoRenderer renderer, TimeProvider time, int count)
     {
-        var errors = new List<double>();
+        var latencies = new List<double>();
+        var perStart = new List<string>();
         for (var i = 0; i < count; i++)
         {
             renderer.Pause();
             renderer.Seek(TimeSpan.Zero);
             Thread.Sleep(500);
 
+            var before = renderer.LastStart?.Id;
             var due = time.GetTimestamp() + (long)(0.25 * time.TimestampFrequency);
             renderer.PlayAt(TimeSpan.Zero, due);
 
             var waitStart = time.GetTimestamp();
             while (time.GetElapsedTime(waitStart) < TimeSpan.FromSeconds(3))
             {
-                if (renderer.Presented is { } p && p.Position >= TimeSpan.FromMilliseconds(10) && p.Timestamp > due - time.TimestampFrequency)
+                if (renderer.LastStart is { } start && start.Id != before)
                 {
-                    // The event arrives Position after playback began, so the start error is the arrival minus due minus Position.
-                    errors.Add(time.GetElapsedTime(due, p.Timestamp).TotalMilliseconds - p.Position.TotalMilliseconds);
+                    latencies.Add(time.GetElapsedTime(start.UnpauseDue, start.ResumedAt).TotalMilliseconds);
+                    perStart.Add(StartText(start, time));
                     break;
                 }
 
@@ -264,12 +287,22 @@ public sealed class MpvSpikeTests
         }
 
         renderer.Pause();
-        var summary = SpikeMath.Summarize(errors);
+        var summary = SpikeMath.Summarize(latencies);
         return
         [
-            Invariant($"default timer: {errors.Count}/{count} starts measured, start error (absolute) p50 {summary.P50:0.0} / max {summary.Max:0.0} ms; signed: {string.Join(", ", errors.Select(e => e.ToString("0.0", CultureInfo.InvariantCulture)))}"),
+            Invariant($"default timer: {latencies.Count}/{count} starts measured, unpause command latency (absolute) p50 {summary.P50:0.0} / max {summary.Max:0.0} ms"),
+            .. perStart.Select(line => "default timer start: " + line),
         ];
     }
+
+    // Every start unpaused in a sampled window: more than one means the loop had to correct with another seek.
+    private static string StartsText(IReadOnlyList<StartRecord> starts, TimeProvider time) =>
+        starts.Count == 0 ? "no start was unpaused" : string.Join("; then ", starts.Select(start => StartText(start, time)));
+
+    private static string StartText(StartRecord? start, TimeProvider time) =>
+        start is null
+            ? "no start was unpaused"
+            : Invariant($"unpause command latency {time.GetElapsedTime(start.UnpauseDue, start.ResumedAt).TotalMilliseconds:0.0} ms, seek budget {start.SeekBudget.TotalMilliseconds:0} ms, seek took {(start.SeekTime is { } seek ? seek.TotalMilliseconds.ToString("0", CultureInfo.InvariantCulture) + " ms" : "n/a (no seek)")}");
 
     private static string RecoveryText(List<double?> recoveries)
     {
@@ -361,9 +394,14 @@ public sealed class MpvSpikeTests
         public void Reset() => _lastPresentedMs = null;
     }
 
-    private sealed record Sampled(List<(double AtMs, double ErrorMs)> Samples, TimeSpan Duration)
+    private sealed record Sampled(
+        List<(double AtMs, double ErrorMs, bool Held)> Samples,
+        TimeSpan Duration,
+        long Started,
+        IReadOnlyList<StartRecord> Starts)
     {
-        public IReadOnlyList<double> Errors => Samples.Select(s => s.ErrorMs).ToList();
+        /// <summary>Errors of the samples taken while the picture was moving (a held frame's error is ~0 by construction).</summary>
+        public IReadOnlyList<double> Errors => Samples.Where(s => !s.Held).Select(s => s.ErrorMs).ToList();
     }
 
     private sealed class EventLog
@@ -396,21 +434,8 @@ public sealed class MpvSpikeTests
         /// <summary>Gets the total time the picture was being sampled while playing (pauses excluded).</summary>
         public TimeSpan SampledTime { get; private set; }
 
-        public double WaitForStart(long due)
-        {
-            var wait = time.GetTimestamp();
-            while (time.GetElapsedTime(wait) < TimeSpan.FromSeconds(5))
-            {
-                if (renderer.Presented is { } p && p.Position >= TimeSpan.FromMilliseconds(10) && p.Timestamp >= due)
-                {
-                    return time.GetElapsedTime(due, p.Timestamp).TotalMilliseconds - p.Position.TotalMilliseconds;
-                }
-
-                Thread.Sleep(1);
-            }
-
-            return double.NaN;
-        }
+        /// <summary>Gets how many ticks were taken while the picture was held paused for a start.</summary>
+        public int HeldTicks { get; private set; }
 
         public void Pause()
         {
@@ -439,16 +464,33 @@ public sealed class MpvSpikeTests
 
         public Sampled SampleWhile(Func<bool> keepGoing, TimeSpan limit, JumpProxy? jumps = null, bool runForFullDuration = false)
         {
-            var samples = new List<(double, double)>();
+            var samples = new List<(double, double, bool)>();
+            var starts = new List<StartRecord>();
+            var lastStartId = renderer.LastStart?.Id;
             var start = time.GetTimestamp();
             jumps?.Reset();
             while (time.GetElapsedTime(start) < limit && (runForFullDuration || keepGoing()))
             {
+                if (renderer.LastStart is { } unpaused && unpaused.Id != lastStartId)
+                {
+                    starts.Add(unpaused);
+                    lastStartId = unpaused.Id;
+                }
+
+                var held = renderer.HoldingStart;
                 if (sync.Tick() is { } timing)
                 {
                     var at = time.GetElapsedTime(start).TotalMilliseconds;
-                    samples.Add((at, timing.ErrorMs));
-                    jumps?.Observe(timing.Presented.TotalMilliseconds, at);
+                    held = held || renderer.HoldingStart;
+                    samples.Add((at, timing.ErrorMs, held));
+                    if (held)
+                    {
+                        HeldTicks++;
+                    }
+                    else
+                    {
+                        jumps?.Observe(timing.Presented.TotalMilliseconds, at);
+                    }
                 }
 
                 Thread.Sleep(2);
@@ -456,7 +498,7 @@ public sealed class MpvSpikeTests
 
             var duration = time.GetElapsedTime(start);
             SampledTime += duration;
-            return new Sampled(samples, duration);
+            return new Sampled(samples, duration, start, starts);
         }
     }
 }

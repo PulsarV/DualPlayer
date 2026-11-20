@@ -166,6 +166,10 @@ internal static partial class MpvNative
     [LibraryImport(LibraryName, EntryPoint = "mpv_set_property_string", StringMarshalling = StringMarshalling.Utf8)]
     internal static partial int SetPropertyString(nint ctx, string name, string data);
 
+    /// <summary>Reads a property as a double (<paramref name="format"/> = MPV_FORMAT_DOUBLE); negative on failure.</summary>
+    [LibraryImport(LibraryName, EntryPoint = "mpv_get_property", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int GetPropertyDouble(nint ctx, string name, int format, out double data);
+
     /// <summary><paramref name="args"/> points to a null-terminated array of UTF-8 C strings.</summary>
     [LibraryImport(LibraryName, EntryPoint = "mpv_command")]
     internal static partial int Command(nint ctx, nint args);

@@ -176,17 +176,120 @@ public sealed class MpvVideoRendererTests
     }
 
     [Fact]
+    public void A_presented_position_is_never_published_before_the_moment_its_frame_is_due()
+    {
+        // mpv hands a frame to its video output ahead of the frame's display time (render-ahead) and reports it as
+        // time-pos at that moment. The presented picture must be the one due, not the one queued: while playing from a
+        // scheduled start, no snapshot may claim a position later than the time elapsed since that start.
+        RequireLibmpv();
+        using var renderer = LoadedPaused();
+        WaitFor(() => renderer.Presented, _ => true).ShouldNotBeNull();
+        var time = TimeProvider.System;
+        var start = time.GetTimestamp() + (long)(0.3 * time.TimestampFrequency);
+
+        renderer.PlayAt(TimeSpan.Zero, start);
+
+        WaitFor(() => renderer.Presented, p => p.Position >= TimeSpan.FromSeconds(1)).ShouldNotBeNull();
+        var ahead = TimeSpan.MinValue;
+        var until = time.GetTimestamp() + time.TimestampFrequency;
+        while (time.GetTimestamp() < until)
+        {
+            var presented = renderer.Presented.ShouldNotBeNull();
+            var lead = presented.Position - time.GetElapsedTime(start, presented.Timestamp);
+            ahead = lead > ahead ? lead : ahead;
+            Thread.Sleep(2);
+        }
+
+        // Scheduling and event latency only ever make a snapshot later; a render-ahead lead is a frame or more (40 ms here).
+        ahead.ShouldBeLessThan(TimeSpan.FromMilliseconds(10));
+    }
+
+    [Fact]
     public void Presented_timestamps_are_on_the_time_provider_monotonic_time_base()
     {
         RequireLibmpv();
         using var renderer = LoadedPaused();
         renderer.PlayAt(TimeSpan.Zero, TimeProvider.System.GetTimestamp());
-        var presented = WaitFor(() => renderer.Presented, p => p.Position > TimeSpan.FromSeconds(0.3)).ShouldNotBeNull();
+        var started = WaitFor(() => renderer.Presented, p => p.Position > TimeSpan.FromSeconds(0.3)).ShouldNotBeNull();
+        WaitFor(() => renderer.Presented, p => p.Position > started.Position + TimeSpan.FromSeconds(0.3)).ShouldNotBeNull();
 
+        var presented = renderer.Presented.ShouldNotBeNull();
         var now = TimeProvider.System.GetTimestamp();
 
+        // While playing, a picture is published once it is up: never stamped ahead of now, and recent.
         presented.Timestamp.ShouldBeLessThanOrEqualTo(now);
         TimeProvider.System.GetElapsedTime(presented.Timestamp, now).ShouldBeLessThan(TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public void A_frame_held_for_a_scheduled_start_is_stamped_with_the_moment_the_start_reaches_it()
+    {
+        RequireLibmpv();
+        using var renderer = LoadedPaused();
+        WaitFor(() => renderer.Presented, _ => true).ShouldNotBeNull();
+        var time = TimeProvider.System;
+        var start = time.GetTimestamp() + (long)(1.5 * time.TimestampFrequency);
+
+        renderer.PlayAt(TimeSpan.FromSeconds(2.01), start);
+
+        // 2.01 s is between frames (25 fps here): the seek target stands in as 2.01 s, while the exact seek lands on the
+        // restart frame 2.04 s. Held, that frame is due when the start reaches it, 30 ms after the start.
+        var held = WaitFor(() => renderer.Presented, p => p.Position >= TimeSpan.FromSeconds(2.03)).ShouldNotBeNull();
+        held.Position.ShouldBe(TimeSpan.FromSeconds(2.04), TimeSpan.FromMilliseconds(1));
+        held.Timestamp.ShouldBeGreaterThan(time.GetTimestamp());
+        time.GetElapsedTime(start, held.Timestamp).ShouldBe(TimeSpan.FromMilliseconds(30), TimeSpan.FromMilliseconds(1));
+    }
+
+    [Fact]
+    public void A_seek_while_playing_presents_the_target_as_due_at_the_moment_of_the_seek_and_never_ahead_of_it()
+    {
+        // A seek while playing is a start "now" from the target: the renderer pauses, seeks ahead by its seek time and
+        // resumes on time, so the frame it anchors on is the paused restart frame, not a frame mpv queued after it.
+        RequireLibmpv();
+        using var renderer = LoadedPaused();
+        var time = TimeProvider.System;
+        renderer.PlayAt(TimeSpan.Zero, time.GetTimestamp());
+        WaitFor(() => renderer.Presented, p => p.Position >= TimeSpan.FromSeconds(0.5)).ShouldNotBeNull();
+
+        var target = TimeSpan.FromSeconds(5);
+        var seekAt = time.GetTimestamp();
+        renderer.Seek(target);
+
+        WaitFor(() => renderer.Presented, p => p.Position >= target + TimeSpan.FromSeconds(1.2)).ShouldNotBeNull();
+        var ahead = TimeSpan.MinValue;
+        var behind = TimeSpan.MaxValue;
+        var until = time.GetTimestamp() + time.TimestampFrequency;
+        while (time.GetTimestamp() < until)
+        {
+            var presented = renderer.Presented.ShouldNotBeNull();
+            var lead = presented.Position - target - time.GetElapsedTime(seekAt, presented.Timestamp);
+            ahead = lead > ahead ? lead : ahead;
+            behind = lead < behind ? lead : behind;
+            Thread.Sleep(2);
+        }
+
+        ahead.ShouldBeLessThan(TimeSpan.FromMilliseconds(10));
+        behind.ShouldBeGreaterThan(TimeSpan.FromMilliseconds(-10), "the picture should resume on the seek's schedule, not a seek time late");
+    }
+
+    [Fact]
+    public void A_playing_load_publishes_position_zero_first_and_plays_on_from_it()
+    {
+        RequireLibmpv();
+        using var renderer = NewRenderer();
+        var time = TimeProvider.System;
+
+        renderer.Load(Media("long-gop-ramp.mkv"), 0, startPaused: false).IsSuccess.ShouldBeTrue();
+
+        PresentedPicture? first = null;
+        var until = time.GetTimestamp() + (Patience.Ticks * time.TimestampFrequency / TimeSpan.TicksPerSecond);
+        while (first is null && time.GetTimestamp() < until)
+        {
+            first = renderer.Presented;
+        }
+
+        first.ShouldNotBeNull().Position.ShouldBe(TimeSpan.Zero, TimeSpan.FromMilliseconds(1));
+        WaitFor(() => renderer.Presented, p => p.Position >= TimeSpan.FromSeconds(0.5)).ShouldNotBeNull();
     }
 
     [Fact]

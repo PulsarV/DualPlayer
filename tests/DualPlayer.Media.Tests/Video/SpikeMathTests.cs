@@ -57,6 +57,33 @@ public sealed class SpikeMathTests
         SpikeMath.RecoveryTimeMs([], 20).ShouldBeNull();
     }
 
+    [Fact]
+    public void RecoveryTime_does_not_count_samples_taken_while_the_picture_was_held_for_a_start()
+    {
+        // The held frame is stamped with the planned start, so its error is ~0 by construction while the screen still
+        // shows the paused picture: recovery starts at the first sample after the actual resume.
+        (double AtMs, double ErrorMs, bool Held)[] samples =
+        [
+            (0, 0.1, true), (100, 0.0, true), (230, 0.2, true), (240, 3, false), (300, 25, false), (400, 4, false), (500, 2, false),
+        ];
+
+        SpikeMath.HeldAwareRecoveryTimeMs(samples, 20).ShouldBe(400);
+    }
+
+    [Fact]
+    public void RecoveryTime_is_null_when_the_picture_was_still_held_at_the_end()
+    {
+        SpikeMath.HeldAwareRecoveryTimeMs([(0, 0.0, true), (100, 0.0, true)], 20).ShouldBeNull();
+    }
+
+    [Fact]
+    public void The_presentation_delay_line_shows_the_sample_count_and_median_and_makes_no_feedback_visible()
+    {
+        SpikeMath.PresentationDelayText(1200, 1100, 12.5).ShouldBe("presentation-delay samples: 1200 (used 1100), median 12.5 ms");
+        SpikeMath.PresentationDelayText(0, 0, null).ShouldBe(
+            "presentation-delay samples: 0 (used 0), median n/a - mpv gave no presentation feedback (property missing or not provided by the output); the display schedule ran uncorrected");
+    }
+
     [Theory]
     [InlineData(20.0, true)]
     [InlineData(20.1, false)]

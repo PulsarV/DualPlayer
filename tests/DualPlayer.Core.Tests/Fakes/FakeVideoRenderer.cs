@@ -15,6 +15,12 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
     private long _anchorTimestamp;
     private FrameCounters _counters = FrameCounters.None;
 
+    /// <summary>
+    /// When set, a frame held for a scheduled start (<see cref="PlayAt"/> with a future start) is stamped with that start,
+    /// as the libmpv renderer does (a prediction ahead of now); otherwise it is stamped now.
+    /// </summary>
+    public bool StampsHeldFrameWithItsStart { get; set; }
+
     /// <summary>When set, <see cref="Load"/> fails with this error.</summary>
     public Error? LoadError { get; set; }
 
@@ -63,6 +69,11 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
                 }
 
                 var now = time.GetTimestamp();
+                if (StampsHeldFrameWithItsStart && _playing && now < _anchorTimestamp)
+                {
+                    return new PresentedPicture(_anchorPosition, _anchorTimestamp);
+                }
+
                 return new PresentedPicture(PositionAt(now), now);
             }
         }
