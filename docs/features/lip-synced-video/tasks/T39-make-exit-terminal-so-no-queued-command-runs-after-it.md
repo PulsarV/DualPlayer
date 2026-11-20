@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-21 (R4)"
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-21. Work from what is inlined here; the source always wins.
@@ -29,7 +29,11 @@ See [spec.md](../spec.md) §5 AC-06.
 
 ## Definition of Done
 
-- [ ] Exit is terminal: an `_exited` flag set by `ExitCore`, checked first by every session command (returns `playback.no_run`, no engine/renderer/folder call).
-- [ ] `PlaybackControls` drops posts once exited.
-- [ ] Tests: Exit then Seek(-10 s) at the end starts no engine run and publishes no `AudioStarted`; Exit then NextFile scans nothing; a key posted after Alt+F4 `ExitNow` does not run.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Exit is terminal: an `_exited` flag set by `ExitCore`, checked first by every session command (returns `playback.no_run`, no engine/renderer/folder call).
+- [x] `PlaybackControls` drops posts once exited.
+- [x] Tests: Exit then Seek(-10 s) at the end starts no engine run and publishes no `AudioStarted`; Exit then NextFile scans nothing; a key posted after Alt+F4 `ExitNow` does not run.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+
+## Note (implement)
+
+Gate: one full `dotnet test` run failed `CompositionRootSmokeTests.The_video_renderer_is_media_s_mpv_renderer_decorated_once_for_the_playback_window` once (App 93/94); it passed alone and in three full-project reruns (94/94). T39 does not touch it — flagged as a possible flake for re-review.

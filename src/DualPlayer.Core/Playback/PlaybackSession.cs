@@ -80,6 +80,7 @@ public sealed partial class PlaybackSession : IDisposable
     private ITimer? _healthTimer;
     private bool _pictureFailed;
     private bool _starting;
+    private bool _exited;
     private string? _failureDuringStart;
     private int _healthTicks;
     private long _damagedSeen;
@@ -157,8 +158,11 @@ public sealed partial class PlaybackSession : IDisposable
 
     public void Dispose() => _loop.Dispose();
 
+    // Exit is terminal: a command still queued behind it (or behind an Alt+F4 exit) does nothing, not even a state read.
     private Result Run(Func<Result> command) =>
-        _loop.TryExecute(command, out var result) ? result : Result.Failure("playback.no_run", "No film is playing.");
+        _loop.TryExecute(() => _exited ? NoRun() : command(), out var result) ? result : NoRun();
+
+    private static Result NoRun() => Result.Failure("playback.no_run", "No film is playing.");
 
     /// <summary>
     /// Starts <paramref name="request"/>. A device named by its list number is resolved once, on the first start; the
@@ -1193,6 +1197,12 @@ public sealed partial class PlaybackSession : IDisposable
 
     private void ExitCore()
     {
+        if (_exited)
+        {
+            return;
+        }
+
+        _exited = true;
         _engine.Stop(RunEndReason.Stop);
         PictureSync? sync;
         lock (_gate)

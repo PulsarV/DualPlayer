@@ -46,7 +46,7 @@
 | T36 | [Restore the strict EngineRig barrier for the engine tests](./T36-restore-the-strict-enginerig-barrier-for-the-engine-tests.md) | test | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T37 | [Decorate the video renderer independent of registration order](./T37-decorate-the-video-renderer-independent-of-registration-order.md) | wiring | Volodymyr Kravchuk | S | T34 | done | COMMIT |
 | T38 | [Add the App-entry, end-to-end and window key tests the test plan lists](./T38-add-the-app-entry-end-to-end-and-window-key-tests-the-test-plan-lists.md) | test | Volodymyr Kravchuk | L | T27, T28, T31, T33, T35, T37 | done | COMMIT |
-| T39 | [Make exit terminal so no queued command runs after it](./T39-make-exit-terminal-so-no-queued-command-runs-after-it.md) | app | Volodymyr Kravchuk | S | — | in_progress | RED |
+| T39 | [Make exit terminal so no queued command runs after it](./T39-make-exit-terminal-so-no-queued-command-runs-after-it.md) | app | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T40 | [Keep a usable ended session when a file change or a return into the film fails](./T40-keep-a-usable-ended-session-when-a-file-change-or-a-return-into-the-film-fails.md) | app | Volodymyr Kravchuk | M | T39 | todo | — |
 | T41 | [Return into the film as a seek with an engine start position, one start line and a carried-over summary](./T41-return-into-the-film-as-a-seek-with-an-engine-start-position-one-start-line-and-a-carried.md) | app | Volodymyr Kravchuk | L | T40 | todo | — |
 | T42 | [Publish start timings without lost outputs, time a file change from its key and print the next-file line first](./T42-publish-start-timings-without-lost-outputs-time-a-file-change-from-its-key-and-print-the-n.md) | app | Volodymyr Kravchuk | M | T41 | todo | — |

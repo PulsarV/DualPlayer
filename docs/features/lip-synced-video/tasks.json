@@ -888,7 +888,7 @@
         "tests/DualPlayer.App.Tests/ViewModels/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T39-make-exit-terminal-so-no-queued-command-runs-after-it.md",
-      "status": "in_progress",
+      "status": "done",
       "origin": "review-2026-11-21: R4"
     },
     {

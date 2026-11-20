@@ -28,15 +28,15 @@ internal sealed class PlaybackControls : IPlaybackControls, IDisposable
     public IObservable<SessionEvent> Events => _session.Events;
 
     public void TogglePause() =>
-        _queue.Post("pause", () => _session.State == PlaybackState.Paused ? _session.Resume() : _session.Pause());
+        Post("pause", () => _session.State == PlaybackState.Paused ? _session.Resume() : _session.Pause());
 
-    public void Seek(TimeSpan step) => _queue.Post("seek", () => _session.Seek(step));
+    public void Seek(TimeSpan step) => Post("seek", () => _session.Seek(step));
 
-    public void NextFile() => _queue.Post("next-file", _session.NextFile);
+    public void NextFile() => Post("next-file", _session.NextFile);
 
-    public void PreviousFile() => _queue.Post("previous-file", _session.PreviousFile);
+    public void PreviousFile() => Post("previous-file", _session.PreviousFile);
 
-    public void ChangeOffset(int outputNumber, int deltaMs) => _queue.Post("offset", () => _session.ChangeOffset(outputNumber, deltaMs));
+    public void ChangeOffset(int outputNumber, int deltaMs) => Post("offset", () => _session.ChangeOffset(outputNumber, deltaMs));
 
     public void Exit() => _queue.Post("exit", () =>
     {
@@ -57,4 +57,8 @@ internal sealed class PlaybackControls : IPlaybackControls, IDisposable
     }
 
     public void Dispose() => _queue.Dispose();
+
+    // Exit is terminal: a key that comes after it, or is still queued behind it, never reaches the session.
+    private void Post(string name, Func<Result> command) =>
+        _queue.Post(name, () => Volatile.Read(ref _exited) == 1 ? Result.Success() : command());
 }
