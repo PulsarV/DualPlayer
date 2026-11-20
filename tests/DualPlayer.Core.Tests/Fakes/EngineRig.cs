@@ -106,6 +106,10 @@ internal sealed class EngineRig : IDisposable
 
     public IReadOnlyList<SyncRecord> RecordsOf(string deviceId) => [.. Records.Where(r => r.DeviceId == deviceId)];
 
+    private bool EndedOnItsOwn =>
+        Events.OfType<RunSummary>().LastOrDefault() is { EndReason: RunEndReason.FileEnd or RunEndReason.SeekPastEnd }
+        && Events.OfType<RunSummary>().Count() >= Events.OfType<AudioStarted>().Count();
+
     public RunSummary? Summary => Events.OfType<RunSummary>().FirstOrDefault();
 
     public void Start(EngineOptions? options = null)
@@ -194,6 +198,21 @@ internal sealed class EngineRig : IDisposable
         _paused = false;
     }
 
+    /// <summary>Tells the rig a transport command is starting: where the master clock now reads (the paused state stays).</summary>
+    public void CommandStarting(TimeSpan position)
+    {
+        _positionBase = position;
+        _positionSince = Elapsed;
+    }
+
+    /// <summary>Tells the rig where the master clock stands after a transport command finished.</summary>
+    public void CommandDone(TimeSpan position, bool paused)
+    {
+        _positionBase = position;
+        _positionSince = Elapsed;
+        _paused = paused;
+    }
+
     public void Stop(RunEndReason reason)
     {
         Call(() =>
@@ -206,13 +225,13 @@ internal sealed class EngineRig : IDisposable
     /// <summary>Waits until the engine has handled everything queued so far (a start while running is refused on the loop).</summary>
     public void Barrier()
     {
-        if (Summary?.EndReason == RunEndReason.FileEnd)
+        if (EndedOnItsOwn)
         {
-            return; // the film ended on its own: there is no run left to wait for
+            return; // the film ended on its own (or by a seek past its end): there is no run left to wait for
         }
 
         var refused = Engine.StartRun(string.Empty, [], new EngineOptions());
-        if (refused.IsSuccess && Summary?.EndReason == RunEndReason.FileEnd)
+        if (refused.IsSuccess && EndedOnItsOwn)
         {
             return; // the film ended on its own meanwhile
         }
@@ -326,6 +345,11 @@ internal sealed class EngineRig : IDisposable
             var result = inner.Open(deviceId, requestedBuffer, source);
             if (result.IsSuccess)
             {
+                if (devices.Count > 0 && devices.All(d => d.IsClosed))
+                {
+                    devices.Clear(); // a new run after the previous one ended: the rig follows the new run's outputs
+                }
+
                 devices.Add((FakeAudioDevice)result.Value);
             }
 

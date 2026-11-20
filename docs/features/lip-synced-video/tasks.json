@@ -301,7 +301,7 @@
         "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionTransportTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T14-session-pause-resume-seek.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T15",
@@ -451,7 +451,7 @@
         "tests/DualPlayer.App.Tests/Startup/TerminalPrinterTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T21-terminal-lines-and-run-summaries.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T22",

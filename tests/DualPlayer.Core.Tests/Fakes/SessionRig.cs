@@ -25,7 +25,7 @@ internal sealed class SessionRig : IDisposable
         store.Save(DeviceOffsetsFile.Definition, Arg.Any<DeviceOffsets>()).Returns(Result.Success());
         _offsets = new OffsetBook(store, Engine.Time, NullLogger<OffsetBook>.Instance);
         Session = new PlaybackSession(
-            Engine.Engine,
+            new FollowingEngine(Engine),
             Engine.Engine,
             Renderer,
             Probe,
@@ -64,6 +64,51 @@ internal sealed class SessionRig : IDisposable
     {
         _offsets.Dispose();
         Engine.Dispose();
+    }
+
+    /// <summary>The engine as the session sees it; every transport command also tells the rig where the master clock stands.</summary>
+    private sealed class FollowingEngine(EngineRig rig) : IAudioEngine
+    {
+        public IObservable<EngineEvent> Events => rig.Engine.Events;
+
+        public Result<RunStarted> StartRun(string file, IReadOnlyList<OutputAssignment> assignments, EngineOptions options) =>
+            rig.Engine.StartRun(file, assignments, options);
+
+        public Result<TimeSpan> Pause()
+        {
+            var result = rig.Engine.Pause();
+            if (result.IsSuccess)
+            {
+                rig.CommandDone(result.Value, paused: true);
+            }
+
+            return result;
+        }
+
+        public Result<TimeSpan> Resume()
+        {
+            var result = rig.Engine.Resume();
+            if (result.IsSuccess)
+            {
+                rig.CommandDone(result.Value, paused: false);
+            }
+
+            return result;
+        }
+
+        public Result<SeekResult> Seek(TimeSpan target)
+        {
+            rig.CommandStarting(target < TimeSpan.Zero ? TimeSpan.Zero : target);
+            var result = rig.Engine.Seek(target);
+            if (result.IsSuccess)
+            {
+                rig.CommandDone(result.Value.Position, result.Value.Paused);
+            }
+
+            return result;
+        }
+
+        public void Stop(RunEndReason reason) => rig.Engine.Stop(reason);
     }
 
     private sealed class Collector(SessionRig rig) : IObserver<SessionEvent>

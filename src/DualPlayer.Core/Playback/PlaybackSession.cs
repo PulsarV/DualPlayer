@@ -30,6 +30,16 @@ public sealed partial class PlaybackSession
     private PictureSync? _pictureSync;
     private PlaybackState _state = PlaybackState.Idle;
     private bool _offsetsLoaded;
+    private MasterClock? _clock;
+    private StartRequest? _request;
+    private LatencyEstimate? _estimate;
+    private TimeSpan _endPosition;
+    private ITimer? _freezeTimer;
+    private long _freezeVersion;
+    private bool _pictureFrozen;
+
+    // A resume that came before the picture reached the freeze point: the picture aligns when it freezes there.
+    private (TimeSpan ClockPosition, long ClockTimestamp)? _pendingAlign;
 
     public PlaybackSession(
         IAudioEngine engine,
@@ -89,6 +99,8 @@ public sealed partial class PlaybackSession
         }
 
         var estimate = LatencyModel.Estimate(outputs);
+        _request = request;
+        _estimate = estimate;
         _events.Publish(new LatencyEstimated(estimate));
         foreach (var output in estimate.Outputs)
         {
@@ -129,26 +141,268 @@ public sealed partial class PlaybackSession
         var heard = estimate.Outputs.ToDictionary(o => o.DeviceId, _ => pictureAt, StringComparer.Ordinal);
         _events.Publish(new StartTimings(commandAt, pictureAt, heard));
 
+        PictureSync? previous;
         lock (_gate)
         {
+            previous = _pictureSync;
             _pictureSync = sync;
+            _clock = clock;
+            _pictureFrozen = false;
             if (_state != PlaybackState.Ended)
             {
                 _state = PlaybackState.Playing;
             }
         }
 
+        previous?.Dispose();
         return Result.Success();
     }
 
     public Result Pause()
     {
+        PictureSync sync;
+        MasterClock clock;
+        lock (_gate)
+        {
+            switch (_state)
+            {
+                case PlaybackState.Ended:
+                case PlaybackState.Paused:
+                    return Result.Success();
+                case PlaybackState.Idle:
+                    return Result.Failure("playback.no_run", "No film is playing.");
+            }
+
+            (sync, clock) = (_pictureSync!, _clock!);
+        }
+
+        var paused = _engine.Pause();
+        if (!paused.IsSuccess)
+        {
+            return Result.Failure(paused.Error);
+        }
+
+        var freeze = paused.Value;
+        clock.StopAt(_time.GetTimestamp());
+        clock.JumpTo(freeze);
+        var delay = sync.PictureDelay;
+
+        // The sound already inside the devices plays out; the picture runs on until it reaches the freeze point.
+        var remaining = _renderer.Presented is { } presented ? freeze - presented.Position : TimeSpan.Zero;
+        long version;
+        lock (_gate)
+        {
+            _state = PlaybackState.Paused;
+            version = ++_freezeVersion;
+            _freezeTimer?.Dispose();
+            _freezeTimer = null;
+            if (remaining > TimeSpan.Zero)
+            {
+                _freezeTimer = _time.CreateTimer(_ => FreezePicture(version, freeze), null, remaining, Timeout.InfiniteTimeSpan);
+            }
+        }
+
+        if (remaining <= TimeSpan.Zero)
+        {
+            FreezePicture(version, freeze);
+        }
+
+        PublishDelay(freeze, PictureDelayCause.Pause, delay);
+        return Result.Success();
+    }
+
+    public Result Resume()
+    {
+        PictureSync sync;
+        MasterClock clock;
+        lock (_gate)
+        {
+            switch (_state)
+            {
+                case PlaybackState.Ended:
+                case PlaybackState.Playing:
+                    return Result.Success();
+                case PlaybackState.Idle:
+                    return Result.Failure("playback.no_run", "No film is playing.");
+            }
+
+            (sync, clock) = (_pictureSync!, _clock!);
+        }
+
+        var resumed = _engine.Resume();
+        if (!resumed.IsSuccess)
+        {
+            return Result.Failure(resumed.Error);
+        }
+
+        var position = resumed.Value;
+        var now = _time.GetTimestamp();
+        clock.JumpTo(position);
+        clock.Start();
+        var delay = sync.PictureDelay;
+        lock (_gate)
+        {
+            // The freeze may have happened, or not, while the engine was resuming: decide on the state as it is now.
+            // Sound from the freeze point is heard one picture delay from now, and so is the frame at the freeze point.
+            var align = (position + delay, now + ToTimestamp(delay));
+            if (_pictureFrozen)
+            {
+                CancelFreeze();
+                sync.AlignAt(align.Item1, align.Item2);
+            }
+            else
+            {
+                // The picture is still running up to the freeze point: keep the freeze, align when it gets there.
+                _pendingAlign = align;
+            }
+
+            _state = PlaybackState.Playing;
+        }
+
+        PublishDelay(position, PictureDelayCause.Resume, delay);
+        PublishTiming(clock, sync, now);
+        return Result.Success();
+    }
+
+    /// <summary>Seeks by <paramref name="step"/> relative to the current position (negative = backward).</summary>
+    public Result Seek(TimeSpan step)
+    {
+        PlaybackState state;
+        TimeSpan current;
+        lock (_gate)
+        {
+            state = _state;
+            current = state == PlaybackState.Ended ? _endPosition : _clock?.PositionAt(_time.GetTimestamp()) ?? TimeSpan.Zero;
+        }
+
+        switch (state)
+        {
+            case PlaybackState.Idle:
+                return Result.Failure("playback.no_run", "No film is playing.");
+            case PlaybackState.Ended:
+                if (step >= TimeSpan.Zero || _request is null)
+                {
+                    return Result.Success();
+                }
+
+                // A backward seek at the end returns into the film: a new run that starts at the target.
+                lock (_gate)
+                {
+                    _state = PlaybackState.Idle;
+                }
+
+                var restarted = Start(_request);
+                return restarted.IsSuccess ? SeekTo(current + step) : restarted;
+            default:
+                return SeekTo(current + step);
+        }
+    }
+
+    private Result SeekTo(TimeSpan target)
+    {
+        PictureSync sync;
+        MasterClock clock;
+        lock (_gate)
+        {
+            (sync, clock) = (_pictureSync!, _clock!);
+        }
+
+        var seeked = _engine.Seek(target);
+        if (!seeked.IsSuccess)
+        {
+            return Result.Failure(seeked.Error);
+        }
+
+        var delay = sync.PictureDelay;
         if (State == PlaybackState.Ended)
         {
+            // Past the end: stop the picture as at the natural end.
+            clock.StopAt(_time.GetTimestamp());
+            _renderer.Pause();
             return Result.Success();
         }
 
-        return Result.Failure("playback.pause_unsupported", "Pausing is not available yet.");
+        var position = seeked.Value.Position;
+        var now = _time.GetTimestamp();
+        clock.JumpTo(position);
+        if (seeked.Value.Paused)
+        {
+            long version;
+            lock (_gate)
+            {
+                version = CancelFreeze();
+            }
+
+            FreezePicture(version, position);
+        }
+        else
+        {
+            lock (_gate)
+            {
+                CancelFreeze();
+            }
+
+            sync.AlignAt(position, now);
+            PublishTiming(clock, sync, now);
+        }
+
+        PublishDelay(position, PictureDelayCause.Seek, delay);
+        return Result.Success();
+    }
+
+    /// <summary>Cancels a pending picture freeze; the caller holds the gate. Returns the new version.</summary>
+    private long CancelFreeze()
+    {
+        _freezeTimer?.Dispose();
+        _freezeTimer = null;
+        _pictureFrozen = false;
+        _pendingAlign = null;
+        return ++_freezeVersion;
+    }
+
+    // The renderer is driven under the gate (its calls do not block), so a freeze that fires on a timer thread
+    // cannot interleave with a resume, a seek or another pause.
+    private void FreezePicture(long version, TimeSpan position)
+    {
+        lock (_gate)
+        {
+            if (version != _freezeVersion)
+            {
+                return;
+            }
+
+            _renderer.Pause();
+            _renderer.Seek(position);
+            if (_pendingAlign is var (clockPosition, clockTimestamp) && _pictureSync is { } sync)
+            {
+                // Resumed before the picture got here: it holds this frame and starts it together with the sound.
+                _pictureFrozen = false;
+                _pendingAlign = null;
+                _freezeTimer?.Dispose();
+                _freezeTimer = null;
+                sync.AlignAt(clockPosition, clockTimestamp);
+                return;
+            }
+
+            _pictureFrozen = true;
+        }
+    }
+
+    private void PublishDelay(TimeSpan clock, PictureDelayCause cause, TimeSpan delay)
+    {
+        var ms = (int)Math.Round(delay.TotalMilliseconds);
+        _events.Publish(new PictureDelayChanged(clock, cause, ms, ms, _estimate?.Outputs ?? []));
+    }
+
+    private void PublishTiming(MasterClock clock, PictureSync sync, long now)
+    {
+        if (_renderer.Presented is not { } presented)
+        {
+            return;
+        }
+
+        var due = clock.PositionAt(now) - sync.PictureDelay;
+        _events.Publish(new PictureTimingReported(clock.PositionAt(now), due, presented.Position, (presented.Position - due).TotalMilliseconds));
     }
 
     public void Exit()
@@ -157,6 +411,7 @@ public sealed partial class PlaybackSession
         PictureSync? sync;
         lock (_gate)
         {
+            CancelFreeze();
             sync = _pictureSync;
             _pictureSync = null;
             _state = PlaybackState.Ended;
@@ -189,13 +444,14 @@ public sealed partial class PlaybackSession
 
     private void OnEngineEvent(EngineEvent engineEvent)
     {
-        if (engineEvent is not RunSummary)
+        if (engineEvent is not RunSummary summary)
         {
             return;
         }
 
         lock (_gate)
         {
+            _endPosition = summary.ClockPosition;
             _state = PlaybackState.Ended;
         }
     }
