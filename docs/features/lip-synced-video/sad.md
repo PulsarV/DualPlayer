@@ -312,6 +312,206 @@ sequenceDiagram
     end
 ```
 
+The flows below are drawn by the `sequences` stage with generic participants: `ui` is the playback window (SCR-02, SCR-03) or the start command's terminal (SCR-01); `service` is the playback session with the audio engine and the picture sync; `external-system` stands for the OS audio devices and the video renderer; `data-store` is the remembered-offsets file. Timeline as above: content position *p* is heard and shown at master-clock time `p + PD`.
+
+### Flow 4: pause and resume (US-02 — AC-04)
+
+```mermaid
+sequenceDiagram
+    actor Viewer
+    participant UI as ui
+    participant Svc as service
+    participant Ext as external-system
+    Note over Viewer,Ext: precondition - a film is playing on two outputs, SCR-02 playing
+    Viewer->>UI: pause key
+    UI->>Svc: pause
+    Svc->>Ext: stop giving sound to every output at the same master-clock instant
+    Note over Svc,Ext: sound already inside each device plays out, up to its latency
+    Svc->>Svc: freeze point = content position of the last sound heard on the slowest output
+    Svc->>Ext: picture keeps running and pauses at the freeze point, no later than the picture delay after the key
+    Ext-->>Svc: picture paused on the frame matching the last sound heard
+    Svc-->>UI: state paused
+    Viewer->>UI: pause key again
+    UI->>Svc: resume
+    Svc->>Ext: give sound again from the freeze point on every output with its lag
+    Svc->>Ext: play the picture from the freeze point at its due time
+    alt picture within 20 ms of due and every output within 10 ms within 1 s
+        Svc->>Svc: log lip-synced again with the command time
+    else not re-aligned within 1 s
+        Svc->>Svc: log the recovery excursion per output and for the picture
+    end
+    Note over Viewer,Ext: postcondition - playing from the freeze point, no words heard twice, no picture skipped
+```
+
+### Flow 5: seek while playing, paused or at the end (US-02 — AC-05)
+
+```mermaid
+sequenceDiagram
+    actor Viewer
+    participant UI as ui
+    participant Svc as service
+    participant Ext as external-system
+    Note over Viewer,Ext: precondition - a film is playing, paused or at its end
+    Viewer->>UI: seek key minus or plus 10 s or 60 s
+    UI->>Svc: seek by the step
+    Svc->>Svc: target = current position plus step
+    alt target before the start
+        Svc->>Svc: target = start of the film
+    end
+    alt target past the end
+        Svc->>Ext: stop sound and picture as at the natural end
+        Svc-->>UI: state ended, as in flow 6
+    else target inside the film and playing
+        Svc->>Ext: new playback epoch at the target on every output with its lag, picture delay and offsets set at once
+        Svc->>Ext: picture seeks to the target and plays at its due time
+        Svc->>Svc: log lip-synced again within 1 s, or the recovery excursion
+        Svc-->>UI: state playing
+    else target inside the film and paused
+        Svc->>Ext: picture seeks to the target and shows that frame
+        Svc->>Svc: new freeze point = target
+        Svc-->>UI: state paused
+    else target inside the film and at the end
+        Svc->>Ext: new playback epoch at the target, picture seeks and plays
+        Svc-->>UI: state playing
+    end
+    Note over Viewer,Ext: postcondition - picture and every output at the target together
+```
+
+### Flow 6: end of the film, exit, and losing the last output (US-01, US-02, US-06 — AC-06, AC-15b)
+
+```mermaid
+sequenceDiagram
+    actor Viewer
+    actor Developer
+    participant UI as ui
+    participant Svc as service
+    participant Ext as external-system
+    Note over Viewer,Ext: precondition - a film is playing
+    alt film reaches its end
+        Ext-->>Svc: end of stream on picture and every output
+        Svc->>Ext: picture stays on its last frame, every output falls silent together
+        Svc-->>UI: state ended
+        Svc-->>Developer: run summary printed and logged for every output
+    else exit key
+        Viewer->>UI: exit key
+        UI->>Svc: exit
+        Svc->>Ext: every output falls silent together, renderer closed
+        Svc-->>Developer: run summary printed and logged for every output
+        UI-->>Viewer: window closes
+    else last remaining output's device lost
+        Ext-->>Svc: device lost on the only output left
+        Svc->>Ext: picture freezes, stop as at the natural end
+        Svc-->>UI: note that the last output was lost
+        UI-->>Viewer: brief note for 2 s, window stays open
+        Svc-->>Developer: run summary printed and logged for every output
+    end
+    opt pause key while ended
+        Viewer->>UI: pause key
+        UI->>Svc: pause
+        Svc->>Svc: ignored at the end
+    end
+    Note over Viewer,Ext: postcondition - ended or closed, a run summary per end, exit or file change covering the file since it was opened, next, previous and exit keys still work while ended
+```
+
+### Flow 7: damaged picture during playback (US-01 — AC-06b)
+
+```mermaid
+sequenceDiagram
+    actor Viewer
+    actor Developer
+    participant UI as ui
+    participant Svc as service
+    participant Ext as external-system
+    Note over Viewer,Ext: precondition - a film is playing, its first picture decoded in hardware at start
+    alt renderer reports hardware decoding is not active after load
+        Ext-->>Svc: hardware decoding not active
+        Svc->>Svc: treat as picture cannot be decoded further
+    else stretch of damaged frames
+        Ext-->>Svc: frames skipped by the decoder
+        Svc->>Svc: sound plays on, skipped frames counted per minute in the log
+        Ext-->>Svc: picture decodes again
+        Svc->>Svc: log the damaged stretch with its position and length
+    end
+    opt picture cannot be decoded again at all
+        Svc->>Ext: stop as at the natural end, picture on its last good frame
+        Svc-->>UI: note that the picture could not be decoded further
+        UI-->>Viewer: brief note for 2 s
+        Svc-->>Developer: plain-language reason, run summary printed and logged
+    end
+    Note over Viewer,Ext: postcondition - playing on with damage skipped, or ended as in flow 6
+```
+
+### Flow 8: offset key at the limit, while paused or ended, and saving (US-04 — AC-10, AC-11)
+
+```mermaid
+sequenceDiagram
+    actor Viewer
+    participant UI as ui
+    participant Svc as service
+    participant Ext as external-system
+    participant Store as data-store
+    Note over Viewer,Store: precondition - a film is open, the output's current offset is known
+    Viewer->>UI: offset key for output 1, 2 or 3, later or earlier
+    UI->>Svc: change this output's offset by 10 ms
+    alt offset already at plus or minus 500 ms in that direction
+        Svc-->>UI: note that the offset cannot go beyond plus or minus 500 ms
+        UI-->>Viewer: brief note for 2 s, nothing changes
+    else within the range and paused or ended
+        Svc->>Svc: new offset, new assumed latency, picture delay and lags recomputed
+        Svc-->>UI: note with output and new offset
+        UI-->>Viewer: brief note for 2 s
+        Note over Svc,Ext: applied when playback continues, as part of the resume or seek re-alignment
+    else within the range and playing
+        Svc->>Svc: new offset and targets, moved as in flow 2
+        Svc-->>UI: note with output and new offset
+        UI-->>Viewer: brief note for 2 s
+    end
+    opt offset changed
+        Svc->>Svc: wait until 1 s after the last press
+        Svc->>Store: save offsets by device id
+        Note over Svc,Store: persists the device offset, keyed by OS endpoint id, atomic replace
+        alt save fails
+            Svc->>Svc: log the failure, keep the offset for this run
+        end
+    end
+    Note over Viewer,Store: postcondition - the next start on the same device uses the saved offset
+```
+
+### Flow 9: lip-sync log for every change (US-07 — AC-17, AC-13)
+
+```mermaid
+sequenceDiagram
+    actor Developer
+    participant Svc as service
+    participant Ext as external-system
+    Note over Developer,Ext: precondition - a film is playing, the log is open
+    alt picture delay, latency or offset changes
+        Svc->>Svc: record master-clock position, new picture delay, per output the reported part, type default, offset and lag
+    else seek, pause, resume or file change
+        Svc->>Svc: record master-clock position, the command, picture delay and per-output values
+    end
+    Ext-->>Svc: presented position of the picture with its timestamp
+    Svc->>Svc: record how far the picture was presented behind or ahead of due
+    loop every minute
+        Ext-->>Svc: late, dropped and skipped frame counters
+        Svc->>Svc: record the counters, a frame later than 20 ms after due counts as late
+    end
+    Svc-->>Developer: structured events in the rolling log
+    Note over Developer,Ext: postcondition - the Developer can pair each phone measurement with the latency, offset and picture delay in use
+```
+
+**Non-runtime:** AC-16 (the click-and-flash measurement) happens outside the player with a phone; the player's side is flow 1 starting the test video and flow 9 logging the values the evidence is paired with.
+
+**Coverage (use cases → flows):** US-01 → flows 1, 6, 7 · US-02 → flows 4, 5, 6 · US-03 → flow 3 · US-04 → flows 2, 8 · US-05 → flow 1 · US-06 → flows 2, 6 · US-07 → flow 9 (+ AC-16 non-runtime).
+
+**Coverage (AC → flow):** AC-01 → 1 · AC-02 → 1 (no picture branch) · AC-03 → 1 (access branch) · AC-03b → 1 (screen branch) · AC-04 → 4 · AC-05 → 5 · AC-06 → 6 · AC-06b → 7 · AC-07 → 3 · AC-08 → 3 (no playable file) · AC-09 → 3 (missing track branch, both directions) · AC-09b → 3 (unreadable or not hardware-decodable branch) · AC-10 → 2, 8 · AC-11 → 8 · AC-12 → 1 (offsets loaded) · AC-13 → 1, 9 · AC-14 → 2 · AC-15 → 2 (device lost branch) · AC-15b → 6 · AC-16 → non-runtime · AC-17 → 9.
+
+**Flagged for later stages (not decided here):**
+- `ux-flows.md` flow US-02 still says the picture freezes "on the frame shown at the key press"; spec AC-04 (clarified 2026-11-20) and flow 4 freeze it on the frame matching the last sound heard. Update `ux-flows.md` before `screens`.
+- Flows 1–3 (seeded by `design`) name §5 containers; flows 4–9 use generic participants. Same participants, two vocabularies.
+- `sad.md` §11 rows on the offset-sign wording and on AC-13's reported part are now closed in the spec (`clarify`, 2026-11-20); the §1 decision override stays as the record of why.
+- `data-model`: the only persisted entity is the device offset (flow 8), keyed by OS endpoint id in `device-offsets.json` (ADR-0006) — no database, no index.
+
 ## 7. Deployment view
 
 One process on one PC: `DualPlayer.App` is built as a console-subsystem executable for this step (ADR-0001) and run from a terminal on the target Windows 11 PC. Native libraries sit beside the executable: the LGPL FFmpeg DLLs fetched by `build/fetch-ffmpeg.ps1` (existing) and `libmpv-2.dll` fetched by a new `build/fetch-libmpv.ps1` on the same pattern (pinned version and checksum, `build/mpv/` git-ignored, cached in CI, copied beside every referencing executable by `DualPlayer.Media.csproj`). For this step any prebuilt libmpv is acceptable for development and testing on the owner's PCs, where nothing is distributed. An LGPL build (`-Dgpl=false`) replaces it before roadmap step 13 packages the player (§11). On the dev Mac, libmpv and FFmpeg come from Homebrew (`brew install mpv ffmpeg@8`); CI's macOS job installs both. No network, no service, no replicas; packaging and the installer are roadmap step 13.
