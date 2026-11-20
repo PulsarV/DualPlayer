@@ -122,4 +122,33 @@ public sealed class DeviceOffsetsFileTests : IDisposable
         warnings.ShouldContain(w => w.Message.Contains("a", StringComparison.Ordinal));
         warnings.ShouldContain(w => w.Message.Contains("b", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void A_file_without_the_offsets_key_warns_state_invalid_and_starts_at_zero_like_offsets_null()
+    {
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(FilePath, """{ "schemaVersion": 1 }""");
+        using var book = new OffsetBook(new JsonFileStateStore(_directory), new FakeTimeProvider(), NullLogger<OffsetBook>.Instance);
+
+        var warning = book.Load().ShouldHaveSingleItem();
+
+        warning.Code.ShouldBe("state.invalid");
+        book.Get("dev-1").ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData(int.MaxValue, 500)]
+    [InlineData(int.MinValue, -500)]
+    [InlineData(int.MaxValue - 4, 500)]
+    [InlineData(int.MinValue + 4, -500)]
+    public void A_huge_stored_offset_clamps_to_the_bound_on_its_own_side(int stored, int expected)
+    {
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(FilePath, $$"""{ "schemaVersion": 1, "offsets": { "dev-1": {{stored}} } }""");
+        using var book = new OffsetBook(new JsonFileStateStore(_directory), new FakeTimeProvider(), NullLogger<OffsetBook>.Instance);
+
+        book.Load();
+
+        book.Get("dev-1").ShouldBe(expected);
+    }
 }

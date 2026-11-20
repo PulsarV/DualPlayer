@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-20 (F18, F26)"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-20. Work from what is inlined here; the source always wins.
@@ -30,7 +30,11 @@ See [spec.md](../spec.md) §5 AC-12.
 
 ## Definition of Done
 
-- [ ] A file without `offsets` gives the same `state.invalid` warning and handling as `offsets: null` (per data-model.md).
-- [ ] Stored offsets near `int.MaxValue` / `int.MinValue` clamp to +limit / −limit (no overflow; checked arithmetic or long).
-- [ ] Tests for both; they fail on the current code.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] A file without `offsets` gives the same `state.invalid` warning and handling as `offsets: null` (per data-model.md).
+- [x] Stored offsets near `int.MaxValue` / `int.MinValue` clamp to +limit / −limit (no overflow; checked arithmetic or long).
+- [x] Tests for both; they fail on the current code.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+
+## Note (implement)
+
+F18 did not reproduce through the real store: System.Text.Json's source-generated reader leaves the init-only `Offsets` null when the key is missing (the property initializer is not applied), so `OffsetBook` already warned `state.invalid`. The new test (`A_file_without_the_offsets_key_warns_state_invalid_and_starts_at_zero_like_offsets_null`) passed on the old code and stays as a regression guard over the real store. F26 reproduced and is fixed.

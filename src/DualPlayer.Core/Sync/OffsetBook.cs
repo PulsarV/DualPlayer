@@ -115,8 +115,9 @@ public sealed class OffsetBook : IDisposable
 
     private static int Normalize(int value)
     {
-        var rounded = (int)Math.Round(value / (double)StepMs, MidpointRounding.AwayFromZero) * StepMs;
-        return Math.Clamp(rounded, -LimitMs, LimitMs);
+        // Rounded and clamped in double: an int near int.MaxValue times the step would overflow and flip sign.
+        var rounded = Math.Round(value / (double)StepMs, MidpointRounding.AwayFromZero) * StepMs;
+        return (int)Math.Clamp(rounded, -LimitMs, LimitMs);
     }
 
     private void Save()

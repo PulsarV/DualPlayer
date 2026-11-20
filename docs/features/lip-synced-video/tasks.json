@@ -746,7 +746,7 @@
         "tests/DualPlayer.Core.Tests/Sync/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T33-reject-an-offsets-file-without-the-offsets-key-and-clamp-huge-stored-offsets-to-the-right.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-20: F18, F26"
     },
     {
