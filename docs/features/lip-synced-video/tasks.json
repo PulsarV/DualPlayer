@@ -37,7 +37,7 @@
         "tests/DualPlayer.Media.Tests/Video/MpvLibraryTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T2-fetch-and-load-libmpv.md",
-      "status": "todo"
+      "status": "blocked"
     },
     {
       "id": "T3",
