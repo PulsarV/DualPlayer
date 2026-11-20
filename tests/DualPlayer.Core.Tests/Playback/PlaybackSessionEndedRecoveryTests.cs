@@ -55,7 +55,12 @@ public sealed class PlaybackSessionEndedRecoveryTests : IDisposable
 
         rig.Engine.Call(() => rig.Session.PreviousFile()).IsSuccess.ShouldBeTrue();
 
-        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem();
+        // FileChanged is published once a target is chosen (T42, cli.md §2.2), so the failed next has one too.
+        var changes = rig.Events.OfType<FileChanged>().ToList();
+        changes.Count.ShouldBe(2);
+        changes[0].ToPrevious.ShouldBeFalse();
+        changes[1].ToPrevious.ShouldBeTrue();
+        RunFileNames(rig).Last().ShouldBe(Path.GetFileName(changes[1].File), "the previous file is the one that now plays");
         rig.Session.State.ShouldBe(PlaybackState.Playing);
     }
 

@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
 origin: "review-2026-11-21 (R5, R8, R9)"
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-21. Work from what is inlined here; the source always wins.
@@ -33,8 +33,12 @@ See [spec.md](../spec.md) §5 AC-01, AC-07, AC-17.
 
 ## Definition of Done
 
-- [ ] Outputs lost before their first audio are skipped when publishing `StartTimings` (or pruned in `OnDeviceLost`); timings publish once with the remaining outputs and the per-tick engine round trip stops.
-- [ ] A file change's `StartTimings.CommandTimestamp` is the key time (`commandAt`).
-- [ ] `FileChanged` is published once the target is chosen, before `StartCore`; on failure the existing note/log still apply.
-- [ ] Tests: lose an output in the pre-roll → exactly one `StartTimings` with the remaining outputs; file change → `CommandTimestamp` equals the key time; `PlayEndToEndTests` asserts the line order `next <file>` before the new `output`/`picture delay` lines.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Outputs lost before their first audio are skipped when publishing `StartTimings` (or pruned in `OnDeviceLost`); timings publish once with the remaining outputs and the per-tick engine round trip stops.
+- [x] A file change's `StartTimings.CommandTimestamp` is the key time (`commandAt`).
+- [x] `FileChanged` is published once the target is chosen, before `StartCore`; on failure the existing note/log still apply.
+- [x] Tests: lose an output in the pre-roll → exactly one `StartTimings` with the remaining outputs; file change → `CommandTimestamp` equals the key time; `PlayEndToEndTests` asserts the line order `next <file>` before the new `output`/`picture delay` lines.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+
+## Note (implement)
+
+`FileChanged` is now published once the target is chosen, so a file change whose start fails also publishes one (`next X`, then the failure note). The T40 guard test `After_a_failed_file_change_next_and_previous_file_still_answer_AC_07` was updated with the owner's approval: it now asserts two `FileChanged` events (next, then previous) and that the last engine run is on the previous file. Gate: `AudioEngineRunTests.Audio_started_is_published_once…` failed once in the full run (the timing flake noted in T37); it passed alone and in a full Core rerun (467/467).

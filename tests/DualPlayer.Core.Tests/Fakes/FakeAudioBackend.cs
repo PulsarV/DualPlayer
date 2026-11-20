@@ -7,6 +7,7 @@ internal sealed class FakeAudioBackend(TimeProvider time, MixFormat format) : IA
     private readonly List<AudioDeviceInfo> _devices = [];
     private readonly HashSet<string> _denied = [];
     private readonly Dictionary<string, TimeSpan> _startLatency = [];
+    private readonly HashSet<string> _lostOnStart = [];
 
     private readonly Dictionary<string, MixFormat> _formats = [];
     private readonly Dictionary<string, double> _ppm = [];
@@ -35,6 +36,9 @@ internal sealed class FakeAudioBackend(TimeProvider time, MixFormat format) : IA
 
     public void DenyAccess(string id) => _denied.Add(id);
 
+    /// <summary>The device <paramref name="id"/> is lost as soon as it starts, before it has rendered any audio (a loss in the pre-roll).</summary>
+    public void LoseOnStart(string id) => _lostOnStart.Add(id);
+
     public IReadOnlyList<AudioDeviceInfo> ListDevices() => _devices;
 
     public Result<IAudioDevice> Open(string deviceId, TimeSpan requestedBuffer, IRenderSource source)
@@ -54,6 +58,7 @@ internal sealed class FakeAudioBackend(TimeProvider time, MixFormat format) : IA
         {
             KeepRendered = KeepRendered,
             StartLatency = _startLatency.GetValueOrDefault(deviceId),
+            LoseOnStart = _lostOnStart.Contains(deviceId),
         });
     }
 }

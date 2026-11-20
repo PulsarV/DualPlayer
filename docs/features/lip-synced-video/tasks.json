@@ -958,7 +958,7 @@
         "tests/DualPlayer.App.Tests/E2E/PlayEndToEndTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T42-publish-start-timings-without-lost-outputs-time-a-file-change-from-its-key-and-print-the-n.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-21: R5, R8, R9"
     },
     {

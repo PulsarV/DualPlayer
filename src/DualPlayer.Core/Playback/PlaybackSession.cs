@@ -522,7 +522,12 @@ public sealed partial class PlaybackSession : IDisposable
             someStillPlay = request.Outputs.Any(a => a.Device.Id is not { } id || !_lost.Contains(id));
         }
 
-        var started = StartCore(request with { File = target }, keepLost: someStillPlay);
+        // Said as soon as the target is chosen, ahead of the new file's output and picture delay lines, which the start
+        // publishes; a start that then fails still ends with its note and log line.
+        _events.Publish(new FileChanged(target, request.File) { ToPrevious = direction == NeighbourDirection.Previous });
+
+        // Timed from the key, not from the command line the first file was started with.
+        var started = StartCore(request with { File = target, CommandTimestamp = commandAt }, keepLost: someStillPlay);
         if (!started.IsSuccess)
         {
             // The old film has stopped and the new one cannot play: end here, say why, and keep answering keys.
@@ -539,7 +544,6 @@ public sealed partial class PlaybackSession : IDisposable
             return started;
         }
 
-        _events.Publish(new FileChanged(target, request.File) { ToPrevious = direction == NeighbourDirection.Previous });
         LatencyEstimate? now;
         lock (_gate)
         {
@@ -1108,12 +1112,23 @@ public sealed partial class PlaybackSession : IDisposable
     }
 
     // The picture moving from frame 0 dates its first present; each output is heard its assumed latency after its
-    // first audio. Published once every output has handed over its first audio.
+    // first audio. Published once every output still connected has handed over its first audio.
     private void PublishStartTimings(long commandAt, IReadOnlyList<OutputLatency> outputs, PictureTiming timing)
     {
+        HashSet<string> lost;
+        lock (_gate)
+        {
+            lost = new HashSet<string>(_lost, StringComparer.Ordinal);
+        }
+
         var heard = new Dictionary<string, long>(StringComparer.Ordinal);
         foreach (var output in outputs)
         {
+            if (lost.Contains(output.DeviceId))
+            {
+                continue; // lost before its first audio: it never will hand one over, and nothing is waited for
+            }
+
             if (_lags.FirstAudioTimestamp(output.DeviceId) is not { } given)
             {
                 return; // not every output has started yet: a later tick tries again

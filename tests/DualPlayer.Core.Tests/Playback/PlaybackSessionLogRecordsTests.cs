@@ -126,6 +126,48 @@ public sealed class PlaybackSessionLogRecordsTests : IDisposable
     }
 
     [Fact]
+    public void An_output_lost_in_the_pre_roll_is_left_out_of_the_one_start_timings_record_and_the_engine_is_no_longer_asked_AC_01_AC_17()
+    {
+        CountingLagControl? lags = null;
+        using var rig = new SessionRig(TwoDevices, null, 600, wrapLags: inner => lags = new CountingLagControl(inner));
+        rig.Probe.Set("dev-1", new DeviceLatencyReport(TimeSpan.FromMilliseconds(40), "wasapi-stream-latency", ConnectionKind.Bluetooth, FormFactor.Headphones));
+        rig.Probe.Set("dev-2", new DeviceLatencyReport(TimeSpan.Zero, "wasapi-stream-latency", ConnectionKind.Usb, FormFactor.Speaker));
+        rig.Engine.LoseOutputInPreRoll(1);
+        rig.Engine.Call(() => rig.Session.Start(rig.Request(2))).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(300);
+
+        rig.Events.OfType<OutputLost>().ShouldHaveSingleItem().DeviceId.ShouldBe("dev-1");
+        rig.Engine.Engine.FirstAudioTimestamp("dev-1").ShouldBeNull("the lost output must never have handed over audio");
+        var timings = rig.Events.OfType<StartTimings>().ShouldHaveSingleItem();
+        timings.FirstAudioHeard.Keys.ShouldBe(["dev-2"]);
+
+        var asked = lags!.FirstAudioQueries;
+        rig.Engine.Render(100);
+        rig.Events.OfType<StartTimings>().Count().ShouldBe(1);
+        lags.FirstAudioQueries.ShouldBe(asked, "every sync tick still asks the engine for first audio after the timings were published");
+    }
+
+    [Fact]
+    public void A_file_changes_start_timings_are_measured_from_the_key_not_from_the_process_start_command_AC_07_AC_17()
+    {
+        File("Episode 2.mkv");
+        using var rig = new SessionRig(TwoDevices, null, 600);
+        var processStart = rig.Engine.Time.GetTimestamp();
+        rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = File("Episode 1.mkv"), CommandTimestamp = processStart })).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(300);
+        rig.Events.OfType<StartTimings>().ShouldHaveSingleItem().CommandTimestamp.ShouldBe(processStart);
+
+        var keyPressed = rig.Engine.Time.GetTimestamp();
+        rig.Engine.Call(() => rig.Session.NextFile()).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(300);
+
+        var timings = rig.Events.OfType<StartTimings>().ToList();
+        timings.Count.ShouldBe(2);
+        var secondsAfterKey = (timings[1].CommandTimestamp - keyPressed) / (double)rig.Engine.Time.TimestampFrequency;
+        secondsAfterKey.ShouldBeInRange(0, 0.25, "the file change's command time is the key press, not the start command three seconds earlier");
+    }
+
+    [Fact]
     public void Each_output_latency_names_its_source_and_a_failed_probe_says_why_ADR_0004()
     {
         using var rig = new SessionRig(TwoDevices, null, 600);
@@ -135,5 +177,28 @@ public sealed class PlaybackSessionLogRecordsTests : IDisposable
         var outputs = rig.Events.OfType<LatencyEstimated>().ShouldHaveSingleItem().Estimate.Outputs;
         outputs[0].Source.ShouldBe("wasapi-stream-latency");
         outputs[1].Source.ShouldNotBeNull().ShouldContain("probe.unknown_device");
+    }
+
+    private sealed class CountingLagControl(IOutputLagControl inner) : IOutputLagControl
+    {
+        private int _firstAudioQueries;
+
+        public int FirstAudioQueries => Volatile.Read(ref _firstAudioQueries);
+
+        public long? FrameZeroTimestamp => inner.FrameZeroTimestamp;
+
+        public long? ClockStartTimestamp => inner.ClockStartTimestamp;
+
+        public bool IsRamping => inner.IsRamping;
+
+        public Result SetLagTargets(IReadOnlyDictionary<string, TimeSpan> targets, LagChangeMode mode) => inner.SetLagTargets(targets, mode);
+
+        public TimeSpan? CurrentLag(string deviceId) => inner.CurrentLag(deviceId);
+
+        public long? FirstAudioTimestamp(string deviceId)
+        {
+            Interlocked.Increment(ref _firstAudioQueries);
+            return inner.FirstAudioTimestamp(deviceId);
+        }
     }
 }

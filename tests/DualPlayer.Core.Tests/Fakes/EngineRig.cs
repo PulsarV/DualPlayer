@@ -38,6 +38,7 @@ internal sealed class EngineRig : IDisposable
     private readonly int _barrierEvery;
     private readonly List<(TimeSpan At, long[] Played)> _observations = [];
     private readonly bool _observe;
+    private readonly FakeAudioBackend _fakeBackend;
     private TimeSpan _positionBase;
     private TimeSpan _positionSince;
     private bool _paused;
@@ -70,6 +71,7 @@ internal sealed class EngineRig : IDisposable
 
         _decoder = new RealisticAudioDecoder(Tracks, totalSeconds, blockFrames ?? [1536, 1024], seekLandsEarly, seekLandsLate, startLandsLate);
         Backend = backend;
+        _fakeBackend = backend;
         Engine = new AudioEngine(new CapturingBackend(backend, _devices), _decoder, Time, NullLogger<AudioEngine>.Instance);
         Engine.Events.Subscribe(new Collector(this));
         _origin = Time.GetUtcNow();
@@ -78,6 +80,9 @@ internal sealed class EngineRig : IDisposable
     public FakeTimeProvider Time { get; }
 
     public IAudioBackend Backend { get; }
+
+    /// <summary>Device <paramref name="number"/> (dev-n) is lost the moment the engine starts it: in the pre-roll, before its first audio.</summary>
+    public void LoseOutputInPreRoll(int number) => _fakeBackend.LoseOnStart($"dev-{number}");
 
     public AudioEngine Engine { get; }
 

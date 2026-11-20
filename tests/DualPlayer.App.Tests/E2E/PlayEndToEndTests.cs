@@ -107,6 +107,35 @@ public sealed partial class PlayEndToEndTests : IDisposable
     }
 
     [Fact]
+    public void Page_Down_prints_the_next_file_line_before_the_new_files_output_and_picture_delay_lines_AC_07()
+    {
+        var (rig, printer, controls) = Play(File("Episode 1.mkv"));
+        File("Episode 2.mkv");
+        using (rig)
+        using (controls)
+        {
+            controls.NextFile();
+            rig.Engine.AdvanceUntil(() => rig.Events.OfType<DualPlayer.Core.Playback.StartTimings>().Count() >= 2)
+                .ShouldBeTrue("Page Down did not start the next file");
+
+            PressEscAndWait(rig, controls);
+            printer.Dispose();
+        }
+
+        var lines = Lines();
+        var text = string.Join(Environment.NewLine, lines);
+        var next = lines.FindIndex(l => l == "next Episode 2.mkv");
+        next.ShouldBeGreaterThan(0, text);
+        var outputs = Enumerable.Range(0, lines.Count).Where(i => lines[i].StartsWith("output 1 track", StringComparison.Ordinal)).ToList();
+        var delays = Enumerable.Range(0, lines.Count).Where(i => lines[i].StartsWith("picture delay", StringComparison.Ordinal)).ToList();
+        outputs.Count.ShouldBe(2, text);
+        delays.Count.ShouldBe(2, text);
+        next.ShouldBeLessThan(outputs[1], "the new file's output lines were printed before the next-file line:" + Environment.NewLine + text);
+        next.ShouldBeLessThan(delays[1], "the new file's picture delay line was printed before the next-file line:" + Environment.NewLine + text);
+        next.ShouldBeGreaterThan(outputs[0], text);
+    }
+
+    [Fact]
     public void Seeking_past_the_end_and_back_prints_one_start_line_and_the_exit_summary_covers_the_whole_playback_AC_05_AC_06()
     {
         var (rig, printer, controls) = Play(File("Film.mkv"), totalSeconds: 30);
