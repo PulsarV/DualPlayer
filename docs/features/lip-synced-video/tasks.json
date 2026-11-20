@@ -382,7 +382,7 @@
         "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionPictureHealthTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T18-damaged-picture-and-lip-sync-log.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T19",
@@ -429,7 +429,7 @@
         "tests/DualPlayer.App.Tests/ViewModels/PlaybackViewModelTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T20-playback-window-keys-and-notes.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T21",
