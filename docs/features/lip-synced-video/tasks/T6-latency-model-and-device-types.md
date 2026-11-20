@@ -9,8 +9,8 @@ files_hint: ["src/DualPlayer.Core/Sync/LatencyModel.cs", "src/DualPlayer.Core/Sy
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "blocked"
+step: "GATE — test assertion contradicts spec (escalated)"
 ---
 
 <!-- Self-contained task: work from what is inlined here. Every quoted chunk ends with its provenance
