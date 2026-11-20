@@ -511,7 +511,7 @@
         "docs/features/lip-synced-video/evidence/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T23-measure-lip-sync-on-the-target-pc.md",
-      "status": "todo"
+      "status": "blocked"
     },
     {
       "id": "T24",

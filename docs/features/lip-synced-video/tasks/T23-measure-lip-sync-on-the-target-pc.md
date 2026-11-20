@@ -9,8 +9,8 @@ files_hint: ["build/make-click-flash-video.ps1", "docs/features/lip-synced-video
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "blocked"
+step: "owner run on the target PC (script + run guide ready)"
 ---
 
 <!-- Self-contained task: work from what is inlined here. Every quoted chunk ends with its provenance
@@ -91,8 +91,8 @@ Internal — no API surface.
 
 ## Checklist
 
-- [ ] Script that generates the click-and-flash test video with FFmpeg (white flash + click on every audio track at the same instant once per second; H.264 and HEVC 1080p; ≥ 2 audio tracks) — `build/make-click-flash-video.ps1`
-- [ ] Run guide for the owner (phone at ≥ 120 fps, hand clap first, each device to the microphone in turn, 10 flashes per output) — `docs/features/lip-synced-video/evidence/`
+- [x] Script that generates the click-and-flash test video with FFmpeg (white flash + click on every audio track at the same instant once per second; H.264 and HEVC 1080p; ≥ 2 audio tracks) — `build/make-click-flash-video.ps1`
+- [x] Run guide for the owner (phone at ≥ 120 fps, hand clap first, each device to the microphone in turn, 10 flashes per output) — `docs/features/lip-synced-video/evidence/`
 - [ ] Owner runs it on the target PC: first-use (offset 0) and after setting offsets; 2 h H.264 + HEVC runs for frame counters and CPU; checks every spec §5 key with the video window shown and listens during offset ramps
 - [ ] The T22 manual run (folded in from review-2026-11-20 F19): `play` starts fullscreen on the named and on the main screen; refusals print their contract line and exit code with no window (audio-only file, file without read access, missing `--screen`, libmpv renamed away); Esc during the start exits 0 with no error line and no sound afterwards
 - [ ] Record the evidence with the logged latency/offset/picture delay per measurement; answer the spec §8 type-default and BT-position questions from it — `docs/features/lip-synced-video/evidence/<date>-target-pc-acceptance.md`
