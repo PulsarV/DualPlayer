@@ -9,8 +9,8 @@ files_hint: ["tests/DualPlayer.Media.Tests/Video/MpvSpikeTests.cs", "docs/featur
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
-status: "blocked"
-step: "owner — numeric lines PASS (evidence/2026-11-20-d1-spike.md); 0.2 % move visual check + D1 verdict pending"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Self-contained task: work from what is inlined here. Every quoted chunk ends with its provenance
