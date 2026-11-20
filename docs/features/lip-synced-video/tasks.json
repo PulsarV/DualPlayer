@@ -187,7 +187,7 @@
         "tests/DualPlayer.Media.Tests/Video/FfmpegPictureProbeTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T9-ffmpeg-picture-probe.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T10",

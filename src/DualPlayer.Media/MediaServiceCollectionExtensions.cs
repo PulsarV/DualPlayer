@@ -12,6 +12,7 @@ public static class MediaServiceCollectionExtensions
     public static IServiceCollection AddMedia(this IServiceCollection services)
     {
         services.TryAddSingleton<IAudioDecoder, FfmpegAudioDecoder>();
+        services.TryAddSingleton<IPictureProbe, FfmpegPictureProbe>();
         services.TryAddSingleton<IVideoRenderer, MpvVideoRenderer>();
         return services;
     }

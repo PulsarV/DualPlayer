@@ -59,3 +59,11 @@ ffmpeg -f lavfi -i "testsrc2=s=160x120:r=25:d=3" -c:v libx264 -preset veryfast -
 python3 -c "import random; b=bytearray(open('clean.mkv','rb').read()); r=random.Random(1); o=int(len(b)*0.6); \
 b[o:o+200]=bytes(r.randrange(256) for _ in range(200)); open('video-damaged.mkv','wb').write(b)"
 ```
+
+`video-ffv1.mkv` (1 s, 4 KB): one 64x48 FFV1 video stream, no audio. FFV1 has neither a D3D11VA nor a VideoToolbox
+decoder, so it decodes only in software and the probe must report `video.not_hardware_decodable` naming the codec
+(AC-02). Generated with:
+
+```sh
+ffmpeg -f lavfi -i "color=c=gray:s=64x48:r=25:d=1" -c:v ffv1 -pix_fmt yuv420p video-ffv1.mkv
+```
