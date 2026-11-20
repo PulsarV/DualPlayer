@@ -42,6 +42,17 @@ public sealed partial class PlaybackSession
     private bool _targetsPending;
     private static readonly TimeSpan PictureProbeLimit = TimeSpan.FromSeconds(2);
     private readonly HashSet<string> _lost = new(StringComparer.Ordinal);
+    private static readonly TimeSpan HealthInterval = TimeSpan.FromSeconds(1);
+    private const int TicksPerCounterReport = 60;
+    private const string PictureFailedNote = "The picture could not be decoded further - film ended";
+    private ITimer? _healthTimer;
+    private bool _pictureFailed;
+    private bool _starting;
+    private string? _failureDuringStart;
+    private int _healthTicks;
+    private long _damagedSeen;
+    private TimeSpan _previousTickClock;
+    private (TimeSpan Start, TimeSpan LastGrowth, long Frames)? _stretch;
 
     // A resume that came before the picture reached the freeze point: the picture aligns when it freezes there.
     private (TimeSpan ClockPosition, long ClockTimestamp)? _pendingAlign;
@@ -69,6 +80,8 @@ public sealed partial class PlaybackSession
         _time = time;
         _logger = logger;
         _engine.Events.Subscribe(new EngineObserver(this));
+        _renderer.DecodeFailed += error => OnPictureFailed(error.Message);
+        _renderer.HardwareDecodingInactive += () => OnPictureFailed("Hardware decoding is not active");
     }
 
     public IObservable<SessionEvent> Events => _events;
@@ -116,6 +129,30 @@ public sealed partial class PlaybackSession
             LogLatency(output.DeviceId, output.Type, output.ReportedMs, output.TypeDefaultMs, output.OffsetMs, output.AssumedMs, output.LagMs, estimate.PictureDelayMs);
         }
 
+        // A picture failure the renderer raises while the run is still starting is only recorded; Start ends the run.
+        lock (_gate)
+        {
+            _starting = true;
+            _pictureFailed = false;
+            _failureDuringStart = null;
+        }
+
+        try
+        {
+            return StartRun(request, estimate, commandAt);
+        }
+        finally
+        {
+            lock (_gate)
+            {
+                _starting = false;
+                _failureDuringStart = null;
+            }
+        }
+    }
+
+    private Result StartRun(StartRequest request, LatencyEstimate estimate, long commandAt)
+    {
         var loaded = _renderer.Load(request.File, nint.Zero, startPaused: true);
         if (!loaded.IsSuccess)
         {
@@ -151,6 +188,7 @@ public sealed partial class PlaybackSession
         _events.Publish(new StartTimings(commandAt, pictureAt, heard));
 
         PictureSync? previous;
+        string? failure;
         lock (_gate)
         {
             previous = _pictureSync;
@@ -158,13 +196,28 @@ public sealed partial class PlaybackSession
             _clock = clock;
             _pictureFrozen = false;
             _lost.Clear();
+            _healthTicks = 0;
+            _damagedSeen = _renderer.Counters.SkippedDamaged;
+            _previousTickClock = clock.PositionAt(_time.GetTimestamp());
+            _stretch = null;
+            _healthTimer?.Dispose();
+            _healthTimer = _time.CreateTimer(_ => OnHealthTick(), null, HealthInterval, HealthInterval);
             if (_state != PlaybackState.Ended)
             {
                 _state = PlaybackState.Playing;
             }
+
+            _starting = false;
+            failure = _failureDuringStart;
+            _failureDuringStart = null;
         }
 
         previous?.Dispose();
+        if (failure is not null)
+        {
+            EndOnPictureFailure(failure);
+        }
+
         return Result.Success();
     }
 
@@ -441,6 +494,7 @@ public sealed partial class PlaybackSession
         }
 
         PublishDelay(freeze, PictureDelayCause.Pause, delay);
+        PublishTiming(clock, sync, _time.GetTimestamp());
         return Result.Success();
     }
 
@@ -640,6 +694,107 @@ public sealed partial class PlaybackSession
         _events.Publish(new PictureTimingReported(clock.PositionAt(now), due, presented.Position, (presented.Position - due).TotalMilliseconds));
     }
 
+    private void OnPictureFailed(string reason)
+    {
+        lock (_gate)
+        {
+            if (_pictureFailed || _state == PlaybackState.Ended)
+            {
+                return;
+            }
+
+            if (_starting)
+            {
+                _pictureFailed = true;
+                _failureDuringStart = reason;
+                return;
+            }
+        }
+
+        EndOnPictureFailure(reason);
+    }
+
+    private void EndOnPictureFailure(string reason)
+    {
+        TimeSpan position;
+        lock (_gate)
+        {
+            if (_state == PlaybackState.Ended)
+            {
+                return;
+            }
+
+            _pictureFailed = true;
+            position = _clock?.PositionAt(_time.GetTimestamp()) ?? TimeSpan.Zero;
+            _endPosition = position;
+            _state = PlaybackState.Ended;
+            CancelFreeze();
+            _healthTimer?.Dispose();
+            _healthTimer = null;
+        }
+
+        _renderer.Pause();
+        _events.Publish(new PictureFailed(position, reason));
+        _events.Publish(new NoteShown(PictureFailedNote, NoteStyle.Warning));
+        _renderer.ShowNote(PictureFailedNote, NoteStyle.Warning);
+        _engine.Stop(RunEndReason.Stop);
+    }
+
+    // Once a second: the picture timing, the damaged-stretch book-keeping and, every minute, the frame counters.
+    private void OnHealthTick()
+    {
+        MasterClock? clock;
+        PictureSync? sync;
+        PlaybackState state;
+        int ticks;
+        lock (_gate)
+        {
+            (clock, sync, state) = (_clock, _pictureSync, _state);
+            ticks = ++_healthTicks;
+        }
+
+        if (clock is null || sync is null || state == PlaybackState.Ended)
+        {
+            return;
+        }
+
+        var now = _time.GetTimestamp();
+        var position = clock.PositionAt(now);
+        var counters = _renderer.Counters;
+        DamagedStretchSkipped? closed = null;
+        lock (_gate)
+        {
+            if (counters.SkippedDamaged > _damagedSeen)
+            {
+                var frames = (_stretch?.Frames ?? 0) + counters.SkippedDamaged - _damagedSeen;
+                _stretch = (_stretch?.Start ?? _previousTickClock, position, frames);
+            }
+            else if (_stretch is var (start, lastGrowth, total))
+            {
+                closed = new DamagedStretchSkipped(start, lastGrowth - start, total);
+                _stretch = null;
+            }
+
+            _damagedSeen = counters.SkippedDamaged;
+            _previousTickClock = position;
+        }
+
+        if (closed is not null)
+        {
+            _events.Publish(closed);
+        }
+
+        if (state == PlaybackState.Playing)
+        {
+            PublishTiming(clock, sync, now);
+        }
+
+        if (ticks % TicksPerCounterReport == 0)
+        {
+            _events.Publish(new FrameCountersReported(position, counters));
+        }
+    }
+
     public void Exit()
     {
         _engine.Stop(RunEndReason.Stop);
@@ -647,6 +802,8 @@ public sealed partial class PlaybackSession
         lock (_gate)
         {
             CancelFreeze();
+            _healthTimer?.Dispose();
+            _healthTimer = null;
             sync = _pictureSync;
             _pictureSync = null;
             _state = PlaybackState.Ended;

@@ -96,6 +96,9 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
 
     public event Action? EndOfFile;
 
+    /// <summary>When set, runs right after a successful <see cref="Load"/>, as an asynchronous renderer event can.</summary>
+    public Action? AfterLoad { get; set; }
+
     public Result Load(string file, nint nativeWindowHandle, bool startPaused)
     {
         lock (_gate)
@@ -111,8 +114,10 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
             _anchorTimestamp = time.GetTimestamp();
             _counters = FrameCounters.None;
             _notes.Clear();
-            return Result.Success();
         }
+
+        AfterLoad?.Invoke();
+        return Result.Success();
     }
 
     public void PlayAt(TimeSpan position, long startTimestamp)
