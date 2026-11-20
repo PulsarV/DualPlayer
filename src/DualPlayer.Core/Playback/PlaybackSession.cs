@@ -20,6 +20,8 @@ public sealed partial class PlaybackSession
     private readonly IAudioEngine _engine;
     private readonly IOutputLagControl _lags;
     private readonly IVideoRenderer _renderer;
+    private readonly IAudioDecoder _decoder;
+    private readonly IPictureProbe _pictureProbe;
     private readonly IDeviceLatencyProbe _probe;
     private readonly OffsetBook _offsets;
     private readonly IAudioBackend _backend;
@@ -38,6 +40,7 @@ public sealed partial class PlaybackSession
     private long _freezeVersion;
     private bool _pictureFrozen;
     private bool _targetsPending;
+    private static readonly TimeSpan PictureProbeLimit = TimeSpan.FromSeconds(2);
     private readonly HashSet<string> _lost = new(StringComparer.Ordinal);
 
     // A resume that came before the picture reached the freeze point: the picture aligns when it freezes there.
@@ -47,6 +50,8 @@ public sealed partial class PlaybackSession
         IAudioEngine engine,
         IOutputLagControl lags,
         IVideoRenderer renderer,
+        IAudioDecoder decoder,
+        IPictureProbe pictureProbe,
         IDeviceLatencyProbe probe,
         OffsetBook offsets,
         IAudioBackend backend,
@@ -56,6 +61,8 @@ public sealed partial class PlaybackSession
         _engine = engine;
         _lags = lags;
         _renderer = renderer;
+        _decoder = decoder;
+        _pictureProbe = pictureProbe;
         _probe = probe;
         _offsets = offsets;
         _backend = backend;
@@ -160,6 +167,129 @@ public sealed partial class PlaybackSession
         previous?.Dispose();
         return Result.Success();
     }
+
+    /// <summary>Moves to the next playable file in the folder (T17).</summary>
+    public Result NextFile() => ChangeFile(NeighbourDirection.Next);
+
+    /// <summary>Moves to the previous playable file in the folder (T17).</summary>
+    public Result PreviousFile() => ChangeFile(NeighbourDirection.Previous);
+
+    private Result ChangeFile(NeighbourDirection direction)
+    {
+        StartRequest? request;
+        lock (_gate)
+        {
+            request = _state == PlaybackState.Idle ? null : _request;
+        }
+
+        if (request is null)
+        {
+            return Result.Failure("playback.no_run", "No film is playing.");
+        }
+
+        // The current film is untouched while the search runs.
+        string? target = null;
+        string? lastSkipped = null;
+        FileSkipped? lastSkip = null;
+        var skipped = 0;
+        try
+        {
+            foreach (var candidate in FolderNeighbours.Candidates(request.File, direction))
+            {
+                var skip = CheckPlayable(candidate, request);
+                if (skip is null)
+                {
+                    target = candidate;
+                    break;
+                }
+
+                skipped++;
+                lastSkipped = Path.GetFileName(candidate);
+                lastSkip = skip;
+                _events.Publish(skip);
+                LogSkipped(lastSkipped, skip.Reason, skip.OutputNumber, skip.Track);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // An unreadable folder has no neighbours.
+        }
+
+        if (skipped > 0)
+        {
+            var reason = SkipText(lastSkip!);
+            _events.Publish(new NoteShown(
+                skipped == 1 ? $"Skipped {lastSkipped}: {reason}" : $"Skipped {skipped} files; last: {lastSkipped} - {reason}",
+                NoteStyle.Warning));
+        }
+
+        var isNext = direction == NeighbourDirection.Next;
+        if (target is null)
+        {
+            _events.Publish(new NoNeighbour(isNext));
+            _events.Publish(new NoteShown(isNext ? "No next file" : "No previous file", NoteStyle.Info));
+            return Result.Success();
+        }
+
+        lock (_gate)
+        {
+            CancelFreeze();
+        }
+
+        _engine.Stop(RunEndReason.Stop);
+        lock (_gate)
+        {
+            _state = PlaybackState.Idle;
+        }
+
+        var started = Start(request with { File = target });
+        if (!started.IsSuccess)
+        {
+            return started;
+        }
+
+        _events.Publish(new FileChanged(target, request.File));
+        return Result.Success();
+    }
+
+    private FileSkipped? CheckPlayable(string path, StartRequest request)
+    {
+        var name = Path.GetFileName(path);
+        var tracks = _decoder.ListTracks(path);
+        if (!tracks.IsSuccess)
+        {
+            return new FileSkipped(name, ReasonOf(tracks.Error.Code), null, null);
+        }
+
+        for (var i = 0; i < request.Outputs.Count; i++)
+        {
+            var track = request.Outputs[i].TrackNumber;
+            if (!tracks.Value.Any(t => t.Number == track))
+            {
+                return new FileSkipped(name, "track-missing", i + 1, track);
+            }
+        }
+
+        var picture = _pictureProbe.Probe(path, PictureProbeLimit);
+        return picture.IsSuccess ? null : new FileSkipped(name, ReasonOf(picture.Error.Code), null, null);
+    }
+
+    private static string ReasonOf(string code) => code switch
+    {
+        "playback.file_access_denied" => "access-denied",
+        "video.no_picture" => "no-picture",
+        "video.not_hardware_decodable" => "not-hardware-decodable",
+        _ => "unreadable",
+    };
+
+    private static string SkipText(FileSkipped skip) => skip.Reason switch
+    {
+        "track-missing" => $"no track {skip.Track} for output {skip.OutputNumber}",
+        "access-denied" => "access denied",
+        "no-picture" => "no picture",
+        "not-hardware-decodable" => "picture cannot be played on this PC",
+        _ => "file cannot be read",
+    };
 
     /// <summary>Steps an output's offset by <paramref name="deltaMs"/> (outputs are numbered from 1).</summary>
     public Result ChangeOffset(int outputNumber, int deltaMs)
@@ -637,6 +767,9 @@ public sealed partial class PlaybackSession
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Latency for {DeviceId}: type {Type}, reported {ReportedMs} ms, default {DefaultMs} ms, offset {OffsetMs} ms, assumed {AssumedMs} ms, lag {LagMs} ms; picture delay {PictureDelayMs} ms")]
     private partial void LogLatency(string deviceId, DeviceType type, int reportedMs, int defaultMs, int offsetMs, int assumedMs, int lagMs, int pictureDelayMs);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Skipped {File}: {Reason} (output {OutputNumber}, track {Track})")]
+    private partial void LogSkipped(string file, string reason, int? outputNumber, int? track);
 
     private sealed class EngineObserver(PlaybackSession owner) : IObserver<EngineEvent>
     {

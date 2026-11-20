@@ -20,6 +20,8 @@ internal sealed class SessionRig : IDisposable
         Engine = new EngineRig(devices, totalSeconds);
         Renderer = new FakeVideoRenderer(Engine.Time);
         Probe = new FakeDeviceLatencyProbe();
+        Pictures = new FakePictureProbe();
+        Decoder = new TrackListingDecoder();
         var store = Substitute.For<IStateStore>();
         store.Load(DeviceOffsetsFile.Definition).Returns(stored ?? Result<DeviceOffsets>.Success(remembered ?? new DeviceOffsets()));
         store.Save(DeviceOffsetsFile.Definition, Arg.Any<DeviceOffsets>()).Returns(Result.Success());
@@ -28,6 +30,8 @@ internal sealed class SessionRig : IDisposable
             new FollowingEngine(Engine),
             Engine.Engine,
             Renderer,
+            Decoder,
+            Pictures,
             Probe,
             _offsets,
             Engine.Backend,
@@ -41,6 +45,11 @@ internal sealed class SessionRig : IDisposable
     public FakeVideoRenderer Renderer { get; }
 
     public FakeDeviceLatencyProbe Probe { get; }
+
+    public FakePictureProbe Pictures { get; }
+
+    /// <summary>What the session lists the neighbouring files' tracks with; the engine keeps its own decoder.</summary>
+    public TrackListingDecoder Decoder { get; }
 
     public PlaybackSession Session { get; }
 
@@ -129,4 +138,21 @@ internal sealed class SessionRig : IDisposable
             }
         }
     }
+}
+
+/// <summary>Lists tracks per file name (unscripted files have audio tracks 1 and 2); never decodes.</summary>
+internal sealed class TrackListingDecoder : IAudioDecoder
+{
+    private readonly Dictionary<string, int[]> _tracks = new(StringComparer.Ordinal);
+
+    public void Script(string fileName, params int[] trackNumbers) => _tracks[fileName] = trackNumbers;
+
+    public Result<IReadOnlyList<AudioTrackInfo>> ListTracks(string path)
+    {
+        var numbers = _tracks.TryGetValue(Path.GetFileName(path), out var scripted) ? scripted : [1, 2];
+        return Result<IReadOnlyList<AudioTrackInfo>>.Success([.. numbers.Select(n => new AudioTrackInfo(n, "und", ChannelLayout.Stereo, 48_000))]);
+    }
+
+    public Result<IDecodeSession> Open(string path, IReadOnlyList<DecodeRequest> outputs) =>
+        Result<IDecodeSession>.Failure("test.not_decoding", "The listing decoder does not decode.");
 }

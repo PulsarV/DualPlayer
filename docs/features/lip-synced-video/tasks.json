@@ -363,7 +363,7 @@
         "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionFileChangeTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T17-session-next-and-previous-file.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T18",
