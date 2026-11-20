@@ -9,8 +9,8 @@ files_hint: ["src/DualPlayer.Core/Playback/FolderNeighbours.cs", "tests/DualPlay
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
-status: "blocked"
-step: "GATE — test cannot pass on case-insensitive filesystem (escalated)"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Self-contained task: work from what is inlined here. Every quoted chunk ends with its provenance
