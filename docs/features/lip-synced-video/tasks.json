@@ -209,7 +209,7 @@
         "tests/DualPlayer.Platform.MacOS.Tests/CoreAudioLatencyProbeTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T10-device-latency-probes.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T11",

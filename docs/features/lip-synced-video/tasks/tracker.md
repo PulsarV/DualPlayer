@@ -17,7 +17,7 @@
 | T7 | [Persist per-device offsets in device-offsets.json and keep them in an offset book with clamp, step and debounced save](./T7-device-offsets-file-and-offset-book.md) | infra | Volodymyr Kravchuk | M | T5 | done | COMMIT |
 | T8 | [List a file's folder neighbours (.mkv/.mp4) in natural name order for next and previous](./T8-folder-neighbours-in-natural-order.md) | domain | Volodymyr Kravchuk | S | T5 | done | COMMIT |
 | T9 | [Probe a file's picture with FFmpeg in hardware, off the caller's thread, with a time limit](./T9-ffmpeg-picture-probe.md) | infra | Volodymyr Kravchuk | M | T5 | done | COMMIT |
-| T10 | [Report each device's connection kind, form factor and hidden latency on Windows and the dev Mac](./T10-device-latency-probes.md) | infra | Volodymyr Kravchuk | M | T6 | todo | — |
+| T10 | [Report each device's connection kind, form factor and hidden latency on Windows and the dev Mac](./T10-device-latency-probes.md) | infra | Volodymyr Kravchuk | M | T6 | done | COMMIT |
 | T11 | [Measure each output's drift against clock minus its lag and ramp lag changes at up to 2000 ppm](./T11-lag-ramp-in-the-drift-controller.md) | domain | Volodymyr Kravchuk | M | T5 | done | COMMIT |
 | T12 | [Give the audio engine per-output start lags in the pre-roll and lag targets that ramp or jump](./T12-engine-lag-hooks.md) | app | Volodymyr Kravchuk | M | T11 | todo | — |
 | T13 | [Start a lip-synced playback session, end it at the natural end or on exit, and emit session events](./T13-playback-session-start-end-exit.md) | app | Volodymyr Kravchuk | L | T3, T6, T7, T12 | todo | — |
