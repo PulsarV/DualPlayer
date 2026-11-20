@@ -27,6 +27,7 @@ public sealed class OutputSync(MasterClock clock, TimeSpan driftTolerance)
 
     private readonly DriftMeter _meter = new(clock);
     private readonly DriftController _controller = new();
+    private readonly LagRamp _lag = new();
     private TimeSpan _latestDrift;
     private int _readingsBeyond;
     private int _beyondSide;
@@ -36,6 +37,27 @@ public sealed class OutputSync(MasterClock clock, TimeSpan driftTolerance)
     /// <see cref="RecoveryTime"/>, so it is removed in one step instead.
     /// </summary>
     public TimeSpan RealignThreshold { get; } = driftTolerance + RateCorrectableDrift;
+
+    /// <summary>Gets the output's current lag behind the master clock (the ramp's current value).</summary>
+    public TimeSpan Lag => _lag.Current;
+
+    public void RetargetLag(TimeSpan target)
+    {
+        _lag.Retarget(target);
+        _controller.RampPpm = _lag.RatePpm;
+    }
+
+    public void SetLagAtOnce(TimeSpan lag)
+    {
+        _lag.SetAtOnce(lag);
+        _controller.RampPpm = 0;
+    }
+
+    public void AdvanceLag(TimeSpan elapsed)
+    {
+        _lag.Advance(elapsed);
+        _controller.RampPpm = _lag.RatePpm;
+    }
 
     public double CorrectionPpm => _controller.CorrectionPpm;
 
@@ -48,7 +70,7 @@ public sealed class OutputSync(MasterClock clock, TimeSpan driftTolerance)
     /// </summary>
     public TimeSpan AddReading(TimeSpan contentPosition, long timestamp, TimeSpan elapsed, bool correct)
     {
-        _latestDrift = _meter.Record(contentPosition, timestamp);
+        _latestDrift = _meter.Record(contentPosition, timestamp, _lag.Current);
         if (correct)
         {
             _controller.Update(_latestDrift, elapsed);
@@ -95,6 +117,7 @@ public sealed class OutputSync(MasterClock clock, TimeSpan driftTolerance)
     public void Reset()
     {
         _controller.Reset();
+        _controller.RampPpm = _lag.RatePpm;
         _readingsBeyond = 0;
     }
 

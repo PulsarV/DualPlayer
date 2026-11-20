@@ -232,7 +232,7 @@
         "tests/DualPlayer.Core.Tests/Sync/DriftControllerTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T11-lag-ramp-in-the-drift-controller.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T12",

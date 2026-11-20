@@ -148,4 +148,52 @@ public sealed class OutputSyncTests
         Read(60); // the device has not applied it yet
         _sync.TakeStepRealignment(mayRealign: true).ShouldBe(TimeSpan.Zero);
     }
+
+    [Fact]
+    public void Drift_is_measured_against_the_clock_minus_the_lag()
+    {
+        _sync.SetLagAtOnce(TimeSpan.FromMilliseconds(40));
+
+        // Content exactly 40 ms behind the clock is on target.
+        Read(-40).ShouldBe(TimeSpan.Zero);
+        // 3 ms ahead of the lagged target.
+        Read(-37).TotalMilliseconds.ShouldBe(3, 1e-6);
+    }
+
+    [Fact]
+    public void A_ramping_lag_is_not_reported_as_drift_when_content_follows_it()
+    {
+        _sync.SetLagAtOnce(TimeSpan.Zero);
+        _sync.RetargetLag(TimeSpan.FromMilliseconds(10));
+        for (var i = 0; i < 20; i++)
+        {
+            _sync.AdvanceLag(Sample);
+            var lagMs = _sync.Lag.TotalMilliseconds;
+            Read(-lagMs).Duration().ShouldBeLessThan(TimeSpan.FromMicroseconds(10));
+        }
+
+        _sync.Lag.TotalMilliseconds.ShouldBe(4, 1e-6); // 2 s at 2000 ppm
+    }
+
+    [Fact]
+    public void The_resampler_ratio_carries_the_ramp_rate_on_top_of_the_drift_correction()
+    {
+        _sync.SetLagAtOnce(TimeSpan.Zero);
+        _sync.RetargetLag(TimeSpan.FromMilliseconds(10));
+        _sync.AdvanceLag(Sample);
+        Read(-_sync.Lag.TotalMilliseconds);
+
+        // Growing lag consumes content 2000 ppm slower: output frames per input frame is above one.
+        _sync.ResamplerRatio.ShouldBe(1 / (1 - 0.002), 1e-5);
+    }
+
+    [Fact]
+    public void Setting_the_lag_at_once_stops_the_ramp_and_leaves_the_ratio_at_unity()
+    {
+        _sync.RetargetLag(TimeSpan.FromMilliseconds(10));
+        _sync.SetLagAtOnce(TimeSpan.FromMilliseconds(25));
+
+        _sync.Lag.ShouldBe(TimeSpan.FromMilliseconds(25));
+        _sync.ResamplerRatio.ShouldBe(1, 1e-9);
+    }
 }

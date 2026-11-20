@@ -24,7 +24,10 @@ public sealed class DriftController
     public double CorrectionPpm => _correctionPpm;
 
     /// <summary>Gets content frames consumed per output frame (below 1 when content is ahead).</summary>
-    public double RateRatio => 1 - (_correctionPpm * 1e-6);
+    public double RateRatio => 1 - ((_correctionPpm + RampPpm) * 1e-6);
+
+    /// <summary>Gets or sets the lag ramp's rate in ppm, added to the drift correction (ADR-0005); positive while the lag grows.</summary>
+    public double RampPpm { get; set; }
 
     /// <summary>
     /// Gets the value to pass as <c>ratio</c> to <see cref="AdaptiveResampler.Process"/> (output frames per input
@@ -46,6 +49,7 @@ public sealed class DriftController
         _hasReading = false;
         _integralSeconds = 0;
         _correctionPpm = 0;
+        RampPpm = 0;
     }
 
     /// <summary>Tells the controller that <paramref name="removed"/> of drift was removed in one step.</summary>
