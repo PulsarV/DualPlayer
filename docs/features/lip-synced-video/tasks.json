@@ -499,7 +499,16 @@
         "T35",
         "T36",
         "T37",
-        "T38"
+        "T38",
+        "T39",
+        "T40",
+        "T41",
+        "T42",
+        "T43",
+        "T44",
+        "T45",
+        "T46",
+        "T47"
       ],
       "acs": [
         "AC-16",
@@ -862,6 +871,215 @@
       "file": "docs/features/lip-synced-video/tasks/T38-add-the-app-entry-end-to-end-and-window-key-tests-the-test-plan-lists.md",
       "status": "done",
       "origin": "review-2026-11-20: F19"
+    },
+    {
+      "id": "T39",
+      "title": "Make exit terminal so no queued command runs after it",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-06"
+      ],
+      "dod": "Exit is terminal: an `_exited` flag set by `ExitCore`, checked first by every session command (returns `playback.no_run`, no engine/renderer/folder call).; `PlaybackControls` drops posts once exited.; Tests: Exit then Seek(-10 s) at the end starts no engine run and publishes no `AudioStarted`; Exit then NextFile scans nothing; a key posted after Alt+F4 `ExitNow` does not run.; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.App/ViewModels/PlaybackControls.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.App.Tests/ViewModels/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T39-make-exit-terminal-so-no-queued-command-runs-after-it.md",
+      "status": "todo",
+      "origin": "review-2026-11-21: R4"
+    },
+    {
+      "id": "T40",
+      "title": "Keep a usable ended session when a file change or a return into the film fails",
+      "layer": "app",
+      "deps": [
+        "T39"
+      ],
+      "acs": [
+        "AC-05",
+        "AC-07",
+        "AC-15b"
+      ],
+      "dod": "After a failed file change the session knows which film the renderer holds: `_request`/`_estimate` are restored to the loaded film (or a 'no film loaded' state makes seeks a no-op while next/previous/Esc still work); ← never starts audio for a file that did not load.; The run token is bumped before `_engine.Stop(FileChange)` so a stale summary cannot overwrite `_endPosition`.; A failed `ReturnIntoFilm`/`StartRun` returns the session to Ended with a note and a log entry (as `ChangeFile` does); when all outputs are lost, a return/file change retries every device.; Tests: Load fails on the next file, then Seek(-10 s) starts no engine run on that file; last output lost, then ←, then Page Down plays the next file; a stale RunSummary does not move `_endPosition`.; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T40-keep-a-usable-ended-session-when-a-file-change-or-a-return-into-the-film-fails.md",
+      "status": "todo",
+      "origin": "review-2026-11-21: R2, R3"
+    },
+    {
+      "id": "T41",
+      "title": "Return into the film as a seek with an engine start position, one start line and a carried-over summary",
+      "layer": "app",
+      "deps": [
+        "T40"
+      ],
+      "acs": [
+        "AC-05",
+        "AC-06"
+      ],
+      "dod": "The engine can start a run at a given position (`EngineOptions` start position or equivalent), so a return into the film pre-rolls and starts at the target — no audio from position 0.; The run summary printed/logged at the next end covers the file's playback since it was opened (carried over across the return), per AC-06 and cli.md §2.1.; No second `started` line for a return (no stray `AudioStarted` reaches the printer, or the printer ignores it for a returning run).; Tests: engine starts at a position (first rendered sample is at that position); session return asserts no frame-0 audio and one summary; a `PlayEndToEndTests` case: seek past the end, seek back, Esc → exactly one `started` line and one summary covering the whole file.; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "src/DualPlayer.Core/Playback/EngineOptions.cs",
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.App/Startup/TerminalPrinter.cs",
+        "src/DualPlayer.App/Startup/RunSummaryLines.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.App.Tests/E2E/PlayEndToEndTests.cs",
+        "tests/DualPlayer.App.Tests/Startup/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T41-return-into-the-film-as-a-seek-with-an-engine-start-position-one-start-line-and-a-carried.md",
+      "status": "todo",
+      "origin": "review-2026-11-21: R1 (and F6 remainder)"
+    },
+    {
+      "id": "T42",
+      "title": "Publish start timings without lost outputs, time a file change from its key and print the next-file line first",
+      "layer": "app",
+      "deps": [
+        "T41"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-07",
+        "AC-17"
+      ],
+      "dod": "Outputs lost before their first audio are skipped when publishing `StartTimings` (or pruned in `OnDeviceLost`); timings publish once with the remaining outputs and the per-tick engine round trip stops.; A file change's `StartTimings.CommandTimestamp` is the key time (`commandAt`).; `FileChanged` is published once the target is chosen, before `StartCore`; on failure the existing note/log still apply.; Tests: lose an output in the pre-roll → exactly one `StartTimings` with the remaining outputs; file change → `CommandTimestamp` equals the key time; `PlayEndToEndTests` asserts the line order `next <file>` before the new `output`/`picture delay` lines.; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.App/Startup/TerminalPrinter.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.App.Tests/E2E/PlayEndToEndTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T42-publish-start-timings-without-lost-outputs-time-a-file-change-from-its-key-and-print-the-n.md",
+      "status": "todo",
+      "origin": "review-2026-11-21: R5, R8, R9"
+    },
+    {
+      "id": "T43",
+      "title": "Hold the sync loop until a pending align and drop stale renderer events",
+      "layer": "app",
+      "deps": [
+        "T42"
+      ],
+      "acs": [
+        "AC-04",
+        "AC-06b",
+        "AC-07"
+      ],
+      "dod": "While `_pendingAlign` is set, `OnSyncTick` skips `Tick`, resync and late-frame bookkeeping; `LipSyncedAgain(\"resume\")` only after the align.; Renderer events are stamped with the run token at post time; stale ones are dropped in `OnPictureFailed` (and other renderer handlers).; The dead `_starting`/`_failureDuringStart` handling is removed.; Tests: resume 150 ms after a pause with a 200 ms picture delay → the shown picture position never goes below the position at the resume (no repeat/skip); a `DecodeFailed` from the old film raised during a file change does not end the new film.; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Sync/PictureSync.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.Core.Tests/Fakes/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T43-hold-the-sync-loop-until-a-pending-align-and-drop-stale-renderer-events.md",
+      "status": "todo",
+      "origin": "review-2026-11-21: R6, R7"
+    },
+    {
+      "id": "T44",
+      "title": "Judge lip-synced again on the picture and every output and log the output errors",
+      "layer": "app",
+      "deps": [
+        "T43"
+      ],
+      "acs": [
+        "AC-17"
+      ],
+      "dod": "`LipSyncedAgain` is published only when the picture is within 20 ms and every live output's position error is within 10 ms (from the engine's sync records / lag control).; The record carries each output's position error; `SessionEventLogWriter` writes them per cli.md §3.; Tests: an output that recovers slowly delays `LipSyncedAgain` until it is within 10 ms; the log record contains the per-output errors.; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Playback/SessionEvent.cs",
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "src/DualPlayer.Core/Playback/IOutputLagControl.cs",
+        "src/DualPlayer.App/Startup/SessionEventLogWriter.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.App.Tests/Startup/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T44-judge-lip-synced-again-on-the-picture-and-every-output-and-log-the-output-errors.md",
+      "status": "todo",
+      "origin": "review-2026-11-21: R10 (F12 remainder)"
+    },
+    {
+      "id": "T45",
+      "title": "Show one combined note when every neighbour is skipped",
+      "layer": "app",
+      "deps": [
+        "T44"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-09"
+      ],
+      "dod": "When every following (preceding) file is skipped, exactly one note is shown: `No next file (skipped N; last: <name> – <reason>)` / `No previous file (…)`.; test-plan.md, ux-flows.md (and screens.md SCR-03 / cli.md if they list the note text) are aligned to the combined note.; Test: `When_every_following_file_is_skipped…` asserts the single visible note text (last note shown), for next and previous.; gate clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "docs/features/lip-synced-video/test-plan.md",
+        "docs/features/lip-synced-video/ux-flows.md",
+        "docs/features/lip-synced-video/screens.md",
+        "docs/features/lip-synced-video/contracts/cli.md",
+        "tests/DualPlayer.Core.Tests/Playback/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T45-show-one-combined-note-when-every-neighbour-is-skipped.md",
+      "status": "todo",
+      "origin": "review-2026-11-21: R14"
+    },
+    {
+      "id": "T46",
+      "title": "Close the remaining test gaps: real skip samples, the click-and-flash probe, App entry, real tokens and the Windows access-denied skip",
+      "layer": "test",
+      "deps": [
+        "T45"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-03",
+        "AC-07",
+        "AC-09",
+        "AC-09b",
+        "AC-16"
+      ],
+      "dod": "Media integration tests over samples generated at test time (FFmpeg, as existing TestMedia helpers do): a one-track video is skipped; unreadable, audio-only and not-media files are skipped with the right reasons.; A probe test on a short generated click-and-flash clip (same filter graph as the script) asserts one flash and one click per second at the same timestamp on every audio track — or re-plan row 102 in test-plan.md with a reason.; A session test asserts nothing reaches the engine or renderer before a playable neighbour is found.; An App test drives `RunAsync`/`Play` for a start failure (exit code + stderr/log) and the closing path, with seams added only if needed.; The access-denied test uses a real skip (`Assert.Skip`) on Windows/root (or a Windows ACL variant).; A headless test loads the real App resources (merged `Tokens.axaml`) and checks `OsdNoteTokens.From` reads the token values (not the defaults).; Any row not worth automating is re-planned in test-plan.md with a reason.; gate clean",
+      "files_hint": [
+        "tests/DualPlayer.Media.Tests/",
+        "tests/DualPlayer.App.Tests/",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "src/DualPlayer.App/App.axaml.cs",
+        "docs/features/lip-synced-video/test-plan.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T46-close-the-remaining-test-gaps-real-skip-samples-the-click-and-flash-probe-app-entry-real-t.md",
+      "status": "todo",
+      "origin": "review-2026-11-21: R11, R13, R15 (F19 remainder)"
+    },
+    {
+      "id": "T47",
+      "title": "Add the target-PC load scenarios to the T23 run guide",
+      "layer": "docs",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-04",
+        "AC-05",
+        "AC-07",
+        "AC-14"
+      ],
+      "dod": "The T23 run guide has a section for each of the four scenarios: setup, steps, what to read from the log/terminal, pass threshold, and what the evidence file records.; test-plan.md rows 148-150, 153 point at T23 / the guide section.; T23's task file lists the scenarios in its DoD.; gate clean",
+      "files_hint": [
+        "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md",
+        "docs/features/lip-synced-video/test-plan.md",
+        "docs/features/lip-synced-video/tasks/T23-measure-lip-sync-on-the-target-pc.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T47-add-the-target-pc-load-scenarios-to-the-t23-run-guide.md",
+      "status": "todo",
+      "origin": "review-2026-11-21: R12"
     }
   ]
 }
