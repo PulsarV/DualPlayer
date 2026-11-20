@@ -10,7 +10,7 @@
 |---|---|---|---|---|---|---|---|
 | T1 | [Define the IVideoRenderer port and a scripted fake renderer in Core](./T1-define-the-video-renderer-port.md) | domain | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T2 | [Fetch a pinned libmpv, copy it beside the executables, and load it with a version check](./T2-fetch-and-load-libmpv.md) | infra | Volodymyr Kravchuk | M | — | done | COMMIT |
-| T3 | [Steer the picture to clock minus picture delay with a Core picture-sync loop](./T3-picture-sync-loop.md) | domain | Volodymyr Kravchuk | M | T1 | blocked | REVIEW — still blocking: with a negative picture delay a Tick during the start pre-roll makes the picture jump (PictureSync.cs AlignAt PD<0 branch does not set _holdUntil); fix: hold correction until clock running / presented >= clockTimestamp and add a pre-roll tick test |
+| T3 | [Steer the picture to clock minus picture delay with a Core picture-sync loop](./T3-picture-sync-loop.md) | domain | Volodymyr Kravchuk | M | T1 | done | COMMIT |
 | T4 | [Implement the hardened libmpv video renderer with presented-position snapshots and OSD notes](./T4-libmpv-video-renderer.md) | infra | Volodymyr Kravchuk | L | T1, T2 | done | COMMIT |
 | T5 | [Spike libmpv precision on the target PC against the ADR-0002 kill criterion and record the D1 verdict](./T5-spike-libmpv-precision-on-the-target-pc.md) | tests | Volodymyr Kravchuk | M | T3, T4 | todo | — |
 | T6 | [Model device types, type defaults, assumed latency, picture delay and lags behind a latency-probe port](./T6-latency-model-and-device-types.md) | domain | Volodymyr Kravchuk | M | T5 | todo | — |
