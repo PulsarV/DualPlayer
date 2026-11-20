@@ -122,7 +122,7 @@
         "tests/DualPlayer.Core.Tests/Sync/LatencyModelTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T6-latency-model-and-device-types.md",
-      "status": "blocked"
+      "status": "done"
     },
     {
       "id": "T7",
@@ -164,7 +164,7 @@
         "tests/DualPlayer.Core.Tests/Playback/FolderNeighboursTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T8-folder-neighbours-in-natural-order.md",
-      "status": "blocked"
+      "status": "done"
     },
     {
       "id": "T9",
