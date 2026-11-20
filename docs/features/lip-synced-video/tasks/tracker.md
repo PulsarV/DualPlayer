@@ -14,7 +14,7 @@
 | T4 | [Implement the hardened libmpv video renderer with presented-position snapshots and OSD notes](./T4-libmpv-video-renderer.md) | infra | Volodymyr Kravchuk | L | T1, T2 | done | COMMIT |
 | T5 | [Spike libmpv precision on the target PC against the ADR-0002 kill criterion and record the D1 verdict](./T5-spike-libmpv-precision-on-the-target-pc.md) | tests | Volodymyr Kravchuk | M | T3, T4 | done | COMMIT |
 | T6 | [Model device types, type defaults, assumed latency, picture delay and lags behind a latency-probe port](./T6-latency-model-and-device-types.md) | domain | Volodymyr Kravchuk | M | T5 | todo | — |
-| T7 | [Persist per-device offsets in device-offsets.json and keep them in an offset book with clamp, step and debounced save](./T7-device-offsets-file-and-offset-book.md) | infra | Volodymyr Kravchuk | M | T5 | todo | — |
+| T7 | [Persist per-device offsets in device-offsets.json and keep them in an offset book with clamp, step and debounced save](./T7-device-offsets-file-and-offset-book.md) | infra | Volodymyr Kravchuk | M | T5 | done | COMMIT |
 | T8 | [List a file's folder neighbours (.mkv/.mp4) in natural name order for next and previous](./T8-folder-neighbours-in-natural-order.md) | domain | Volodymyr Kravchuk | S | T5 | todo | — |
 | T9 | [Probe a file's picture with FFmpeg in hardware, off the caller's thread, with a time limit](./T9-ffmpeg-picture-probe.md) | infra | Volodymyr Kravchuk | M | T5 | todo | — |
 | T10 | [Report each device's connection kind, form factor and hidden latency on Windows and the dev Mac](./T10-device-latency-probes.md) | infra | Volodymyr Kravchuk | M | T6 | todo | — |
