@@ -2,4 +2,13 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\DualPlayer.App\DualPlayer.App.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Windows and keys without a display (T38): the playback window driven like a Viewer would. -->
+    <PackageReference Include="Avalonia.Headless" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The Core fakes and the session rig: the App's host pieces end to end over a real PlaybackSession and AudioEngine. -->
+    <Compile Include="..\DualPlayer.Core.Tests\Fakes\*.cs" Exclude="..\DualPlayer.Core.Tests\Fakes\*Tests.cs" LinkBase="CoreFakes" />
+  </ItemGroup>
 </Project>

@@ -105,6 +105,13 @@ The picture is shown fullscreen against the audio master clock, held back by the
 | AC-17 | lip-sync log records carry the fields of the CLI contract | contract | fields and names equal `contracts/cli.md` §3 |
 | AC-17 | renderer presentation timestamps are converted to the audio clock's monotonic time base | integration | presented-vs-due error of a sample playback is computed on the same time base as the audio master clock; hardware-gated |
 
+### Where the e2e and e2e-through-UI rows run (T38, review-2026-11-20 F19)
+
+- **e2e-through-UI** (window opens fullscreen on the named or main screen; Space twice; arrow seeks; Page Up/Down; Esc; offset key and its note): `tests/DualPlayer.App.Tests/Views/PlaybackWindowHeadlessTests.cs`, the real `PlaybackWindow` on Avalonia's headless platform with keys pressed as a Viewer would, against a substitute `IPlaybackControls`. The video itself (mpv in the native child window) is not in these tests.
+- **e2e, play command** (start lines, run summary on Esc; AC-15b next file after the last loss and Esc): `tests/DualPlayer.App.Tests/E2E/PlayEndToEndTests.cs`, in one process: the real `PlaybackSession` and `AudioEngine` over fake devices and fake time, the App's `TerminalPrinter` and its queued `PlaybackControls`. Re-planned from a process-level run because the real one needs libmpv, a GPU and audio devices.
+- **e2e, refusals without a window** (audio-only, unreadable, missing screen, missing libmpv): the refusal itself is unit- and contract-tested (`StartCommandTests`, `StartErrorsTests`: error line, log entry, exit code, all before any window); the process-level run of each — the window never appearing, the exit code seen by the shell — is a checklist item of the T23 run on the target PC.
+
+
 ## Edge cases / error paths
 
 Each error and authorization AC (AC-02, AC-03, AC-03b, AC-06b, AC-09b, AC-11, AC-15b) has its own rows above. Further boundary and failure cases the spec implies:

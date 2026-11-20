@@ -166,6 +166,26 @@ internal sealed class EngineRig : IDisposable
         return task.GetAwaiter().GetResult();
     }
 
+    /// <summary>
+    /// Moves fake time on, without barriers, until <paramref name="condition"/> holds — for a command that runs on another
+    /// thread (a queued window key) and waits for time itself, as <see cref="Call{T}"/> does for its own command.
+    /// </summary>
+    public bool AdvanceUntil(Func<bool> condition, int maxSteps = 3_000)
+    {
+        for (var i = 0; i < maxSteps; i++)
+        {
+            if (condition())
+            {
+                return true;
+            }
+
+            Advance(barrier: false);
+            Thread.Sleep(1);
+        }
+
+        return condition();
+    }
+
     /// <summary>Seeks and tells the rig where the master clock now is (it jumps when the command starts).</summary>
     public SeekResult Seek(TimeSpan target)
     {

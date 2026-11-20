@@ -467,7 +467,15 @@ public sealed partial class PlaybackSession : IDisposable
             _state = PlaybackState.Idle;
         }
 
-        var started = StartCore(request with { File = target }, keepLost: true);
+        // Outputs lost while others played stay lost; once every output is lost (AC-15b) the next film tries every device
+        // again, so one that is back plays.
+        bool someStillPlay;
+        lock (_gate)
+        {
+            someStillPlay = request.Outputs.Any(a => a.Device.Id is not { } id || !_lost.Contains(id));
+        }
+
+        var started = StartCore(request with { File = target }, keepLost: someStillPlay);
         if (!started.IsSuccess)
         {
             // The old film has stopped and the new one cannot play: end here, say why, and keep answering keys.

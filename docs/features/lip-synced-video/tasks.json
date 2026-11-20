@@ -860,7 +860,7 @@
         "docs/features/lip-synced-video/test-plan.md"
       ],
       "file": "docs/features/lip-synced-video/tasks/T38-add-the-app-entry-end-to-end-and-window-key-tests-the-test-plan-lists.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-20: F19"
     }
   ]
