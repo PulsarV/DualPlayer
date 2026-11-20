@@ -9,8 +9,8 @@ files_hint: ["src/DualPlayer.Core/Sync/PictureSync.cs", "tests/DualPlayer.Core.T
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "blocked"
+step: "REVIEW — still blocking: with a negative picture delay a Tick during the start pre-roll makes the picture jump (PictureSync.cs AlignAt PD<0 branch does not set _holdUntil); fix: hold correction until clock running / presented >= clockTimestamp and add a pre-roll tick test"
 ---
 
 <!-- Self-contained task: work from what is inlined here. Every quoted chunk ends with its provenance

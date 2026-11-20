@@ -9,8 +9,8 @@ files_hint: ["src/DualPlayer.Media/Video/MpvVideoRenderer.cs", "src/DualPlayer.M
 owner: "Volodymyr Kravchuk"
 estimate: "L"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "blocked"
+step: "GATE — damaged-file fixture needs ~8.4 s real time to reach EOF, over the test's 8 s Patience; fixture/test must be changed (shrink damaged stretch or raise Patience to ~12 s)"
 ---
 
 <!-- Self-contained task: work from what is inlined here. Every quoted chunk ends with its provenance
