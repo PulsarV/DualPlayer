@@ -100,7 +100,7 @@
         "docs/features/lip-synced-video/ux-flows.md"
       ],
       "file": "docs/features/lip-synced-video/tasks/T5-spike-libmpv-precision-on-the-target-pc.md",
-      "status": "todo"
+      "status": "blocked"
     },
     {
       "id": "T6",

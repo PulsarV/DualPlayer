@@ -9,8 +9,8 @@ files_hint: ["tests/DualPlayer.Media.Tests/Video/MpvSpikeTests.cs", "docs/featur
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "blocked"
+step: "owner run on target PC — harness + run guide ready (evidence/d1-spike-run-guide.md)"
 ---
 
 <!-- Self-contained task: work from what is inlined here. Every quoted chunk ends with its provenance

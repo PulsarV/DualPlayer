@@ -61,7 +61,7 @@ The Developer gives the start command in the terminal. If the file has no pictur
 
 ```mermaid
 flowchart TD
-    PL["SCR-02 playing"] -->|"Space - AC-04"| PA["SCR-02 paused on the frame shown at the key press"]
+    PL["SCR-02 playing"] -->|"Space - AC-04"| PA["SCR-02 paused on the frame matching the last sound heard"]
     PA -->|"Space - AC-04"| R["SCR-02 playing, lip-synced again within 1 s"]
     R --> PL
     PL -->|"seek key - AC-05"| T{"New position"}
@@ -77,7 +77,7 @@ flowchart TD
     EN -->|"Esc"| X
 ```
 
-Space pauses: the picture freezes on the frame shown at the key press, and every output stops being given sound at the same moment (the device's own buffer plays out). Space again resumes, and picture and sound are lip-synced again within 1 s. A seek key (±10 s, ±60 s) during play jumps there and re-syncs within 1 s. A seek before the start goes to the start, and a seek past the end ends the film as at its natural end. While paused, a seek shows the frame at the new position and stays paused. At the end, a backward seek returns into the film and plays from there. Esc closes the window from any state and prints the run summary.
+Space pauses: the picture freezes on the frame matching the last sound heard, and every output stops being given sound at the same moment (the device's own buffer plays out). Space again resumes, and picture and sound are lip-synced again within 1 s. A seek key (±10 s, ±60 s) during play jumps there and re-syncs within 1 s. A seek before the start goes to the start, and a seek past the end ends the film as at its natural end. While paused, a seek shows the frame at the new position and stays paused. At the end, a backward seek returns into the film and plays from there. Esc closes the window from any state and prints the run summary.
 
 ### Flow: US-03 — Move to the next or previous file
 
