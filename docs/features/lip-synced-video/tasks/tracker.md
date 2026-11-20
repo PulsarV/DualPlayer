@@ -22,7 +22,7 @@
 | T12 | [Give the audio engine per-output start lags in the pre-roll and lag targets that ramp or jump](./T12-engine-lag-hooks.md) | app | Volodymyr Kravchuk | M | T11 | done | COMMIT |
 | T13 | [Start a lip-synced playback session, end it at the natural end or on exit, and emit session events](./T13-playback-session-start-end-exit.md) | app | Volodymyr Kravchuk | L | T3, T6, T7, T12 | done | COMMIT |
 | T14 | [Pause, resume and seek picture and every output together in the session](./T14-session-pause-resume-seek.md) | app | Volodymyr Kravchuk | M | T13 | done | COMMIT |
-| T15 | [Apply offset keys per output and move picture and unchanged outputs to a new picture delay together](./T15-session-offset-keys-and-picture-delay-moves.md) | app | Volodymyr Kravchuk | M | T14 | todo | — |
+| T15 | [Apply offset keys per output and move picture and unchanged outputs to a new picture delay together](./T15-session-offset-keys-and-picture-delay-moves.md) | app | Volodymyr Kravchuk | M | T14 | done | COMMIT |
 | T16 | [Keep playing when an output's device is lost, and end the film when the last one is lost](./T16-session-device-loss.md) | app | Volodymyr Kravchuk | S | T15 | todo | — |
 | T17 | [Move to the next or previous playable file in the folder, skipping files that cannot play](./T17-session-next-and-previous-file.md) | app | Volodymyr Kravchuk | M | T8, T9, T13 | todo | — |
 | T18 | [Skip damaged frames, end on an unrecoverable picture, and log picture timing and frame counters](./T18-damaged-picture-and-lip-sync-log.md) | app | Volodymyr Kravchuk | M | T13 | todo | — |

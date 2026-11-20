@@ -37,6 +37,7 @@ public sealed partial class PlaybackSession
     private ITimer? _freezeTimer;
     private long _freezeVersion;
     private bool _pictureFrozen;
+    private bool _targetsPending;
 
     // A resume that came before the picture reached the freeze point: the picture aligns when it freezes there.
     private (TimeSpan ClockPosition, long ClockTimestamp)? _pendingAlign;
@@ -158,6 +159,97 @@ public sealed partial class PlaybackSession
         return Result.Success();
     }
 
+    /// <summary>Steps an output's offset by <paramref name="deltaMs"/> (outputs are numbered from 1).</summary>
+    public Result ChangeOffset(int outputNumber, int deltaMs)
+    {
+        PlaybackState state;
+        LatencyEstimate? estimate;
+        PictureSync? sync;
+        MasterClock? clock;
+        lock (_gate)
+        {
+            (state, estimate, sync, clock) = (_state, _estimate, _pictureSync, _clock);
+        }
+
+        if (state == PlaybackState.Idle || estimate is null || sync is null || clock is null)
+        {
+            return Result.Failure("playback.no_run", "No film is playing.");
+        }
+
+        if (outputNumber < 1 || outputNumber > estimate.Outputs.Count)
+        {
+            return Result.Success();
+        }
+
+        var deviceId = estimate.Outputs[outputNumber - 1].DeviceId;
+        var oldOffset = estimate.Outputs[outputNumber - 1].OffsetMs;
+        var step = _offsets.Step(deviceId, deltaMs);
+        if (step.AtLimit)
+        {
+            _events.Publish(new NoteShown($"Output {outputNumber}: offset cannot go beyond ±{OffsetBook.LimitMs} ms", NoteStyle.Warning));
+            return Result.Success();
+        }
+
+        var updated = LatencyModel.Estimate([.. estimate.Outputs.Select(o => (o.DeviceId, o.Type, o.ReportedMs, o.DeviceId == deviceId ? step.OffsetMs : o.OffsetMs))]);
+        lock (_gate)
+        {
+            _estimate = updated;
+        }
+
+        _events.Publish(new OffsetChanged(outputNumber, deviceId, oldOffset, step.OffsetMs, null));
+        _events.Publish(new NoteShown($"Output {outputNumber}: {step.OffsetMs:+0;-0;0} ms", NoteStyle.Info));
+        var output = updated.Outputs[outputNumber - 1];
+        LogLatency(output.DeviceId, output.Type, output.ReportedMs, output.TypeDefaultMs, output.OffsetMs, output.AssumedMs, output.LagMs, updated.PictureDelayMs);
+
+        var clockPosition = clock.PositionAt(_time.GetTimestamp());
+        _events.Publish(new PictureDelayChanged(clockPosition, PictureDelayCause.Offset, estimate.PictureDelayMs, updated.PictureDelayMs, updated.Outputs));
+
+        if (state != PlaybackState.Playing)
+        {
+            lock (_gate)
+            {
+                _targetsPending = true;
+            }
+
+            return Result.Success();
+        }
+
+        var targets = updated.Outputs.ToDictionary(o => o.DeviceId, o => TimeSpan.FromMilliseconds(o.LagMs), StringComparer.Ordinal);
+        var applied = _lags.SetLagTargets(targets, LagChangeMode.Ramp);
+        if (!applied.IsSuccess)
+        {
+            return applied;
+        }
+
+        sync.MoveTo(TimeSpan.FromMilliseconds(updated.PictureDelayMs));
+        PublishTiming(clock, sync, _time.GetTimestamp());
+        return Result.Success();
+    }
+
+    /// <summary>Applies offsets pressed while paused or ended at once; called on resume and seek.</summary>
+    private void ApplyPendingTargets(PictureSync sync)
+    {
+        LatencyEstimate? estimate;
+        lock (_gate)
+        {
+            if (!_targetsPending)
+            {
+                return;
+            }
+
+            _targetsPending = false;
+            estimate = _estimate;
+        }
+
+        if (estimate is null)
+        {
+            return;
+        }
+
+        _lags.SetLagTargets(estimate.Outputs.ToDictionary(o => o.DeviceId, o => TimeSpan.FromMilliseconds(o.LagMs), StringComparer.Ordinal), LagChangeMode.AtOnce);
+        sync.SetAtOnce(TimeSpan.FromMilliseconds(estimate.PictureDelayMs));
+    }
+
     public Result Pause()
     {
         PictureSync sync;
@@ -237,6 +329,7 @@ public sealed partial class PlaybackSession
 
         var position = resumed.Value;
         var now = _time.GetTimestamp();
+        ApplyPendingTargets(sync);
         clock.JumpTo(position);
         clock.Start();
         var delay = sync.PictureDelay;
@@ -313,6 +406,7 @@ public sealed partial class PlaybackSession
             return Result.Failure(seeked.Error);
         }
 
+        ApplyPendingTargets(sync);
         var delay = sync.PictureDelay;
         if (State == PlaybackState.Ended)
         {
