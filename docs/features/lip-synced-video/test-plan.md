@@ -145,12 +145,12 @@ Each error and authorization AC (AC-02, AC-03, AC-03b, AC-06b, AC-09b, AC-11, AC
 All scenarios run on the target Windows 11 PC with both Bluetooth headsets plus one wired or HDMI output (spec §6 conditions), hardware-gated; results go to `docs/features/lip-synced-video/evidence/`. The load tool already in your repo, or e.g. k6 or Locust, is not used — the scenarios drive the player itself and read its log.
 
 - Lip-sync per output (sound ≤ 45 ms ahead, ≤ 125 ms behind) → scenario: the AC-16 phone measurement, 10 flashes per output at ≥ 120 frames per second, phone offset subtracted; assert the largest error per output within −125/+45 ms.
-- Start command to picture and sound ≤ 3 s → scenario: 20 consecutive starts of a 1080p HEVC sample; assert every start's first frame presented and first audio heard per output ≤ 3 s after the command, first frame within 20 ms of due and every output within 10 ms of due.
-- Recovery ≤ 1 s → scenario: 10 minutes of playback with 60 scripted commands (pause, resume, seek ±10/±60 s) and 5 file changes; assert every command lip-synced again ≤ 1 s (file change ≤ 3 s), measured as picture within 20 ms of due and every output within 10 ms.
-- Picture-delay change ≤ 0.2 % → scenario: 20 offset presses spread over 10 minutes, including moves that change the slowest output; assert logged playback speed within 2000 ppm and every unchanged output within 10 ms against the picture throughout.
+- Start command to picture and sound ≤ 3 s → scenario: 20 consecutive starts of a 1080p HEVC sample; assert every start's first frame presented and first audio heard per output ≤ 3 s after the command, first frame within 20 ms of due and every output within 10 ms of due. Run by T23 — [run guide §5a L1](evidence/t23-acceptance-run-guide.md).
+- Recovery ≤ 1 s → scenario: 10 minutes of playback with 60 scripted commands (pause, resume, seek ±10/±60 s) and 5 file changes; assert every command lip-synced again ≤ 1 s (file change ≤ 3 s), measured as picture within 20 ms of due and every output within 10 ms. Run by T23 — [run guide §5a L2](evidence/t23-acceptance-run-guide.md).
+- Picture-delay change ≤ 0.2 % → scenario: 20 offset presses spread over 10 minutes, including moves that change the slowest output; assert logged playback speed within 2000 ppm and every unchanged output within 10 ms against the picture throughout. Run by T23 — [run guide §5a L3](evidence/t23-acceptance-run-guide.md).
 - Picture presentation ≤ 1 late or dropped frame per minute → scenario: a 2 h 1080p H.264 film and a 2 h 1080p HEVC film, hardware decoding, two outputs; assert (late + dropped) / minutes ≤ 1 for each film, a frame being late when presented > 20 ms after due.
 - CPU ≤ 15 % → scenario: the 2 h 1080p HEVC run on two outputs; assert the operating system's total-CPU counter averaged over the run ≤ 15 %.
-- Folder of thousands of files (spec §6.1) → scenario: a folder of 5,000 `.mkv`/`.mp4` names, 20 next/previous presses; assert each answers within 3 s.
+- Folder of thousands of files (spec §6.1) → scenario: a folder of 5,000 `.mkv`/`.mp4` names, 20 next/previous presses; assert each answers within 3 s. Run by T23 — [run guide §5a L4](evidence/t23-acceptance-run-guide.md).
 - Offset range and step (−500…+500 ms in 10 ms) → covered by the AC-10 and AC-11 unit rows, no load run.
 
 ## CI placement

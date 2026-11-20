@@ -46,7 +46,7 @@
 | T36 | [Restore the strict EngineRig barrier for the engine tests](./T36-restore-the-strict-enginerig-barrier-for-the-engine-tests.md) | test | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T37 | [Decorate the video renderer independent of registration order](./T37-decorate-the-video-renderer-independent-of-registration-order.md) | wiring | Volodymyr Kravchuk | S | T34 | done | COMMIT |
 | T38 | [Add the App-entry, end-to-end and window key tests the test plan lists](./T38-add-the-app-entry-end-to-end-and-window-key-tests-the-test-plan-lists.md) | test | Volodymyr Kravchuk | L | T27, T28, T31, T33, T35, T37 | done | COMMIT |
-| T39 | [Make exit terminal so no queued command runs after it](./T39-make-exit-terminal-so-no-queued-command-runs-after-it.md) | app | Volodymyr Kravchuk | S | — | todo | — |
+| T39 | [Make exit terminal so no queued command runs after it](./T39-make-exit-terminal-so-no-queued-command-runs-after-it.md) | app | Volodymyr Kravchuk | S | — | in_progress | RED |
 | T40 | [Keep a usable ended session when a file change or a return into the film fails](./T40-keep-a-usable-ended-session-when-a-file-change-or-a-return-into-the-film-fails.md) | app | Volodymyr Kravchuk | M | T39 | todo | — |
 | T41 | [Return into the film as a seek with an engine start position, one start line and a carried-over summary](./T41-return-into-the-film-as-a-seek-with-an-engine-start-position-one-start-line-and-a-carried.md) | app | Volodymyr Kravchuk | L | T40 | todo | — |
 | T42 | [Publish start timings without lost outputs, time a file change from its key and print the next-file line first](./T42-publish-start-timings-without-lost-outputs-time-a-file-change-from-its-key-and-print-the-n.md) | app | Volodymyr Kravchuk | M | T41 | todo | — |
@@ -54,6 +54,6 @@
 | T44 | [Judge lip-synced again on the picture and every output and log the output errors](./T44-judge-lip-synced-again-on-the-picture-and-every-output-and-log-the-output-errors.md) | app | Volodymyr Kravchuk | M | T43 | todo | — |
 | T45 | [Show one combined note when every neighbour is skipped](./T45-show-one-combined-note-when-every-neighbour-is-skipped.md) | app | Volodymyr Kravchuk | S | T44 | todo | — |
 | T46 | [Close the remaining test gaps: real skip samples, the click-and-flash probe, App entry, real tokens and the Windows access-denied skip](./T46-close-the-remaining-test-gaps-real-skip-samples-the-click-and-flash-probe-app-entry-real-t.md) | test | Volodymyr Kravchuk | L | T45 | todo | — |
-| T47 | [Add the target-PC load scenarios to the T23 run guide](./T47-add-the-target-pc-load-scenarios-to-the-t23-run-guide.md) | docs | Volodymyr Kravchuk | S | — | todo | — |
+| T47 | [Add the target-PC load scenarios to the T23 run guide](./T47-add-the-target-pc-load-scenarios-to-the-t23-run-guide.md) | docs | Volodymyr Kravchuk | S | — | done | COMMIT |
 
 **Total:** 47 tasks (T24–T38 are follow-ups from review-2026-11-20, T39–T47 from review-2026-11-21; T23 runs last, on the fixed code), ~33 person-days (S = ½ day, M/L = 1 day; T5 and T23 also need the owner's time on the target PC).

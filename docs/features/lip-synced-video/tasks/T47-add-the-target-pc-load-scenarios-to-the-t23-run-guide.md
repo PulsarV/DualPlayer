@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-21 (R12)"
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-21. Work from what is inlined here; the source always wins.
@@ -29,7 +29,7 @@ See [spec.md](../spec.md) §5 AC-01, AC-04, AC-05, AC-07, AC-14.
 
 ## Definition of Done
 
-- [ ] The T23 run guide has a section for each of the four scenarios: setup, steps, what to read from the log/terminal, pass threshold, and what the evidence file records.
-- [ ] test-plan.md rows 148-150, 153 point at T23 / the guide section.
-- [ ] T23's task file lists the scenarios in its DoD.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The T23 run guide has a section for each of the four scenarios: setup, steps, what to read from the log/terminal, pass threshold, and what the evidence file records.
+- [x] test-plan.md rows 148-150, 153 point at T23 / the guide section.
+- [x] T23's task file lists the scenarios in its DoD.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

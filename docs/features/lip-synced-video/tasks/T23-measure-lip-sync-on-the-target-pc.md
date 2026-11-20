@@ -109,5 +109,6 @@ Internal — no API surface.
 
 - [ ] acceptance evidence committed with every number listed in the DoD sentence
 - [ ] spec §8 type-default and BT-position questions answered or re-dated in `spec.md`
+- [ ] the four load scenarios of test-plan «NFR validation» run per the [run guide §5a](../evidence/t23-acceptance-run-guide.md) and recorded against their thresholds: L1 20 consecutive starts ≤ 3 s; L2 60 commands + 5 file changes, lip-synced again ≤ 1 s (file change ≤ 3 s); L3 20 offset presses, speed ≤ 2000 ppm and unchanged outputs within 10 ms; L4 a 5,000-file folder, 20 next/previous presses ≤ 3 s each (review-2026-11-21 R12)
 - [ ] every Hard Rule inlined above still holds
 - [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

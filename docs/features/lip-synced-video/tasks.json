@@ -888,7 +888,7 @@
         "tests/DualPlayer.App.Tests/ViewModels/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T39-make-exit-terminal-so-no-queued-command-runs-after-it.md",
-      "status": "todo",
+      "status": "in_progress",
       "origin": "review-2026-11-21: R4"
     },
     {
@@ -1078,7 +1078,7 @@
         "docs/features/lip-synced-video/tasks/T23-measure-lip-sync-on-the-target-pc.md"
       ],
       "file": "docs/features/lip-synced-video/tasks/T47-add-the-target-pc-load-scenarios-to-the-t23-run-guide.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-21: R12"
     }
   ]
