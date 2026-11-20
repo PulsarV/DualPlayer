@@ -94,7 +94,7 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
                 return Result.Failure(error);
             }
 
-            _hasFrame = false;
+            _hasFrame = true;
             _playing = !startPaused;
             _anchorPosition = TimeSpan.Zero;
             _anchorTimestamp = time.GetTimestamp();
@@ -132,7 +132,11 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
         {
             _hasFrame = true;
             _anchorPosition = position;
-            _anchorTimestamp = time.GetTimestamp();
+            var now = time.GetTimestamp();
+            if (!_playing || _anchorTimestamp <= now)
+            {
+                _anchorTimestamp = now;
+            }
         }
     }
 

@@ -15,11 +15,30 @@ public class FakeVideoRendererTests
     }
 
     [Fact]
-    public void Presented_position_is_absent_before_the_first_frame()
+    public void A_paused_load_holds_the_first_frame_and_publishes_position_zero_at_the_load_timestamp()
     {
-        var (_, renderer) = Loaded();
+        var (time, renderer) = Loaded();
+        time.Advance(TimeSpan.FromSeconds(1));
 
-        renderer.Presented.ShouldBeNull();
+        var presented = renderer.Presented.ShouldNotBeNull();
+        presented.Position.ShouldBe(TimeSpan.Zero);
+        presented.Timestamp.ShouldBe(time.GetTimestamp());
+    }
+
+    [Fact]
+    public void A_seek_before_a_scheduled_play_at_start_moves_the_position_but_keeps_the_future_start()
+    {
+        var (time, renderer) = Loaded();
+        renderer.PlayAt(TimeSpan.FromSeconds(5), time.GetTimestamp() + time.TimestampFrequency);
+
+        renderer.Seek(TimeSpan.FromSeconds(20));
+        time.Advance(TimeSpan.FromMilliseconds(500));
+
+        renderer.Presented!.Position.ShouldBe(TimeSpan.FromSeconds(20));
+
+        time.Advance(TimeSpan.FromSeconds(1));
+
+        renderer.Presented!.Position.ShouldBe(TimeSpan.FromSeconds(20.5));
     }
 
     [Fact]

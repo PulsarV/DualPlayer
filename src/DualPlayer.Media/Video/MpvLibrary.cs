@@ -16,10 +16,25 @@ public static class MpvLibrary
     private static readonly Lock Gate = new();
     private static nint _loadedHandle;
     private static string? _loadedPath;
+    private static MpvLibraryInfo? _loadedInfo;
 
-    /// <summary>Loads libmpv from <paramref name="libraryPath"/>, or from the default location when null.</summary>
+    /// <summary>
+    /// Loads libmpv from <paramref name="libraryPath"/>, or from the default location when null. Must succeed before any
+    /// <see cref="MpvNative"/> call. Idempotent: once a library has loaded, a repeat call for the same (or the default)
+    /// location with a satisfied version requirement returns the cached info.
+    /// </summary>
     public static Result<MpvLibraryInfo> Load(string? libraryPath = null, uint requiredClientApiVersion = RequiredClientApiVersion)
     {
+        lock (Gate)
+        {
+            if (_loadedInfo is { } cached
+                && (libraryPath is null || libraryPath == cached.Path)
+                && cached.ClientApiVersion >= requiredClientApiVersion)
+            {
+                return Result<MpvLibraryInfo>.Success(cached);
+            }
+        }
+
         string path;
         if (libraryPath is not null)
         {
@@ -68,7 +83,7 @@ public static class MpvLibrary
             return checkedResult;
         }
 
-        Publish(handle, path);
+        Publish(handle, path, checkedResult.Value);
         return checkedResult;
     }
 
@@ -98,7 +113,7 @@ public static class MpvLibrary
     }
 
     // Binds the "mpv" import name of MpvNative to the library that passed the version check.
-    private static void Publish(nint handle, string path)
+    private static void Publish(nint handle, string path, MpvLibraryInfo info)
     {
         lock (Gate)
         {
@@ -109,6 +124,7 @@ public static class MpvLibrary
 
             _loadedHandle = handle;
             _loadedPath = path;
+            _loadedInfo = info;
         }
     }
 
@@ -160,6 +176,12 @@ internal static partial class MpvNative
     /// <summary>Returns a pointer to an mpv_event owned by libmpv, valid until the next call.</summary>
     [LibraryImport(LibraryName, EntryPoint = "mpv_wait_event")]
     internal static partial nint WaitEvent(nint ctx, double timeoutSeconds);
+
+    [LibraryImport(LibraryName, EntryPoint = "mpv_request_log_messages", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int RequestLogMessages(nint ctx, string minLevel);
+
+    [LibraryImport(LibraryName, EntryPoint = "mpv_wakeup")]
+    internal static partial void Wakeup(nint ctx);
 
     [LibraryImport(LibraryName, EntryPoint = "mpv_terminate_destroy")]
     internal static partial void TerminateDestroy(nint ctx);

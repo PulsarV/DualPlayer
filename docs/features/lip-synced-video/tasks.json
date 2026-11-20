@@ -79,7 +79,7 @@
         "tests/DualPlayer.Media.Tests/Video/MpvVideoRendererTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T4-libmpv-video-renderer.md",
-      "status": "blocked"
+      "status": "done"
     },
     {
       "id": "T5",

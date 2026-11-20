@@ -48,3 +48,14 @@ used to check that track info reports the real channel count and LFE presence (b
 ffmpeg -f lavfi -i "sine=f=440:d=0.2:r=48000" -af "aformat=channel_layouts=2.1" -c:a pcm_s16le tones-2.1.wav
 ffmpeg -f lavfi -i "sine=f=440:d=0.2:r=48000" -af "aformat=channel_layouts=hexagonal" -c:a pcm_s16le tones-6.0.wav
 ```
+
+`video-damaged.mkv` (3 s, 48 KB): 160x120 x264 `testsrc2` video only (no audio), one keyframe at 0 s, with 200
+random bytes written over the file at 60 % of its size (offset 29 170) so the decoder reports "error while decoding"
+for the damaged stretch while playback still runs to the end in about 3 s (AC-06b). Generated with:
+
+```sh
+ffmpeg -f lavfi -i "testsrc2=s=160x120:r=25:d=3" -c:v libx264 -preset veryfast -g 300 -keyint_min 300 \
+  -sc_threshold 0 -pix_fmt yuv420p clean.mkv
+python3 -c "import random; b=bytearray(open('clean.mkv','rb').read()); r=random.Random(1); o=int(len(b)*0.6); \
+b[o:o+200]=bytes(r.randrange(256) for _ in range(200)); open('video-damaged.mkv','wb').write(b)"
+```

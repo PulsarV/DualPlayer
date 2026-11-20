@@ -27,7 +27,10 @@ public enum NoteStyle
 /// </summary>
 public interface IVideoRenderer : IDisposable
 {
-    /// <summary>Opens <paramref name="file"/> into the window <paramref name="nativeWindowHandle"/>, optionally held paused on the first frame.</summary>
+    /// <summary>
+    /// Opens <paramref name="file"/> into the window <paramref name="nativeWindowHandle"/>, optionally held paused on the
+    /// first frame. Once the first frame is up, <see cref="Presented"/> is position zero stamped with that moment.
+    /// </summary>
     Result Load(string file, nint nativeWindowHandle, bool startPaused);
 
     /// <summary>Starts playing from content <paramref name="position"/> so that it is shown at monotonic time <paramref name="startTimestamp"/>.</summary>
@@ -40,12 +43,15 @@ public interface IVideoRenderer : IDisposable
     /// <summary>Playback speed factor, 1.0 = natural.</summary>
     void SetSpeed(double speed);
 
-    /// <summary>The latest presented picture, or <c>null</c> before the first frame (never a default zero position).</summary>
+    /// <summary>The latest presented picture, or <c>null</c> until a load has put its first frame up (never a default zero position).</summary>
     PresentedPicture? Presented { get; }
 
     FrameCounters Counters { get; }
 
-    /// <summary>Draws an on-screen note over the picture.</summary>
+    /// <summary>
+    /// Draws an on-screen note over the picture. A note is held for a fixed 2 s after its last change (sad §8, adapter
+    /// policy, no duration parameter); a new note replaces the current one.
+    /// </summary>
     void ShowNote(string text, NoteStyle style);
 
     /// <summary>The file cannot be decoded (further).</summary>
