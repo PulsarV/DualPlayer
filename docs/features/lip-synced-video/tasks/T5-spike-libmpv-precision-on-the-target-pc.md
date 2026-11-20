@@ -10,7 +10,7 @@ owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
 status: "blocked"
-step: "owner run on target PC — harness + run guide ready (evidence/d1-spike-run-guide.md)"
+step: "owner — numeric lines PASS (evidence/2026-11-20-d1-spike.md); 0.2 % move visual check + D1 verdict pending"
 ---
 
 <!-- Self-contained task: work from what is inlined here. Every quoted chunk ends with its provenance
