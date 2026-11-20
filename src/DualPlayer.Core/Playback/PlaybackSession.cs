@@ -55,6 +55,11 @@ public sealed partial class PlaybackSession : IDisposable
     // "Lip-synced again": the picture presented within this of due (sad.md §10, quality scenario 2b).
     private const double LipSyncedMs = 20;
 
+    // A frame presented more than this after its due time is late (spec §6 picture presentation).
+    private const double LateMs = 20;
+    private long _lateFrames;
+    private TimeSpan? _lastFrameSeen;
+
     // How often the picture-sync loop looks at the presented frame and steers it (the D1 spike ticked every few ms;
     // mpv's snapshot changes once a frame, so a tick every 5 ms sees every frame).
     private static readonly TimeSpan SyncInterval = TimeSpan.FromMilliseconds(5);
@@ -114,6 +119,21 @@ public sealed partial class PlaybackSession : IDisposable
     }
 
     public IObservable<SessionEvent> Events => _events;
+
+    /// <summary>
+    /// Gets the current file's frame counters: dropped and skipped-damaged from the renderer, late counted here — a frame
+    /// presented more than 20 ms after its due time, which follows the picture delay (spec §6).
+    /// </summary>
+    public FrameCounters Counters
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _renderer.Counters with { Late = _lateFrames };
+            }
+        }
+    }
 
     public PlaybackState State
     {
@@ -337,6 +357,12 @@ public sealed partial class PlaybackSession : IDisposable
             _lost.UnionWith(lost);
             _healthTicks = 0;
             _damagedSeen = _renderer.Counters.SkippedDamaged;
+            if (!returning)
+            {
+                _lateFrames = 0; // per file, as the renderer's own counters
+                _lastFrameSeen = null;
+            }
+
             _previousTickClock = clock.PositionAt(_time.GetTimestamp());
             _stretch = null;
             _healthTimer?.Dispose();
@@ -951,6 +977,17 @@ public sealed partial class PlaybackSession : IDisposable
         {
             report = _timingPending;
             _timingPending = false;
+
+            // Every frame is judged once, by the first tick that sees it on screen.
+            if (timing.Presented != _lastFrameSeen)
+            {
+                _lastFrameSeen = timing.Presented;
+                if (timing.ErrorMs < -LateMs)
+                {
+                    _lateFrames++;
+                }
+            }
+
             if (_resync is { } owed && Math.Abs(timing.ErrorMs) <= LipSyncedMs && timing.Timestamp >= owed.At)
             {
                 resynced = owed;
@@ -1083,7 +1120,7 @@ public sealed partial class PlaybackSession : IDisposable
 
         var now = _time.GetTimestamp();
         var position = clock.PositionAt(now);
-        var counters = _renderer.Counters;
+        var counters = Counters;
         DamagedStretchSkipped? closed = null;
         lock (_gate)
         {

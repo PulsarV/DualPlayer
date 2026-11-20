@@ -35,6 +35,9 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
     /// <summary>The picture's own clock error: it runs at speed × (1 + RateError), as a video clock that drifts from the audio clock.</summary>
     public double RateError { get; set; }
 
+    /// <summary>When set, the picture shows whole frames of this length: a snapshot names the frame on screen and when it was presented.</summary>
+    public TimeSpan? FrameDuration { get; set; }
+
     /// <summary>How old every snapshot is: <see cref="Presented"/> shows the picture as it was this long ago, stamped then.</summary>
     public TimeSpan SnapshotAge { get; set; }
 
@@ -115,7 +118,16 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
                 }
 
                 var at = now - (long)Math.Round(SnapshotAge.TotalSeconds * time.TimestampFrequency);
-                return new PresentedPicture(PositionAt(at), at);
+                var position = PositionAt(at);
+                if (FrameDuration is { } frame && _playing && at > _anchorTimestamp)
+                {
+                    // The frame on screen began when the picture reached its position; it has been shown since then.
+                    var start = TimeSpan.FromTicks(position.Ticks / frame.Ticks * frame.Ticks);
+                    var shownFor = (position - start) / (_speed * (1 + RateError));
+                    return new PresentedPicture(start, at - (long)Math.Round(shownFor.TotalSeconds * time.TimestampFrequency));
+                }
+
+                return new PresentedPicture(position, at);
             }
         }
     }

@@ -86,12 +86,13 @@ public sealed class PlaybackSessionPictureHealthTests
         using var rig = PlayingRig();
         rig.Events.OfType<FrameCountersReported>().ShouldBeEmpty();
 
+        // Late is the session's own count against due time (T30); the renderer's own late count is not used.
         rig.Renderer.InjectFrames(late: 2, dropped: 1, skippedDamaged: 4);
         rig.Engine.Render(6_000);
 
         var reports = rig.Events.OfType<FrameCountersReported>().ToList();
         reports.Count.ShouldBeInRange(1, 2);
-        reports[0].Counters.ShouldBe(new FrameCounters(Late: 2, Dropped: 1, SkippedDamaged: 4));
+        reports[0].Counters.ShouldBe(new FrameCounters(Late: 0, Dropped: 1, SkippedDamaged: 4));
     }
 
     [Fact]

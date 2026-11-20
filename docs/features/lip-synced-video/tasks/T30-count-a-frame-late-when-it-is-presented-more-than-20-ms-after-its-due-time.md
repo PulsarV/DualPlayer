@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
 origin: "review-2026-11-20 (F14)"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-20. Work from what is inlined here; the source always wins.
@@ -29,6 +29,6 @@ See [spec.md](../spec.md) §5 AC-17.
 
 ## Definition of Done
 
-- [ ] `FrameCounters.Late` counts frames presented more than 20 ms after due per spec §6 (due follows the picture delay; a deliberate ≤ 0.2 % move is not lateness) — computed from the presentation schedule / T25 tick errors, not from `vo-delayed-frame-count`.
-- [ ] Unit test with the fake renderer and clock: frames > 20 ms late are counted, ≤ 20 ms and during a move are not; fails on the current code.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `FrameCounters.Late` counts frames presented more than 20 ms after due per spec §6 (due follows the picture delay; a deliberate ≤ 0.2 % move is not lateness) — computed from the presentation schedule / T25 tick errors, not from `vo-delayed-frame-count`.
+- [x] Unit test with the fake renderer and clock: frames > 20 ms late are counted, ≤ 20 ms and during a move are not; fails on the current code.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

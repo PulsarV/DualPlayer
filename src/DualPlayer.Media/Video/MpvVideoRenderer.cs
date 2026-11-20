@@ -49,7 +49,6 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
     private const ulong PropHwdecCurrent = 2;
     private const ulong PropFrameDrop = 3;
     private const ulong PropDecoderDrop = 4;
-    private const ulong PropDelayed = 5;
     private const ulong PropPresentationDelay = 6;
     private const ulong PropEofReached = 7;
 
@@ -128,7 +127,6 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
     private string _hwdecCurrent = string.Empty;
     private long _frameDrop;
     private long _decoderDrop;
-    private long _delayed;
     private long _skippedDamaged;
 
     public MpvVideoRenderer(TimeProvider time, ILogger<MpvVideoRenderer>? logger = null)
@@ -157,8 +155,9 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
     public PresentedPicture? Presented => _presented;
 
     /// <summary>
-    /// Per-file frame counters, reset for each load. <c>Late</c> is mpv's <c>vo-delayed-frame-count</c>, which mpv fills
-    /// only in display-sync mode; outside it, it stays zero.
+    /// Per-file frame counters, reset for each load: dropped and skipped-damaged. <c>Late</c> is always 0 here — mpv's
+    /// <c>vo-delayed-frame-count</c> counts only in display-sync mode — and the playback session counts it against due
+    /// time (spec §6).
     /// </summary>
     public FrameCounters Counters => _counters;
 
@@ -559,7 +558,6 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
         MpvNative.ObserveProperty(handle, PropHwdecCurrent, "hwdec-current", FormatString);
         MpvNative.ObserveProperty(handle, PropFrameDrop, "frame-drop-count", FormatInt64);
         MpvNative.ObserveProperty(handle, PropDecoderDrop, "decoder-frame-drop-count", FormatInt64);
-        MpvNative.ObserveProperty(handle, PropDelayed, "vo-delayed-frame-count", FormatInt64);
         MpvNative.ObserveProperty(handle, PropPresentationDelay, "vo-presentation-delay", FormatDouble);
         MpvNative.ObserveProperty(handle, PropEofReached, "eof-reached", FormatFlag);
 
@@ -810,7 +808,6 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
         _hwdecCurrent = string.Empty;
         _frameDrop = 0;
         _decoderDrop = 0;
-        _delayed = 0;
         _skippedDamaged = 0;
         lock (_delayGate)
         {
@@ -929,10 +926,6 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
                 _decoderDrop = Marshal.ReadInt64(value);
                 PublishCounters();
                 break;
-            case PropDelayed when format == FormatInt64 && value != 0:
-                _delayed = Marshal.ReadInt64(value);
-                PublishCounters();
-                break;
             default:
                 break;
         }
@@ -1045,7 +1038,7 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
     }
 
     private void PublishCounters() =>
-        _counters = new FrameCounters(_delayed, _frameDrop + _decoderDrop, _skippedDamaged);
+        _counters = new FrameCounters(0, _frameDrop + _decoderDrop, _skippedDamaged);
 
     // Hardware decoding only: a software decode is reported, never silently accepted.
     private void CheckHardware()
