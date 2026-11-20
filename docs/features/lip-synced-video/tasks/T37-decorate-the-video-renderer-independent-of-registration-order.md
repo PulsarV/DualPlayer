@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-20 (F23)"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-20. Work from what is inlined here; the source always wins.
@@ -29,5 +29,5 @@ See [spec.md](../spec.md) §5 AC-01.
 
 ## Definition of Done
 
-- [ ] `AddMedia()` registers the renderer; the App replaces/decorates `IVideoRenderer` explicitly after it (no reliance on TryAdd order). The smoke test resolves `IVideoRenderer` as `WindowBoundRenderer` regardless of order.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `AddMedia()` registers the renderer; the App replaces/decorates `IVideoRenderer` explicitly after it (no reliance on TryAdd order). The smoke test resolves `IVideoRenderer` as `WindowBoundRenderer` regardless of order.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

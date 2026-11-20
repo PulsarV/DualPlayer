@@ -4,6 +4,7 @@ using DualPlayer.Core;
 using DualPlayer.Core.Playback;
 using DualPlayer.Media.Video;
 using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 
 namespace DualPlayer.Media.Tests.Video;
 
@@ -139,9 +140,14 @@ public sealed class MpvVideoRendererTests
     {
         var services = new ServiceCollection().AddMedia();
 
-        var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IVideoRenderer)).ShouldNotBeNull();
-        descriptor.ImplementationType.ShouldBe(typeof(MpvVideoRenderer));
-        descriptor.Lifetime.ShouldBe(ServiceLifetime.Singleton);
+        // The renderer itself is a singleton a host can decorate; IVideoRenderer hands out that same instance.
+        services.SingleOrDefault(d => d.ServiceType == typeof(MpvVideoRenderer)).ShouldNotBeNull().Lifetime.ShouldBe(ServiceLifetime.Singleton);
+        var port = services.SingleOrDefault(d => d.ServiceType == typeof(IVideoRenderer)).ShouldNotBeNull();
+        port.Lifetime.ShouldBe(ServiceLifetime.Singleton);
+        using var renderer = new MpvVideoRenderer(TimeProvider.System);
+        var provider = Substitute.For<IServiceProvider>();
+        provider.GetService(typeof(MpvVideoRenderer)).Returns(renderer);
+        port.ImplementationFactory.ShouldNotBeNull()(provider).ShouldBeSameAs(renderer);
     }
 
     // ---- Load failures are Results, never exceptions (library-present) ----

@@ -44,7 +44,7 @@
 | T34 | [Check libmpv before the window opens, log start errors, and let Esc during the start exit cleanly](./T34-check-libmpv-before-the-window-opens-log-start-errors-and-let-esc-during-the-start-exit-cl.md) | wiring | Volodymyr Kravchuk | M | T24 | done | COMMIT |
 | T35 | [Guard the session's timer callbacks and start the clock from the outputs still connected](./T35-guard-the-session-s-timer-callbacks-and-start-the-clock-from-the-outputs-still-connected.md) | app | Volodymyr Kravchuk | S | T27 | done | COMMIT |
 | T36 | [Restore the strict EngineRig barrier for the engine tests](./T36-restore-the-strict-enginerig-barrier-for-the-engine-tests.md) | test | Volodymyr Kravchuk | S | — | done | COMMIT |
-| T37 | [Decorate the video renderer independent of registration order](./T37-decorate-the-video-renderer-independent-of-registration-order.md) | wiring | Volodymyr Kravchuk | S | T34 | todo | — |
+| T37 | [Decorate the video renderer independent of registration order](./T37-decorate-the-video-renderer-independent-of-registration-order.md) | wiring | Volodymyr Kravchuk | S | T34 | done | COMMIT |
 | T38 | [Add the App-entry, end-to-end and window key tests the test plan lists](./T38-add-the-app-entry-end-to-end-and-window-key-tests-the-test-plan-lists.md) | test | Volodymyr Kravchuk | L | T27, T28, T31, T33, T35, T37 | todo | — |
 
 **Total:** 38 tasks (T24–T38 are follow-ups from review-2026-11-20; T23 runs last, on the fixed code), ~33 person-days (S = ½ day, M/L = 1 day; T5 and T23 also need the owner's time on the target PC).

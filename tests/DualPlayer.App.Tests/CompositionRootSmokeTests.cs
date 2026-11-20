@@ -35,4 +35,15 @@ public sealed class CompositionRootSmokeTests
         services.GetService<IScreenCatalog>().ShouldNotBeNull().GetType().Name.ShouldBe("AvaloniaScreenCatalog");
         services.GetService<IDeviceLatencyProbe>().ShouldNotBeNull();
     }
+
+    [Fact]
+    public void The_video_renderer_is_media_s_mpv_renderer_decorated_once_for_the_playback_window()
+    {
+        var paths = AppPaths.FromRoot(Path.Combine(Path.GetTempPath(), "DualPlayer.Tests", Guid.NewGuid().ToString("N")));
+
+        using var services = CompositionRoot.Build(paths, NullLoggerFactory.Instance);
+
+        services.GetServices<IVideoRenderer>().ShouldHaveSingleItem().ShouldBeOfType<WindowBoundRenderer>();
+        services.GetService<DualPlayer.Media.Video.MpvVideoRenderer>().ShouldNotBeNull("AddMedia registers the renderer the App decorates");
+    }
 }
