@@ -188,4 +188,38 @@ public sealed class PlaybackSessionTransportTests
         rig.Renderer.IsPlaying.ShouldBeTrue("the last resume never started the picture again");
         Shown(rig).ShouldBeGreaterThan(frozen);
     }
+
+    [Fact]
+    public void A_seek_past_the_end_shows_the_last_frame_not_the_current_one_AC_05_AC_06()
+    {
+        using var rig = PlayingRig(totalSeconds: 30);
+        rig.Renderer.Duration = TimeSpan.FromSeconds(30);
+
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(60))).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(50);
+
+        rig.Session.State.ShouldBe(PlaybackState.Ended);
+        Shown(rig).ShouldBe(TimeSpan.FromSeconds(30), "the picture froze where it was instead of on the last frame");
+    }
+
+    [Fact]
+    public void A_backward_seek_at_the_end_returns_to_the_target_without_frame_zero_or_a_second_start_AC_05()
+    {
+        using var rig = PlayingRig(totalSeconds: 30);
+        rig.Renderer.Duration = TimeSpan.FromSeconds(30);
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(60))).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(50);
+        rig.Session.State.ShouldBe(PlaybackState.Ended);
+        rig.Renderer.ResetLowestShown();
+
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-10))).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(150);
+
+        rig.Session.State.ShouldBe(PlaybackState.Playing);
+        rig.Renderer.LoadCount.ShouldBe(1, "the file was loaded again");
+        rig.Renderer.LowestShown!.Value.ShouldBeGreaterThan(TimeSpan.FromSeconds(15), "frame 0 (or a frame far before the target) was shown");
+        Shown(rig).ShouldBeInRange(TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(22.5));
+        rig.Events.OfType<StartTimings>().Count().ShouldBe(1, "the start lines would print again");
+        rig.Events.OfType<LatencyEstimated>().Count().ShouldBe(1);
+    }
 }

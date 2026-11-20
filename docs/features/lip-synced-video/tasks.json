@@ -629,7 +629,7 @@
         "tests/DualPlayer.Media.Tests/Video/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T28-hold-the-last-frame-at-the-end-and-on-a-seek-past-it-and-return-into-the-film-without-a-re.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-20: F5, F6"
     },
     {

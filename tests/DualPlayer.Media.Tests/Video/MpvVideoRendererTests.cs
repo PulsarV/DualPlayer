@@ -61,7 +61,7 @@ public sealed class MpvVideoRendererTests
     // ---- hardening option list (pure; runs everywhere) ----
 
     [Fact]
-    public void Hardening_options_on_Windows_are_exactly_the_sad_list_with_hardware_decoding_d3d11va()
+    public void Hardening_options_on_Windows_are_exactly_the_sad_list_with_hardware_decoding_d3d11va_and_the_last_frame_kept_at_the_end()
     {
         var options = MpvVideoRenderer.HardeningOptions(OSPlatform.Windows);
 
@@ -72,6 +72,7 @@ public sealed class MpvVideoRendererTests
                 "hwdec=d3d11va",
                 "input-default-bindings=no",
                 "input-vo-keyboard=no",
+                "keep-open=yes",
                 "load-scripts=no",
                 "osc=no",
                 "ytdl=no",

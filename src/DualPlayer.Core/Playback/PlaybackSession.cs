@@ -196,7 +196,12 @@ public sealed partial class PlaybackSession : IDisposable
             LogLatency(output.DeviceId, output.Type, output.ReportedMs, output.TypeDefaultMs, output.OffsetMs, output.AssumedMs, output.LagMs, estimate.PictureDelayMs);
         }
 
-        // A picture failure the renderer raises while the run is still starting is only recorded; Start ends the run.
+        return Starting(() => StartRun(request with { Outputs = playing }, estimate, commandAt, lost, returning: false));
+    }
+
+    // A picture failure the renderer raises while the run is still starting is only recorded; the start ends the run.
+    private Result Starting(Func<Result> start)
+    {
         lock (_gate)
         {
             _starting = true;
@@ -206,7 +211,7 @@ public sealed partial class PlaybackSession : IDisposable
 
         try
         {
-            return StartRun(request with { Outputs = playing }, estimate, commandAt, lost);
+            return start();
         }
         finally
         {
@@ -218,12 +223,46 @@ public sealed partial class PlaybackSession : IDisposable
         }
     }
 
-    private Result StartRun(StartRequest request, LatencyEstimate estimate, long commandAt, HashSet<string> lost)
+    /// <summary>
+    /// After the end, a new engine run for the same file and outputs (the engine cannot reopen a run that has ended). The
+    /// file stays loaded in the renderer and its picture stays paused, so no frame 0 is shown and no start lines repeat;
+    /// the caller seeks the new run to its target at once.
+    /// </summary>
+    private Result ReturnIntoFilm()
     {
-        var loaded = _renderer.Load(request.File, nint.Zero, startPaused: true);
-        if (!loaded.IsSuccess)
+        StartRequest? request;
+        LatencyEstimate? estimate;
+        HashSet<string> lost;
+        lock (_gate)
         {
-            return loaded;
+            (request, estimate) = (_request, _estimate);
+            lost = new HashSet<string>(_lost, StringComparer.Ordinal);
+        }
+
+        if (request is null || estimate is null)
+        {
+            return Result.Failure("playback.no_run", "No film is playing.");
+        }
+
+        var playing = request.Outputs.Where(a => a.Device.Id is not { } id || !lost.Contains(id)).ToList();
+        if (playing.Count == 0)
+        {
+            return Result.Failure("outputs.all_lost", "Every output has been lost.");
+        }
+
+        var playingEstimate = new LatencyEstimate([.. estimate.Outputs.Where(o => !lost.Contains(o.DeviceId))], estimate.PictureDelayMs);
+        return Starting(() => StartRun(request with { Outputs = playing }, playingEstimate, _time.GetTimestamp(), lost, returning: true));
+    }
+
+    private Result StartRun(StartRequest request, LatencyEstimate estimate, long commandAt, HashSet<string> lost, bool returning)
+    {
+        if (!returning)
+        {
+            var loaded = _renderer.Load(request.File, nint.Zero, startPaused: true);
+            if (!loaded.IsSuccess)
+            {
+                return loaded;
+            }
         }
 
         var lags = estimate.Outputs.ToDictionary(o => o.DeviceId, o => TimeSpan.FromMilliseconds(o.LagMs), StringComparer.Ordinal);
@@ -249,11 +288,13 @@ public sealed partial class PlaybackSession : IDisposable
         clock.StartAt(clockStart);
         var pictureDelay = TimeSpan.FromMilliseconds(estimate.PictureDelayMs);
         var sync = new PictureSync(clock, _renderer, _time, pictureDelay);
-        sync.AlignAt(TimeSpan.Zero, clockStart);
-
-        var pictureAt = clockStart + ToTimestamp(pictureDelay);
-        var heard = estimate.Outputs.ToDictionary(o => o.DeviceId, _ => pictureAt, StringComparer.Ordinal);
-        _events.Publish(new StartTimings(commandAt, pictureAt, heard));
+        if (!returning)
+        {
+            sync.AlignAt(TimeSpan.Zero, clockStart);
+            var pictureAt = clockStart + ToTimestamp(pictureDelay);
+            var heard = estimate.Outputs.ToDictionary(o => o.DeviceId, _ => pictureAt, StringComparer.Ordinal);
+            _events.Publish(new StartTimings(commandAt, pictureAt, heard));
+        }
 
         PictureSync? previous;
         string? failure;
@@ -671,14 +712,15 @@ public sealed partial class PlaybackSession : IDisposable
                     return Result.Success();
                 }
 
-                // A backward seek at the end returns into the film: a new run that starts at the target.
+                // A backward seek at the end returns into the film at the target, its picture held until then.
                 lock (_gate)
                 {
                     _state = PlaybackState.Idle;
                 }
 
-                var restarted = StartCore(_request);
-                return restarted.IsSuccess ? SeekTo(current + step) : restarted;
+                var target = current + step;
+                var restarted = ReturnIntoFilm();
+                return restarted.IsSuccess ? SeekTo(target < TimeSpan.Zero ? TimeSpan.Zero : target) : restarted;
             default:
                 return SeekTo(current + step);
         }
@@ -713,6 +755,7 @@ public sealed partial class PlaybackSession : IDisposable
 
             clock.StopAt(_time.GetTimestamp());
             _renderer.Pause();
+            _renderer.Seek(seeked.Value.Position); // the last frame (mpv keep-open), not the frame shown at the key
             return Result.Success();
         }
 

@@ -21,6 +21,17 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
     /// </summary>
     public bool StampsHeldFrameWithItsStart { get; set; }
 
+    /// <summary>The film's length: the picture stops on its last frame there and a seek past it shows the last frame (mpv keep-open).</summary>
+    public TimeSpan? Duration { get; set; }
+
+    /// <summary>How many times a file was loaded.</summary>
+    public int LoadCount { get; private set; }
+
+    /// <summary>The smallest content position on screen since <see cref="ResetLowestShown"/>, sampled at every call into the fake.</summary>
+    public TimeSpan? LowestShown { get; private set; }
+
+    public void ResetLowestShown() => LowestShown = null;
+
     /// <summary>The picture's own clock error: it runs at speed × (1 + RateError), as a video clock that drifts from the audio clock.</summary>
     public double RateError { get; set; }
 
@@ -138,6 +149,7 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
                 return Result.Failure(error);
             }
 
+            LoadCount++;
             _hasFrame = true;
             _playing = !startPaused;
             _anchorPosition = TimeSpan.Zero;
@@ -154,6 +166,7 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
     {
         lock (_gate)
         {
+            Sample(position);
             _hasFrame = true;
             _playing = true;
             _anchorPosition = position;
@@ -177,7 +190,8 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
         lock (_gate)
         {
             _hasFrame = true;
-            _anchorPosition = position;
+            _anchorPosition = Duration is { } duration && position > duration ? duration : position;
+            Sample(_anchorPosition);
             var now = time.GetTimestamp();
             if (!_playing || _anchorTimestamp <= now)
             {
@@ -245,6 +259,15 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
             return _anchorPosition;
         }
 
-        return _anchorPosition + (time.GetElapsedTime(_anchorTimestamp, now) * (_speed * (1 + RateError)));
+        var position = _anchorPosition + (time.GetElapsedTime(_anchorTimestamp, now) * (_speed * (1 + RateError)));
+        return Duration is { } duration && position > duration ? duration : position;
+    }
+
+    private void Sample(TimeSpan position)
+    {
+        if (LowestShown is null || position < LowestShown)
+        {
+            LowestShown = position;
+        }
     }
 }

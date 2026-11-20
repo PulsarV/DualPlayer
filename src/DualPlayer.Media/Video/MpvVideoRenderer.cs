@@ -38,6 +38,7 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
 
     private const int FormatNone = 0;
     private const int FormatString = 1;
+    private const int FormatFlag = 3;
     private const int FormatInt64 = 4;
     private const int FormatDouble = 5;
 
@@ -50,6 +51,7 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
     private const ulong PropDecoderDrop = 4;
     private const ulong PropDelayed = 5;
     private const ulong PropPresentationDelay = 6;
+    private const ulong PropEofReached = 7;
 
     // Reply tags of the commands whose moment of effect anchors the display schedule (0 = reply ignored).
     private const ulong ReplyPause = 1;
@@ -217,6 +219,10 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
         new("input-vo-keyboard", "no"),
         new("ytdl", "no"),
         new("audio", "no"),
+
+        // At the end, and after a seek past it, mpv pauses on the last frame instead of tearing the video output down,
+        // so the picture and any note stay on screen (SCR-02); the end is reported through eof-reached.
+        new("keep-open", "yes"),
         new("hwdec", platform == OSPlatform.OSX ? "videotoolbox" : "d3d11va"),
     ];
 
@@ -555,6 +561,7 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
         MpvNative.ObserveProperty(handle, PropDecoderDrop, "decoder-frame-drop-count", FormatInt64);
         MpvNative.ObserveProperty(handle, PropDelayed, "vo-delayed-frame-count", FormatInt64);
         MpvNative.ObserveProperty(handle, PropPresentationDelay, "vo-presentation-delay", FormatDouble);
+        MpvNative.ObserveProperty(handle, PropEofReached, "eof-reached", FormatFlag);
 
         _handle = handle;
         _eventThread = new Thread(() => EventLoop(handle)) { IsBackground = true, Name = "mpv events" };
@@ -882,6 +889,13 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
                 if (_fileLoaded && IsCurrentFile)
                 {
                     Publish(_timeline.Queued(TimeSpan.FromSeconds(seconds), _time.GetTimestamp()));
+                }
+
+                break;
+            case PropEofReached when format == FormatFlag && value != 0:
+                if (Marshal.ReadInt32(value) != 0 && _fileLoaded && IsCurrentFile)
+                {
+                    Raise(() => EndOfFile?.Invoke());
                 }
 
                 break;
