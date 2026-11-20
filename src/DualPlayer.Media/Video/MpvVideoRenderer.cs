@@ -15,18 +15,21 @@ namespace DualPlayer.Media.Video;
 /// <remarks>
 /// mpv reports positions but no timestamps for them: a position is stamped with <see cref="TimeProvider.GetTimestamp"/>
 /// when the event thread receives it, the same monotonic base Core uses. Readings are therefore frame- and
-/// event-latency granular (ADR-0002, negative consequences).
+/// event-latency granular (ADR-0002, negative consequences). A renderer owns one native window: it is handed over with the
+/// first <see cref="Load"/>, and a later load with a different handle fails with <c>mpv.load_failed</c>.
 /// </remarks>
 public sealed partial class MpvVideoRenderer : IVideoRenderer
 {
     private const int EventNone = 0;
     private const int EventShutdown = 1;
     private const int EventLogMessage = 2;
+    private const int EventStartFile = 6;
     private const int EventEndFile = 7;
     private const int EventFileLoaded = 8;
     private const int EventPlaybackRestart = 21;
     private const int EventPropertyChange = 22;
 
+    private const int FormatNone = 0;
     private const int FormatString = 1;
     private const int FormatInt64 = 4;
     private const int FormatDouble = 5;
@@ -40,6 +43,8 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
     private const ulong PropDecoderDrop = 4;
     private const ulong PropDelayed = 5;
 
+    private const int NoLoad = -1;
+
     private static readonly TimeSpan LoadTimeout = TimeSpan.FromSeconds(15);
 
     private readonly TimeProvider _time;
@@ -51,13 +56,22 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
     private nint _handle;
     private Thread? _eventThread;
     private ITimer? _startTimer;
-    private bool _disposed;
+    private volatile bool _disposed;
+    private nint _windowHandle;
+    private NoteStyle? _appliedNoteStyle;
+    private bool _noteLayoutApplied;
 
-    // Written by the event thread (and reset by Load); read lock-free by the control loop.
+    // Written by the event thread only (reset there when a file starts); read lock-free by the control loop.
     private volatile PresentedPicture? _presented;
     private volatile FrameCounters _counters = FrameCounters.None;
 
+    // Load generations: every accepted loadfile is file number N for the event thread (its START_FILE count), so events of
+    // a replaced or abandoned load are told apart from the current one. NoLoad means no file is current.
+    private int _issuedLoads;
+    private volatile int _currentLoad;
+
     // Event-thread state.
+    private int _fileSequence;
     private volatile bool _stop;
     private volatile bool _loading;
     private volatile Error? _loadError;
@@ -71,14 +85,22 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
     private long _delayed;
     private long _skippedDamaged;
 
-    public MpvVideoRenderer(
+    public MpvVideoRenderer(TimeProvider time, ILogger<MpvVideoRenderer>? logger = null)
+        : this(time, new Dictionary<string, string>(), logger)
+    {
+    }
+
+    // Option overrides exist for tests only (a build machine has no window and no GPU); a public way to override the
+    // hardening list would let configuration undo it.
+    internal MpvVideoRenderer(
         TimeProvider time,
-        IReadOnlyDictionary<string, string>? optionOverrides = null,
+        IReadOnlyDictionary<string, string> optionOverrides,
         ILogger<MpvVideoRenderer>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(time);
+        ArgumentNullException.ThrowIfNull(optionOverrides);
         _time = time;
-        _overrides = optionOverrides ?? new Dictionary<string, string>();
+        _overrides = optionOverrides;
         _logger = logger;
     }
 
@@ -87,6 +109,10 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
 
     public PresentedPicture? Presented => _presented;
 
+    /// <summary>
+    /// Per-file frame counters, reset for each load. <c>Late</c> is mpv's <c>vo-delayed-frame-count</c>, which mpv fills
+    /// only in display-sync mode; outside it, it stays zero.
+    /// </summary>
     public FrameCounters Counters => _counters;
 
     public event Action<Error>? DecodeFailed;
@@ -112,6 +138,7 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
     {
         ArgumentException.ThrowIfNullOrEmpty(file);
 
+        int generation;
         var library = MpvLibrary.Load();
         if (!library.IsSuccess)
         {
@@ -132,10 +159,18 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
                 {
                     return created;
                 }
+
+                _windowHandle = nativeWindowHandle;
+            }
+            else if (nativeWindowHandle != _windowHandle)
+            {
+                return Result.Failure("mpv.load_failed", "The video renderer is already bound to another native window; use one renderer per window.");
             }
 
-            _presented = null;
-            _counters = FrameCounters.None;
+            // Per-file state is reset by the event thread when the new file starts; here the new load only becomes current.
+            var previousLoad = _currentLoad;
+            generation = _issuedLoads + 1;
+            _currentLoad = generation;
             _loadError = null;
             _loadingFile = file;
             _loadDone.Reset();
@@ -145,6 +180,7 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
             if (!SetProperty("pause", startPaused ? "yes" : "no", out var pauseError))
             {
                 _loading = false;
+                _currentLoad = previousLoad;
                 return Result.Failure("mpv.load_failed", pauseError);
             }
 
@@ -152,17 +188,27 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
             if (status < 0)
             {
                 _loading = false;
+                _currentLoad = previousLoad;
                 return Result.Failure("mpv.load_failed", $"mpv rejected '{file}': {ErrorText(status)}.");
             }
+
+            _issuedLoads = generation;
         }
 
-        if (!_loadDone.Wait(LoadTimeout))
+        var completed = _loadDone.Wait(LoadTimeout);
+        _loading = false;
+        if (_disposed)
         {
-            _loading = false;
+            return Result.Failure("mpv.load_failed", "The video renderer was disposed while the file was opening.");
+        }
+
+        if (!completed)
+        {
+            // Whatever this file does later is no longer anyone's business: its events are ignored.
+            Interlocked.CompareExchange(ref _currentLoad, NoLoad, generation);
             return Result.Failure("mpv.load_failed", $"mpv did not open '{file}' within {LoadTimeout.TotalSeconds:0} s.");
         }
 
-        _loading = false;
         return _loadError is { } error ? Result.Failure(error) : Result.Success();
     }
 
@@ -176,12 +222,12 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
             }
 
             CancelScheduledStart();
-            RunCommand(_handle, "seek", Seconds(position), "absolute+exact");
+            RunCommandAsync(_handle, "seek", Seconds(position), "absolute+exact");
 
             var delay = _time.GetElapsedTime(_time.GetTimestamp(), startTimestamp);
             if (delay <= TimeSpan.Zero)
             {
-                SetProperty("pause", "no", out _);
+                RunCommandAsync(_handle, "set", "pause", "no");
             }
             else
             {
@@ -200,7 +246,7 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
             }
 
             CancelScheduledStart();
-            SetProperty("pause", "yes", out _);
+            RunCommandAsync(_handle, "set", "pause", "yes");
         }
     }
 
@@ -211,7 +257,7 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
             if (_handle != 0)
             {
                 // A scheduled start stays scheduled: the picture resumes from the new position at the same moment.
-                RunCommand(_handle, "seek", Seconds(position), "absolute+exact");
+                RunCommandAsync(_handle, "seek", Seconds(position), "absolute+exact");
             }
         }
     }
@@ -222,7 +268,7 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
         {
             if (_handle != 0)
             {
-                SetProperty("speed", speed.ToString("R", CultureInfo.InvariantCulture), out _);
+                RunCommandAsync(_handle, "set", "speed", speed.ToString("R", CultureInfo.InvariantCulture));
             }
         }
     }
@@ -238,16 +284,25 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
                 return;
             }
 
-            var colour = style == NoteStyle.Warning ? "#FFFFD60A" : "#FFFFFFFF";
-            SetProperty("osd-font-size", "32", out _);
-            SetProperty("osd-color", colour, out _);
-            SetProperty("osd-back-color", "#CC000000", out _);
-            SetProperty("osd-border-style", "background-box", out _);
-            SetProperty("osd-margin-x", "48", out _);
-            SetProperty("osd-margin-y", "48", out _);
+            // Style properties are set when they change, not per note; every call is a queued (non-blocking) one.
+            if (!_noteLayoutApplied)
+            {
+                RunCommandAsync(_handle, "set", "osd-font-size", "32");
+                RunCommandAsync(_handle, "set", "osd-back-color", "#CC000000");
+                RunCommandAsync(_handle, "set", "osd-border-style", "background-box");
+                RunCommandAsync(_handle, "set", "osd-margin-x", "48");
+                RunCommandAsync(_handle, "set", "osd-margin-y", "48");
+                _noteLayoutApplied = true;
+            }
+
+            if (_appliedNoteStyle != style)
+            {
+                RunCommandAsync(_handle, "set", "osd-color", style == NoteStyle.Warning ? "#FFFFD60A" : "#FFFFFFFF");
+                _appliedNoteStyle = style;
+            }
 
             // A new note replaces the current one; "$" would start a property expansion, so it is doubled.
-            RunCommand(_handle, "show-text", text.Replace("$", "$$", StringComparison.Ordinal), ((int)NoteHold.TotalMilliseconds).ToString(CultureInfo.InvariantCulture));
+            RunCommandAsync(_handle, "show-text", text.Replace("$", "$$", StringComparison.Ordinal), ((int)NoteHold.TotalMilliseconds).ToString(CultureInfo.InvariantCulture));
         }
     }
 
@@ -287,7 +342,12 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
 
     private static string ErrorText(int status) => Marshal.PtrToStringUTF8(MpvNative.ErrorString(status)) ?? $"error {status}";
 
-    private static int RunCommand(nint ctx, params string[] args)
+    private static int RunCommand(nint ctx, params string[] args) => Run(ctx, async: false, args);
+
+    // Queued by mpv and executed in order on its side; the caller never waits for the command. Replies are ignored events.
+    private static int RunCommandAsync(nint ctx, params string[] args) => Run(ctx, async: true, args);
+
+    private static int Run(nint ctx, bool async, string[] args)
     {
         var pointers = new nint[args.Length + 1];
         try
@@ -301,7 +361,7 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
             {
                 fixed (nint* array = pointers)
                 {
-                    return MpvNative.Command(ctx, (nint)array);
+                    return async ? MpvNative.CommandAsync(ctx, 0, (nint)array) : MpvNative.Command(ctx, (nint)array);
                 }
             }
         }
@@ -385,7 +445,7 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
             {
                 _startTimer.Dispose();
                 _startTimer = null;
-                SetProperty("pause", "no", out _);
+                RunCommandAsync(_handle, "set", "pause", "no");
             }
         }
     }
@@ -435,13 +495,18 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
         var data = Marshal.ReadIntPtr(ev, 16);
         switch (id)
         {
+            case EventStartFile:
+                OnStartFile();
+                break;
             case EventFileLoaded:
-                _fileLoaded = true;
-                _firstFrameShown = false;
-                _hardwareInactiveRaised = false;
-                _skippedDamaged = 0;
-                _loadError = null;
-                _loadDone.Set();
+                if (_fileSequence == _currentLoad)
+                {
+                    _fileLoaded = true;
+                    _firstFrameShown = false;
+                    _loadError = null;
+                    _loadDone.Set();
+                }
+
                 break;
             case EventPlaybackRestart:
                 OnPlaybackRestart();
@@ -460,16 +525,40 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
         }
     }
 
-    private void OnPlaybackRestart()
+    // True while events belong to the file the latest accepted Load asked for (not a replaced or abandoned one).
+    private bool IsCurrentFile => _fileSequence == _currentLoad;
+
+    // A new file starts: everything per-file begins from zero, on this thread, so no stale event can write after it.
+    private void OnStartFile()
     {
-        if (!_fileLoaded)
+        _fileSequence++;
+        _fileLoaded = false;
+        if (!IsCurrentFile)
         {
             return;
         }
 
-        if (_presented is null)
+        _firstFrameShown = false;
+        _hardwareInactiveRaised = false;
+        _hwdecCurrent = string.Empty;
+        _frameDrop = 0;
+        _decoderDrop = 0;
+        _delayed = 0;
+        _skippedDamaged = 0;
+        _presented = null;
+        _counters = FrameCounters.None;
+    }
+
+    private void OnPlaybackRestart()
+    {
+        if (!_fileLoaded || !IsCurrentFile)
         {
-            // A paused load holds the first frame: position zero, stamped when the frame is up.
+            return;
+        }
+
+        if (!_firstFrameShown)
+        {
+            // The first frame of a file is up: position zero, stamped now (a paused load holds it; a playing one moves on).
             _presented = new PresentedPicture(TimeSpan.Zero, _time.GetTimestamp());
         }
 
@@ -481,6 +570,11 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
     {
         var wasLoaded = _fileLoaded;
         _fileLoaded = false;
+        if (!IsCurrentFile)
+        {
+            return;
+        }
+
         if (reason == EndReasonError)
         {
             if (_loading && !wasLoaded)
@@ -507,7 +601,7 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
         {
             case PropTimePos when format == FormatDouble && value != 0:
                 var seconds = BitConverter.Int64BitsToDouble(Marshal.ReadInt64(value));
-                if (_fileLoaded)
+                if (_fileLoaded && IsCurrentFile)
                 {
                     _presented = new PresentedPicture(TimeSpan.FromSeconds(seconds), _time.GetTimestamp());
                 }
@@ -520,6 +614,10 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
                     CheckHardware();
                 }
 
+                break;
+            case PropHwdecCurrent when format == FormatNone:
+                // Unknown (no decoder yet or any more), never "software": a stale "no" must not fire for the next file.
+                _hwdecCurrent = string.Empty;
                 break;
             case PropFrameDrop when format == FormatInt64 && value != 0:
                 _frameDrop = Marshal.ReadInt64(value);
@@ -541,7 +639,7 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
     // Damaged frames are not counted by an mpv property; the decoder reports each as a log line.
     private void OnLogMessage(string? prefix, string? text)
     {
-        if (prefix is null || text is null || !_fileLoaded)
+        if (prefix is null || text is null || !_fileLoaded || !IsCurrentFile)
         {
             return;
         }

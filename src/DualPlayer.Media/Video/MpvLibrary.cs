@@ -170,6 +170,10 @@ internal static partial class MpvNative
     [LibraryImport(LibraryName, EntryPoint = "mpv_command")]
     internal static partial int Command(nint ctx, nint args);
 
+    /// <summary>Queues the command and returns at once; mpv copies <paramref name="args"/>. The reply arrives as an event.</summary>
+    [LibraryImport(LibraryName, EntryPoint = "mpv_command_async")]
+    internal static partial int CommandAsync(nint ctx, ulong replyUserdata, nint args);
+
     [LibraryImport(LibraryName, EntryPoint = "mpv_observe_property", StringMarshalling = StringMarshalling.Utf8)]
     internal static partial int ObserveProperty(nint ctx, ulong replyUserdata, string name, int format);
 

@@ -317,6 +317,58 @@ public sealed class MpvVideoRendererTests
         renderer.Counters.SkippedDamaged.ShouldBe(0);
     }
 
+    // ---- a second Load starts from a clean slate ----
+
+    [Fact]
+    public void A_second_load_shows_the_new_file_at_position_zero_with_zeroed_counters_never_the_old_files_state()
+    {
+        RequireLibmpv();
+        using var renderer = LoadedPaused("video-damaged.mkv");
+        renderer.PlayAt(TimeSpan.Zero, TimeProvider.System.GetTimestamp());
+        WaitFor(() => renderer.Presented, p => p.Position >= TimeSpan.FromSeconds(1.5)).ShouldNotBeNull();
+        WaitFor(() => renderer.Counters, c => c.SkippedDamaged > 0).ShouldNotBeNull().SkippedDamaged.ShouldBeGreaterThan(0);
+
+        renderer.Load(Media("long-gop-ramp.mkv"), 0, startPaused: true).IsSuccess.ShouldBeTrue();
+
+        var until = Stopwatch.GetTimestamp() + Stopwatch.Frequency;
+        PresentedPicture? last = null;
+        while (Stopwatch.GetTimestamp() < until)
+        {
+            last = renderer.Presented;
+            last?.Position.ShouldBeLessThan(TimeSpan.FromSeconds(0.5), "the old file's position leaked into the new load");
+            renderer.Counters.ShouldBe(FrameCounters.None);
+            Thread.Sleep(5);
+        }
+
+        last.ShouldNotBeNull().Position.ShouldBe(TimeSpan.Zero, TimeSpan.FromMilliseconds(100));
+    }
+
+    [Fact]
+    public void A_later_load_into_a_different_native_window_is_refused_because_a_renderer_owns_one_window()
+    {
+        RequireLibmpv();
+        using var renderer = NewRenderer();
+        renderer.Load(Media("long-gop-ramp.mkv"), 0, startPaused: true).IsSuccess.ShouldBeTrue();
+
+        var result = renderer.Load(Media("long-gop-ramp.mkv"), 12345, startPaused: true);
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Error.ShouldNotBeNull().Code.ShouldBe("mpv.load_failed");
+    }
+
+    [Fact]
+    public void A_load_after_dispose_fails_instead_of_succeeding()
+    {
+        RequireLibmpv();
+        var renderer = LoadedPaused();
+        renderer.Dispose();
+
+        var result = renderer.Load(Media("long-gop-ramp.mkv"), 0, startPaused: true);
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Error.ShouldNotBeNull().Code.ShouldBe("mpv.load_failed");
+    }
+
     // ---- notes and lifetime ----
 
     [Fact]
