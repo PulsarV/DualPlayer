@@ -69,12 +69,15 @@ internal sealed class EngineRig : IDisposable
         }
 
         _decoder = new RealisticAudioDecoder(Tracks, totalSeconds, blockFrames ?? [1536, 1024], seekLandsEarly, seekLandsLate, startLandsLate);
+        Backend = backend;
         Engine = new AudioEngine(new CapturingBackend(backend, _devices), _decoder, Time, NullLogger<AudioEngine>.Instance);
         Engine.Events.Subscribe(new Collector(this));
         _origin = Time.GetUtcNow();
     }
 
     public FakeTimeProvider Time { get; }
+
+    public IAudioBackend Backend { get; }
 
     public AudioEngine Engine { get; }
 
@@ -203,7 +206,17 @@ internal sealed class EngineRig : IDisposable
     /// <summary>Waits until the engine has handled everything queued so far (a start while running is refused on the loop).</summary>
     public void Barrier()
     {
+        if (Summary?.EndReason == RunEndReason.FileEnd)
+        {
+            return; // the film ended on its own: there is no run left to wait for
+        }
+
         var refused = Engine.StartRun(string.Empty, [], new EngineOptions());
+        if (refused.IsSuccess && Summary?.EndReason == RunEndReason.FileEnd)
+        {
+            return; // the film ended on its own meanwhile
+        }
+
         refused.IsSuccess.ShouldBeFalse($"the run is no longer active; it ended with {Summary?.EndReason.ToString() ?? "no summary"} at {Summary?.ClockPosition}");
         refused.Error.Code.ShouldBe("playback.run_active");
     }

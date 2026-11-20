@@ -9,8 +9,8 @@ files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.
 owner: "Volodymyr Kravchuk"
 estimate: "L"
 context_budget: "M"
-status: "blocked"
-step: "GATE red after escalation: AC_01 test has wrong picture-start moment"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Self-contained task: work from what is inlined here. Every quoted chunk ends with its provenance

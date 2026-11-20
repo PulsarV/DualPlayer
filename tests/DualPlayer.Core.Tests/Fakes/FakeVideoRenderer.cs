@@ -195,9 +195,9 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
         }
     }
 
-    public void Dispose()
-    {
-    }
+    public bool IsDisposed { get; private set; }
+
+    public void Dispose() => IsDisposed = true;
 
     private TimeSpan PositionAt(long now)
     {

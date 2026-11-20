@@ -2,6 +2,7 @@ using DualPlayer.App.Startup;
 using DualPlayer.Core;
 using DualPlayer.Core.Outputs;
 using DualPlayer.Core.Playback;
+using StartRequest = DualPlayer.App.Startup.StartRequest;
 
 namespace DualPlayer.App.Tests.Startup;
 
