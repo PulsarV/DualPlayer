@@ -25,6 +25,12 @@ public interface IOutputLagControl
     long? FrameZeroTimestamp { get; }
 
     /// <summary>
+    /// Gets when the engine started the master clock (its <c>TimeProvider</c> timeline): frame 0 is heard on each output
+    /// still connected its lag after this. Null until the pre-roll release has fixed it, and when no run is active.
+    /// </summary>
+    long? ClockStartTimestamp { get; }
+
+    /// <summary>
     /// Gets when the output first handed film audio to its device (the engine's <c>TimeProvider</c> timeline); null
     /// before that and when the output is not in the run. Heard = this plus the output's assumed latency.
     /// </summary>

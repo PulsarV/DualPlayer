@@ -328,12 +328,13 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         var maxLag = TimeSpan.FromMilliseconds(estimate.Outputs.Select(o => o.LagMs).DefaultIfEmpty(0).Max());
-        var frameZero = _lags.FrameZeroTimestamp ?? _time.GetTimestamp();
-        var clockStart = frameZero - ToTimestamp(maxLag);
+        // The clock the engine started: its frame zero follows only the outputs still connected at the release, so a
+        // largest lag recomputed here would be wrong after a loss in the pre-roll (review F24).
+        var clockStart = _lags.ClockStartTimestamp ?? ((_lags.FrameZeroTimestamp ?? _time.GetTimestamp()) - ToTimestamp(maxLag));
         var clock = new MasterClock(_time);
         clock.StartAt(clockStart);
         var pictureDelay = TimeSpan.FromMilliseconds(estimate.PictureDelayMs);
-        var sync = new PictureSync(clock, _renderer, _time, pictureDelay);
+        var sync = new PictureSync(clock, _renderer, _time, pictureDelay, action => _loop.Post(action));
         if (!returning)
         {
             sync.AlignAt(TimeSpan.Zero, clockStart);

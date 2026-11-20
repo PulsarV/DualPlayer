@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-20 (F21, F24)"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-20. Work from what is inlined here; the source always wins.
@@ -30,6 +30,10 @@ See [spec.md](../spec.md) §5 AC-01, AC-15b.
 
 ## Definition of Done
 
-- [ ] Every timer/background callback in the session and picture sync catches, logs the exception at the top and keeps the session usable (if T24 routes them through a loop that already does this, a test proves it).
-- [ ] The clock start uses the same lag the engine used (connected outputs only — exposed by the engine, not recomputed); a test loses an output during pre-roll and checks the picture start.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Every timer/background callback in the session and picture sync catches, logs the exception at the top and keeps the session usable (if T24 routes them through a loop that already does this, a test proves it).
+- [x] The clock start uses the same lag the engine used (connected outputs only — exposed by the engine, not recomputed); a test loses an output during pre-roll and checks the picture start.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+
+## Note (implement)
+
+Since T24 the session's own timers (health, freeze, sync tick) post to the session thread, whose loop logs a fault and carries on; `PictureSync`'s move timer now posts there too. Gate: one full-suite run had `AudioEngineRunTests.Audio_started_is_published_once_when_the_last_output_renders_its_first_audio_with_that_start_to_audio` fail under load; it passed 3/3 alone and the full Core suite passed on the rerun — a timing flake in a step-3 engine test this task did not touch, flagged for re-review.

@@ -57,8 +57,15 @@ public sealed class PictureSync : IDisposable
     // When the picture was last re-aligned or moved by a seek: a snapshot stamped before it shows the picture from before.
     private long _commandedAt = long.MinValue;
 
-    public PictureSync(MasterClock clock, IVideoRenderer renderer, TimeProvider time, TimeSpan pictureDelay)
+    private readonly Action<Action>? _post;
+
+    /// <param name="post">
+    /// Where the move's own timer runs its end (the playback session's thread, which logs a fault); null = on the
+    /// timer's thread.
+    /// </param>
+    public PictureSync(MasterClock clock, IVideoRenderer renderer, TimeProvider time, TimeSpan pictureDelay, Action<Action>? post = null)
     {
+        _post = post;
         _clock = clock;
         _renderer = renderer;
         _time = time;
@@ -225,7 +232,21 @@ public sealed class PictureSync : IDisposable
 
             // The move ends on its own at the target even when nobody ticks: the timer runs on the injected clock.
             var version = ++_moveVersion;
-            _moveTimer = _time.CreateTimer(_ => FinishMove(version), null, _moveDuration, Timeout.InfiniteTimeSpan);
+            _moveTimer = _time.CreateTimer(
+                _ =>
+                {
+                    if (_post is { } post)
+                    {
+                        post(() => FinishMove(version));
+                    }
+                    else
+                    {
+                        FinishMove(version);
+                    }
+                },
+                null,
+                _moveDuration,
+                Timeout.InfiniteTimeSpan);
         }
     }
 

@@ -15,7 +15,12 @@ internal sealed class SessionRig : IDisposable
     private readonly Lock _gate = new();
     private readonly OffsetBook _offsets;
 
-    public SessionRig(RigDevice[] devices, DeviceOffsets? remembered = null, double totalSeconds = 600, Result<DeviceOffsets>? stored = null)
+    public SessionRig(
+        RigDevice[] devices,
+        DeviceOffsets? remembered = null,
+        double totalSeconds = 600,
+        Result<DeviceOffsets>? stored = null,
+        Func<IOutputLagControl, IOutputLagControl>? wrapLags = null)
     {
         Engine = new EngineRig(devices, totalSeconds);
         Renderer = new FakeVideoRenderer(Engine.Time);
@@ -28,7 +33,7 @@ internal sealed class SessionRig : IDisposable
         _offsets = new OffsetBook(store, Engine.Time, NullLogger<OffsetBook>.Instance);
         Session = new PlaybackSession(
             new FollowingEngine(Engine),
-            Engine.Engine,
+            wrapLags is null ? Engine.Engine : wrapLags(Engine.Engine),
             Renderer,
             Decoder,
             Pictures,

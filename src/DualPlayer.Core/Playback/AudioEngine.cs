@@ -81,6 +81,8 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
 
     public long? FrameZeroTimestamp => _loop.Execute(() => _run?.FrameZeroTimestamp);
 
+    public long? ClockStartTimestamp => _loop.Execute(() => _run is { Released: true } run ? run.ClockStartTimestamp : (long?)null);
+
     public bool IsRamping => _loop.Execute(() => _run is { } run && run.Outputs.Any(o => !o.Lost && o.Sync is { IsLagMoving: true }));
 
     public Result<TimeSpan> Pause() => _loop.Execute(PauseCore);
