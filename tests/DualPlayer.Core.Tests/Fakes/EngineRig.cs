@@ -106,10 +106,6 @@ internal sealed class EngineRig : IDisposable
 
     public IReadOnlyList<SyncRecord> RecordsOf(string deviceId) => [.. Records.Where(r => r.DeviceId == deviceId)];
 
-    private bool EndedOnItsOwn =>
-        Events.OfType<RunSummary>().LastOrDefault() is { EndReason: RunEndReason.FileEnd or RunEndReason.SeekPastEnd }
-        && Events.OfType<RunSummary>().Count() >= Events.OfType<AudioStarted>().Count();
-
     public RunSummary? Summary => Events.OfType<RunSummary>().FirstOrDefault();
 
     public void Start(EngineOptions? options = null)
@@ -234,21 +230,21 @@ internal sealed class EngineRig : IDisposable
 
     private void EngineBarrier()
     {
-        if (EndedOnItsOwn)
+        if (EndsAllowed)
         {
-            return; // the film ended on its own (or by a seek past its end): there is no run left to wait for
+            // A round trip through the engine's loop: everything queued before it has run. No run is started, so a film
+            // that ended meanwhile leaves no phantom run behind.
+            _ = Engine.FrameZeroTimestamp;
+            return;
         }
 
+        // Strict (step 3): the run must still be active; a refused start proves it and waits for the loop.
         var refused = Engine.StartRun(string.Empty, [], new EngineOptions());
-        if (refused.IsSuccess && EndedOnItsOwn)
-        {
-            return; // the film ended on its own meanwhile
-        }
-
         refused.IsSuccess.ShouldBeFalse($"the run is no longer active; it ended with {Summary?.EndReason.ToString() ?? "no summary"} at {Summary?.ClockPosition}");
         refused.Error.Code.ShouldBe("playback.run_active");
     }
 
+    /// <summary>Waits for <paramref name="condition"/>; once it holds, also for <see cref="AfterStep"/> (what the session still has to handle).</summary>
     public bool WaitFor(Func<bool> condition, int milliseconds = 10_000)
     {
         var deadline = DateTime.UtcNow + TimeSpan.FromMilliseconds(milliseconds);
@@ -256,13 +252,20 @@ internal sealed class EngineRig : IDisposable
         {
             if (condition())
             {
+                AfterStep?.Invoke();
                 return true;
             }
 
             Thread.Sleep(2);
         }
 
-        return condition();
+        var held = condition();
+        if (held)
+        {
+            AfterStep?.Invoke();
+        }
+
+        return held;
     }
 
     /// <summary>
@@ -293,6 +296,12 @@ internal sealed class EngineRig : IDisposable
         seen.ShouldBeGreaterThan(0, "no observations in the window");
         return max;
     }
+
+    /// <summary>
+    /// Set by a session rig: the film may end on its own or by a session command while a test renders, so the barrier only
+    /// waits for the engine's loop. Engine tests keep the strict barrier, which fails once the run has ended.
+    /// </summary>
+    public bool EndsAllowed { get; set; }
 
     /// <summary>Runs after every <see cref="Render"/> step (a session rig waits there for what the step posted to the session).</summary>
     public Action? AfterStep { get; set; }

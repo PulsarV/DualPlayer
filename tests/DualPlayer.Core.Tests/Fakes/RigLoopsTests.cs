@@ -1,4 +1,5 @@
 using DualPlayer.Core.Outputs;
+using DualPlayer.Core.Playback;
 using Microsoft.Extensions.Time.Testing;
 
 namespace DualPlayer.Core.Tests.Fakes;
@@ -65,5 +66,47 @@ public sealed class RigLoopsTests
     public void Waiting_for_something_that_holds_returns()
     {
         RigLoops.WaitOrFail(() => true, TimeSpan.FromMilliseconds(50), "a thing");
+    }
+
+    [Fact]
+    public void The_engine_rig_barrier_fails_once_the_run_has_ended_so_engine_tests_cannot_pass_on_a_finished_run()
+    {
+        using var rig = new EngineRig([new RigDevice(48_000)], totalSeconds: 1);
+        rig.Start();
+
+        // Render past the film's end: the barrier of the first step after the end fails instead of passing silently.
+        var failed = false;
+        for (var i = 0; i < 1_000 && !failed; i++)
+        {
+            try
+            {
+                rig.Render(1);
+            }
+            catch (ShouldAssertException)
+            {
+                failed = true;
+            }
+        }
+
+        failed.ShouldBeTrue("rendering went on past the end of the run");
+        rig.Summary.ShouldNotBeNull().EndReason.ShouldBe(DualPlayer.Core.Diagnostics.RunEndReason.FileEnd);
+        Should.Throw<ShouldAssertException>(rig.Barrier);
+    }
+
+    [Fact]
+    public void A_session_rig_barrier_after_the_film_ended_waits_for_the_engine_without_starting_a_run()
+    {
+        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, totalSeconds: 1);
+        rig.Engine.Call(() => rig.Session.Start(rig.Request(2))).IsSuccess.ShouldBeTrue();
+        rig.Engine.WaitFor(() =>
+        {
+            rig.Engine.Render(10);
+            return rig.Engine.Summary is not null;
+        }).ShouldBeTrue();
+
+        rig.Engine.Barrier();
+        rig.Engine.Render(10);
+
+        rig.Engine.Engine.StartRun("film.mkv", rig.Request(2).Outputs, new EngineOptions()).Error?.Code.ShouldNotBe("playback.run_active", "a barrier left a phantom run behind");
     }
 }

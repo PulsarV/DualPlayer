@@ -22,7 +22,7 @@ internal sealed class SessionRig : IDisposable
         Result<DeviceOffsets>? stored = null,
         Func<IOutputLagControl, IOutputLagControl>? wrapLags = null)
     {
-        Engine = new EngineRig(devices, totalSeconds);
+        Engine = new EngineRig(devices, totalSeconds) { EndsAllowed = true };
         Renderer = new FakeVideoRenderer(Engine.Time);
         Probe = new FakeDeviceLatencyProbe();
         Pictures = new FakePictureProbe();
