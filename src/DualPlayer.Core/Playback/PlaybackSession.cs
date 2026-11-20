@@ -38,6 +38,7 @@ public sealed partial class PlaybackSession
     private long _freezeVersion;
     private bool _pictureFrozen;
     private bool _targetsPending;
+    private readonly HashSet<string> _lost = new(StringComparer.Ordinal);
 
     // A resume that came before the picture reached the freeze point: the picture aligns when it freezes there.
     private (TimeSpan ClockPosition, long ClockTimestamp)? _pendingAlign;
@@ -149,6 +150,7 @@ public sealed partial class PlaybackSession
             _pictureSync = sync;
             _clock = clock;
             _pictureFrozen = false;
+            _lost.Clear();
             if (_state != PlaybackState.Ended)
             {
                 _state = PlaybackState.Playing;
@@ -182,6 +184,14 @@ public sealed partial class PlaybackSession
         }
 
         var deviceId = estimate.Outputs[outputNumber - 1].DeviceId;
+        lock (_gate)
+        {
+            if (_lost.Contains(deviceId))
+            {
+                return Result.Success();
+            }
+        }
+
         var oldOffset = estimate.Outputs[outputNumber - 1].OffsetMs;
         var step = _offsets.Step(deviceId, deltaMs);
         if (step.AtLimit)
@@ -190,15 +200,16 @@ public sealed partial class PlaybackSession
             return Result.Success();
         }
 
-        var updated = LatencyModel.Estimate([.. estimate.Outputs.Select(o => (o.DeviceId, o.Type, o.ReportedMs, o.DeviceId == deviceId ? step.OffsetMs : o.OffsetMs))]);
+        LatencyEstimate updated;
         lock (_gate)
         {
-            _estimate = updated;
+            updated = LatencyModel.Estimate([.. estimate.Outputs.Where(o => !_lost.Contains(o.DeviceId)).Select(o => (o.DeviceId, o.Type, o.ReportedMs, o.DeviceId == deviceId ? step.OffsetMs : o.OffsetMs))]);
+            _estimate = new LatencyEstimate([.. estimate.Outputs.Select(o => updated.Outputs.FirstOrDefault(u => u.DeviceId == o.DeviceId) ?? o)], updated.PictureDelayMs);
         }
 
         _events.Publish(new OffsetChanged(outputNumber, deviceId, oldOffset, step.OffsetMs, null));
         _events.Publish(new NoteShown($"Output {outputNumber}: {step.OffsetMs:+0;-0;0} ms", NoteStyle.Info));
-        var output = updated.Outputs[outputNumber - 1];
+        var output = updated.Outputs.First(o => o.DeviceId == deviceId);
         LogLatency(output.DeviceId, output.Type, output.ReportedMs, output.TypeDefaultMs, output.OffsetMs, output.AssumedMs, output.LagMs, updated.PictureDelayMs);
 
         var clockPosition = clock.PositionAt(_time.GetTimestamp());
@@ -538,6 +549,12 @@ public sealed partial class PlaybackSession
 
     private void OnEngineEvent(EngineEvent engineEvent)
     {
+        if (engineEvent is DeviceLost lost)
+        {
+            OnDeviceLost(lost);
+            return;
+        }
+
         if (engineEvent is not RunSummary summary)
         {
             return;
@@ -548,6 +565,74 @@ public sealed partial class PlaybackSession
             _endPosition = summary.ClockPosition;
             _state = PlaybackState.Ended;
         }
+    }
+
+    private void OnDeviceLost(DeviceLost lost)
+    {
+        LatencyEstimate? estimate;
+        PictureSync? sync;
+        MasterClock? clock;
+        int number;
+        lock (_gate)
+        {
+            (estimate, sync, clock) = (_estimate, _pictureSync, _clock);
+            number = estimate is null ? lost.OutputIndex + 1 : estimate.Outputs.ToList().FindIndex(o => o.DeviceId == lost.DeviceId) + 1;
+            if (number < 1)
+            {
+                number = lost.OutputIndex + 1;
+            }
+
+            _lost.Add(lost.DeviceId);
+        }
+
+        _events.Publish(new OutputLost(number, lost.DeviceId, lost.ClockPosition, lost.OthersContinue));
+
+        if (!lost.OthersContinue)
+        {
+            lock (_gate)
+            {
+                CancelFreeze();
+            }
+
+            _renderer.Pause();
+            _events.Publish(new NoteShown($"Output {number} lost - last output, film ended", NoteStyle.Warning));
+            return;
+        }
+
+        _events.Publish(new NoteShown($"Output {number} lost", NoteStyle.Warning));
+        if (estimate is null || sync is null || clock is null)
+        {
+            return;
+        }
+
+        LatencyEstimate updated;
+        PlaybackState state;
+        lock (_gate)
+        {
+            updated = LatencyModel.Estimate([.. estimate.Outputs.Where(o => !_lost.Contains(o.DeviceId)).Select(o => (o.DeviceId, o.Type, o.ReportedMs, o.OffsetMs))]);
+            _estimate = new LatencyEstimate([.. estimate.Outputs.Select(o => updated.Outputs.FirstOrDefault(u => u.DeviceId == o.DeviceId) ?? o)], updated.PictureDelayMs);
+            state = _state;
+        }
+
+        if (updated.PictureDelayMs == estimate.PictureDelayMs)
+        {
+            return;
+        }
+
+        _events.Publish(new PictureDelayChanged(lost.ClockPosition, PictureDelayCause.DeviceLost, estimate.PictureDelayMs, updated.PictureDelayMs, updated.Outputs));
+        if (state != PlaybackState.Playing)
+        {
+            lock (_gate)
+            {
+                _targetsPending = true;
+            }
+
+            return;
+        }
+
+        _lags.SetLagTargets(updated.Outputs.ToDictionary(o => o.DeviceId, o => TimeSpan.FromMilliseconds(o.LagMs), StringComparer.Ordinal), LagChangeMode.Ramp);
+        sync.MoveTo(TimeSpan.FromMilliseconds(updated.PictureDelayMs));
+        PublishTiming(clock, sync, _time.GetTimestamp());
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Latency for {DeviceId}: type {Type}, reported {ReportedMs} ms, default {DefaultMs} ms, offset {OffsetMs} ms, assumed {AssumedMs} ms, lag {LagMs} ms; picture delay {PictureDelayMs} ms")]
