@@ -194,4 +194,14 @@ public sealed class OffsetBookTests
         warnings.Count.ShouldBe(3);
         warnings.ShouldAllBe(w => w.Code == "offsets.clamped");
     }
+
+    [Fact]
+    public void A_clamped_offset_is_reported_in_the_cli_md_line_format()
+    {
+        var store = Substitute.For<IStateStore>();
+        store.Load(DeviceOffsetsFile.Definition).Returns(Result<DeviceOffsets>.Success(new DeviceOffsets { Offsets = new Dictionary<string, int> { ["dev-x"] = 900 } }));
+        using var book = new OffsetBook(store, new Microsoft.Extensions.Time.Testing.FakeTimeProvider(), Microsoft.Extensions.Logging.Abstractions.NullLogger<OffsetBook>.Instance);
+
+        book.Load().ShouldHaveSingleItem().Message.ShouldBe("device dev-x offset 900 -> 500");
+    }
 }

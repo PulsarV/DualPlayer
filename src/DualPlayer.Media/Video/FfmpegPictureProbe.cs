@@ -81,8 +81,10 @@ public sealed unsafe class FfmpegPictureProbe : IPictureProbe
             var width = parameters->width;
             var height = parameters->height;
             var notHw = Result<PictureInfo>.Failure(
-                NotHardwareDecodable,
-                $"The picture format {codecName} (profile {profileName}) cannot be decoded in hardware on this PC.");
+                new Error(NotHardwareDecodable, $"The picture format {codecName} (profile {profileName}) cannot be decoded in hardware on this PC.")
+                {
+                    Fields = new Dictionary<string, string>(StringComparer.Ordinal) { ["codec"] = codecName, ["profile"] = profileName },
+                });
 
             var decoder = ffmpeg.avcodec_find_decoder(parameters->codec_id);
             if (decoder == null)

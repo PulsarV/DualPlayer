@@ -49,7 +49,7 @@ internal sealed class TerminalPrinter : IDisposable
         _output = output;
         _log = log;
         _context = context;
-        _file = context.File;
+        _file = Path.GetFileName(context.File);
         _thread = new Thread(Drain) { IsBackground = true, Name = "terminal-printer" };
         _thread.Start();
         _engineSubscription = engine.Subscribe(new Observer<EngineEvent>(OnEngine));
@@ -102,22 +102,32 @@ internal sealed class TerminalPrinter : IDisposable
                 StartTimingsArrived(t);
                 break;
             case OffsetsWarning w:
-                Print($"warning {w.Warning.Code}: {w.Warning.Message}");
+                // A state-file problem prints the contract's sentence; the store's own wording goes to the log only.
+                var text = w.Warning.Code.StartsWith("state.", StringComparison.Ordinal)
+                    ? "remembered offsets could not be read, every output starts at offset 0"
+                    : w.Warning.Message;
+                Print($"warning {w.Warning.Code}: {text}");
                 break;
             case FileSkipped f:
                 var where = f.OutputNumber is { } o && f.Track is { } t2 ? $"  output {o}  track {t2}" : string.Empty;
-                Print($"skipped  {f.File}  reason {f.Reason}{where}");
+                var format = f.Codec is { } codec ? $"  codec {codec}  profile {ProfileName(f.Profile)}" : string.Empty;
+                Print($"skipped  {f.File}  reason {f.Reason}{where}{format}");
                 break;
             case FileChanged c:
+                var name = Path.GetFileName(c.File);
                 lock (_gate)
                 {
-                    _file = c.File;
+                    _file = name;
                 }
 
-                Print($"next     {c.File}");
+                Print($"{(c.ToPrevious ? "previous" : "next"),-8} {name}");
+                break;
+            case NoNeighbour n:
+                Print(n.Next ? "no-next-file" : "no-previous-file");
                 break;
             case OutputLost l:
-                Print($"device-lost  output {l.OutputNumber}  device {l.DeviceId}  clock {RunSummaryLines.Clock(l.Clock)}  {(l.OthersContinue ? "others continue" : "last output, film ended")}");
+                var move = l.OthersContinue && l.OldPictureDelayMs is { } from && l.NewPictureDelayMs is { } to ? $"  picture-delay {from} -> {to}" : string.Empty;
+                Print($"device-lost  output {l.OutputNumber}  device {l.DeviceId}  clock {RunSummaryLines.Clock(l.Clock)}  {(l.OthersContinue ? "others continue" : "last output, film ended")}{move}");
                 break;
             case PictureFailed p:
                 Print($"picture-failed  clock {RunSummaryLines.Clock(p.Clock)}  the picture could not be decoded further, film ended");
@@ -126,6 +136,10 @@ internal sealed class TerminalPrinter : IDisposable
                 break;
         }
     }
+
+    // FFmpeg's profile names ("Main 10") in the contract's form ("main-10").
+    private static string ProfileName(string? profile) =>
+        string.IsNullOrWhiteSpace(profile) ? "unknown" : string.Join('-', profile.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
     private void LatencyLines(LatencyEstimate estimate)
     {

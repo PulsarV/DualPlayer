@@ -198,4 +198,22 @@ public sealed class PlaybackSessionFileChangeTests : IDisposable
         rig.Events.OfType<NoteShown>().ShouldContain(n => n.Style == NoteStyle.Warning && n.Text.Contains("Episode 2.mkv"));
         rig.Engine.Call(() => rig.Session.Pause()).IsSuccess.ShouldBeTrue("keys after a failed file change must not answer 'no film is playing'");
     }
+
+    [Fact]
+    public void A_move_to_the_previous_file_says_so_and_a_skip_for_the_picture_names_codec_and_profile_AC_08_AC_09b()
+    {
+        using var rig = PlayingRig("Episode 3.mkv", "Episode 1.mkv", "Episode 2.mkv");
+        rig.Pictures.Script(Path.Combine(_folder, "Episode 2.mkv"), Result<PictureInfo>.Failure(
+            new Error("video.not_hardware_decodable", "The picture format hevc (profile Main 10) cannot be decoded in hardware on this PC.")
+            {
+                Fields = new Dictionary<string, string> { ["codec"] = "hevc", ["profile"] = "Main 10" },
+            }));
+
+        rig.Engine.Call(() => rig.Session.PreviousFile()).IsSuccess.ShouldBeTrue();
+
+        var skipped = rig.Events.OfType<FileSkipped>().ShouldHaveSingleItem();
+        skipped.Codec.ShouldBe("hevc");
+        skipped.Profile.ShouldBe("Main 10");
+        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem().ToPrevious.ShouldBeTrue();
+    }
 }

@@ -64,15 +64,59 @@ public sealed partial class TerminalPrinterTests
     }
 
     [Theory]
-    [InlineData("state.unreadable", "remembered offsets could not be read, every output starts at offset 0")]
-    [InlineData("state.invalid", "remembered offsets are invalid, every output starts at offset 0")]
-    [InlineData("state.too-new", "remembered offsets were saved by a newer version, every output starts at offset 0")]
-    public void A_state_warning_is_printed_as_a_warning_line(string code, string message)
+    [InlineData("state.unreadable", "device-offsets.json: unexpected character at line 3")]
+    [InlineData("state.invalid", "Remembered offsets file has no offsets object; starting at 0.")]
+    [InlineData("state.too-new", "device-offsets.json has schemaVersion 9; this build reads up to 1")]
+    public void A_state_warning_prints_the_contract_line_whatever_the_store_said(string code, string storeMessage)
     {
         var h = new Harness();
-        h.Session.Publish(new OffsetsWarning(new Error(code, message)));
+        h.Session.Publish(new OffsetsWarning(new Error(code, storeMessage)));
 
-        h.Finish().Out.ShouldContain($"warning {code}: {message}");
+        h.Finish().Out.ShouldContain($"warning {code}: remembered offsets could not be read, every output starts at offset 0");
+    }
+
+    [Fact]
+    public void No_playable_neighbour_prints_no_next_file_or_no_previous_file()
+    {
+        var h = new Harness();
+        h.Session.Publish(new NoNeighbour(Next: true));
+        h.Session.Publish(new NoNeighbour(Next: false));
+
+        var lines = h.Finish().Out;
+
+        lines.ShouldContain("no-next-file");
+        lines.ShouldContain("no-previous-file");
+    }
+
+    [Fact]
+    public void A_file_change_prints_the_direction_and_the_file_name_only()
+    {
+        var h = new Harness();
+        h.Session.Publish(new FileChanged(Path.Combine("D:", "Video", "Episode 1.mkv"), Path.Combine("D:", "Video", "Episode 2.mkv")) { ToPrevious = true });
+        h.Session.Publish(new FileChanged(Path.Combine("D:", "Video", "Episode 2.mkv"), Path.Combine("D:", "Video", "Episode 1.mkv")));
+
+        var lines = h.Finish().Out;
+
+        lines.ShouldContain("previous Episode 1.mkv");
+        lines.ShouldContain("next Episode 2.mkv");
+    }
+
+    [Fact]
+    public void A_skip_for_the_picture_names_codec_and_profile()
+    {
+        var h = new Harness();
+        h.Session.Publish(new FileSkipped("b.mkv", "not-hardware-decodable", null, null) { Codec = "hevc", Profile = "Main 10" });
+
+        h.Finish().Out.ShouldContain("skipped b.mkv reason not-hardware-decodable codec hevc profile main-10");
+    }
+
+    [Fact]
+    public void A_loss_with_others_continuing_prints_the_picture_delay_move()
+    {
+        var h = new Harness();
+        h.Session.Publish(new OutputLost(2, DevB, new TimeSpan(0, 0, 40, 12, 300), OthersContinue: true) { OldPictureDelayMs = 200, NewPictureDelayMs = 0 });
+
+        h.Finish().Out.ShouldContain($"device-lost output 2 device {DevB} clock 00:40:12.300 others continue picture-delay 200 -> 0");
     }
 
     [Fact]

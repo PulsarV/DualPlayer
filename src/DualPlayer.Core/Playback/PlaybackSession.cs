@@ -483,7 +483,7 @@ public sealed partial class PlaybackSession : IDisposable
             return started;
         }
 
-        _events.Publish(new FileChanged(target, request.File));
+        _events.Publish(new FileChanged(target, request.File) { ToPrevious = direction == NeighbourDirection.Previous });
         LatencyEstimate? now;
         lock (_gate)
         {
@@ -518,7 +518,17 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         var picture = _pictureProbe.Probe(path, PictureProbeLimit);
-        return picture.IsSuccess ? null : new FileSkipped(name, ReasonOf(picture.Error.Code), null, null);
+        if (picture.IsSuccess)
+        {
+            return null;
+        }
+
+        var fields = picture.Error.Fields;
+        return new FileSkipped(name, ReasonOf(picture.Error.Code), null, null)
+        {
+            Codec = fields?.GetValueOrDefault("codec"),
+            Profile = fields?.GetValueOrDefault("profile"),
+        };
     }
 
     private static string ReasonOf(string code) => code switch
@@ -582,8 +592,8 @@ public sealed partial class PlaybackSession : IDisposable
         LatencyEstimate updated;
         lock (_gate)
         {
-            updated = LatencyModel.Estimate([.. estimate.Outputs.Where(o => !_lost.Contains(o.DeviceId)).Select(o => (o.DeviceId, o.Type, o.ReportedMs, o.DeviceId == deviceId ? step.OffsetMs : o.OffsetMs))]);
-            _estimate = new LatencyEstimate([.. estimate.Outputs.Select(o => updated.Outputs.FirstOrDefault(u => u.DeviceId == o.DeviceId) ?? o)], updated.PictureDelayMs);
+            updated = Reestimate(estimate, deviceId, step.OffsetMs);
+            _estimate = Merge(estimate, updated);
         }
 
         var changed = new OffsetChanged(outputNumber, deviceId, oldOffset, step.OffsetMs, null);
@@ -622,6 +632,21 @@ public sealed partial class PlaybackSession : IDisposable
         ReportTiming(sync);
         return Result.Success();
     }
+
+    /// <summary>
+    /// The estimate over the outputs still playing, with <paramref name="deviceId"/>'s offset replaced; each output keeps
+    /// where its reported part came from. The caller holds the gate.
+    /// </summary>
+    private LatencyEstimate Reestimate(LatencyEstimate estimate, string? deviceId, int offsetMs)
+    {
+        var playing = estimate.Outputs.Where(o => !_lost.Contains(o.DeviceId)).ToList();
+        var fresh = LatencyModel.Estimate([.. playing.Select(o => (o.DeviceId, o.Type, o.ReportedMs, o.DeviceId == deviceId ? offsetMs : o.OffsetMs))]);
+        return new LatencyEstimate([.. fresh.Outputs.Select(u => u with { Source = playing.First(o => o.DeviceId == u.DeviceId).Source })], fresh.PictureDelayMs);
+    }
+
+    // Every output keeps its place: the playing ones from the new estimate, the lost ones as they were.
+    private static LatencyEstimate Merge(LatencyEstimate all, LatencyEstimate playing) =>
+        new([.. all.Outputs.Select(o => playing.Outputs.FirstOrDefault(u => u.DeviceId == o.DeviceId) ?? o)], playing.PictureDelayMs);
 
     /// <summary>Applies offsets pressed while paused or ended at once; called on resume and seek.</summary>
     private void ApplyPendingTargets(PictureSync sync)
@@ -1241,7 +1266,24 @@ public sealed partial class PlaybackSession : IDisposable
             _lost.Add(lost.DeviceId);
         }
 
-        _events.Publish(new OutputLost(number, lost.DeviceId, lost.ClockPosition, lost.OthersContinue));
+        LatencyEstimate? updated = null;
+        PlaybackState state;
+        lock (_gate)
+        {
+            if (lost.OthersContinue && estimate is not null)
+            {
+                updated = Reestimate(estimate, deviceId: null, offsetMs: 0);
+                _estimate = Merge(estimate, updated);
+            }
+
+            state = _state;
+        }
+
+        _events.Publish(new OutputLost(number, lost.DeviceId, lost.ClockPosition, lost.OthersContinue)
+        {
+            OldPictureDelayMs = updated is null ? null : estimate!.PictureDelayMs,
+            NewPictureDelayMs = updated?.PictureDelayMs,
+        });
 
         if (!lost.OthersContinue)
         {
@@ -1256,18 +1298,9 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         _events.Publish(new NoteShown($"Output {number} lost", NoteStyle.Warning));
-        if (estimate is null || sync is null || clock is null)
+        if (estimate is null || updated is null || sync is null || clock is null)
         {
             return;
-        }
-
-        LatencyEstimate updated;
-        PlaybackState state;
-        lock (_gate)
-        {
-            updated = LatencyModel.Estimate([.. estimate.Outputs.Where(o => !_lost.Contains(o.DeviceId)).Select(o => (o.DeviceId, o.Type, o.ReportedMs, o.OffsetMs))]);
-            _estimate = new LatencyEstimate([.. estimate.Outputs.Select(o => updated.Outputs.FirstOrDefault(u => u.DeviceId == o.DeviceId) ?? o)], updated.PictureDelayMs);
-            state = _state;
         }
 
         if (updated.PictureDelayMs == estimate.PictureDelayMs)

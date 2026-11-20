@@ -83,6 +83,16 @@ public sealed class FfmpegPictureProbeTests
         result.Error.Message.ShouldContain("profile");
     }
 
+    [Fact]
+    public void A_picture_only_software_can_decode_carries_its_codec_and_profile_as_fields_for_the_skipped_line()
+    {
+        var result = NewProbe().Probe(Media("video-ffv1.mkv"), Limit);
+
+        result.Error!.Fields.ShouldNotBeNull();
+        result.Error.Fields["codec"].ShouldBe("ffv1");
+        result.Error.Fields.ShouldContainKey("profile");
+    }
+
     [HardwareFact(HardwareOs.MacOS)]
     public void Probe_decodes_the_first_h264_picture_in_hardware_and_names_codec_and_size_on_macOS()
     {

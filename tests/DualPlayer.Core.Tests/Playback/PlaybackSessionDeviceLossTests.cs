@@ -29,7 +29,7 @@ public sealed class PlaybackSessionDeviceLossTests
         rig.Engine.Barrier();
 
         rig.Session.State.ShouldBe(PlaybackState.Playing);
-        rig.Events.OfType<OutputLost>().ShouldHaveSingleItem().ShouldBe(new OutputLost(1, "dev-1", rig.Events.OfType<OutputLost>().Single().Clock, true));
+        rig.Events.OfType<OutputLost>().ShouldHaveSingleItem().ShouldBe(new OutputLost(1, "dev-1", rig.Events.OfType<OutputLost>().Single().Clock, true) { OldPictureDelayMs = 240, NewPictureDelayMs = 0 });
         rig.Events.OfType<NoteShown>().ShouldContain(e => e.Text == "Output 1 lost");
         rig.Events.OfType<PictureDelayChanged>().ShouldContain(e => e.Cause == PictureDelayCause.DeviceLost && e.OldPictureDelayMs == 240 && e.NewPictureDelayMs == 0);
         rig.Renderer.IsPlaying.ShouldBeTrue();
@@ -124,5 +124,18 @@ public sealed class PlaybackSessionDeviceLossTests
         rig.Events.OfType<OutputLost>().Last().OthersContinue.ShouldBeFalse();
         rig.Events.OfType<NoteShown>().ShouldContain(e => e.Text == "Output 1 lost - last output, film ended");
         rig.Renderer.IsPlaying.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void A_loss_with_others_continuing_carries_the_old_and_new_picture_delay_AC_15()
+    {
+        using var rig = PlayingRig();
+
+        rig.Engine.Devices[0].SimulateLoss();
+        rig.Engine.Barrier();
+
+        var lost = rig.Events.OfType<OutputLost>().ShouldHaveSingleItem();
+        lost.OldPictureDelayMs.ShouldBe(240);
+        lost.NewPictureDelayMs.ShouldBe(0);
     }
 }

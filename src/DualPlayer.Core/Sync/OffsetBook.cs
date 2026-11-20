@@ -69,7 +69,7 @@ public sealed class OffsetBook : IDisposable
 
                 if (corrected != stored)
                 {
-                    var message = $"Offset {stored} ms for device '{deviceId}' corrected to {corrected} ms.";
+                    var message = $"device {deviceId} offset {stored} -> {corrected}"; // cli.md §1.1
                     warnings.Add(new Error("offsets.clamped", message));
                     _logger.LogWarning("{Message}", message);
                 }

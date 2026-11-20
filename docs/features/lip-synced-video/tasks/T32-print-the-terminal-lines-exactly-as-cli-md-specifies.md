@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
 origin: "review-2026-11-20 (F15)"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-20. Work from what is inlined here; the source always wins.
@@ -29,6 +29,6 @@ See [spec.md](../spec.md) §5 AC-08, AC-15.
 
 ## Definition of Done
 
-- [ ] Every line in cli.md §1.1/§2.2/§2.3 is printed in its contract form for the events the session really emits (direction for previous, file names not paths, codec/profile on `skipped`, `picture-delay a -> b` on `device-lost`, the clamp line format).
-- [ ] Tests drive the printer with the events a real `PlaybackSession` emits (or the session itself with fakes) and compare with literal lines copied from cli.md.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Every line in cli.md §1.1/§2.2/§2.3 is printed in its contract form for the events the session really emits (direction for previous, file names not paths, codec/profile on `skipped`, `picture-delay a -> b` on `device-lost`, the clamp line format).
+- [x] Tests drive the printer with the events a real `PlaybackSession` emits (or the session itself with fakes) and compare with literal lines copied from cli.md.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

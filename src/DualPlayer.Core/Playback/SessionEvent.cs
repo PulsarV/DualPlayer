@@ -48,16 +48,34 @@ public sealed record StartTimings(long CommandTimestamp, long FirstFramePresente
 public sealed record NoteShown(string Text, NoteStyle Style) : SessionEvent;
 
 /// <summary>A neighbouring file was skipped; names the file, why and, when a track is missing, the output and track.</summary>
-public sealed record FileSkipped(string File, string Reason, int? OutputNumber, int? Track) : SessionEvent;
+public sealed record FileSkipped(string File, string Reason, int? OutputNumber, int? Track) : SessionEvent
+{
+    /// <summary>Gets the picture's codec when the picture is the reason (<c>not-hardware-decodable</c>).</summary>
+    public string? Codec { get; init; }
+
+    /// <summary>Gets the picture's profile when the picture is the reason (<c>not-hardware-decodable</c>).</summary>
+    public string? Profile { get; init; }
+}
 
 /// <summary>The session moved to another file.</summary>
-public sealed record FileChanged(string File, string? PreviousFile) : SessionEvent;
+public sealed record FileChanged(string File, string? PreviousFile) : SessionEvent
+{
+    /// <summary>Gets a value indicating whether the Viewer moved to the previous file (false = the next one).</summary>
+    public bool ToPrevious { get; init; }
+}
 
 /// <summary>No playable file in the pressed direction.</summary>
 public sealed record NoNeighbour(bool Next) : SessionEvent;
 
 /// <summary>An output's device was lost; <paramref name="OthersContinue"/> is false when it was the last one.</summary>
-public sealed record OutputLost(int OutputNumber, string DeviceId, TimeSpan Clock, bool OthersContinue) : SessionEvent;
+public sealed record OutputLost(int OutputNumber, string DeviceId, TimeSpan Clock, bool OthersContinue) : SessionEvent
+{
+    /// <summary>Gets the picture delay before the loss (when others continue).</summary>
+    public int? OldPictureDelayMs { get; init; }
+
+    /// <summary>Gets the picture delay the outputs still playing move to (when others continue).</summary>
+    public int? NewPictureDelayMs { get; init; }
+}
 
 /// <summary>The picture could not continue (decode failure or hardware decoding inactive).</summary>
 public sealed record PictureFailed(TimeSpan Clock, string Reason) : SessionEvent;
