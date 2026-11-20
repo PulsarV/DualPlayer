@@ -9,6 +9,9 @@ public sealed record EngineOptions
 
     public TimeSpan DeviceBuffer { get; init; } = TimeSpan.FromMilliseconds(40);
 
+    /// <summary>Per-output start lag behind the master clock, keyed by device id; joins the silent pre-roll (ADR-0005).</summary>
+    public IReadOnlyDictionary<string, TimeSpan> InitialLags { get; init; } = new Dictionary<string, TimeSpan>();
+
     /// <summary>Spec target, not a tuning knob: no console flag.</summary>
     internal TimeSpan DriftTolerance { get; init; } = TimeSpan.FromMilliseconds(10);
 

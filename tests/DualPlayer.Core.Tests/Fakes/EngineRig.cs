@@ -105,13 +105,13 @@ internal sealed class EngineRig : IDisposable
 
     public RunSummary? Summary => Events.OfType<RunSummary>().FirstOrDefault();
 
-    public void Start()
+    public void Start(EngineOptions? options = null)
     {
         var assignments = Enumerable.Range(0, _specs.Length)
             .Select(i => new OutputAssignment((i % 2) + 1, DeviceRef.ByNumber(i + 1)))
             .ToArray();
         var commandAt = Elapsed;
-        Engine.StartRun("film.mkv", assignments, new EngineOptions()).IsSuccess.ShouldBeTrue();
+        Engine.StartRun("film.mkv", assignments, options ?? new EngineOptions()).IsSuccess.ShouldBeTrue();
         _positionBase = TimeSpan.Zero;
         _paused = true; // the clock holds 00:00 through the silent pre-roll
         Fill();

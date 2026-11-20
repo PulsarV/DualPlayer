@@ -41,6 +41,12 @@ public sealed class OutputSync(MasterClock clock, TimeSpan driftTolerance)
     /// <summary>Gets the output's current lag behind the master clock (the ramp's current value).</summary>
     public TimeSpan Lag => _lag.Current;
 
+    /// <summary>Gets the lag the output is moving toward (equal to <see cref="Lag"/> when it is not moving).</summary>
+    public TimeSpan LagTarget => _lag.Target;
+
+    /// <summary>Gets a value indicating whether the lag is still moving toward its target.</summary>
+    public bool IsLagMoving => _lag.IsMoving;
+
     public void RetargetLag(TimeSpan target)
     {
         _lag.Retarget(target);

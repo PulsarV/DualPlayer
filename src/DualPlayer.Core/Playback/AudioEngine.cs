@@ -11,7 +11,7 @@ namespace DualPlayer.Core.Playback;
 /// device is lost and always ends with a run summary. Every command and backend event goes through one
 /// <see cref="EngineControlLoop"/>.
 /// </summary>
-public sealed partial class AudioEngine : IAudioEngine, IDisposable
+public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisposable
 {
     private static readonly TimeSpan StartLevelTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan AlignTolerance = TimeSpan.FromMilliseconds(1);
@@ -68,6 +68,18 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         ArgumentNullException.ThrowIfNull(options);
         return _loop.Execute(() => StartCore(file, assignments, options));
     }
+
+    public Result SetLagTargets(IReadOnlyDictionary<string, TimeSpan> targets, LagChangeMode mode)
+    {
+        ArgumentNullException.ThrowIfNull(targets);
+        return _loop.Execute(() => SetLagTargetsCore(targets, mode));
+    }
+
+    public TimeSpan? CurrentLag(string deviceId) => _loop.Execute(() => FindOutput(deviceId)?.Sync?.Lag);
+
+    public long? FrameZeroTimestamp => _loop.Execute(() => _run?.FrameZeroTimestamp);
+
+    public bool IsRamping => _loop.Execute(() => _run is { } run && run.Outputs.Any(o => !o.Lost && o.Sync is { IsLagMoving: true }));
 
     public Result<TimeSpan> Pause() => _loop.Execute(PauseCore);
 
@@ -185,6 +197,11 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         foreach (var output in run.Outputs)
         {
             output.Sync = new OutputSync(run.Clock, options.DriftTolerance);
+            if (options.InitialLags.TryGetValue(output.DeviceId, out var initialLag))
+            {
+                output.Sync.SetLagAtOnce(initialLag);
+            }
+
             output.Trace = new DriftTrace(output.DeviceId, _logger);
             output.Mismatch = new ClockMismatchEstimator(_time);
             output.Source.StartAtDeviceFrame(long.MaxValue);
@@ -208,6 +225,44 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
                 Source = tracks.Value.FirstOrDefault(t => t.Number == o.TrackNumber),
             })],
             run.StartClockPosition));
+    }
+
+    private Output? FindOutput(string deviceId) =>
+        _run?.Outputs.FirstOrDefault(o => !o.Lost && string.Equals(o.DeviceId, deviceId, StringComparison.Ordinal));
+
+    private Result SetLagTargetsCore(IReadOnlyDictionary<string, TimeSpan> targets, LagChangeMode mode)
+    {
+        if (_run is not { } run)
+        {
+            return Result.Failure("playback.no_run", "No run is active.");
+        }
+
+        var started = WaitForClockStart(run);
+        if (!started.IsSuccess)
+        {
+            return started;
+        }
+
+        var now = _time.GetTimestamp();
+        foreach (var (deviceId, target) in targets)
+        {
+            if (FindOutput(deviceId) is not { Sync: { } sync } output)
+            {
+                continue; // lost or not in the run
+            }
+
+            if (mode == LagChangeMode.Ramp)
+            {
+                sync.RetargetLag(target);
+                continue;
+            }
+
+            sync.SetLagAtOnce(target);
+            BeginAlignment(output, now); // the output is re-aligned to clock − lag in one step
+        }
+
+        _loop.Polling = true;
+        return Result.Success();
     }
 
     private Result<TimeSpan> PauseCore()
@@ -276,6 +331,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         {
             output.Source.ClearSilence();
             output.AlignAfterRecovery = false;
+            output.Sync!.SetLagAtOnce(output.Sync.LagTarget); // a ramp in progress jumps to its target: re-aligned anyway
             BeginAlignment(output, now);
         }
 
@@ -328,6 +384,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         BeginRecovery(run, now);
         foreach (var output in active)
         {
+            output.Sync!.SetLagAtOnce(output.Sync.LagTarget); // a ramp in progress jumps to its target: re-aligned anyway
             var startFrame = startFrames[output];
             if (run.Paused)
             {
@@ -423,6 +480,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         }
 
         run.Starting = false;
+        run.LastLagAdvance = run.ClockStartTimestamp;
         run.Clock!.StartAt(run.ClockStartTimestamp);
         BeginRecovery(run, run.ClockStartTimestamp);
         run.SyncTimer = _time.CreateTimer(_ => _loop.Post(() => OnSyncSample(run)), null, SyncSampleInterval, SyncSampleInterval);
@@ -468,7 +526,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         }
 
         var margin = (long)(StartMargin.TotalSeconds * _time.TimestampFrequency);
-        var clockStart = moved.Count == 0 ? now : Math.Max(now, moved.Max(m => m.HeardAt)) + margin;
+        var clockStart = moved.Count == 0 ? now : Math.Max(now, moved.Max(m => m.HeardAt - LagTicks(m.Output))) + margin;
         // A moved output keeps its pre-roll hold until its heard target is set: resetting it first would let a
         // render in between hand out film frame 0 at once, ~L_max before the clock starts.
         foreach (var output in run.Outputs.Where(o => !o.Lost && !moved.Exists(m => m.Output == o)))
@@ -480,15 +538,19 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
         for (var i = 0; i < moved.Count; i++)
         {
             var output = moved[i].Output;
-            output.Source.StartWhenHeardAt(clockStart, (double)output.Format.SampleRate / _time.TimestampFrequency);
+            output.Source.StartWhenHeardAt(clockStart + LagTicks(output), (double)output.Format.SampleRate / _time.TimestampFrequency);
             ReleaseStepForTests?.Invoke(moved.Count - i - 1);
         }
 
         run.Released = true;
         run.ClockStartTimestamp = clockStart;
+        run.FrameZeroTimestamp = clockStart + run.Outputs.Where(o => !o.Lost).Select(LagTicks).DefaultIfEmpty(0).Max();
         LogFilmReleased(moved.Count, run.Outputs.Count(o => !o.Lost), _time.GetElapsedTime(run.StartTimestamp, clockStart).TotalMilliseconds);
         return true;
     }
+
+    /// <summary>The output's start lag in timestamp ticks: it hears film frame 0 that long after the clock starts.</summary>
+    private long LagTicks(Output output) => (long)(output.Sync!.Lag.TotalSeconds * _time.TimestampFrequency);
 
     internal enum ReleaseReading
     {
@@ -749,7 +811,7 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
                 continue;
             }
 
-            var drift = content - run.Clock!.PositionAt(heardAt);
+            var drift = content - (run.Clock!.PositionAt(heardAt) - output.Sync!.Lag);
             var inTolerance = Math.Abs(drift.TotalMilliseconds) <= AlignTolerance.TotalMilliseconds;
             if (output.AlignRounds >= MaxAlignRounds || (inTolerance && now >= output.AlignUntil))
             {
@@ -833,12 +895,24 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
     /// </summary>
     private void OnSyncSample(Run run)
     {
-        if (_run != run || run.Paused)
+        if (_run != run)
         {
             return;
         }
 
         var now = _time.GetTimestamp();
+        var sinceLast = _time.GetElapsedTime(run.LastLagAdvance, now);
+        run.LastLagAdvance = now;
+        if (run.Paused)
+        {
+            return;
+        }
+
+        foreach (var output in run.Outputs.Where(o => !o.Lost))
+        {
+            output.Sync!.AdvanceLag(sinceLast);
+        }
+
         run.IntervalInRecovery |= now < run.RecoveryUntil;
         foreach (var output in run.Outputs.Where(o => !o.Lost))
         {
@@ -1175,6 +1249,12 @@ public sealed partial class AudioEngine : IAudioEngine, IDisposable
 
         /// <summary>When the master clock reads 00:00: the slowest output hears film frame 0 (set at the release).</summary>
         public long ClockStartTimestamp { get; set; }
+
+        /// <summary>When the slowest output hears film frame 0 (the clock start plus the largest start lag); set at the release.</summary>
+        public long? FrameZeroTimestamp { get; set; }
+
+        /// <summary>When the lag ramps were last advanced (control-loop thread only).</summary>
+        public long LastLagAdvance { get; set; }
 
         public List<Output> Outputs { get; } = [];
 

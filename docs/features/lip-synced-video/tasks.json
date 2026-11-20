@@ -254,7 +254,7 @@
         "tests/DualPlayer.Core.Tests/Playback/AudioEngineLagTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T12-engine-lag-hooks.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T13",
