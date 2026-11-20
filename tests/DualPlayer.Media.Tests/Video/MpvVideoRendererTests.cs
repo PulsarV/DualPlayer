@@ -58,6 +58,33 @@ public sealed class MpvVideoRendererTests
         return probe();
     }
 
+    // ---- note style (pure; runs everywhere) ----
+
+    [Fact]
+    public void Note_options_take_size_box_and_margin_from_the_note_style_and_put_the_note_bottom_centre()
+    {
+        var style = new OsdNoteStyle(FontSizePx: 32, ForegroundArgb: 0xFFFFFFFF, WarningArgb: 0xFFFFD400, BackingArgb: 0xFF000000, BottomMarginRatio: 0.05);
+
+        var options = MpvVideoRenderer.NoteOptions(style).ToDictionary(o => o.Key, o => o.Value);
+
+        // mpv scales OSD sizes to a 720-line canvas: 32 px at 1080 lines is 21.333 OSD units; 5 % of 720 is 36.
+        options["osd-font-size"].ShouldBe("21.333");
+        options["osd-margin-y"].ShouldBe("36");
+        options["osd-align-x"].ShouldBe("center");
+        options["osd-align-y"].ShouldBe("bottom");
+        options["osd-border-style"].ShouldBe("background-box");
+        options["osd-back-color"].ShouldBe("#FF000000");
+    }
+
+    [Fact]
+    public void Note_text_colour_follows_the_note_style_tokens()
+    {
+        var style = new OsdNoteStyle(32, ForegroundArgb: 0xFFEEEEEE, WarningArgb: 0xFFFFD400, BackingArgb: 0xFF000000, BottomMarginRatio: 0.05);
+
+        MpvVideoRenderer.NoteColor(style, NoteStyle.Info).ShouldBe("#FFEEEEEE");
+        MpvVideoRenderer.NoteColor(style, NoteStyle.Warning).ShouldBe("#FFFFD400");
+    }
+
     // ---- hardening option list (pure; runs everywhere) ----
 
     [Fact]

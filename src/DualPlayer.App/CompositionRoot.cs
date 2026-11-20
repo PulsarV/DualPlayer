@@ -38,7 +38,10 @@ public static class CompositionRoot
         // The picture goes into the playback window: registered before AddMedia, whose renderer is only a fallback.
         services.AddSingleton<VideoSurface>();
         services.AddSingleton<IVideoRenderer>(sp => new WindowBoundRenderer(
-            new MpvVideoRenderer(sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<ILogger<MpvVideoRenderer>>()),
+            new MpvVideoRenderer(
+                sp.GetRequiredService<TimeProvider>(),
+                sp.GetRequiredService<ILogger<MpvVideoRenderer>>(),
+                Avalonia.Application.Current is { } app ? OsdNoteTokens.From(app.Resources) : OsdNoteStyle.Default),
             sp.GetRequiredService<VideoSurface>()));
         services.AddMedia();
         if (OperatingSystem.IsWindows())

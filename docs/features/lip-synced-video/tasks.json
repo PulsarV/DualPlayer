@@ -703,7 +703,7 @@
         "tests/DualPlayer.App.Tests/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T31-draw-osd-notes-from-the-osdnote-tokens-at-the-bottom-centre.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-20: F10"
     },
     {

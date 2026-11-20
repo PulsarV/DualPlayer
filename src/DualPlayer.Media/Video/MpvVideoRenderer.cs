@@ -128,9 +128,14 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
     private long _frameDrop;
     private long _decoderDrop;
     private long _skippedDamaged;
+    private readonly OsdNoteStyle _noteStyle;
 
-    public MpvVideoRenderer(TimeProvider time, ILogger<MpvVideoRenderer>? logger = null)
-        : this(time, new Dictionary<string, string>(), logger)
+    // mpv scales OSD sizes and margins to a 720-line canvas (osd-scale-by-window); the tokens are 1080p baselines.
+    private const double OsdCanvasLines = 720;
+    private const double TokenBaselineLines = 1080;
+
+    public MpvVideoRenderer(TimeProvider time, ILogger<MpvVideoRenderer>? logger = null, OsdNoteStyle? noteStyle = null)
+        : this(time, new Dictionary<string, string>(), logger, noteStyle)
     {
     }
 
@@ -139,8 +144,10 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
     internal MpvVideoRenderer(
         TimeProvider time,
         IReadOnlyDictionary<string, string> optionOverrides,
-        ILogger<MpvVideoRenderer>? logger = null)
+        ILogger<MpvVideoRenderer>? logger = null,
+        OsdNoteStyle? noteStyle = null)
     {
+        _noteStyle = noteStyle ?? OsdNoteStyle.Default;
         ArgumentNullException.ThrowIfNull(time);
         ArgumentNullException.ThrowIfNull(optionOverrides);
         _time = time;
@@ -408,6 +415,33 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
         }
     }
 
+    /// <summary>The mpv OSD options that draw a note in <paramref name="style"/>: bottom-centre on an opaque box (pure).</summary>
+    public static IReadOnlyList<KeyValuePair<string, string>> NoteOptions(OsdNoteStyle style)
+    {
+        ArgumentNullException.ThrowIfNull(style);
+        var fontSize = style.FontSizePx * OsdCanvasLines / TokenBaselineLines;
+        var marginY = style.BottomMarginRatio * OsdCanvasLines;
+        return
+        [
+            new("osd-font-size", fontSize.ToString("0.###", CultureInfo.InvariantCulture)),
+            new("osd-back-color", Argb(style.BackingArgb)),
+            new("osd-border-style", "background-box"),
+            new("osd-align-x", "center"),
+            new("osd-align-y", "bottom"),
+            new("osd-margin-x", "0"),
+            new("osd-margin-y", marginY.ToString("0.###", CultureInfo.InvariantCulture)),
+        ];
+    }
+
+    /// <summary>The mpv colour of a note's text in <paramref name="note"/> style.</summary>
+    public static string NoteColor(OsdNoteStyle style, NoteStyle note)
+    {
+        ArgumentNullException.ThrowIfNull(style);
+        return Argb(note == NoteStyle.Warning ? style.WarningArgb : style.ForegroundArgb);
+    }
+
+    private static string Argb(uint argb) => string.Create(CultureInfo.InvariantCulture, $"#{argb:X8}");
+
     public void ShowNote(string text, NoteStyle style)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -422,17 +456,17 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
             // Style properties are set when they change, not per note; every call is a queued (non-blocking) one.
             if (!_noteLayoutApplied)
             {
-                RunCommandAsync(_handle, "set", "osd-font-size", "32");
-                RunCommandAsync(_handle, "set", "osd-back-color", "#CC000000");
-                RunCommandAsync(_handle, "set", "osd-border-style", "background-box");
-                RunCommandAsync(_handle, "set", "osd-margin-x", "48");
-                RunCommandAsync(_handle, "set", "osd-margin-y", "48");
+                foreach (var (name, value) in NoteOptions(_noteStyle))
+                {
+                    RunCommandAsync(_handle, "set", name, value);
+                }
+
                 _noteLayoutApplied = true;
             }
 
             if (_appliedNoteStyle != style)
             {
-                RunCommandAsync(_handle, "set", "osd-color", style == NoteStyle.Warning ? "#FFFFD60A" : "#FFFFFFFF");
+                RunCommandAsync(_handle, "set", "osd-color", NoteColor(_noteStyle, style));
                 _appliedNoteStyle = style;
             }
 

@@ -17,9 +17,10 @@
   <SolidColorBrush x:Key="FocusBrush" Color="{StaticResource FocusColor}" />
 
   <!-- Brief note over the picture (SCR-03), drawn by mpv's OSD because Avalonia cannot draw over the native video
-       window (ADR-0003): body-size text on a SurfaceColor backing box, bottom-centre, 5 % of the height from the bottom edge. -->
+       window (ADR-0003): body-size text (ForegroundColor, FocusColor for warnings) on a SurfaceColor backing box, bottom-centre, 5 % of the height from the bottom edge. -->
   <StaticResource x:Key="OsdNoteFontSize" ResourceKey="FontSizeBody" />
   <StaticResource x:Key="OsdNoteForegroundColor" ResourceKey="ForegroundColor" />
+  <StaticResource x:Key="OsdNoteWarningColor" ResourceKey="FocusColor" />
   <StaticResource x:Key="OsdNoteBackingColor" ResourceKey="SurfaceColor" />
   <x:Double x:Key="OsdNoteBottomMarginRatio">0.05</x:Double>
 </ResourceDictionary>

@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-20 (F10)"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-20. Work from what is inlined here; the source always wins.
@@ -29,7 +29,7 @@ See [spec.md](../spec.md) §5 AC-08, AC-15.
 
 ## Definition of Done
 
-- [ ] The renderer takes the note style (size, colours, box, margin) from the `OsdNote*` tokens via an options object the App fills from `Tokens.axaml`; size is converted to mpv's 720-line OSD scale so it renders at the token px at 1080p.
-- [ ] `osd-align-x=center`, `osd-align-y=bottom` set; the box is opaque per the token (contrast ≥ 7:1).
-- [ ] Test asserts the mpv option values derived from given tokens (not just that tokens exist).
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The renderer takes the note style (size, colours, box, margin) from the `OsdNote*` tokens via an options object the App fills from `Tokens.axaml`; size is converted to mpv's 720-line OSD scale so it renders at the token px at 1080p.
+- [x] `osd-align-x=center`, `osd-align-y=bottom` set; the box is opaque per the token (contrast ≥ 7:1).
+- [x] Test asserts the mpv option values derived from given tokens (not just that tokens exist).
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
