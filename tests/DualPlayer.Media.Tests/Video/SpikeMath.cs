@@ -93,6 +93,13 @@ public static class SpikeMath
         return recoveryMs.All(r => r is <= RecoveryLimitMs) ? SpikeVerdict.Pass : SpikeVerdict.Fail;
     }
 
+    /// <summary>The seeks of one start that overran their budget (each one re-planned the start); empty when none did.</summary>
+    public static string OverrunsText(IEnumerable<(double BudgetMs, double TookMs)> overruns)
+    {
+        var parts = overruns.Select(o => FormattableString.Invariant($"{o.TookMs:0} ms of {o.BudgetMs:0} ms budget")).ToList();
+        return parts.Count == 0 ? string.Empty : $" (overran: {string.Join("; ", parts)})";
+    }
+
     public static double PerMinute(long frames, TimeSpan over) =>
         over <= TimeSpan.Zero ? 0 : frames / over.TotalMinutes;
 

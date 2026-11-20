@@ -249,7 +249,10 @@ public sealed class MpvVideoRendererTests
         using var renderer = LoadedPaused();
         var time = TimeProvider.System;
         renderer.PlayAt(TimeSpan.Zero, time.GetTimestamp());
-        WaitFor(() => renderer.Presented, p => p.Position >= TimeSpan.FromSeconds(0.5)).ShouldNotBeNull();
+
+        // Playing, not still held for the start (a held frame's position is a prediction, and a seek during a held start
+        // keeps the start's moment instead of "now").
+        WaitFor(() => renderer.Presented, p => p.Position >= TimeSpan.FromSeconds(0.5) && !renderer.HoldingStart).ShouldNotBeNull();
 
         var target = TimeSpan.FromSeconds(5);
         var seekAt = time.GetTimestamp();
@@ -270,6 +273,33 @@ public sealed class MpvVideoRendererTests
 
         ahead.ShouldBeLessThan(TimeSpan.FromMilliseconds(10));
         behind.ShouldBeGreaterThan(TimeSpan.FromMilliseconds(-10), "the picture should resume on the seek's schedule, not a seek time late");
+    }
+
+    [Fact]
+    public void A_start_whose_seek_overruns_its_budget_is_replanned_and_resumes_on_its_due_frame_not_late()
+    {
+        // A start 200 ms past whose first seek is planned as if it took no time from then (budget -200 ms): it seeks to
+        // 3 s exactly, a frame already 200 ms past due when the seek is done, as a slow seek on the target PC does. The
+        // renderer must not unpause late: it seeks again ahead with a budget learnt from that seek, and resumes on time.
+        RequireLibmpv();
+        using var renderer = LoadedPaused();
+        WaitFor(() => renderer.Presented, _ => true).ShouldNotBeNull();
+        var time = TimeProvider.System;
+        var late = TimeSpan.FromMilliseconds(200);
+        renderer.NextSeekBudgetOverride = -late;
+        var startAt = time.GetTimestamp() - (long)(late.TotalSeconds * time.TimestampFrequency);
+
+        renderer.PlayAt(TimeSpan.FromSeconds(3), startAt);
+
+        var start = WaitFor(() => renderer.LastStart, _ => true).ShouldNotBeNull();
+        start.Replans.ShouldBe(1, $"{start}");
+        start.Overruns[0].Budget.ShouldBe(-late);
+        time.GetElapsedTime(start.UnpauseDue, start.ResumedAt).Duration().ShouldBeLessThan(TimeSpan.FromMilliseconds(20));
+
+        // The frame it resumed on is the one due then on the start's schedule (30 fps here: within a frame).
+        var resumedOn = WaitFor(() => renderer.Presented, p => p.Timestamp >= start.ResumedAt).ShouldNotBeNull();
+        var due = TimeSpan.FromSeconds(3) + time.GetElapsedTime(startAt, resumedOn.Timestamp);
+        resumedOn.Position.ShouldBe(due, TimeSpan.FromMilliseconds(34));
     }
 
     [Fact]

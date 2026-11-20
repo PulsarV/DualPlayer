@@ -302,7 +302,8 @@ public sealed class MpvSpikeTests
     private static string StartText(StartRecord? start, TimeProvider time) =>
         start is null
             ? "no start was unpaused"
-            : Invariant($"unpause command latency {time.GetElapsedTime(start.UnpauseDue, start.ResumedAt).TotalMilliseconds:0.0} ms, seek budget {start.SeekBudget.TotalMilliseconds:0} ms, seek took {(start.SeekTime is { } seek ? seek.TotalMilliseconds.ToString("0", CultureInfo.InvariantCulture) + " ms" : "n/a (no seek)")}");
+            : Invariant($"unpause command latency {time.GetElapsedTime(start.UnpauseDue, start.ResumedAt).TotalMilliseconds:0.0} ms, seek budget {start.SeekBudget.TotalMilliseconds:0} ms, seek took {(start.SeekTime is { } seek ? seek.TotalMilliseconds.ToString("0", CultureInfo.InvariantCulture) + " ms" : "n/a (no seek)")}, re-plans {start.Replans}") +
+                SpikeMath.OverrunsText(start.Overruns.Select(o => (o.Budget.TotalMilliseconds, o.Took.TotalMilliseconds)));
 
     private static string RecoveryText(List<double?> recoveries)
     {

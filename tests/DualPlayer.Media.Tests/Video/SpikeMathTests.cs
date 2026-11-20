@@ -102,6 +102,13 @@ public sealed class SpikeMathTests
     }
 
     [Fact]
+    public void Seek_overruns_of_a_start_are_listed_with_budget_and_time_taken_and_nothing_when_none()
+    {
+        SpikeMath.OverrunsText([]).ShouldBe(string.Empty);
+        SpikeMath.OverrunsText([(127, 240.4), (320, 331)]).ShouldBe(" (overran: 240 ms of 127 ms budget; 331 ms of 320 ms budget)");
+    }
+
+    [Fact]
     public void Late_or_dropped_passes_at_one_frame_per_minute_and_fails_above()
     {
         SpikeMath.PerMinute(10, TimeSpan.FromMinutes(10)).ShouldBe(1.0);

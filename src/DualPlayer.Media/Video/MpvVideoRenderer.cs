@@ -88,7 +88,8 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
     private long _speedIds;
     private bool _playing;
     private double _requestedSpeed = 1.0;
-    private TimeSpan _seekTime = MpvStartPlan.InitialSeekTime;
+    private TimeSpan? _nextSeekBudgetOverride;
+    private readonly List<TimeSpan> _seekTimes = [];
 
     // The start whose picture is held paused until its unpause is applied (0 = none); read by diagnostics.
     private long _heldPlan;
@@ -167,6 +168,26 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
 
     /// <summary>The last start mpv unpaused: when it was due, when the unpause was applied, and the seek behind it.</summary>
     internal StartRecord? LastStart => _lastStart;
+
+    /// <summary>Tests only: the budget of the next planned seek, replacing the policy once (forces an overrun).</summary>
+    internal TimeSpan? NextSeekBudgetOverride
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _nextSeekBudgetOverride;
+            }
+        }
+
+        set
+        {
+            lock (_gate)
+            {
+                _nextSeekBudgetOverride = value;
+            }
+        }
+    }
 
     /// <summary>mpv's presentation feedback for the current file (<see cref="MpvPictureTimeline.PresentationDelays"/>).</summary>
     internal PresentationDelayStats PresentationDelays
@@ -289,7 +310,7 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
             {
                 // Position zero from the moment a seek to it is expected to be done.
                 var now = _time.GetTimestamp();
-                PlanStartLocked(TimeSpan.Zero, now + ToTimestamp(MpvStartPlan.SeekBudget(_seekTime)));
+                PlanStartLocked(TimeSpan.Zero, now + ToTimestamp(PolicyBudgetLocked()));
             }
         }
 
@@ -300,7 +321,9 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
     /// Holds the picture paused, seeks, and unpauses when the start reaches the frame the seek landed on (an exact seek
     /// lands on the first frame at or after its target). A start nearer than the seek takes (measured per renderer) is
     /// moved: the seek goes to the content the start reaches once the seek is done, so the picture is held a little
-    /// longer and then shows every frame at its moment (<see cref="MpvStartPlan"/>).
+    /// longer and then shows every frame at its moment (<see cref="MpvStartPlan"/>). A seek that overruns its budget is
+    /// not followed by a late unpause: the start is re-planned with a fresh seek ahead (up to
+    /// <see cref="MpvStartPlan.MaxReplans"/> times, then it unpauses late with a warning and Core corrects the rest).
     /// </summary>
     public void PlayAt(TimeSpan position, long startTimestamp)
     {
@@ -553,15 +576,19 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
         _plan = null;
     }
 
+    // Caller holds _gate.
+    private TimeSpan PolicyBudgetLocked() => MpvStartPlan.SeekBudget(MpvStartPlan.SeekTimeTail(_seekTimes));
+
     // Caller holds _gate. Pause, then seek; the seek's reply hands the plan to the event thread, whose restart schedules
-    // the unpause (ScheduleUnpause).
-    private void PlanStartLocked(TimeSpan position, long startTimestamp)
+    // the unpause (ScheduleUnpause). A re-plan carries the overruns of the seeks before it.
+    private void PlanStartLocked(TimeSpan position, long startTimestamp, IReadOnlyList<SeekOverrun>? overruns = null)
     {
         CancelScheduledStart();
         var now = _time.GetTimestamp();
-        var budget = MpvStartPlan.SeekBudget(_seekTime);
+        var budget = _nextSeekBudgetOverride ?? PolicyBudgetLocked();
+        _nextSeekBudgetOverride = null;
         var target = MpvStartPlan.SeekTarget(position, startTimestamp, now, budget, _requestedSpeed, _time.TimestampFrequency);
-        var plan = new StartPlan(++_planIds, position, startTimestamp, now, budget);
+        var plan = new StartPlan(++_planIds, position, startTimestamp, now, budget, overruns ?? []);
         _plan = plan;
         Interlocked.Exchange(ref _heldPlan, plan.Id);
         RunCommandAsync(_handle, ReplyPause, "set", "pause", "yes");
@@ -582,10 +609,42 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
             TimeSpan? seekTime = restartedAt is { } restarted ? _time.GetElapsedTime(plan.IssuedAt, restarted) : null;
             if (seekTime is { } measured)
             {
-                _seekTime = MpvStartPlan.NextSeekTime(_seekTime, measured);
+                _seekTimes.Add(measured);
+                if (_seekTimes.Count > MpvStartPlan.SeekHistory)
+                {
+                    _seekTimes.RemoveAt(0);
+                }
+
+                // A seek that overran its budget landed on a frame already past due: unpausing now would resume late by
+                // the overrun, more than Core's speed nudge closes in a second. Seek again ahead instead, with a budget
+                // that has learnt this seek, so the picture resumes on its due frame whatever the seek took.
+                var now = _time.GetTimestamp();
+                var action = MpvStartPlan.AtRestart(due, now, plan.Overruns.Count, _time.TimestampFrequency);
+                if (action != StartAction.Unpause)
+                {
+                    var overruns = plan.Overruns.Append(new SeekOverrun(plan.Budget, measured)).ToList();
+                    var lateMs = _time.GetElapsedTime(due, now).TotalMilliseconds;
+                    if (action == StartAction.Replan)
+                    {
+                        if (_logger is not null)
+                        {
+                            LogSeekOverrun(_logger, measured.TotalMilliseconds, plan.Budget.TotalMilliseconds, lateMs, overruns.Count, MpvStartPlan.MaxReplans);
+                        }
+
+                        PlanStartLocked(plan.Position, plan.Start, overruns);
+                        return;
+                    }
+
+                    if (_logger is not null)
+                    {
+                        LogStartUnpausedLate(_logger, plan.Overruns.Count, lateMs);
+                    }
+
+                    plan = plan with { Overruns = overruns };
+                }
             }
 
-            _scheduledStart = new StartRecord(planId, due, 0, plan.Budget, seekTime);
+            _scheduledStart = new StartRecord(planId, due, 0, plan.Budget, seekTime, plan.Overruns);
             var delay = _time.GetElapsedTime(_time.GetTimestamp(), due);
             if (delay <= TimeSpan.Zero)
             {
@@ -1017,16 +1076,34 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
         Message = "mpv presentation feedback for the file: {PresentationDelaySamples} samples, {PresentationDelayUsed} used, median {PresentationDelayMedianMs} ms")]
     private static partial void LogPresentationFeedback(ILogger logger, int presentationDelaySamples, int presentationDelayUsed, double? presentationDelayMedianMs);
 
+    [LoggerMessage(
+        Level = LogLevel.Information,
+        Message = "A start's seek took {SeekMs} ms of a {SeekBudgetMs} ms budget and landed {LateMs} ms past due; re-planned ({Replan} of {MaxReplans})")]
+    private static partial void LogSeekOverrun(ILogger logger, double seekMs, double seekBudgetMs, double lateMs, int replan, int maxReplans);
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "A start's seek overran its budget after {Replans} re-plans; unpaused {LateMs} ms late, the picture loop corrects the rest")]
+    private static partial void LogStartUnpausedLate(ILogger logger, int replans, double lateMs);
+
     /// <summary>
     /// A start being played: content <c>Position</c> due at <c>Start</c>; its seek was issued at <c>IssuedAt</c> with
-    /// <c>Budget</c> allowed for it.
+    /// <c>Budget</c> allowed for it, after the <c>Overruns</c> of the seeks this start was re-planned from.
     /// </summary>
-    private sealed record StartPlan(long Id, TimeSpan Position, long Start, long IssuedAt, TimeSpan Budget);
+    private sealed record StartPlan(long Id, TimeSpan Position, long Start, long IssuedAt, TimeSpan Budget, IReadOnlyList<SeekOverrun> Overruns);
 }
+
+/// <summary>A start's seek that took longer (<c>Took</c>) than its <c>Budget</c> allowed for.</summary>
+internal sealed record SeekOverrun(TimeSpan Budget, TimeSpan Took);
 
 /// <summary>
 /// A start the renderer played (diagnostics): <c>UnpauseDue</c> is when the held frame was due, <c>ResumedAt</c> when mpv
 /// applied the unpause (the screen moves from there), with the seek budget allowed and the seek time measured (null when
-/// no seek was done).
+/// no seek was done) of its last seek, and the <c>Overruns</c>: one per re-plan, plus the last seek when it overran too
+/// after the re-plans were used up (then the unpause was late).
 /// </summary>
-internal sealed record StartRecord(long Id, long UnpauseDue, long ResumedAt, TimeSpan SeekBudget, TimeSpan? SeekTime);
+internal sealed record StartRecord(long Id, long UnpauseDue, long ResumedAt, TimeSpan SeekBudget, TimeSpan? SeekTime, IReadOnlyList<SeekOverrun> Overruns)
+{
+    /// <summary>How many times the start was re-planned (at most <see cref="MpvStartPlan.MaxReplans"/>).</summary>
+    public int Replans => Math.Min(Overruns.Count, MpvStartPlan.MaxReplans);
+}
