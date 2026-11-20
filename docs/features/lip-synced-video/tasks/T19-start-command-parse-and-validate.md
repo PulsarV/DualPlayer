@@ -9,8 +9,8 @@ files_hint: ["src/DualPlayer.App/Startup/StartCommand.cs", "src/DualPlayer.App/S
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Self-contained task: work from what is inlined here. Every quoted chunk ends with its provenance

@@ -405,7 +405,7 @@
         "tests/DualPlayer.App.Tests/Startup/StartCommandTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T19-start-command-parse-and-validate.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T20",
