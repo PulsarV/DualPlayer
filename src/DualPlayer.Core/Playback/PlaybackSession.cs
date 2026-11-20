@@ -277,11 +277,12 @@ public sealed partial class PlaybackSession : IDisposable
     }
 
     /// <summary>
-    /// After the end, a new engine run for the same file and outputs (the engine cannot reopen a run that has ended). The
-    /// file stays loaded in the renderer and its picture stays paused, so no frame 0 is shown and no start lines repeat;
-    /// the caller seeks the new run to its target at once.
+    /// After the end, a new engine run for the same file and outputs (the engine cannot reopen a run that has ended),
+    /// started at <paramref name="target"/>: the decoder seeks there before the pre-roll, so no audio of the film's opening
+    /// is heard. The file stays loaded in the renderer and its picture stays paused until the scheduled start, so no frame 0
+    /// is shown; the engine carries the earlier run's summary over and prints no second start line.
     /// </summary>
-    private Result ReturnIntoFilm()
+    private Result ReturnIntoFilm(TimeSpan target)
     {
         StartRequest? request;
         LatencyEstimate? estimate;
@@ -304,10 +305,30 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         var playingEstimate = new LatencyEstimate([.. estimate.Outputs.Where(o => !lost.Contains(o.DeviceId))], estimate.PictureDelayMs);
-        return Starting(() => StartRun(request with { Outputs = playing }, playingEstimate, _time.GetTimestamp(), lost, returning: true));
+        lock (_gate)
+        {
+            CancelFreeze();
+        }
+
+        var started = Starting(() => StartRun(request with { Outputs = playing }, playingEstimate, _time.GetTimestamp(), lost, returning: true, target));
+        if (!started.IsSuccess)
+        {
+            return started;
+        }
+
+        PictureSync sync;
+        lock (_gate)
+        {
+            sync = _pictureSync!;
+        }
+
+        ApplyPendingTargets(sync);
+        PublishDelay(target, PictureDelayCause.Seek, sync.PictureDelay);
+        ReportTiming(sync);
+        return Result.Success();
     }
 
-    private Result StartRun(StartRequest request, LatencyEstimate estimate, long commandAt, HashSet<string> lost, bool returning)
+    private Result StartRun(StartRequest request, LatencyEstimate estimate, long commandAt, HashSet<string> lost, bool returning, TimeSpan startPosition = default)
     {
         if (!returning)
         {
@@ -330,7 +351,7 @@ public sealed partial class PlaybackSession : IDisposable
 
         var lags = estimate.Outputs.ToDictionary(o => o.DeviceId, o => TimeSpan.FromMilliseconds(o.LagMs), StringComparer.Ordinal);
         Interlocked.Increment(ref _runToken);
-        var started = _engine.StartRun(request.File, request.Outputs, new EngineOptions { InitialLags = lags });
+        var started = _engine.StartRun(request.File, request.Outputs, new EngineOptions { InitialLags = lags, StartPosition = startPosition, ContinuesPreviousRun = returning });
         if (!started.IsSuccess)
         {
             return Result.Failure(started.Error);
@@ -349,13 +370,18 @@ public sealed partial class PlaybackSession : IDisposable
         // largest lag recomputed here would be wrong after a loss in the pre-roll (review F24).
         var clockStart = _lags.ClockStartTimestamp ?? ((_lags.FrameZeroTimestamp ?? _time.GetTimestamp()) - ToTimestamp(maxLag));
         var clock = new MasterClock(_time);
+        clock.JumpTo(startPosition);
         clock.StartAt(clockStart);
         var pictureDelay = TimeSpan.FromMilliseconds(estimate.PictureDelayMs);
         var sync = new PictureSync(clock, _renderer, _time, pictureDelay, action => _loop.Post(action));
-        if (!returning)
+        sync.AlignAt(startPosition, clockStart);
+        lock (_gate)
         {
-            sync.AlignAt(TimeSpan.Zero, clockStart);
-            lock (_gate)
+            if (returning)
+            {
+                _resync = ("seek", commandAt);
+            }
+            else
             {
                 // Measured by the sync ticks: the first frame on screen and each output's first audio plus its latency.
                 _startTimings = (commandAt, estimate.Outputs);
@@ -857,8 +883,7 @@ public sealed partial class PlaybackSession : IDisposable
                     _state = PlaybackState.Idle;
                 }
 
-                var target = current + step;
-                var restarted = ReturnIntoFilm();
+                var restarted = ReturnIntoFilm(current + step < TimeSpan.Zero ? TimeSpan.Zero : current + step);
                 if (!restarted.IsSuccess)
                 {
                     // The film stays ended and the keys keep answering; say why.
@@ -872,7 +897,7 @@ public sealed partial class PlaybackSession : IDisposable
                     return restarted;
                 }
 
-                return SeekTo(target < TimeSpan.Zero ? TimeSpan.Zero : target);
+                return restarted;
             default:
                 return SeekTo(current + step);
         }

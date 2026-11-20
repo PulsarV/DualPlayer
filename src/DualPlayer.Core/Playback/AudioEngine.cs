@@ -42,6 +42,7 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
     private readonly EngineControlLoop _loop;
     private readonly EventPublisher _events;
     private Run? _run; // control-loop thread only
+    private RunSummary? _lastSummary; // the summary of the run that ended last; carried into a run that continues it
     private int _disposed;
 
     public AudioEngine(
@@ -186,7 +187,7 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
         };
         run.Pump.DecodeFailed += error => OnDecodeFailed(run, error);
         run.Pump.Faulted += _ => OnDecodeFailed(run, new Error("playback.decoder_fault", "The decoder failed unexpectedly."));
-        run.Pump.Start(0);
+        run.Pump.Start(0, options.StartPosition);
 
         var filled = WaitForStartLevel(run);
         if (!filled.IsSuccess)
@@ -198,8 +199,16 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
         // Silent pre-roll (ADR-0008): every device plays silence until its position moves; the control loop then
         // releases the film so that every output hears frame 0 when the master clock starts (AdvanceStart).
         run.Clock = new MasterClock(_time);
+        run.Clock.JumpTo(options.StartPosition);
+        run.ContinuesPreviousRun = options.ContinuesPreviousRun;
+        if (options.ContinuesPreviousRun && _lastSummary is { } carried)
+        {
+            run.Summary.CarryOver(carried);
+        }
+
         foreach (var output in run.Outputs)
         {
+            output.Source.BeginEpoch(0, (long)Math.Round(options.StartPosition.TotalSeconds * output.Format.SampleRate));
             output.Sync = new OutputSync(run.Clock, options.DriftTolerance);
             if (options.InitialLags.TryGetValue(output.DeviceId, out var initialLag))
             {
@@ -210,7 +219,7 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
             output.Mismatch = new ClockMismatchEstimator(_time);
             output.Source.StartAtDeviceFrame(long.MaxValue);
             output.Device.Start();
-            run.Summary.OutputStarted(output.DeviceId, TimeSpan.Zero);
+            run.Summary.OutputStarted(output.DeviceId, options.StartPosition);
         }
 
         var now = _time.GetTimestamp();
@@ -1084,7 +1093,10 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
         if (!awaiting && !run.AudioStartedPublished && run.LatestFirstAudio is { } latest)
         {
             run.AudioStartedPublished = true;
-            _events.Publish(new AudioStarted(run.StartClockPosition, _time.GetElapsedTime(run.StartTimestamp, latest)));
+            if (!run.ContinuesPreviousRun)
+            {
+                _events.Publish(new AudioStarted(run.StartClockPosition, _time.GetElapsedTime(run.StartTimestamp, latest)));
+            }
         }
 
         return awaiting;
@@ -1151,6 +1163,7 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
         }
 
         _run = null;
+        _lastSummary = summary;
         _loop.Polling = false;
         _events.Publish(summary);
         Teardown(run);
@@ -1244,6 +1257,8 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
         public long? LatestFirstAudio { get; set; }
 
         public bool AudioStartedPublished { get; set; }
+
+        public bool ContinuesPreviousRun { get; set; }
 
         /// <summary>The start's pre-roll: the master clock has not started yet (control-loop thread only).</summary>
         public bool Starting { get; set; }

@@ -26,9 +26,9 @@ public sealed partial class PlayEndToEndTests : IDisposable
         return path;
     }
 
-    private (SessionRig Rig, TerminalPrinter Printer, PlaybackControls Controls) Play(string file)
+    private (SessionRig Rig, TerminalPrinter Printer, PlaybackControls Controls) Play(string file, double totalSeconds = 600)
     {
-        var rig = new SessionRig(TwoDevices, null, 600);
+        var rig = new SessionRig(TwoDevices, null, totalSeconds);
         var printer = new TerminalPrinter(
             rig.Engine.Engine.Events,
             rig.Session.Events,
@@ -105,6 +105,50 @@ public sealed partial class PlayEndToEndTests : IDisposable
         lines.ShouldContain("next Episode 2.mkv");
         lines.ShouldContain("run-summary file Episode 2.mkv reason exit");
     }
+
+    [Fact]
+    public void Seeking_past_the_end_and_back_prints_one_start_line_and_the_exit_summary_covers_the_whole_playback_AC_05_AC_06()
+    {
+        var (rig, printer, controls) = Play(File("Film.mkv"), totalSeconds: 30);
+        using (rig)
+        using (controls)
+        {
+            rig.Engine.Render(200); // five seconds of the film in all
+            controls.Seek(TimeSpan.FromSeconds(60));
+            rig.Engine.AdvanceUntil(() => rig.Session.State == DualPlayer.Core.Playback.PlaybackState.Ended)
+                .ShouldBeTrue("the seek past the end did not end the film");
+            controls.Seek(TimeSpan.FromSeconds(-10));
+            rig.Engine.AdvanceUntil(() => rig.Session.State == DualPlayer.Core.Playback.PlaybackState.Playing)
+                .ShouldBeTrue("the backward seek at the end did not return into the film");
+            rig.Engine.AdvanceUntil(() => false, maxSteps: 200); // two seconds from the target
+
+            PressEscAndWait(rig, controls);
+            printer.Dispose();
+        }
+
+        var lines = Lines();
+        var text = string.Join(Environment.NewLine, lines);
+        lines.Count(l => l.StartsWith("started clock", StringComparison.Ordinal)).ShouldBe(1, "a return into the film must not print a start line again:" + Environment.NewLine + text);
+        lines.Count(l => l.StartsWith("run-summary", StringComparison.Ordinal)).ShouldBe(2, "one summary at the end, one at the exit:" + Environment.NewLine + text);
+        var atEnd = lines.FindIndex(l => l == "run-summary file Film.mkv reason end");
+        var atExit = lines.FindIndex(l => l == "run-summary file Film.mkv reason exit");
+        atEnd.ShouldBeGreaterThan(0, text);
+        atExit.ShouldBeGreaterThan(atEnd, text);
+
+        // The exit summary covers the file since it was opened: the five seconds before the end plus the two after the return.
+        var playedAtEnd = PlayedOf(lines, atEnd);
+        var playedAtExit = PlayedOf(lines, atExit);
+        playedAtEnd.Count.ShouldBe(2);
+        playedAtExit.Count.ShouldBe(2);
+        for (var i = 0; i < 2; i++)
+        {
+            playedAtExit[i].ShouldBeGreaterThan(playedAtEnd[i] + TimeSpan.FromSeconds(1.5), $"output {i + 1}: the exit summary covers only the stretch after the return");
+        }
+    }
+
+    // The "played" column of the output rows under a run-summary header: index, device, played, ...
+    private static List<TimeSpan> PlayedOf(List<string> lines, int header) =>
+        [.. lines.Skip(header + 2).Take(2).Select(l => TimeSpan.ParseExact(l.Split(' ')[2], @"hh\:mm\:ss\.f", System.Globalization.CultureInfo.InvariantCulture))];
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex Spaces();

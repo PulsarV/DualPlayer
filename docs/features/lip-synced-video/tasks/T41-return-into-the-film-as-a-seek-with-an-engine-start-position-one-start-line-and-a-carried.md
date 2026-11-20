@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "L"
 context_budget: "L"
 origin: "review-2026-11-21 (R1 (and F6 remainder))"
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-21. Work from what is inlined here; the source always wins.
@@ -29,8 +29,12 @@ See [spec.md](../spec.md) §5 AC-05, AC-06.
 
 ## Definition of Done
 
-- [ ] The engine can start a run at a given position (`EngineOptions` start position or equivalent), so a return into the film pre-rolls and starts at the target — no audio from position 0.
-- [ ] The run summary printed/logged at the next end covers the file's playback since it was opened (carried over across the return), per AC-06 and cli.md §2.1.
-- [ ] No second `started` line for a return (no stray `AudioStarted` reaches the printer, or the printer ignores it for a returning run).
-- [ ] Tests: engine starts at a position (first rendered sample is at that position); session return asserts no frame-0 audio and one summary; a `PlayEndToEndTests` case: seek past the end, seek back, Esc → exactly one `started` line and one summary covering the whole file.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The engine can start a run at a given position (`EngineOptions` start position or equivalent), so a return into the film pre-rolls and starts at the target — no audio from position 0.
+- [x] The run summary printed/logged at the next end covers the file's playback since it was opened (carried over across the return), per AC-06 and cli.md §2.1.
+- [x] No second `started` line for a return (no stray `AudioStarted` reaches the printer, or the printer ignores it for a returning run).
+- [x] Tests: engine starts at a position (first rendered sample is at that position); session return asserts no frame-0 audio and one summary; a `PlayEndToEndTests` case: seek past the end, seek back, Esc → exactly one `started` line and one summary covering the whole file.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+
+## Note (implement)
+
+`EngineOptions` gained `StartPosition` (the pump seeks before the pre-roll; the clock starts there) and `ContinuesPreviousRun` (the engine merges the last ended run's summary into the new one via `RunSummaryBuilder.CarryOver` and publishes no `AudioStarted`, so no second `started` line). `ReturnIntoFilm` starts the run at the target; the restart-then-seek path is gone, which removes the T28 limits. A seek past the end still prints its own `reason end` summary (AC-06: a summary at every natural end); the summary after the return carries the playback since the file was opened. `SessionRig.FollowingEngine.StartRun` now reports the start position to the rig barrier (harness fix).

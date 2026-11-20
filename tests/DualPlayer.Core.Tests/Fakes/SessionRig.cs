@@ -125,7 +125,13 @@ internal sealed class SessionRig : IDisposable
                 owner._runFiles.Add(file);
             }
 
-            return Rig.Engine.StartRun(file, assignments, options);
+            var result = Rig.Engine.StartRun(file, assignments, options);
+            if (result.IsSuccess)
+            {
+                Rig.CommandDone(options.StartPosition, paused: false); // the new run's clock reads its start position from now on
+            }
+
+            return result;
         }
 
         public Result<TimeSpan> Pause()
