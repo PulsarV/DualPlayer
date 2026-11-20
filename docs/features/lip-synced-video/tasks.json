@@ -1,0 +1,502 @@
+{
+  "slug": "lip-synced-video",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Define the IVideoRenderer port and a scripted fake renderer in Core",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-17"
+      ],
+      "dod": "`FakeVideoRendererTests` pass: the fake reports a presented position that advances with the fake clock at the commanded speed, holds while paused, jumps on seek, and raises decode-failure and end events once; `DualPlayer.Core.csproj` gains no package reference",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/IVideoRenderer.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/FakeVideoRenderer.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/FakeVideoRendererTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T1-define-the-video-renderer-port.md",
+      "status": "todo"
+    },
+    {
+      "id": "T2",
+      "title": "Fetch a pinned libmpv, copy it beside the executables, and load it with a version check",
+      "layer": "infra",
+      "deps": [],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "`MpvLibraryTests` pass: a missing library returns `mpv.not_found`, a too-old API version returns `mpv.load_failed`, and on a machine with libmpv installed (`[HardwareFact]` or Homebrew on the Mac) the library loads and reports its API version; CI builds on both OSes with libmpv fetched/installed",
+      "files_hint": [
+        "build/fetch-libmpv.ps1",
+        ".gitignore",
+        ".github/workflows/ci.yml",
+        "src/DualPlayer.Media/DualPlayer.Media.csproj",
+        "src/DualPlayer.Media/Video/MpvLibrary.cs",
+        "tests/DualPlayer.Media.Tests/Video/MpvLibraryTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T2-fetch-and-load-libmpv.md",
+      "status": "todo"
+    },
+    {
+      "id": "T3",
+      "title": "Steer the picture to clock minus picture delay with a Core picture-sync loop",
+      "layer": "domain",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-14",
+        "AC-17"
+      ],
+      "dod": "`PictureSyncTests` pass with a fake clock and `FakeVideoRenderer`: steady playback stays within 20 ms of due; a start, resume or seek is back within 20 ms of due in ≤ 1 s; a 10 ms picture-delay change completes in about 5 s with speed never more than 0.2 % off 1.0; a negative picture delay starts the picture ahead of the clock; every tick yields a presented-vs-due figure",
+      "files_hint": [
+        "src/DualPlayer.Core/Sync/PictureSync.cs",
+        "tests/DualPlayer.Core.Tests/Sync/PictureSyncTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T3-picture-sync-loop.md",
+      "status": "todo"
+    },
+    {
+      "id": "T4",
+      "title": "Implement the hardened libmpv video renderer with presented-position snapshots and OSD notes",
+      "layer": "infra",
+      "deps": [
+        "T1",
+        "T2"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-06b",
+        "AC-17"
+      ],
+      "dod": "`MpvVideoRendererTests` pass: the option set equals the §8 hardening list (pure test), and on a machine with libmpv a generated sample file loads paused, plays, pauses, seeks, changes speed, reports a monotonic-time presented position, frame counters and end of file (`[HardwareFact]`); `AddMedia` registers `IVideoRenderer`",
+      "files_hint": [
+        "src/DualPlayer.Media/Video/MpvVideoRenderer.cs",
+        "src/DualPlayer.Media/MediaServiceCollectionExtensions.cs",
+        "tests/DualPlayer.Media.Tests/Video/MpvVideoRendererTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T4-libmpv-video-renderer.md",
+      "status": "todo"
+    },
+    {
+      "id": "T5",
+      "title": "Spike libmpv precision on the target PC against the ADR-0002 kill criterion and record the D1 verdict",
+      "layer": "tests",
+      "deps": [
+        "T3",
+        "T4"
+      ],
+      "acs": [
+        "AC-14"
+      ],
+      "dod": "`docs/features/lip-synced-video/evidence/<date>-d1-spike.md` records, for a 1080p HEVC file with hardware decoding on the target PC, steady presented-vs-due error, recovery after pause/resume/seek, the 0.2 % move observation and late/dropped frames per minute, with a pass/fail verdict per kill-criterion line; on pass `docs/roadmap.md` marks D1 decided, on fail implementation stops and a superseding ADR is raised",
+      "files_hint": [
+        "tests/DualPlayer.Media.Tests/Video/MpvSpikeTests.cs",
+        "docs/features/lip-synced-video/evidence/",
+        "docs/roadmap.md",
+        "docs/features/lip-synced-video/ux-flows.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T5-spike-libmpv-precision-on-the-target-pc.md",
+      "status": "todo"
+    },
+    {
+      "id": "T6",
+      "title": "Model device types, type defaults, assumed latency, picture delay and lags behind a latency-probe port",
+      "layer": "domain",
+      "deps": [
+        "T5"
+      ],
+      "acs": [
+        "AC-12",
+        "AC-13"
+      ],
+      "dod": "`LatencyModelTests` pass: every AC-13 connection-kind/form-factor rule maps to the right device type; `Aᵢ = reported + default − offset`, `PD = max Aᵢ` (negative allowed) and `Dᵢ = PD − Aᵢ ≥ 0` for 1–3 outputs; the estimate carries every field the log needs (device, type, reported, default, offset, assumed, lag)",
+      "files_hint": [
+        "src/DualPlayer.Core/Sync/LatencyModel.cs",
+        "src/DualPlayer.Core/Sync/DeviceType.cs",
+        "src/DualPlayer.Core/Sync/IDeviceLatencyProbe.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/FakeDeviceLatencyProbe.cs",
+        "tests/DualPlayer.Core.Tests/Sync/LatencyModelTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T6-latency-model-and-device-types.md",
+      "status": "todo"
+    },
+    {
+      "id": "T7",
+      "title": "Persist per-device offsets in device-offsets.json and keep them in an offset book with clamp, step and debounced save",
+      "layer": "infra",
+      "deps": [
+        "T5"
+      ],
+      "acs": [
+        "AC-10",
+        "AC-11",
+        "AC-12"
+      ],
+      "dod": "`DeviceOffsetsFileTests` and `OffsetBookTests` pass: ±10 ms steps clamp at ±500 with a limit result; a save lands ≤ 1 s after the last press on the fake clock and survives an abandoned session reloaded through a fresh `JsonFileStateStore`; out-of-range/off-grid values are clamped/rounded and reported; an unreadable/invalid/too-new file yields all-zero offsets plus a warning and is not overwritten until the first press",
+      "files_hint": [
+        "src/DualPlayer.Core/Settings/DeviceOffsetsFile.cs",
+        "src/DualPlayer.Core/Sync/OffsetBook.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/DeviceOffsetsBuilder.cs",
+        "tests/DualPlayer.Core.Tests/Settings/DeviceOffsetsFileTests.cs",
+        "tests/DualPlayer.Core.Tests/Sync/OffsetBookTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T7-device-offsets-file-and-offset-book.md",
+      "status": "todo"
+    },
+    {
+      "id": "T8",
+      "title": "List a file's folder neighbours (.mkv/.mp4) in natural name order for next and previous",
+      "layer": "domain",
+      "deps": [
+        "T5"
+      ],
+      "acs": [
+        "AC-07",
+        "AC-08"
+      ],
+      "dod": "`FolderNeighboursTests` pass: `.mkv`/`.mp4` in any letter case only, «Episode 2» before «Episode 10», names equal apart from case ordered by exact comparison, candidates yielded in order after (or before) the current file, folder re-read on every call, and a 10 000-file temp folder answers in under 1 s",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/FolderNeighbours.cs",
+        "tests/DualPlayer.Core.Tests/Playback/FolderNeighboursTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T8-folder-neighbours-in-natural-order.md",
+      "status": "todo"
+    },
+    {
+      "id": "T9",
+      "title": "Probe a file's picture with FFmpeg in hardware, off the caller's thread, with a time limit",
+      "layer": "infra",
+      "deps": [
+        "T5"
+      ],
+      "acs": [
+        "AC-02",
+        "AC-03",
+        "AC-09b"
+      ],
+      "dod": "`FfmpegPictureProbeTests` pass on generated samples: an audio-only file returns `video.no_picture`, a garbage file `playback.file_unreadable`, a file without read permission `playback.file_access_denied`, a hardware-decodable 1080p file returns its codec/profile, an undecodable one `video.not_hardware_decodable` naming codec and profile; a hanging decode returns within the time limit; `AddMedia` registers `IPictureProbe`",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/IPictureProbe.cs",
+        "src/DualPlayer.Media/Video/FfmpegPictureProbe.cs",
+        "src/DualPlayer.Media/MediaServiceCollectionExtensions.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/FakePictureProbe.cs",
+        "tests/DualPlayer.Media.Tests/Video/FfmpegPictureProbeTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T9-ffmpeg-picture-probe.md",
+      "status": "todo"
+    },
+    {
+      "id": "T10",
+      "title": "Report each device's connection kind, form factor and hidden latency on Windows and the dev Mac",
+      "layer": "infra",
+      "deps": [
+        "T6"
+      ],
+      "acs": [
+        "AC-13"
+      ],
+      "dod": "Pure mapping tests pass for the WASAPI enumerator/bus + form-factor inputs (Bluetooth, USB, HDAUDIO display, other) and the Core Audio transport types; `[HardwareFact]` tests list each local device's report; both adapters are registered as `IDeviceLatencyProbe`; the WASAPI hidden latency is 0 ms with its source recorded",
+      "files_hint": [
+        "src/DualPlayer.Platform.Windows/Audio/WasapiLatencyProbe.cs",
+        "src/DualPlayer.Platform.Windows/WindowsPlatformServiceCollectionExtensions.cs",
+        "src/DualPlayer.Platform.MacOS/Audio/CoreAudioLatencyProbe.cs",
+        "src/DualPlayer.Platform.MacOS/MacOSPlatformServiceCollectionExtensions.cs",
+        "tests/DualPlayer.Platform.Windows.Tests/WasapiLatencyProbeTests.cs",
+        "tests/DualPlayer.Platform.MacOS.Tests/CoreAudioLatencyProbeTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T10-device-latency-probes.md",
+      "status": "todo"
+    },
+    {
+      "id": "T11",
+      "title": "Measure each output's drift against clock minus its lag and ramp lag changes at up to 2000 ppm",
+      "layer": "domain",
+      "deps": [
+        "T5"
+      ],
+      "acs": [
+        "AC-14"
+      ],
+      "dod": "`LagRampTests`, `OutputSyncTests` and `DriftControllerTests` pass: a 10 ms lag change completes in about 5 s at ≤ 2000 ppm and a retarget mid-ramp continues from the current lag; drift measured against `clock − Dᵢ` stays near 0 on a fake device during a ramp (no false correction or excursion); set-at-once jumps the target; the step-3 drift tests still pass unchanged",
+      "files_hint": [
+        "src/DualPlayer.Core/Sync/LagRamp.cs",
+        "src/DualPlayer.Core/Sync/DriftController.cs",
+        "src/DualPlayer.Core/Sync/OutputSync.cs",
+        "src/DualPlayer.Core/Sync/DriftMeter.cs",
+        "tests/DualPlayer.Core.Tests/Sync/LagRampTests.cs",
+        "tests/DualPlayer.Core.Tests/Sync/OutputSyncTests.cs",
+        "tests/DualPlayer.Core.Tests/Sync/DriftControllerTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T11-lag-ramp-in-the-drift-controller.md",
+      "status": "todo"
+    },
+    {
+      "id": "T12",
+      "title": "Give the audio engine per-output start lags in the pre-roll and lag targets that ramp or jump",
+      "layer": "app",
+      "deps": [
+        "T11"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-14"
+      ],
+      "dod": "`AudioEngineLagTests` pass over `EngineRig`: with lags 0 and 200 ms each fake output's heard position follows `clock − Dᵢ` from the first frame; a lag change during play ramps at ≤ 2000 ppm with the other output unmoved and no excursion or extra correction in the run summary; seek/resume apply targets at once; the pre-roll reports when the slowest output hears frame 0; all step-3 engine tests and `DualPlayer.Console.Tests` still pass with `IAudioEngine` unchanged",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "src/DualPlayer.Core/Playback/EngineOptions.cs",
+        "src/DualPlayer.Core/Playback/IOutputLagControl.cs",
+        "src/DualPlayer.Core/CoreServiceCollectionExtensions.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineLagTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T12-engine-lag-hooks.md",
+      "status": "todo"
+    },
+    {
+      "id": "T13",
+      "title": "Start a lip-synced playback session, end it at the natural end or on exit, and emit session events",
+      "layer": "app",
+      "deps": [
+        "T3",
+        "T6",
+        "T7",
+        "T12"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-06",
+        "AC-12",
+        "AC-13"
+      ],
+      "dod": "`PlaybackSessionStartTests` pass over `SessionRig` (EngineRig + FakeVideoRenderer + FakeDeviceLatencyProbe + offsets in a temp store): picture and every output start together within 20 ms / 10 ms of due on the fake clock for positive and negative PD; `LatencyEstimated` carries reported, default, type, offset, assumed, lag and PD per output with a remembered offset applied; `StartTimings` is emitted; natural end holds the last frame, silences every output and emits the run summary; exit closes renderer and engine with a run summary; pause is ignored while ended",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Playback/SessionEvent.cs",
+        "src/DualPlayer.Core/Playback/StartRequest.cs",
+        "src/DualPlayer.Core/CoreServiceCollectionExtensions.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/SessionRig.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionStartTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T13-playback-session-start-end-exit.md",
+      "status": "todo"
+    },
+    {
+      "id": "T14",
+      "title": "Pause, resume and seek picture and every output together in the session",
+      "layer": "app",
+      "deps": [
+        "T13"
+      ],
+      "acs": [
+        "AC-04",
+        "AC-05"
+      ],
+      "dod": "`PlaybackSessionTransportTests` pass: pause stops feeding every output at one instant and freezes the picture on the frame matching the last sound heard no later than PD after the key; resume continues from the freeze point with nothing repeated or skipped and is lip-synced again ≤ 1 s; ±10/±60 s seeks while playing, paused and ended follow AC-05 incl. before-start and past-end; each command emits `PictureDelayChanged`/`PictureTiming` records",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionTransportTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T14-session-pause-resume-seek.md",
+      "status": "todo"
+    },
+    {
+      "id": "T15",
+      "title": "Apply offset keys per output and move picture and unchanged outputs to a new picture delay together",
+      "layer": "app",
+      "deps": [
+        "T14"
+      ],
+      "acs": [
+        "AC-10",
+        "AC-11",
+        "AC-14"
+      ],
+      "dod": "`PlaybackSessionOffsetTests` pass: a +10 ms press moves that output 10 ms later at ≤ 0.2 % with the other output within 10 ms of where it was; a press that raises PD moves picture and unchanged outputs together at ≤ 0.2 % and the corrected output arrives no later; presses during a move retarget; ±500 limit shows the limit note; paused/ended presses apply on continue; every press emits `OffsetChanged`, `NoteShown` and (if PD moved) `PictureDelayChanged`; the offset is saved ≤ 1 s after the last press",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionOffsetTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T15-session-offset-keys-and-picture-delay-moves.md",
+      "status": "todo"
+    },
+    {
+      "id": "T16",
+      "title": "Keep playing when an output's device is lost, and end the film when the last one is lost",
+      "layer": "app",
+      "deps": [
+        "T15"
+      ],
+      "acs": [
+        "AC-15",
+        "AC-15b"
+      ],
+      "dod": "`PlaybackSessionDeviceLossTests` pass: losing the slowest of two outputs moves the picture to the remaining output's PD at ≤ 0.2 % with the remaining output within 10 ms of where it was, and emits `OutputLost` + `NoteShown` + `PictureDelayChanged` (cause `device-lost`); losing the last output ends the film with the picture frozen, a run summary for every output, the note, and next/previous/exit still accepted",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionDeviceLossTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T16-session-device-loss.md",
+      "status": "todo"
+    },
+    {
+      "id": "T17",
+      "title": "Move to the next or previous playable file in the folder, skipping files that cannot play",
+      "layer": "app",
+      "deps": [
+        "T8",
+        "T9",
+        "T13"
+      ],
+      "acs": [
+        "AC-07",
+        "AC-08",
+        "AC-09",
+        "AC-09b"
+      ],
+      "dod": "`PlaybackSessionFileChangeTests` pass: the neighbour is checked (tracks + `IPictureProbe`) before the current film is touched; a playable neighbour gets the current film's run summary, then starts on the same outputs, tracks and offsets within the start budget; files lacking a track, unreadable, without picture or not hardware-decodable are skipped with `FileSkipped` + the note (multi-skip note counts them); no playable file leaves the film as it was with «No next/previous file»",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionFileChangeTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T17-session-next-and-previous-file.md",
+      "status": "todo"
+    },
+    {
+      "id": "T18",
+      "title": "Skip damaged frames, end on an unrecoverable picture, and log picture timing and frame counters",
+      "layer": "app",
+      "deps": [
+        "T13"
+      ],
+      "acs": [
+        "AC-06b",
+        "AC-17"
+      ],
+      "dod": "`PlaybackSessionPictureHealthTests` pass: injected damaged frames keep sound playing and are counted; a damaged stretch is logged with position and length; a decode failure or `hwdec-current` = no ends the film as at its natural end with `PictureFailed` + note + run summary (reason `picture-failed`); `PictureTiming` is emitted once per second and on every change; `FrameCounters` once per minute with late counted at > 20 ms after due",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionPictureHealthTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T18-damaged-picture-and-lip-sync-log.md",
+      "status": "todo"
+    },
+    {
+      "id": "T19",
+      "title": "Parse and validate the play start command in the App executable before any window opens",
+      "layer": "ports",
+      "deps": [
+        "T9"
+      ],
+      "acs": [
+        "AC-02",
+        "AC-03",
+        "AC-03b"
+      ],
+      "dod": "`StartCommandTests` pass: every row of `cli.md §5` that can fail before start yields its code, its plain message on stderr and its exit code (2 or 4), checks run in the contract's order and stop at the first failure without opening a window; `--screen` defaults to the main screen and an unknown screen lists the connected screens; App builds as a console-subsystem executable",
+      "files_hint": [
+        "src/DualPlayer.App/Startup/StartCommand.cs",
+        "src/DualPlayer.App/Startup/StartExitCodes.cs",
+        "src/DualPlayer.App/Startup/IScreenCatalog.cs",
+        "src/DualPlayer.App/DualPlayer.App.csproj",
+        "tests/DualPlayer.App.Tests/Startup/StartCommandTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T19-start-command-parse-and-validate.md",
+      "status": "todo"
+    },
+    {
+      "id": "T20",
+      "title": "Build the fullscreen playback window hosting mpv's video, mapping the fixed keys and styling notes from tokens",
+      "layer": "ui",
+      "deps": [
+        "T4",
+        "T15",
+        "T17"
+      ],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "`PlaybackViewModelTests` pass: every key in the spec §5 table maps to exactly one session command (outputs beyond the started count ignored); notes are passed to the renderer with the token style; the window opens fullscreen on the requested screen with no title bar or cursor, and `VideoHost` hands its native handle to the renderer (checked by `[HardwareFact]` or manual run); `PlaybackWindow.axaml` has `x:DataType` and no inline sizes or colours",
+      "files_hint": [
+        "src/DualPlayer.App/Views/PlaybackWindow.axaml",
+        "src/DualPlayer.App/Views/PlaybackWindow.axaml.cs",
+        "src/DualPlayer.App/ViewModels/PlaybackViewModel.cs",
+        "src/DualPlayer.App/Controls/VideoHost.cs",
+        "src/DualPlayer.App/Themes/Tokens.axaml",
+        "tests/DualPlayer.App.Tests/ViewModels/PlaybackViewModelTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T20-playback-window-keys-and-notes.md",
+      "status": "todo"
+    },
+    {
+      "id": "T21",
+      "title": "Print start lines, warnings, running lines and run summaries to the terminal and the log",
+      "layer": "ports",
+      "deps": [
+        "T13",
+        "T19"
+      ],
+      "acs": [
+        "AC-06",
+        "AC-12",
+        "AC-13"
+      ],
+      "dod": "`TerminalPrinterTests` pass: given session and engine events, the printer writes exactly the `cli.md` §1.1 start lines (incl. signed offsets), the `state.*` / `offsets.clamped` warnings, the §2.2 / §2.3 running lines and a `run-summary` header + step-3 summary block per output, each line also to the log",
+      "files_hint": [
+        "src/DualPlayer.App/Startup/TerminalPrinter.cs",
+        "src/DualPlayer.App/Startup/RunSummaryLines.cs",
+        "tests/DualPlayer.App.Tests/Startup/TerminalPrinterTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T21-terminal-lines-and-run-summaries.md",
+      "status": "todo"
+    },
+    {
+      "id": "T22",
+      "title": "Wire the App composition root and host: validate, open the window on the screen, run the session, exit with the right code",
+      "layer": "wiring",
+      "deps": [
+        "T10",
+        "T16",
+        "T18",
+        "T20",
+        "T21"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-17"
+      ],
+      "dod": "`CompositionRootSmokeTests` builds the container and resolves `PlaybackViewModel`, `StartCommand`, `PlaybackSession`, `IVideoRenderer`, `IPictureProbe` and the OS's `IDeviceLatencyProbe`; `dotnet run --project src/DualPlayer.App -- play <sample> --out 1=1` on the dev Mac opens the window, plays, prints the start lines, and exits 0 on Esc with a run summary; engine and session events land in the rolling log",
+      "files_hint": [
+        "src/DualPlayer.App/CompositionRoot.cs",
+        "src/DualPlayer.App/Program.cs",
+        "src/DualPlayer.App/App.axaml.cs",
+        "src/DualPlayer.App/Startup/AvaloniaScreenCatalog.cs",
+        "tests/DualPlayer.App.Tests/CompositionRootSmokeTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T22-wire-the-app-composition-root-and-host.md",
+      "status": "todo"
+    },
+    {
+      "id": "T23",
+      "title": "Measure lip-sync per output on the target PC with a click-and-flash video and record the acceptance evidence",
+      "layer": "tests",
+      "deps": [
+        "T22"
+      ],
+      "acs": [
+        "AC-16",
+        "AC-01"
+      ],
+      "dod": "`evidence/<date>-target-pc-acceptance.md` records, per output (two Bluetooth headsets + one wired or HDMI), 10 flash-to-click times with the phone offset subtracted and the largest error against 45 ms early / 125 ms late, with the logged latency, offset and picture delay; plus start timings, recovery, late/dropped frames per minute over 2 h (H.264 and HEVC), CPU average, the first-use offset per device type, every spec §5 key working with the video shown, and no audible artefact during lag ramps",
+      "files_hint": [
+        "build/make-click-flash-video.ps1",
+        "docs/features/lip-synced-video/evidence/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T23-measure-lip-sync-on-the-target-pc.md",
+      "status": "todo"
+    }
+  ]
+}
