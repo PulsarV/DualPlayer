@@ -124,7 +124,9 @@ public partial class App : Application
             {
                 try
                 {
-                    var started = session.Start(new CoreStartRequest(validated.File, request.Outputs, request.Screen));
+                    // The devices as validated, by OS id: every later start (a file change) keeps them even if the list is renumbered.
+                    var outputs = validated.Outputs.Select(o => new OutputAssignment(o.TrackNumber, DeviceRef.ById(o.DeviceId))).ToList();
+                    var started = session.Start(new CoreStartRequest(validated.File, outputs, request.Screen));
                     if (!started.IsSuccess)
                     {
                         Console.Error.WriteLine(StartExitCodes.FormatError(started.Error));

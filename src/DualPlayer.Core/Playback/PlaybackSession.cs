@@ -127,21 +127,45 @@ public sealed partial class PlaybackSession : IDisposable
     private Result Run(Func<Result> command) =>
         _loop.TryExecute(command, out var result) ? result : Result.Failure("playback.no_run", "No film is playing.");
 
-    private Result StartCore(StartRequest request)
+    /// <summary>
+    /// Starts <paramref name="request"/>. A device named by its list number is resolved once, on the first start; the
+    /// session then keeps its OS id, so a later start (a file change) plays each track on the same device even when the
+    /// list has been renumbered. With <paramref name="keepLost"/> the outputs lost so far stay lost and keep their numbers.
+    /// </summary>
+    private Result StartCore(StartRequest request, bool keepLost = false)
     {
         var commandAt = _time.GetTimestamp();
 
         LoadOffsetsOnce();
 
+        HashSet<string> lost;
+        LatencyEstimate? previous;
+        lock (_gate)
+        {
+            lost = keepLost ? new HashSet<string>(_lost, StringComparer.Ordinal) : [];
+            previous = _estimate;
+        }
+
         var catalog = new DeviceCatalog(_backend.ListDevices());
+        var resolved = new List<OutputAssignment>();
+        var playing = new List<OutputAssignment>();
         var outputs = new List<(string DeviceId, DeviceType Type, int ReportedMs, int OffsetMs)>();
         foreach (var assignment in request.Outputs)
         {
+            if (assignment.Device.Id is { } lostId && lost.Contains(lostId))
+            {
+                resolved.Add(assignment);
+                continue;
+            }
+
             if (catalog.Find(assignment.Device) is not { } device)
             {
                 return Result.Failure("outputs.device_not_found", $"{assignment.Device} is not a connected playback device");
             }
 
+            var byId = assignment with { Device = DeviceRef.ById(device.Id) };
+            resolved.Add(byId);
+            playing.Add(byId);
             var probed = _probe.Probe(device.Id);
             var (type, reportedMs) = probed.IsSuccess
                 ? (DeviceTypeClassifier.Classify(probed.Value.Connection, probed.Value.FormFactor), (int)Math.Round(probed.Value.ReportedLatency.TotalMilliseconds))
@@ -149,10 +173,24 @@ public sealed partial class PlaybackSession : IDisposable
             outputs.Add((device.Id, type, reportedMs, _offsets.Get(device.Id)));
         }
 
+        if (playing.Count == 0)
+        {
+            return Result.Failure("outputs.all_lost", "Every output has been lost.");
+        }
+
         var estimate = LatencyModel.Estimate(outputs);
-        _request = request;
-        _estimate = estimate;
-        _events.Publish(new LatencyEstimated(estimate));
+
+        // Lost outputs keep their place (and so their output number and keys) with the estimate they had when lost.
+        var full = new LatencyEstimate(
+            [.. resolved.Select(a => estimate.Outputs.FirstOrDefault(o => o.DeviceId == a.Device.Id) ?? previous!.Outputs.First(o => o.DeviceId == a.Device.Id))],
+            estimate.PictureDelayMs);
+        _request = request with { Outputs = resolved };
+        lock (_gate)
+        {
+            _estimate = full;
+        }
+
+        _events.Publish(new LatencyEstimated(full));
         foreach (var output in estimate.Outputs)
         {
             LogLatency(output.DeviceId, output.Type, output.ReportedMs, output.TypeDefaultMs, output.OffsetMs, output.AssumedMs, output.LagMs, estimate.PictureDelayMs);
@@ -168,7 +206,7 @@ public sealed partial class PlaybackSession : IDisposable
 
         try
         {
-            return StartRun(request, estimate, commandAt);
+            return StartRun(request with { Outputs = playing }, estimate, commandAt, lost);
         }
         finally
         {
@@ -180,7 +218,7 @@ public sealed partial class PlaybackSession : IDisposable
         }
     }
 
-    private Result StartRun(StartRequest request, LatencyEstimate estimate, long commandAt)
+    private Result StartRun(StartRequest request, LatencyEstimate estimate, long commandAt, HashSet<string> lost)
     {
         var loaded = _renderer.Load(request.File, nint.Zero, startPaused: true);
         if (!loaded.IsSuccess)
@@ -226,6 +264,7 @@ public sealed partial class PlaybackSession : IDisposable
             _clock = clock;
             _pictureFrozen = false;
             _lost.Clear();
+            _lost.UnionWith(lost);
             _healthTicks = 0;
             _damagedSeen = _renderer.Counters.SkippedDamaged;
             _previousTickClock = clock.PositionAt(_time.GetTimestamp());
@@ -327,9 +366,20 @@ public sealed partial class PlaybackSession : IDisposable
             _state = PlaybackState.Idle;
         }
 
-        var started = StartCore(request with { File = target });
+        var started = StartCore(request with { File = target }, keepLost: true);
         if (!started.IsSuccess)
         {
+            // The old film has stopped and the new one cannot play: end here, say why, and keep answering keys.
+            var note = $"Could not play {Path.GetFileName(target)}: {started.Error.Message}";
+            lock (_gate)
+            {
+                _endPosition = TimeSpan.Zero;
+                _state = PlaybackState.Ended;
+            }
+
+            _renderer.Pause();
+            LogFileChangeFailed(target, started.Error.Code, started.Error.Message);
+            _events.Publish(new NoteShown(note, NoteStyle.Warning));
             return started;
         }
 
@@ -1046,6 +1096,9 @@ public sealed partial class PlaybackSession : IDisposable
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Playback session command or callback failed")]
     private partial void LogLoopFault(Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not change to {File}: {Code} {Message}")]
+    private partial void LogFileChangeFailed(string file, string code, string message);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipped {File}: {Reason} (output {OutputNumber}, track {Track})")]
     private partial void LogSkipped(string file, string reason, int? outputNumber, int? track);

@@ -1,3 +1,4 @@
+using DualPlayer.Core.Outputs;
 using DualPlayer.Core.Playback;
 using DualPlayer.Core.Tests.Fakes;
 
@@ -149,5 +150,52 @@ public sealed class PlaybackSessionFileChangeTests : IDisposable
         rig.Events.OfType<FileChanged>().ShouldBeEmpty();
         rig.Session.State.ShouldBe(PlaybackState.Playing);
         rig.Engine.Summary.ShouldBeNull();
+    }
+
+    private static FakeAudioBackend Backend(SessionRig rig) => (FakeAudioBackend)rig.Engine.Backend;
+
+    [Fact]
+    public void A_device_list_renumbered_between_files_keeps_each_track_on_its_device_AC_07_AC_12()
+    {
+        using var rig = PlayingRig("Episode 1.mkv", "Episode 2.mkv");
+        rig.Events.OfType<LatencyEstimated>().Single().Estimate.Outputs.Select(o => o.DeviceId).ShouldBe(["dev-1", "dev-2"]);
+
+        // A device plugged in whose id sorts first: the devices the command named by number 1 and 2 are now 2 and 3.
+        Backend(rig).InsertDevice(0, new AudioDeviceInfo("Plugged in", null, "dev-0"));
+        rig.Engine.Call(() => rig.Session.NextFile()).IsSuccess.ShouldBeTrue();
+
+        rig.Events.OfType<LatencyEstimated>().Last().Estimate.Outputs.Select(o => o.DeviceId).ShouldBe(["dev-1", "dev-2"]);
+    }
+
+    [Fact]
+    public void Next_file_after_an_output_was_lost_plays_on_the_outputs_still_connected_with_the_same_output_numbers_AC_07_AC_15()
+    {
+        using var rig = PlayingRig("Episode 1.mkv", "Episode 2.mkv");
+        rig.Engine.Devices[0].SimulateLoss();
+        Backend(rig).RemoveDevice("dev-1");
+        rig.Engine.Barrier();
+        rig.Events.OfType<OutputLost>().ShouldHaveSingleItem().OutputNumber.ShouldBe(1);
+
+        rig.Engine.Call(() => rig.Session.NextFile()).IsSuccess.ShouldBeTrue();
+
+        rig.Session.State.ShouldBe(PlaybackState.Playing);
+        Path.GetFileName(rig.Events.OfType<FileChanged>().ShouldHaveSingleItem().File).ShouldBe("Episode 2.mkv");
+        rig.Engine.Call(() => rig.Session.ChangeOffset(2, 10)).IsSuccess.ShouldBeTrue();
+        rig.Events.OfType<OffsetChanged>().ShouldHaveSingleItem().DeviceId.ShouldBe("dev-2");
+        rig.Engine.Call(() => rig.Session.ChangeOffset(1, 10)).IsSuccess.ShouldBeTrue();
+        rig.Events.OfType<OffsetChanged>().Count().ShouldBe(1, "output 1 is lost: its offset key does nothing");
+    }
+
+    [Fact]
+    public void A_file_change_whose_start_fails_ends_the_film_with_a_note_instead_of_going_silent_AC_07()
+    {
+        using var rig = PlayingRig("Episode 1.mkv", "Episode 2.mkv");
+        rig.Renderer.LoadError = new Error("video.load_failed", "mpv could not open the file.");
+
+        rig.Engine.Call(() => rig.Session.NextFile()).IsSuccess.ShouldBeFalse();
+
+        rig.Session.State.ShouldBe(PlaybackState.Ended);
+        rig.Events.OfType<NoteShown>().ShouldContain(n => n.Style == NoteStyle.Warning && n.Text.Contains("Episode 2.mkv"));
+        rig.Engine.Call(() => rig.Session.Pause()).IsSuccess.ShouldBeTrue("keys after a failed file change must not answer 'no film is playing'");
     }
 }

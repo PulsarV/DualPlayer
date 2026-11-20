@@ -24,6 +24,12 @@ internal sealed class FakeAudioBackend(TimeProvider time, MixFormat format) : IA
 
     public void AddDevice(AudioDeviceInfo device) => _devices.Add(device);
 
+    /// <summary>Plugs a device in at <paramref name="index"/> of the list: the devices after it are numbered one higher.</summary>
+    public void InsertDevice(int index, AudioDeviceInfo device) => _devices.Insert(index, device);
+
+    /// <summary>Unplugs a device: it leaves the list and the devices after it are numbered one lower.</summary>
+    public void RemoveDevice(string id) => _devices.RemoveAll(d => d.Id == id);
+
     /// <summary>The device <paramref name="id"/> reports position 0 for <paramref name="latency"/> after it starts.</summary>
     public void SetStartLatency(string id, TimeSpan latency) => _startLatency[id] = latency;
 

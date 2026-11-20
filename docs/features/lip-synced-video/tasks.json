@@ -603,7 +603,7 @@
         "tests/DualPlayer.Core.Tests/Playback/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T27-keep-the-validated-devices-across-file-changes-and-surface-a-failed-file-change.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-20: F3, F4"
     },
     {

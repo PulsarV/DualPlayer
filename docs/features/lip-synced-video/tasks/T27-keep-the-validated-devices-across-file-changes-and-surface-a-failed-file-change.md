@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
 origin: "review-2026-11-20 (F3, F4)"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-20. Work from what is inlined here; the source always wins.
@@ -30,8 +30,8 @@ See [spec.md](../spec.md) §5 AC-07, AC-12, AC-15b.
 
 ## Definition of Done
 
-- [ ] The App passes the validated device ids (`ValidatedStart.Outputs`) to the session; every later start reuses those ids, never `--out` numbers. A device list that changes between files (renumbering) keeps each track on its device and its offset.
-- [ ] Lost outputs stay lost across a file change (not reopened); when every remaining device is lost the film ends as for AC-15b.
-- [ ] A file change whose start fails leaves the Viewer with a note and a log entry and a defined state (the run ends with the end note and Esc exits), never a silent Idle.
-- [ ] Tests: next/previous after an output is lost; device list renumbered between files; a file change whose start fails.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The App passes the validated device ids (`ValidatedStart.Outputs`) to the session; every later start reuses those ids, never `--out` numbers. A device list that changes between files (renumbering) keeps each track on its device and its offset.
+- [x] Lost outputs stay lost across a file change (not reopened); when every remaining device is lost the film ends as for AC-15b.
+- [x] A file change whose start fails leaves the Viewer with a note and a log entry and a defined state (the run ends with the end note and Esc exits), never a silent Idle.
+- [x] Tests: next/previous after an output is lost; device list renumbered between files; a file change whose start fails.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
