@@ -20,7 +20,7 @@
 | T10 | [Report each device's connection kind, form factor and hidden latency on Windows and the dev Mac](./T10-device-latency-probes.md) | infra | Volodymyr Kravchuk | M | T6 | done | COMMIT |
 | T11 | [Measure each output's drift against clock minus its lag and ramp lag changes at up to 2000 ppm](./T11-lag-ramp-in-the-drift-controller.md) | domain | Volodymyr Kravchuk | M | T5 | done | COMMIT |
 | T12 | [Give the audio engine per-output start lags in the pre-roll and lag targets that ramp or jump](./T12-engine-lag-hooks.md) | app | Volodymyr Kravchuk | M | T11 | done | COMMIT |
-| T13 | [Start a lip-synced playback session, end it at the natural end or on exit, and emit session events](./T13-playback-session-start-end-exit.md) | app | Volodymyr Kravchuk | L | T3, T6, T7, T12 | todo | — |
+| T13 | [Start a lip-synced playback session, end it at the natural end or on exit, and emit session events](./T13-playback-session-start-end-exit.md) | app | Volodymyr Kravchuk | L | T3, T6, T7, T12 | blocked | GATE red after escalation: AC_01 test has wrong picture-start moment |
 | T14 | [Pause, resume and seek picture and every output together in the session](./T14-session-pause-resume-seek.md) | app | Volodymyr Kravchuk | M | T13 | todo | — |
 | T15 | [Apply offset keys per output and move picture and unchanged outputs to a new picture delay together](./T15-session-offset-keys-and-picture-delay-moves.md) | app | Volodymyr Kravchuk | M | T14 | todo | — |
 | T16 | [Keep playing when an output's device is lost, and end the film when the last one is lost](./T16-session-device-loss.md) | app | Volodymyr Kravchuk | S | T15 | todo | — |

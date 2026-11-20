@@ -282,7 +282,7 @@
         "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionStartTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T13-playback-session-start-end-exit.md",
-      "status": "todo"
+      "status": "blocked"
     },
     {
       "id": "T14",
