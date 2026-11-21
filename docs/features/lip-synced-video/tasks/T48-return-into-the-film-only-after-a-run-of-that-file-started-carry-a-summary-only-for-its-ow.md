@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
 origin: "review-2026-11-21b (Q1, Q2, Q7)"
-status: "todo"
-step: ""
+status: "blocked"
+step: "REVIEW — unresolved blocking review issues and gate red (flaky Core test)"
 ---
 
 <!-- Follow-up task from review-2026-11-21b. Work from what is inlined here; the source always wins.
