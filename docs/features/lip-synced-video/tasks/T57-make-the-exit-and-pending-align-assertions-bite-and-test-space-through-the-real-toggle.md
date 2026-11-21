@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-21b (Q8, Q10)"
-status: "blocked"
-step: "GATE — no gate result (red phase false_pass, gate not run)"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-21b. Work from what is inlined here; the source always wins.
@@ -31,7 +31,7 @@ See [spec.md](../spec.md) §5 AC-04, AC-06.
 
 ## Definition of Done
 
-- [ ] Exit tests assert `rig.EngineRunFiles.Count` (or equivalent) is unchanged after exit.
-- [ ] The pending-align test asserts the resume record exists before checking it.
-- [ ] An E2E test calls the real `PlaybackControls.TogglePause` twice on the real session (Paused, then Playing) and once after the natural end (stays Ended).
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Exit tests assert `rig.EngineRunFiles.Count` (or equivalent) is unchanged after exit.
+- [x] The pending-align test asserts the resume record exists before checking it.
+- [x] An E2E test calls the real `PlaybackControls.TogglePause` twice on the real session (Paused, then Playing) and once after the natural end (stays Ended).
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

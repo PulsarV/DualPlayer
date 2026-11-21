@@ -175,6 +175,28 @@ public sealed partial class PlayEndToEndTests : IDisposable
         }
     }
 
+    [Fact]
+    public void Space_through_the_real_toggle_pauses_then_resumes_and_after_the_natural_end_stays_Ended_AC_04_AC_06()
+    {
+        var (rig, _, controls) = Play(File("Film.mkv"), totalSeconds: 30);
+        using (rig)
+        using (controls)
+        {
+            controls.TogglePause();
+            rig.Engine.AdvanceUntil(() => rig.Session.State == DualPlayer.Core.Playback.PlaybackState.Paused)
+                .ShouldBeTrue("the first Space did not pause");
+            controls.TogglePause();
+            rig.Engine.AdvanceUntil(() => rig.Session.State == DualPlayer.Core.Playback.PlaybackState.Playing)
+                .ShouldBeTrue("the second Space did not resume");
+
+            rig.Engine.AdvanceUntil(() => rig.Session.State == DualPlayer.Core.Playback.PlaybackState.Ended, maxSteps: 5000)
+                .ShouldBeTrue("the film did not end");
+            controls.TogglePause();
+            rig.Engine.AdvanceUntil(() => false, maxSteps: 50);
+            rig.Session.State.ShouldBe(DualPlayer.Core.Playback.PlaybackState.Ended, "Space after the natural end changed the state");
+        }
+    }
+
     // The "played" column of the output rows under a run-summary header: index, device, played, ...
     private static List<TimeSpan> PlayedOf(List<string> lines, int header) =>
         [.. lines.Skip(header + 2).Take(2).Select(l => TimeSpan.ParseExact(l.Split(' ')[2], @"hh\:mm\:ss\.f", System.Globalization.CultureInfo.InvariantCulture))];

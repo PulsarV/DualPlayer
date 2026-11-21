@@ -28,7 +28,7 @@ public sealed class PlaybackSessionExitTests
             return true;
         });
 
-    private static int AudioStartedCount(SessionRig rig) => rig.Engine.Events.OfType<AudioStarted>().Count();
+    private static int EngineRunCount(SessionRig rig) => rig.EngineRunFiles.Count;
 
     [Fact]
     public void A_backward_seek_queued_behind_Exit_at_the_end_of_the_film_starts_no_engine_run_AC_06()
@@ -39,12 +39,12 @@ public sealed class PlaybackSessionExitTests
         rig.Engine.Render(50);
         rig.Session.State.ShouldBe(PlaybackState.Ended);
         Exit(rig);
-        var startedBefore = AudioStartedCount(rig);
+        var startedBefore = EngineRunCount(rig);
 
         var seek = rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-10)));
         rig.Engine.Render(150);
 
-        AudioStartedCount(rig).ShouldBe(startedBefore, "a new audio run started after the session had exited");
+        EngineRunCount(rig).ShouldBe(startedBefore, "a new engine run started after the session had exited");
         seek.IsSuccess.ShouldBeFalse("a seek after exit returned success");
         seek.Error.Code.ShouldBe("playback.no_run");
         rig.Session.State.ShouldBe(PlaybackState.Ended);
@@ -55,12 +55,12 @@ public sealed class PlaybackSessionExitTests
     {
         using var rig = PlayingRig(totalSeconds: 600);
         Exit(rig);
-        var startedBefore = AudioStartedCount(rig);
+        var startedBefore = EngineRunCount(rig);
 
         var seek = rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-10)));
         rig.Engine.Render(150);
 
-        AudioStartedCount(rig).ShouldBe(startedBefore, "a new audio run started after the session had exited");
+        EngineRunCount(rig).ShouldBe(startedBefore, "a new engine run started after the session had exited");
         seek.IsSuccess.ShouldBeFalse("a seek after exit returned success");
         seek.Error.Code.ShouldBe("playback.no_run");
         rig.Session.State.ShouldBe(PlaybackState.Ended);
@@ -80,7 +80,7 @@ public sealed class PlaybackSessionExitTests
             var probed = 0;
             rig.Decoder.BeforeList = () => probed++;
             Exit(rig);
-            var startedBefore = AudioStartedCount(rig);
+            var startedBefore = EngineRunCount(rig);
             var eventsBefore = rig.Events.Count;
 
             var next = rig.Engine.Call(() => rig.Session.NextFile());
@@ -88,7 +88,7 @@ public sealed class PlaybackSessionExitTests
 
             probed.ShouldBe(0, "the folder was scanned and its files probed after exit");
             rig.Events.Skip(eventsBefore).ShouldBeEmpty("Page Down after exit published events");
-            AudioStartedCount(rig).ShouldBe(startedBefore);
+            EngineRunCount(rig).ShouldBe(startedBefore);
             next.IsSuccess.ShouldBeFalse("Page Down after exit returned success");
             next.Error.Code.ShouldBe("playback.no_run");
         }

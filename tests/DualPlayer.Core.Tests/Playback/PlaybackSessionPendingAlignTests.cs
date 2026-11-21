@@ -53,7 +53,9 @@ public sealed class PlaybackSessionPendingAlignTests
 
         rig.Renderer.LowestShown?.ShouldBeGreaterThanOrEqualTo(shownAtResume, "the picture was sought back");
         rig.Session.State.ShouldBe(PlaybackState.Playing);
-        foreach (var again in rig.Events.OfType<LipSyncedAgain>().Where(e => e.Command == "resume"))
+        var records = rig.Events.OfType<LipSyncedAgain>().Where(e => e.Command == "resume").ToList();
+        records.ShouldNotBeEmpty("no lip-synced-again record for the resume");
+        foreach (var again in records)
         {
             again.AfterCommandMs.ShouldBeGreaterThanOrEqualTo(delay.TotalMilliseconds - 10, "lip-synced was reported before the picture was aligned");
         }

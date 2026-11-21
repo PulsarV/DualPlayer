@@ -1301,8 +1301,9 @@
         "tests/DualPlayer.App.Tests/E2E/PlayEndToEndTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T57-make-the-exit-and-pending-align-assertions-bite-and-test-space-through-the-real-toggle.md",
-      "status": "blocked",
-      "origin": "review-2026-11-21b: Q8, Q10"
+      "status": "done",
+      "origin": "review-2026-11-21b: Q8, Q10",
+      "step": "COMMIT"
     },
     {
       "id": "T58",
