@@ -13,12 +13,12 @@ namespace DualPlayer.Media.Video;
 /// </summary>
 public sealed unsafe class FfmpegPictureProbe : IPictureProbe
 {
-    private const string AccessDenied = "playback.file_access_denied";
     private const string Unreadable = "playback.file_unreadable";
     private const string NoPicture = "video.no_picture";
     private const string NotHardwareDecodable = "video.not_hardware_decodable";
-    private const int PosixPermissionDenied = 1; // EPERM
-    private const int PosixAccessDenied = 13; // EACCES; with EPERM both mean the OS refused the read
+
+    // Test seam: runs on the worker right after codec and profile are published.
+    internal Action? AfterFormatRead { get; init; }
 
     public Result<PictureInfo> Probe(string path, TimeSpan timeLimit)
     {
@@ -28,7 +28,8 @@ public sealed unsafe class FfmpegPictureProbe : IPictureProbe
             return Result<PictureInfo>.Failure(loaded.Error);
         }
 
-        var worker = Task.Factory.StartNew(() => ProbeCore(path), CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        var known = new KnownFormat();
+        var worker = Task.Factory.StartNew(() => ProbeCore(path, known), CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         try
         {
             if (worker.Wait(timeLimit))
@@ -41,12 +42,32 @@ public sealed unsafe class FfmpegPictureProbe : IPictureProbe
             return Result<PictureInfo>.Failure(Unreadable, $"The picture of '{path}' could not be probed: {ex.GetBaseException().Message}");
         }
 
+        var message = $"The first picture of '{path}' was not decoded in hardware within {timeLimit.TotalSeconds:0.##} s.";
+        var format = known.Value;
+        if (format is null)
+        {
+            return Result<PictureInfo>.Failure(NotHardwareDecodable, message);
+        }
+
         return Result<PictureInfo>.Failure(
-            NotHardwareDecodable,
-            $"The first picture of '{path}' was not decoded in hardware within {timeLimit.TotalSeconds:0.##} s.");
+            new Error(NotHardwareDecodable, $"{message} The picture format is {format.Codec} (profile {format.Profile}).")
+            {
+                Fields = new Dictionary<string, string>(StringComparer.Ordinal) { ["codec"] = format.Codec, ["profile"] = format.Profile },
+            });
     }
 
-    private static Result<PictureInfo> ProbeCore(string path)
+    private sealed record Format(string Codec, string Profile);
+
+    private sealed class KnownFormat
+    {
+        private volatile Format? _value;
+
+        public Format? Value => _value;
+
+        public void Publish(string codec, string profile) => _value = new Format(codec, profile);
+    }
+
+    private Result<PictureInfo> ProbeCore(string path, KnownFormat known)
     {
         AVFormatContext* fmt = null;
         AVCodecContext* codec = null;
@@ -79,6 +100,8 @@ public sealed unsafe class FfmpegPictureProbe : IPictureProbe
             var parameters = fmt->streams[index]->codecpar;
             var codecName = ffmpeg.avcodec_get_name(parameters->codec_id) ?? "unknown";
             var profileName = ffmpeg.avcodec_profile_name(parameters->codec_id, parameters->profile) ?? "unknown";
+            known.Publish(codecName, profileName);
+            AfterFormatRead?.Invoke();
             var width = parameters->width;
             var height = parameters->height;
             var notHw = Result<PictureInfo>.Failure(
@@ -150,7 +173,5 @@ public sealed unsafe class FfmpegPictureProbe : IPictureProbe
     }
 
     internal static Result<PictureInfo> OpenFailure(string path, int rc) =>
-        rc == ffmpeg.AVERROR(PosixAccessDenied) || rc == ffmpeg.AVERROR(PosixPermissionDenied)
-            ? Result<PictureInfo>.Failure(AccessDenied, $"The operating system denied the player access to '{path}'.")
-            : Result<PictureInfo>.Failure(Unreadable, $"'{path}' cannot be opened as media.");
+        Result<PictureInfo>.Failure(FfmpegErrors.OpenFailure(path, rc));
 }

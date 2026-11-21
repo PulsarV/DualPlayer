@@ -98,6 +98,22 @@ public sealed class FfmpegPictureProbeTests
     }
 
     [Fact]
+    public void A_timeout_after_the_codec_is_read_names_the_codec_in_the_message_and_fields()
+    {
+        // The hook runs on the probe worker right after codec and profile are published, and holds it past the limit.
+        var probe = new FfmpegPictureProbe { AfterFormatRead = () => Thread.Sleep(TimeSpan.FromSeconds(1)) };
+
+        var result = probe.Probe(Media("long-gop-ramp.mkv"), TimeSpan.FromMilliseconds(300));
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Error!.Code.ShouldBe("video.not_hardware_decodable");
+        result.Error.Message.ShouldContain("h264");
+        result.Error.Fields.ShouldNotBeNull();
+        result.Error.Fields["codec"].ShouldBe("h264");
+        result.Error.Fields.ShouldContainKey("profile");
+    }
+
+    [Fact]
     public void Probe_reports_not_hardware_decodable_naming_codec_and_profile_for_a_picture_only_software_can_decode()
     {
         var result = NewProbe().Probe(Media("video-ffv1.mkv"), Limit);

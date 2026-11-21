@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-09b", "AC-02"]
 files_hint: ["src/DualPlayer.Media/Audio/FfmpegAudioDecoder.cs", "src/DualPlayer.Media/Video/FfmpegPictureProbe.cs", "tests/DualPlayer.Media.Tests/"]
-status: "todo"
-step: "SELECT"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,7 +31,7 @@ See [spec.md](../spec.md) §5 AC-09b, AC-02.
 
 ## Definition of Done
 
-- [ ] `FfmpegAudioDecoder.OpenInput` maps AVERROR(EACCES) and AVERROR(EPERM) to `playback.file_access_denied` (shared mapping with the picture probe).
-- [ ] The probe worker publishes codec and profile as soon as they are read; the timeout error names them in its message and `Fields`.
-- [ ] Tests: the decoder mapping for 13 and 1; a timeout after the codec is read names it.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `FfmpegAudioDecoder.OpenInput` maps AVERROR(EACCES) and AVERROR(EPERM) to `playback.file_access_denied` (shared mapping with the picture probe).
+- [x] The probe worker publishes codec and profile as soon as they are read; the timeout error names them in its message and `Fields`.
+- [x] Tests: the decoder mapping for 13 and 1; a timeout after the codec is read names it.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

@@ -1499,7 +1499,7 @@
         "tests/DualPlayer.Media.Tests/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T66-map-access-denied-on-the-audio-open-and-name-the-format-when-the-picture-probe-times-out.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-21c: S9, S17"
     },
     {

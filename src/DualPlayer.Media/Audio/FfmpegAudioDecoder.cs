@@ -76,7 +76,7 @@ public sealed unsafe class FfmpegAudioDecoder : IAudioDecoder
         var rc = ffmpeg.avformat_open_input(fmt, path, null, null);
         if (rc < 0)
         {
-            return Result.Failure(Unreadable, $"The file '{path}' cannot be opened as media: {ErrorText(rc)}.");
+            return OpenFailure(path, rc);
         }
 
         rc = ffmpeg.avformat_find_stream_info(*fmt, null);
@@ -87,6 +87,9 @@ public sealed unsafe class FfmpegAudioDecoder : IAudioDecoder
 
         return Result.Success();
     }
+
+    internal static Result OpenFailure(string path, int rc) =>
+        Result.Failure(FfmpegErrors.OpenFailure(path, rc, ErrorText(rc)));
 
     internal static List<nint> AudioStreams(AVFormatContext* fmt)
     {

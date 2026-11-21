@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using DualPlayer.Core;
 using DualPlayer.Core.Outputs;
 using DualPlayer.Core.Playback;
@@ -12,6 +13,66 @@ public sealed class FfmpegAudioDecoderTests
     private static readonly MixFormat Stereo48 = new(48000, 2, ChannelLayout.Stereo);
 
     private static FfmpegAudioDecoder NewDecoder() => new();
+
+    [Theory]
+    [InlineData(13)] // EACCES
+    [InlineData(1)] // EPERM
+    public void An_open_failure_of_eacces_or_eperm_is_reported_as_access_denied(int posixError)
+    {
+        var result = FfmpegAudioDecoder.OpenFailure("/x/film.mkv", -posixError);
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Error!.Code.ShouldBe("playback.file_access_denied");
+    }
+
+    [Theory]
+    [InlineData(2)] // ENOENT
+    [InlineData(5)] // EIO
+    public void Any_other_open_failure_is_reported_as_unreadable(int posixError)
+    {
+        var result = FfmpegAudioDecoder.OpenFailure("/x/film.mkv", -posixError);
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Error!.Code.ShouldBe("playback.file_unreadable");
+    }
+
+    [Fact]
+    public void ListTracks_reports_access_denied_when_the_operating_system_refuses_the_read()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip("File modes are POSIX; Windows would need an ACL to refuse the read.");
+        }
+        else if (Environment.UserName == "root")
+        {
+            Assert.Skip("root reads a file whatever its mode.");
+        }
+        else
+        {
+            ListTracksOfAFileTheOsRefuses();
+        }
+    }
+
+    [UnsupportedOSPlatform("windows")]
+    private static void ListTracksOfAFileTheOsRefuses()
+    {
+        var dir = Directory.CreateTempSubdirectory("decoder-denied");
+        var copy = Path.Combine(dir.FullName, "locked.mkv");
+        File.Copy(Media("two-tracks.mkv"), copy);
+        File.SetUnixFileMode(copy, UnixFileMode.None);
+        try
+        {
+            var result = NewDecoder().ListTracks(copy);
+
+            result.IsSuccess.ShouldBeFalse();
+            result.Error!.Code.ShouldBe("playback.file_access_denied");
+        }
+        finally
+        {
+            File.SetUnixFileMode(copy, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            dir.Delete(true);
+        }
+    }
 
     [Fact]
     public void ListTracks_numbers_audio_tracks_from_1_with_language_layout_and_rate()
