@@ -127,6 +127,6 @@ picture-failed   clock 01:10:05.120  the picture could not be decoded further, f
 ## Definition of Done
 
 - [x] `TerminalPrinterTests` pass for every line form above
-- [ ] `DualPlayer.Console` unchanged
+- [x] `DualPlayer.Console` unchanged
 - [x] every Hard Rule inlined above still holds
 - [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

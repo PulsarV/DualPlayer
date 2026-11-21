@@ -6,8 +6,8 @@ deps: ["T80", "T81", "T82", "T83", "T84", "T85", "T86"]
 blocks: []
 acs: ["AC-05", "AC-07", "AC-17"]
 files_hint: ["docs/features/lip-synced-video/sad.md", "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md", "docs/features/lip-synced-video/contracts/cli.md", "docs/features/lip-synced-video/test-plan.md", "docs/features/lip-synced-video/screens.md", "docs/features/lip-synced-video/tasks/T10-device-latency-probes.md", "docs/features/lip-synced-video/tasks/T21-terminal-lines-and-run-summaries.md"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -29,10 +29,10 @@ See [spec.md](../spec.md) §5 AC-05, AC-07, AC-17.
 
 ## Definition of Done
 
-- [ ] sad.md QG-2(b) and T23 L2 include `return` at 3 s and say timing counts from the key press.
-- [ ] cli.md `LipSyncedAgain` row has no null clause for the picture error (unless T80–T86 made null possible again — then say when).
-- [ ] test-plan.md:119 removed or pointed at the renamed test; all test names in test-plan.md exist.
-- [ ] screens.md SCR-01 wireframe prints `run-summary` before `next`.
-- [ ] sad.md §2 (and line 138) names `RunSummary.File` / `RunSummaryBuilder.Build(…, file)` (T70) and any Core changes T80–T86 made.
-- [ ] T10:97 and T21:130 ticked; every DoD box of T80–T86 that holds is ticked.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] sad.md QG-2(b) and T23 L2 include `return` at 3 s and say timing counts from the key press.
+- [x] cli.md `LipSyncedAgain` row has no null clause for the picture error (unless T80–T86 made null possible again — then say when).
+- [x] test-plan.md:119 removed or pointed at the renamed test; all test names in test-plan.md exist.
+- [x] screens.md SCR-01 wireframe prints `run-summary` before `next`.
+- [x] sad.md §2 (and line 138) names `RunSummary.File` / `RunSummaryBuilder.Build(…, file)` (T70) and any Core changes T80–T86 made.
+- [x] T10:97 and T21:130 ticked; every DoD box of T80–T86 that holds is ticked.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

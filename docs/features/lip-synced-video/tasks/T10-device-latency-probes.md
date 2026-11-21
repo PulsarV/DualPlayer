@@ -94,6 +94,6 @@ Internal — no API surface.
 ## Definition of Done
 
 - [ ] mapping tests pass on both OS test projects; hardware listing tests pass where hardware exists
-- [ ] no edit to `WasapiAudioBackend.cs` / existing enumeration
+- [x] no edit to `WasapiAudioBackend.cs` / existing enumeration
 - [x] every Hard Rule inlined above still holds
 - [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

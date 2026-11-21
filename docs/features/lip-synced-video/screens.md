@@ -59,9 +59,9 @@ output 1  ...
 started   clock 00:00:00.000  first-frame 2.1 s  first-audio 2.0 s 2.1 s
 device-lost  output 2  device {…0002}  clock 00:40:12.300  others continue  picture-delay 200 -> 0
 skipped  Episode-03.mkv  reason track-missing  output 2  track 2
-next     Episode-04.mkv
 run-summary  file Episode-01.mkv  reason file-change
 <step-3 summary block per output>
+next     Episode-04.mkv
 ```
 
 ### SCR-02 — Playback window
