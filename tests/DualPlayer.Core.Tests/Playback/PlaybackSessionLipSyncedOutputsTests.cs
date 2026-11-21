@@ -29,19 +29,19 @@ public sealed class PlaybackSessionLipSyncedOutputsTests
         rig.ForceOutputError("dev-2", 30);
 
         rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(10))).IsSuccess.ShouldBeTrue();
-        rig.Engine.Render(200); // two seconds on the fake clock: the picture is long within 20 ms, dev-2 is not within 10 ms
+        rig.Engine.Render(50); // half a second on the fake clock (inside the 1 s recovery budget): the picture is within 20 ms, dev-2 is not within 10 ms
 
         SeekRecord(rig).ShouldBeNull("lip-synced again was reported while an output was still 30 ms off");
 
         rig.ForceOutputError("dev-2", 4);
-        for (var i = 0; i < 150 && SeekRecord(rig) is null; i++)
+        for (var i = 0; i < 40 && SeekRecord(rig) is null; i++)
         {
             rig.Engine.Render(1);
         }
 
         var again = SeekRecord(rig).ShouldNotBeNull("lip-synced again was never reported once the output was within 10 ms");
-        again.AfterCommandMs.ShouldBeGreaterThanOrEqualTo(2000, "reported before the output was within 10 ms");
-        again.AfterCommandMs.ShouldBeLessThanOrEqualTo(3500, "reported long after the output was within 10 ms");
+        again.AfterCommandMs.ShouldBeGreaterThanOrEqualTo(500, "reported before the output was within 10 ms");
+        again.AfterCommandMs.ShouldBeLessThanOrEqualTo(1000, "reported long after the output was within 10 ms");
     }
 
     [Fact]

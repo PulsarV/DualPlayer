@@ -62,6 +62,14 @@ public sealed partial class PlaybackSession : IDisposable
     // ... and every output still playing within this of the clock (spec §6 recovery row, AC-17).
     private const double OutputLipSyncedMs = 10;
 
+    // The engine's output readings change about every 100 ms: asked no oftener than that while a record is owed.
+    private static readonly TimeSpan OutputPollInterval = TimeSpan.FromMilliseconds(100);
+
+    // Recovery gives up after this (spec §6): 1 s; the 3 s start budget for a start or a file change.
+    private static readonly TimeSpan RecoveryBudget = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan StartRecoveryBudget = TimeSpan.FromSeconds(3);
+    private long _outputsPolledAt;
+
     // A frame presented more than this after its due time is late (spec §6 picture presentation).
     private const double LateMs = 20;
     private long _lateFrames;
@@ -1039,7 +1047,14 @@ public sealed partial class PlaybackSession : IDisposable
     // measure it reports it.
     private void ReportTiming(PictureSync sync)
     {
-        if (sync.Measure() is { } timing)
+        // A resume still waiting for the picture to align holds it like a scheduled start: the hold times are stale.
+        bool aligning;
+        lock (_gate)
+        {
+            aligning = _pendingAlign is not null;
+        }
+
+        if (!aligning && sync.Measure() is { } timing)
         {
             Publish(timing);
             return;
@@ -1082,6 +1097,7 @@ public sealed partial class PlaybackSession : IDisposable
         bool report;
         (string Command, long At)? resynced = null;
         (string Command, long At)? due = null;
+        (string Command, long At)? gaveUp = null;
         Dictionary<string, double>? outputErrors = null;
         (long CommandAt, IReadOnlyList<OutputLatency> Outputs)? starting;
         lock (_gate)
@@ -1099,9 +1115,20 @@ public sealed partial class PlaybackSession : IDisposable
                 }
             }
 
-            if (_resync is { } owed && Math.Abs(timing.ErrorMs) <= LipSyncedMs && timing.Timestamp >= owed.At)
+            if (_resync is { } owed)
             {
-                due = owed;
+                var budget = owed.Command is "start" or "file-change" ? StartRecoveryBudget : RecoveryBudget;
+                if (timing.Timestamp >= owed.At && _time.GetElapsedTime(owed.At, timing.Timestamp) > budget)
+                {
+                    gaveUp = owed;
+                }
+                else if (Math.Abs(timing.ErrorMs) <= LipSyncedMs
+                    && timing.Timestamp >= owed.At
+                    && (_outputsPolledAt < owed.At || _time.GetElapsedTime(_outputsPolledAt, timing.Timestamp) >= OutputPollInterval))
+                {
+                    _outputsPolledAt = timing.Timestamp;
+                    due = owed;
+                }
             }
 
             starting = _startTimings;
@@ -1113,7 +1140,30 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         // Asked of the engine only while a record is owed and the picture already qualifies.
-        if (due is { } candidate && OutputsLipSynced(candidate.At) is { } errors)
+        if (gaveUp is { } failed)
+        {
+            var latest = OutputErrors();
+            lock (_gate)
+            {
+                if (_resync != failed)
+                {
+                    gaveUp = null;
+                }
+                else
+                {
+                    _resync = null;
+                }
+            }
+
+            if (gaveUp is not null)
+            {
+                _events.Publish(new NotLipSynced(timing.Clock, failed.Command, _time.GetElapsedTime(failed.At, timing.Timestamp).TotalMilliseconds, timing.ErrorMs)
+                {
+                    OutputErrorsMs = latest.ToDictionary(e => e.Key, e => e.Value.ErrorMs, StringComparer.Ordinal),
+                });
+            }
+        }
+        else if (due is { } candidate && OutputsLipSynced(candidate.At) is { } errors)
         {
             lock (_gate)
             {
@@ -1143,17 +1193,26 @@ public sealed partial class PlaybackSession : IDisposable
     // Every output still playing has taken, since the command, a position reading within 10 ms: those errors, else null.
     // The readings are the engine's latest 100 ms ones (not the per-second record's average, which lags a seek's
     // transient); a reading from before the command says nothing about the outputs now.
-    private Dictionary<string, double>? OutputsLipSynced(long commandAt)
+    private Dictionary<string, OutputPositionError> OutputErrors()
     {
         var lost = new HashSet<string>(_lost, StringComparer.Ordinal);
-        var errors = new Dictionary<string, double>(StringComparer.Ordinal);
+        var readings = new Dictionary<string, OutputPositionError>(StringComparer.Ordinal);
         foreach (var (deviceId, reading) in _lags.PositionErrors())
         {
-            if (lost.Contains(deviceId))
+            if (!lost.Contains(deviceId))
             {
-                continue;
+                readings[deviceId] = reading;
             }
+        }
 
+        return readings;
+    }
+
+    private Dictionary<string, double>? OutputsLipSynced(long commandAt)
+    {
+        var errors = new Dictionary<string, double>(StringComparer.Ordinal);
+        foreach (var (deviceId, reading) in OutputErrors())
+        {
             if (reading.Timestamp < commandAt || Math.Abs(reading.ErrorMs) > OutputLipSyncedMs)
             {
                 return null;

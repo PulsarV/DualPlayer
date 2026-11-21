@@ -83,6 +83,15 @@ internal sealed class SessionEventLogWriter : IDisposable
                     a.ErrorMs,
                     string.Join(' ', a.OutputErrorsMs.Select(p => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{p.Key}={p.Value}"))));
                 break;
+            case NotLipSynced n:
+                _log.LogWarning(
+                    "NotLipSynced Clock={Clock} Command={Command} AfterCommandMs={AfterCommandMs} ErrorMs={ErrorMs} OutputErrorsMs={OutputErrorsMs}",
+                    Clock(n.Clock),
+                    n.Command,
+                    n.AfterCommandMs,
+                    n.ErrorMs,
+                    string.Join(' ', n.OutputErrorsMs.Select(p => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{p.Key}={p.Value}"))));
+                break;
             case DamagedStretchSkipped d:
                 _log.LogInformation(
                     "DamagedStretchSkipped Clock={Clock} LengthMs={LengthMs} Frames={Frames}",

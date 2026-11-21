@@ -120,6 +120,27 @@ public sealed class SessionEventLogWriterTests
     }
 
     [Fact]
+    public void Not_lip_synced_is_logged_with_the_cause_the_picture_error_and_each_outputs_error()
+    {
+        const string Other = "{0.0.0.00000000}.{0002}";
+        var h = new Harness();
+        h.Feed.Publish(new NotLipSynced(TimeSpan.FromSeconds(75), "seek", 1000.5, 2.5)
+        {
+            OutputErrorsMs = new Dictionary<string, double> { [Dev] = 30, [Other] = -4.25 },
+        });
+
+        var e = h.Log.Entries.ShouldHaveSingleItem();
+        e["{OriginalFormat}"]!.ToString()!.ShouldStartWith("NotLipSynced");
+        e["Clock"].ShouldBe("00:01:15.000");
+        e["Command"].ShouldBe("seek");
+        e["AfterCommandMs"].ShouldBe(1000.5);
+        e["ErrorMs"].ShouldBe(2.5);
+        var errors = e["OutputErrorsMs"].ShouldBeOfType<string>();
+        errors.ShouldContain($"{Dev}=30");
+        errors.ShouldContain($"{Other}=-4.25");
+    }
+
+    [Fact]
     public void A_skipped_damaged_stretch_is_logged_with_where_how_long_and_how_many_frames()
     {
         var h = new Harness();

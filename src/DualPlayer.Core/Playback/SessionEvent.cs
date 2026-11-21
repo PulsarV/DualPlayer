@@ -93,5 +93,14 @@ public sealed record LipSyncedAgain(TimeSpan Clock, string Command, double After
     public IReadOnlyDictionary<string, double> OutputErrorsMs { get; init; } = new Dictionary<string, double>();
 }
 
+/// <summary>
+/// Recovery gave up (T50): <paramref name="Command"/> was not followed by a lip-synced picture and outputs within the
+/// recovery budget (1 s; 3 s for a start or a file change); <see cref="OutputErrorsMs"/> are the latest per-output errors by device id.
+/// </summary>
+public sealed record NotLipSynced(TimeSpan Clock, string Command, double AfterCommandMs, double ErrorMs) : SessionEvent
+{
+    public IReadOnlyDictionary<string, double> OutputErrorsMs { get; init; } = new Dictionary<string, double>();
+}
+
 /// <summary>A stretch of damaged frames was skipped: where it began and how long it lasted (AC-06b).</summary>
 public sealed record DamagedStretchSkipped(TimeSpan Position, TimeSpan Length, long Frames) : SessionEvent;
