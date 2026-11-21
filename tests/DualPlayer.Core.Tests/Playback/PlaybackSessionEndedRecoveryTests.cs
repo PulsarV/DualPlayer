@@ -65,7 +65,7 @@ public sealed class PlaybackSessionEndedRecoveryTests : IDisposable
     }
 
     [Fact]
-    public void A_stale_run_summary_after_a_failed_file_change_does_not_move_the_end_position_of_the_next_film_AC_05()
+    public void Seek_back_after_every_output_was_lost_on_the_next_film_lands_at_zero_AC_05()
     {
         using var rig = PlayingRig(2_000);
         // Output 2 leaves the list: the change fails with outputs.device_not_found before the new picture loads.

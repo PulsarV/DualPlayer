@@ -6,8 +6,8 @@ deps: ["T76"]
 blocks: []
 acs: ["AC-05"]
 files_hint: ["tests/DualPlayer.Core.Tests/Playback/PlaybackSessionEndedRecoveryTests.cs", "src/DualPlayer.Core/Playback/PlaybackSession.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -29,7 +29,7 @@ See [spec.md](../spec.md) §5 AC-05.
 
 ## Definition of Done
 
-- [ ] The test's name states what it checks (← after every output was lost on the next film lands at 00:00).
-- [ ] The `_runToken` increment in `ChangeFile` is removed if no test or behaviour depends on it; if something does, a test that fails without it is added instead and the reason is written in the task notes.
-- [ ] RED for this task: show (in the notes) the full Core suite green with the bump removed before deciding.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The test's name states what it checks (← after every output was lost on the next film lands at 00:00).
+- [x] The `_runToken` increment in `ChangeFile` is removed if no test or behaviour depends on it; if something does, a test that fails without it is added instead and the reason is written in the task notes.
+- [x] RED for this task: show (in the notes) the full Core suite green with the bump removed before deciding.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

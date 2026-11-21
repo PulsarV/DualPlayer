@@ -561,9 +561,6 @@ public sealed partial class PlaybackSession : IDisposable
             _filmLoaded = false;
         }
 
-        // The old run's summary was raised during the stop with the old token: moving on makes it stale, so it cannot
-        // overwrite the end position even when the new file never starts a run.
-        Interlocked.Increment(ref _runToken);
         lock (_gate)
         {
             _state = PlaybackState.Idle;
