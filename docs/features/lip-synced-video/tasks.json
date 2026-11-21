@@ -1954,7 +1954,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T84-cancel-abandoned-probe-and-listing-workers-and-step-past-neighbours-that-timed-out.md",
       "origin": "review-2026-11-22: P7",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T85",

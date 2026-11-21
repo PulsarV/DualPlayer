@@ -11,4 +11,10 @@ public interface IPictureProbe
     /// <c>video.not_hardware_decodable</c> (also when the first picture is not decoded within <paramref name="timeLimit"/>).
     /// </summary>
     Result<PictureInfo> Probe(string path, TimeSpan timeLimit);
+
+    /// <summary>
+    /// As <see cref="Probe(string, TimeSpan)"/>, but a cancelled <paramref name="cancel"/> stops the probe promptly and closes
+    /// the file; the caller has given up on it. A probe that cannot be interrupted keeps the default, which ignores the token.
+    /// </summary>
+    Result<PictureInfo> Probe(string path, TimeSpan timeLimit, CancellationToken cancel) => Probe(path, timeLimit);
 }

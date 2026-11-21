@@ -6,8 +6,8 @@ deps: ["T83"]
 blocks: []
 acs: ["AC-07", "AC-08", "AC-09b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.Core/Playback/IAudioDecoder.cs", "src/DualPlayer.Core/Playback/", "src/DualPlayer.Media/Video/FfmpegPictureProbe.cs", "src/DualPlayer.Media/Audio/FfmpegAudioDecoder.cs", "src/DualPlayer.Media/", "tests/DualPlayer.Core.Tests/Playback/", "tests/DualPlayer.Media.Tests/", "docs/features/lip-synced-video/spec.md", "docs/features/lip-synced-video/contracts/cli.md", "docs/features/lip-synced-video/sad.md"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -31,9 +31,9 @@ See [spec.md](../spec.md) §5 AC-07, AC-08, AC-09b.
 
 ## Definition of Done
 
-- [ ] `ListTracks` and the picture probe accept a cancellation token; the FFmpeg calls install an interrupt callback that checks it, so a cancelled open/probe returns promptly and closes the file.
-- [ ] The session cancels the in-flight worker when it gives up on a candidate (budget or probe limit).
-- [ ] The session remembers files that timed out during this session and, on the next press in the same direction, steps past them (they count as checked); a file is retried only after the remembered set is cleared on a successful file change — or per the rule stated in spec §6.1 / cli.md §2.2.
-- [ ] Tests: two hanging neighbours in a row → the second press reaches the third file; a cancelled fake worker is observed cancelled; a Media test shows an interrupted open returns (on a blocking custom AVIO or slow pipe).
-- [ ] spec §6.1, cli.md §2.2 and sad.md describe the cancel + step-past rule.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `ListTracks` and the picture probe accept a cancellation token; the FFmpeg calls install an interrupt callback that checks it, so a cancelled open/probe returns promptly and closes the file.
+- [x] The session cancels the in-flight worker when it gives up on a candidate (budget or probe limit).
+- [x] The session remembers files that timed out during this session and, on the next press in the same direction, steps past them (they count as checked); a file is retried only after the remembered set is cleared on a successful file change — or per the rule stated in spec §6.1 / cli.md §2.2.
+- [x] Tests: two hanging neighbours in a row → the second press reaches the third file; a cancelled fake worker is observed cancelled; a Media test shows an interrupted open returns (on a blocking custom AVIO or slow pipe).
+- [x] spec §6.1, cli.md §2.2 and sad.md describe the cancel + step-past rule.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

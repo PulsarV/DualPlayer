@@ -24,5 +24,11 @@ public interface IAudioDecoder
 {
     Result<IReadOnlyList<AudioTrackInfo>> ListTracks(string path);
 
+    /// <summary>
+    /// As <see cref="ListTracks(string)"/>, but stops promptly, closes the file and fails when <paramref name="cancel"/> is
+    /// cancelled. A decoder that cannot be interrupted keeps the default, which ignores the token.
+    /// </summary>
+    Result<IReadOnlyList<AudioTrackInfo>> ListTracks(string path, CancellationToken cancel) => ListTracks(path);
+
     Result<IDecodeSession> Open(string path, IReadOnlyList<DecodeRequest> outputs);
 }

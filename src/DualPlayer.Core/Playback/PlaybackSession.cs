@@ -59,6 +59,10 @@ public sealed partial class PlaybackSession : IDisposable
     private static readonly TimeSpan ProbeTimingSlack = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan MinProbeTime = TimeSpan.FromMilliseconds(100);
     private readonly HashSet<string> _lost = new(StringComparer.Ordinal);
+
+    // Files whose listing or probe the session gave up on since the last successful file change (AC-09b); the next press
+    // steps past them instead of rescanning them. Touched only on the session's control thread.
+    private readonly HashSet<string> _timedOut = new(StringComparer.Ordinal);
     private static readonly TimeSpan HealthInterval = TimeSpan.FromSeconds(1);
 
     // "Lip-synced again": the picture presented within this of due (sad.md §10, quality scenario 2b).
@@ -507,7 +511,9 @@ public sealed partial class PlaybackSession : IDisposable
         {
             foreach (var candidate in FolderNeighbours.Candidates(request.File, direction))
             {
-                var (skip, expired) = CheckPlayable(candidate, request, commandAt);
+                var (skip, expired) = _timedOut.Contains(candidate)
+                    ? (new FileSkipped(Path.GetFileName(candidate), "unreadable", null, null), false)
+                    : CheckPlayable(candidate, request, commandAt);
                 if (expired)
                 {
                     outOfTime = true;
@@ -609,6 +615,7 @@ public sealed partial class PlaybackSession : IDisposable
             return started;
         }
 
+        _timedOut.Clear();
         LatencyEstimate? now;
         lock (_gate)
         {
@@ -625,8 +632,34 @@ public sealed partial class PlaybackSession : IDisposable
     }
 
     // Skip = null and Expired = false: playable. Expired: the press budget ran out before this file could be judged.
+    // A file the session gives up on (budget out in its listing or probe, or its probe used up its limit) has its worker
+    // cancelled and is remembered, so the next press steps past it (AC-09b).
     private (FileSkipped? Skip, bool Expired) CheckPlayable(string path, StartRequest request, long commandAt)
     {
+        var cancel = new CancellationTokenSource();
+        var gaveUp = false;
+        try
+        {
+            return CheckPlayable(path, request, commandAt, cancel.Token, out gaveUp);
+        }
+        finally
+        {
+            if (gaveUp)
+            {
+                // Left undisposed: the abandoned worker may still be waiting on the token's handle.
+                _timedOut.Add(path);
+                cancel.Cancel();
+            }
+            else
+            {
+                cancel.Dispose();
+            }
+        }
+    }
+
+    private (FileSkipped? Skip, bool Expired) CheckPlayable(string path, StartRequest request, long commandAt, CancellationToken cancel, out bool gaveUp)
+    {
+        gaveUp = false;
         var name = Path.GetFileName(path);
         var remaining = NeighbourScanBudget - _time.GetElapsedTime(commandAt);
         if (remaining < MinProbeTime)
@@ -635,11 +668,12 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         // The track listing runs on a worker under the same deadline as the probe.
-        var listing = Task.Run(() => _decoder.ListTracks(path));
+        var listing = Task.Run(() => _decoder.ListTracks(path, cancel));
         while (!listing.IsCompleted)
         {
             if (NeighbourScanBudget - _time.GetElapsedTime(commandAt) <= TimeSpan.Zero)
             {
+                gaveUp = true;
                 return (null, true);
             }
 
@@ -671,15 +705,19 @@ public sealed partial class PlaybackSession : IDisposable
         var cut = remaining < PictureProbeLimit;
         var probeLimit = cut ? remaining : PictureProbeLimit;
         var probeStart = _time.GetTimestamp();
-        var picture = _pictureProbe.Probe(path, probeLimit);
+        var picture = _pictureProbe.Probe(path, probeLimit, cancel);
         if (picture.IsSuccess)
         {
             return (null, false);
         }
 
+        // A probe that used up its limit: the file is given up on, and remembered, whatever the limit was.
+        var usedUp = _time.GetElapsedTime(probeStart) + ProbeTimingSlack >= probeLimit
+            && picture.Error.Code is "video.not_hardware_decodable" or "video.probe_timeout";
+        gaveUp = usedUp;
+
         // A probe that used up a limit the budget had cut proves nothing about the file.
-        if (cut && _time.GetElapsedTime(probeStart) + ProbeTimingSlack >= probeLimit
-            && picture.Error.Code is "video.not_hardware_decodable" or "video.probe_timeout")
+        if (cut && usedUp)
         {
             return (null, true);
         }

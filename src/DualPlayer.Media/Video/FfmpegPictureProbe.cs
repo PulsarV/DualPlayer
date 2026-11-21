@@ -20,7 +20,9 @@ public sealed unsafe class FfmpegPictureProbe : IPictureProbe
     // Test seam: runs on the worker right after codec and profile are published.
     internal Action? AfterFormatRead { get; init; }
 
-    public Result<PictureInfo> Probe(string path, TimeSpan timeLimit)
+    public Result<PictureInfo> Probe(string path, TimeSpan timeLimit) => Probe(path, timeLimit, CancellationToken.None);
+
+    public Result<PictureInfo> Probe(string path, TimeSpan timeLimit, CancellationToken cancel)
     {
         var loaded = FfmpegLibrary.Load();
         if (!loaded.IsSuccess)
@@ -28,19 +30,31 @@ public sealed unsafe class FfmpegPictureProbe : IPictureProbe
             return Result<PictureInfo>.Failure(loaded.Error);
         }
 
+        // The worker's own token: tripped when the caller gives up or the limit runs out, so the worker's open or read is
+        // interrupted and its file closed instead of the worker being left running.
+        var stop = CancellationTokenSource.CreateLinkedTokenSource(cancel);
         var known = new KnownFormat();
-        var worker = Task.Factory.StartNew(() => ProbeCore(path, known), CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        var worker = Task.Factory.StartNew(() => ProbeCore(path, known, stop.Token), CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         try
         {
-            if (worker.Wait(timeLimit))
+            if (worker.Wait(timeLimit, cancel))
             {
+                stop.Dispose();
                 return worker.Result;
             }
         }
+        catch (OperationCanceledException)
+        {
+            stop.Cancel();
+            return Result<PictureInfo>.Failure(Unreadable, $"The probe of '{path}' was cancelled.");
+        }
         catch (AggregateException ex)
         {
+            stop.Dispose();
             return Result<PictureInfo>.Failure(Unreadable, $"The picture of '{path}' could not be probed: {ex.GetBaseException().Message}");
         }
+
+        stop.Cancel();
 
         var message = $"The first picture of '{path}' was not decoded in hardware within {timeLimit.TotalSeconds:0.##} s.";
         var format = known.Value;
@@ -67,8 +81,9 @@ public sealed unsafe class FfmpegPictureProbe : IPictureProbe
         public void Publish(string codec, string profile) => _value = new Format(codec, profile);
     }
 
-    private Result<PictureInfo> ProbeCore(string path, KnownFormat known)
+    private Result<PictureInfo> ProbeCore(string path, KnownFormat known, CancellationToken cancel)
     {
+        using var interrupt = new FfmpegInterrupt(cancel);
         AVFormatContext* fmt = null;
         AVCodecContext* codec = null;
         AVBufferRef* device = null;
@@ -76,6 +91,11 @@ public sealed unsafe class FfmpegPictureProbe : IPictureProbe
         AVFrame* frame = null;
         try
         {
+            if (!interrupt.Attach(&fmt))
+            {
+                return Result<PictureInfo>.Failure(Unreadable, $"'{path}' could not be probed: out of memory.");
+            }
+
             var rc = ffmpeg.avformat_open_input(&fmt, path, null, null);
             if (rc < 0)
             {

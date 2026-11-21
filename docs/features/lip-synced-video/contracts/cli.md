@@ -79,7 +79,7 @@ next     <file name>
 previous <file name>
 ```
 
-`reason` is one of `track-missing`, `unreadable`, `no-picture`, `not-hardware-decodable`, `access-denied`. When no playable file is found in that direction: `no-next-file` (or `no-previous-file`), and the current film is unchanged. When the 3 s key budget runs out first: `next-file-timeout  checked N` (or `previous-file-timeout  checked N`) instead, the current film is unchanged, and a probe cut short by the budget is not printed as `skipped`. A new file prints the §1.1 output and start lines again.
+`reason` is one of `track-missing`, `unreadable`, `no-picture`, `not-hardware-decodable`, `access-denied`. When no playable file is found in that direction: `no-next-file` (or `no-previous-file`), and the current film is unchanged. When the 3 s key budget runs out first: `next-file-timeout  checked N` (or `previous-file-timeout  checked N`) instead, the current film is unchanged, and a probe cut short by the budget is not printed as `skipped`. A file whose listing or probe timed out is cancelled (its file is closed) and remembered: the next press in the same direction steps past it (printed as `skipped ... reason unreadable`, counted in `checked N`) instead of scanning it again, so two hanging neighbours in a row do not block the key for ever; the remembered files are cleared on the next successful file change. A new file prints the §1.1 output and start lines again.
 
 ### 2.3 Device lost and picture failure (AC-06b, AC-15, AC-15b)
 

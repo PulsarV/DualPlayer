@@ -523,7 +523,7 @@ One process on one PC: `DualPlayer.App` is built as a console-subsystem executab
 
 **Scaling thresholds:**
 - Outputs: at most three per run (spec §5 key table); the per-output lag ramps run on the engine control loop and scale linearly.
-- Folder size: next and previous list and naturally sort the folder on each key press. Thousands of files must still answer within the start budget (spec §6.1). The probe runs only on the file being moved to, plus each skipped file on the way.
+- Folder size: next and previous list and naturally sort the folder on each key press. Thousands of files must still answer within the start budget (spec §6.1). The probe runs only on the file being moved to, plus each skipped file on the way. Both the track listing and the picture probe take a `CancellationToken` that the FFmpeg adapters check in an `AVIOInterruptCB`; the session cancels it when it gives up on a file (budget out, or the probe used up its limit), so an abandoned worker returns promptly and closes the file (`FfmpegPictureProbe` also cancels its own worker when its limit runs out). The session remembers the files it gave up on and steps past them on the next press in the same direction; the set is cleared on a successful file change (spec §6.1, cli.md §2.2).
 - Log size: Serilog's existing 20 MB file limit with 10 retained files bounds a 2 h film's per-minute frame records and change events.
 
 ## 8. Crosscutting concepts
