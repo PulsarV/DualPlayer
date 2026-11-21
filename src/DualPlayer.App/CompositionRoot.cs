@@ -1,6 +1,7 @@
 using DualPlayer.App.Startup;
 using DualPlayer.App.ViewModels;
 using DualPlayer.Core;
+using DualPlayer.Core.Outputs;
 using DualPlayer.Core.Playback;
 using DualPlayer.Media;
 using DualPlayer.Media.Video;
@@ -55,6 +56,7 @@ public static class CompositionRoot
         }
 
         services.AddSingleton<IScreenCatalog, AvaloniaScreenCatalog>();
+        services.AddSingleton<IDeviceAccessProbe, BackendDeviceAccessProbe>();
         services.AddSingleton<PlaybackControls>();
         services.AddSingleton<IPlaybackControls>(sp => sp.GetRequiredService<PlaybackControls>());
         services.AddTransient<MainWindowViewModel>();

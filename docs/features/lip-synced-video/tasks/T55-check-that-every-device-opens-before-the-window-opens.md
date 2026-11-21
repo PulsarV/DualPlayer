@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
 origin: "review-2026-11-21b (Q14)"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-21b. Work from what is inlined here; the source always wins.
@@ -29,6 +29,6 @@ See [spec.md](../spec.md) §5 AC-01, AC-12.
 
 ## Definition of Done
 
-- [ ] `Validate` tries to open each chosen device (through a Core port the platform adapters implement; open and release, no playback) and maps a refusal to `outputs.device_access_denied`, exit 4, before any window opens.
-- [ ] Tests: a device that refuses to open → exit 4, the cli.md error line, and the window factory is never called.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `Validate` tries to open each chosen device (through a Core port the platform adapters implement; open and release, no playback) and maps a refusal to `outputs.device_access_denied`, exit 4, before any window opens.
+- [x] Tests: a device that refuses to open → exit 4, the cli.md error line, and the window factory is never called.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

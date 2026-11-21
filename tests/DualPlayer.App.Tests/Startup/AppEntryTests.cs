@@ -49,6 +49,29 @@ public sealed class AppEntryTests
         log.Lines.ShouldContain(l => l.Contains($"Start refused: {code}", StringComparison.Ordinal));
     }
 
+    // T55 (review-2026-11-21b Q14): the device is opened and released during validation, so a refusal exits 4 before
+    // App.Play. The container holds no PlaybackSession: had Play been reached, it would have failed and shut down with 1.
+    [Fact]
+    public void A_device_that_refuses_to_open_shuts_down_with_exit_code_4_before_any_window_opens()
+    {
+        var log = new RecordingLogger<App>();
+        var desktop = Substitute.For<IClassicDesktopStyleApplicationLifetime>();
+        var backend = Substitute.For<IAudioBackend>();
+        backend.ListDevices().Returns([new AudioDeviceInfo("Speakers", null, "id-a")]);
+        backend.Open("id-a", Arg.Any<TimeSpan>(), Arg.Any<IRenderSource>())
+            .Returns(Result<IAudioDevice>.Failure("outputs.device_access_denied", "Windows refused access to device Speakers."));
+        var services = EntryServices(log, new PictureProbe(), new OneTrackDecoder(), backend);
+
+        var stderr = CaptureConsole(() => RunAsync(desktop, services, new StartRequest(FilePath, [new OutputAssignment(1, DeviceRef.ByNumber(1))], null)).GetAwaiter().GetResult()).Error;
+
+        desktop.Received(1).Shutdown(4);
+        desktop.DidNotReceive().Shutdown(1);
+        stderr.ShouldContain("error outputs.device_access_denied: Windows refused access to device Speakers.");
+        backend.Received(1).Open("id-a", Arg.Any<TimeSpan>(), Arg.Any<IRenderSource>());
+        services.GetService<PlaybackSession>().ShouldBeNull();
+        log.Entries.ShouldNotContain(e => e.Level == LogLevel.Critical);
+    }
+
     [Fact]
     public void A_crash_while_validating_the_start_is_logged_as_critical_and_shuts_down_with_exit_code_1()
     {
@@ -215,16 +238,21 @@ public sealed class AppEntryTests
     }
 
     // What RunAsync reads from the container for a start that is refused before any window.
-    private static ServiceProvider EntryServices(RecordingLogger<App> log, IPictureProbe probe)
+    private static ServiceProvider EntryServices(RecordingLogger<App> log, IPictureProbe probe, IAudioDecoder? decoder = null, IAudioBackend? backend = null)
     {
-        var backend = Substitute.For<IAudioBackend>();
-        backend.ListDevices().Returns([new AudioDeviceInfo("Speakers", null, "id-a")]);
+        if (backend is null)
+        {
+            backend = Substitute.For<IAudioBackend>();
+            backend.ListDevices().Returns([new AudioDeviceInfo("Speakers", null, "id-a")]);
+        }
+
         return new ServiceCollection()
             .AddSingleton<ILogger<App>>(log)
             .AddSingleton(probe)
-            .AddSingleton<IAudioDecoder>(new NoTracksDecoder())
+            .AddSingleton(decoder ?? new NoTracksDecoder())
             .AddSingleton(backend)
             .AddSingleton<IScreenCatalog>(new OneScreen())
+            .AddSingleton<IDeviceAccessProbe>(new BackendDeviceAccessProbe(backend))
             .BuildServiceProvider();
     }
 
@@ -267,6 +295,20 @@ public sealed class AppEntryTests
     private sealed class ThrowingProbe : IPictureProbe
     {
         public Result<PictureInfo> Probe(string path, TimeSpan timeLimit) => throw new InvalidOperationException("the probe crashed");
+    }
+
+    private sealed class PictureProbe : IPictureProbe
+    {
+        public Result<PictureInfo> Probe(string path, TimeSpan timeLimit) => Result<PictureInfo>.Success(new PictureInfo("h264", "High", 1920, 1080));
+    }
+
+    private sealed class OneTrackDecoder : IAudioDecoder
+    {
+        public Result<IReadOnlyList<AudioTrackInfo>> ListTracks(string path) =>
+            Result<IReadOnlyList<AudioTrackInfo>>.Success([new AudioTrackInfo(1, "en", ChannelLayout.Stereo, 48000)]);
+
+        public Result<IDecodeSession> Open(string path, IReadOnlyList<DecodeRequest> outputs) =>
+            throw new InvalidOperationException("validation must not open a decode session");
     }
 
     private sealed class NoTracksDecoder : IAudioDecoder

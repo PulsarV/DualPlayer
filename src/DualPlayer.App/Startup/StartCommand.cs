@@ -66,14 +66,15 @@ internal static class StartCommand
             : Result<StartRequest>.Success(new StartRequest(args[1], outputs, screen));
     }
 
-    /// <summary>Checks in contract order: file, picture, tracks, devices, screen, then the video renderer library. First failure wins.</summary>
+    /// <summary>Checks in contract order: file, picture, tracks, devices (present, used once, then opened and released), screen, then the video renderer library. First failure wins.</summary>
     public static Result<ValidatedStart> Validate(
         StartRequest request,
         IPictureProbe probe,
         IAudioDecoder decoder,
         DeviceCatalog devices,
         IScreenCatalog screens,
-        Func<Result>? videoRenderer = null)
+        Func<Result>? videoRenderer = null,
+        IDeviceAccessProbe? deviceAccess = null)
     {
         var picture = probe.Probe(request.File, StartBudget);
         if (!picture.IsSuccess)
@@ -91,6 +92,19 @@ internal static class StartCommand
         if (!resolved.IsSuccess)
         {
             return Result<ValidatedStart>.Failure(resolved.Error);
+        }
+
+        // Open and release each device now, so a refusal exits 4 before any window exists.
+        if (deviceAccess is not null)
+        {
+            foreach (var output in resolved.Value)
+            {
+                var access = deviceAccess.CheckAccess(output.DeviceId);
+                if (!access.IsSuccess)
+                {
+                    return Result<ValidatedStart>.Failure(access.Error);
+                }
+            }
         }
 
         var list = screens.Screens;

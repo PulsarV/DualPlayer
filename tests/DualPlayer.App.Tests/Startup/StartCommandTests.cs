@@ -2,6 +2,7 @@ using DualPlayer.App.Startup;
 using DualPlayer.Core;
 using DualPlayer.Core.Outputs;
 using DualPlayer.Core.Playback;
+using NSubstitute;
 using StartRequest = DualPlayer.App.Startup.StartRequest;
 
 namespace DualPlayer.App.Tests.Startup;
@@ -186,6 +187,36 @@ public sealed class StartCommandTests
         var r = StartCommand.Validate(Request(), rig.Probe, rig.Decoder, new DeviceCatalog([DevA, DevB]), rig.Screens, Result.Success);
 
         r.IsSuccess.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void A_device_that_refuses_to_open_is_reported_as_access_denied_with_exit_4_before_any_window_opens()
+    {
+        var rig = new Rig();
+        var access = Substitute.For<IDeviceAccessProbe>();
+        access.CheckAccess("id-a").Returns(Result.Success());
+        access.CheckAccess("id-b").Returns(Result.Failure("outputs.device_access_denied", "Windows refused access to device Headset."));
+
+        var r = StartCommand.Validate(Request(), rig.Probe, rig.Decoder, new DeviceCatalog([DevA, DevB]), rig.Screens, null, access);
+
+        r.IsSuccess.ShouldBeFalse();
+        r.Error.Code.ShouldBe("outputs.device_access_denied");
+        StartExitCodes.For(r.Error).ShouldBe(4);
+        StartExitCodes.FormatError(r.Error).ShouldBe("error outputs.device_access_denied: Windows refused access to device Headset.");
+    }
+
+    [Fact]
+    public void Devices_that_open_let_the_start_through_and_are_each_tried_once()
+    {
+        var rig = new Rig();
+        var access = Substitute.For<IDeviceAccessProbe>();
+        access.CheckAccess(Arg.Any<string>()).Returns(Result.Success());
+
+        var r = StartCommand.Validate(Request(), rig.Probe, rig.Decoder, new DeviceCatalog([DevA, DevB]), rig.Screens, null, access);
+
+        r.IsSuccess.ShouldBeTrue();
+        access.Received(1).CheckAccess("id-a");
+        access.Received(1).CheckAccess("id-b");
     }
 
     private static Result<ValidatedStart> Validate(StartRequest request, Rig rig) =>

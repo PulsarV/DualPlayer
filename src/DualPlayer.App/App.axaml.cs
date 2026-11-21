@@ -59,7 +59,8 @@ public partial class App : Application
                 services.GetRequiredService<IAudioDecoder>(),
                 new DeviceCatalog(services.GetRequiredService<IAudioBackend>().ListDevices()),
                 services.GetRequiredService<IScreenCatalog>(),
-                VideoRendererLibrary)).ConfigureAwait(true);
+                VideoRendererLibrary,
+                services.GetRequiredService<IDeviceAccessProbe>())).ConfigureAwait(true);
 
             if (!validated.IsSuccess)
             {

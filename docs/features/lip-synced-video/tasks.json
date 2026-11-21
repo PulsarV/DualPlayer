@@ -1260,7 +1260,7 @@
         "tests/DualPlayer.App.Tests/Startup/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T55-check-that-every-device-opens-before-the-window-opens.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-21b: Q14"
     },
     {
