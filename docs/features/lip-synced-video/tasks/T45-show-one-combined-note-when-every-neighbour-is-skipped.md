@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-21 (R14)"
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-21. Work from what is inlined here; the source always wins.
@@ -29,7 +29,7 @@ See [spec.md](../spec.md) §5 AC-08, AC-09.
 
 ## Definition of Done
 
-- [ ] When every following (preceding) file is skipped, exactly one note is shown: `No next file (skipped N; last: <name> – <reason>)` / `No previous file (…)`.
-- [ ] test-plan.md, ux-flows.md (and screens.md SCR-03 / cli.md if they list the note text) are aligned to the combined note.
-- [ ] Test: `When_every_following_file_is_skipped…` asserts the single visible note text (last note shown), for next and previous.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] When every following (preceding) file is skipped, exactly one note is shown: `No next file (skipped N; last: <name> – <reason>)` / `No previous file (…)`.
+- [x] test-plan.md, ux-flows.md (and screens.md SCR-03 / cli.md if they list the note text) are aligned to the combined note.
+- [x] Test: `When_every_following_file_is_skipped…` asserts the single visible note text (last note shown), for next and previous.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

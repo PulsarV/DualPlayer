@@ -152,6 +152,40 @@ public sealed class PlaybackSessionFileChangeTests : IDisposable
         rig.Engine.Summary.ShouldBeNull();
     }
 
+    [Fact]
+    public void When_every_following_file_is_skipped_exactly_one_combined_note_is_shown_AC_09()
+    {
+        using var rig = PlayingRig("Episode-01.mkv", "Episode-02.mkv", "Episode-03.mkv");
+        rig.Decoder.Script("Episode-02.mkv", 1);
+        rig.Decoder.Script("Episode-03.mkv", 1);
+
+        rig.Engine.Call(() => rig.Session.NextFile());
+
+        var note = rig.Events.OfType<NoteShown>().ShouldHaveSingleItem();
+        note.Text.ShouldBe("No next file (skipped 2; last: Episode-03.mkv - no track 2 for output 2)");
+        note.Style.ShouldBe(NoteStyle.Info);
+        rig.Events.OfType<FileSkipped>().Select(e => e.File).ShouldBe(["Episode-02.mkv", "Episode-03.mkv"]);
+        rig.Events.OfType<NoNeighbour>().ShouldHaveSingleItem().Next.ShouldBeTrue();
+        rig.Events.OfType<FileChanged>().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void When_every_preceding_file_is_skipped_exactly_one_combined_note_is_shown_AC_09()
+    {
+        using var rig = PlayingRig("Episode-03.mkv", "Episode-01.mkv", "Episode-02.mkv");
+        rig.Decoder.Script("Episode-01.mkv", 1);
+        rig.Decoder.Script("Episode-02.mkv", 1);
+
+        rig.Engine.Call(() => rig.Session.PreviousFile());
+
+        var note = rig.Events.OfType<NoteShown>().ShouldHaveSingleItem();
+        note.Text.ShouldBe("No previous file (skipped 2; last: Episode-01.mkv - no track 2 for output 2)");
+        note.Style.ShouldBe(NoteStyle.Info);
+        rig.Events.OfType<FileSkipped>().Select(e => e.File).ShouldBe(["Episode-02.mkv", "Episode-01.mkv"]);
+        rig.Events.OfType<NoNeighbour>().ShouldHaveSingleItem().Next.ShouldBeFalse();
+        rig.Events.OfType<FileChanged>().ShouldBeEmpty();
+    }
+
     private static FakeAudioBackend Backend(SessionRig rig) => (FakeAudioBackend)rig.Engine.Backend;
 
     [Fact]

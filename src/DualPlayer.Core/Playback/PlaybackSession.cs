@@ -472,20 +472,24 @@ public sealed partial class PlaybackSession : IDisposable
             // An unreadable folder has no neighbours.
         }
 
+        var isNext = direction == NeighbourDirection.Next;
+        var reason = skipped > 0 ? SkipText(lastSkip!) : null;
+        if (target is null)
+        {
+            // One note per press: when every neighbour was skipped, it says so together with the last skipped file.
+            var noFile = isNext ? "No next file" : "No previous file";
+            _events.Publish(new NoNeighbour(isNext));
+            _events.Publish(new NoteShown(
+                skipped > 0 ? $"{noFile} (skipped {skipped}; last: {lastSkipped} - {reason})" : noFile,
+                NoteStyle.Info));
+            return Result.Success();
+        }
+
         if (skipped > 0)
         {
-            var reason = SkipText(lastSkip!);
             _events.Publish(new NoteShown(
                 skipped == 1 ? $"Skipped {lastSkipped}: {reason}" : $"Skipped {skipped} files; last: {lastSkipped} - {reason}",
                 NoteStyle.Warning));
-        }
-
-        var isNext = direction == NeighbourDirection.Next;
-        if (target is null)
-        {
-            _events.Publish(new NoNeighbour(isNext));
-            _events.Publish(new NoteShown(isNext ? "No next file" : "No previous file", NoteStyle.Info));
-            return Result.Success();
         }
 
         lock (_gate)

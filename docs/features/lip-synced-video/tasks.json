@@ -1029,7 +1029,7 @@
         "tests/DualPlayer.Core.Tests/Playback/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T45-show-one-combined-note-when-every-neighbour-is-skipped.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-21: R14"
     },
     {

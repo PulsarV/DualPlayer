@@ -124,7 +124,7 @@ Each error and authorization AC (AC-02, AC-03, AC-03b, AC-06b, AC-09b, AC-11, AC
 - Offsets save fails (folder read-only) → expected: failure logged, offset kept for this run, playback unaffected.
 - Offset at +490 ms pressed twice "later" → expected: first press reaches +500, second shows the limit note.
 - Seek of −60 s at 30 s into the film → expected: lands at the start; +60 s with 20 s left → ended as at the natural end.
-- Next file in a folder where every other file is skipped → expected: one note with the last skipped name and the count, current film unchanged (AC-08 + AC-09).
+- Next file in a folder where every other file is skipped → expected: one note `No next file (skipped N; last: <file> - <reason>)` (resp. `No previous file (…)`), current film unchanged (AC-08 + AC-09).
 - Folder containing only the current file, or the current file deleted from the folder between presses → expected: "no next file" note, film unchanged.
 - Folder with thousands of files → expected: next/previous answers within the start budget (load scenario below).
 - Offset key for output 3 when only two outputs were started → expected: ignored, no note, nothing saved.

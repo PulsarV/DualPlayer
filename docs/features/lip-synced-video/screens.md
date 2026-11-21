@@ -105,7 +105,7 @@ A single line of text over the picture, drawn by mpv's OSD (ADR-0003), styled fr
 | hidden (default) | No note in the last 2 s | — | — |
 | offset changed | Offset key within range, any window state (AC-10, flow 8) | NEW: `OsdNote` — `Output 1: +40 ms` | wireframe below |
 | offset limit | Offset key past ±500 ms (AC-11, flow 8) | `OsdNote` — `Output 1: offset cannot go beyond ±500 ms` | wireframe below |
-| no next / previous | No playable file in that direction (AC-08, flow 3) | `OsdNote` — `No next file` / `No previous file` | wireframe below |
+| no next / previous | No playable file in that direction (AC-08, flow 3); when every neighbour in that direction was skipped, one combined note (AC-08 + AC-09) | `OsdNote` — `No next file` / `No previous file`; combined: `No next file (skipped 2; last: Episode-05.mkv - picture cannot be played on this PC)` | wireframe below |
 | skipped file | Neighbour lacks a track, unreadable, no picture, not hardware-decodable (AC-09, AC-09b); several on one press → the last note counts them | `OsdNote` — `Skipped Episode-03.mkv: no track 2 for output 2` / `Skipped 3 files; last: Episode-05.mkv - picture cannot be played on this PC` | wireframe below |
 | output lost | A device lost while others remain (AC-15, flow 2) | `OsdNote` — `Output 2 lost` | wireframe below |
 | last output lost | The only remaining device lost (AC-15b, flow 6) | `OsdNote` — `Output 1 lost - last output, film ended` | wireframe below |
