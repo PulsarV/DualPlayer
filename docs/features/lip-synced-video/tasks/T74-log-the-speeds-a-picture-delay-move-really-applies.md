@@ -6,8 +6,8 @@ deps: ["T73"]
 blocks: []
 acs: ["AC-14", "AC-17"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.Core/Playback/AudioEngine.cs", "src/DualPlayer.Core/Sync/DriftController.cs", "src/DualPlayer.Core/Sync/OutputSync.cs", "src/DualPlayer.Core/Sync/PictureSync.cs", "src/DualPlayer.Media/Video/MpvVideoRenderer.cs", "src/DualPlayer.App/Startup/SessionEventLogWriter.cs", "docs/features/lip-synced-video/contracts/cli.md", "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md", "tests/"]
-status: "todo"
-step: "—"
+status: "blocked"
+step: "GATE — gate_green false, applied-speed API not done"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
