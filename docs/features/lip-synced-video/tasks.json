@@ -417,7 +417,12 @@
         "T17"
       ],
       "acs": [
-        "AC-01"
+        "AC-01",
+        "AC-04",
+        "AC-05",
+        "AC-07",
+        "AC-10",
+        "AC-11"
       ],
       "dod": "`PlaybackViewModelTests` pass: every key in the spec §5 table maps to exactly one session command (outputs beyond the started count ignored); notes are passed to the renderer with the token style; the window opens fullscreen on the requested screen with no title bar or cursor, and `VideoHost` hands its native handle to the renderer (checked by `[HardwareFact]` or manual run); `PlaybackWindow.axaml` has `x:DataType` and no inline sizes or colours",
       "files_hint": [
@@ -722,8 +727,13 @@
         "T30"
       ],
       "acs": [
+        "AC-06b",
         "AC-08",
-        "AC-15"
+        "AC-09",
+        "AC-09b",
+        "AC-11",
+        "AC-15",
+        "AC-15b"
       ],
       "dod": "The renderer takes the note style (size, colours, box, margin) from the OsdNote* tokens via an options object the App fills from Tokens.axaml; size is converted to mpv's 720-line OSD scale so it renders at the token px at 1080p.; osd-align-x=center, osd-align-y=bottom set; the box is opaque per the token (contrast ≥ 7:1).; Test asserts the mpv option values derived from given tokens (not just that; gate clean",
       "files_hint": [
@@ -1563,7 +1573,7 @@
         "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md"
       ],
       "file": "docs/features/lip-synced-video/tasks/T69-bring-test-plan-contracts-sad-roadmap-tasks-and-the-t23-guide-in-step-with-the-code.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-21c: S11, S15, S16, S18, S19"
     }
   ]

@@ -4,7 +4,7 @@ title: "Draw OSD notes from the OsdNote tokens at the bottom centre"
 layer: "ui"
 deps: ["T30"]
 blocks: []
-acs: ["AC-08", "AC-15"]
+acs: ["AC-06b", "AC-08", "AC-09", "AC-09b", "AC-11", "AC-15", "AC-15b"]
 files_hint: ["src/DualPlayer.Media/Video/MpvVideoRenderer.cs", "src/DualPlayer.App/Themes/Tokens.axaml", "src/DualPlayer.App/Startup/", "tests/DualPlayer.Media.Tests/Video/", "tests/DualPlayer.App.Tests/"]
 owner: "Volodymyr Kravchuk"
 estimate: "S"

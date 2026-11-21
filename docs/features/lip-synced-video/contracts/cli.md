@@ -75,6 +75,7 @@ run-summary  file <file name>  reason end|exit|file-change|last-output-lost|pict
 skipped  <file name>  reason track-missing  output 2  track 2
 skipped  <file name>  reason not-hardware-decodable  codec hevc  profile main-10
 next     <file name>
+previous <file name>
 ```
 
 `reason` is one of `track-missing`, `unreadable`, `no-picture`, `not-hardware-decodable`, `access-denied`. When no playable file is found in that direction: `no-next-file` (or `no-previous-file`), and the current film is unchanged. A new file prints the §1.1 output and start lines again.

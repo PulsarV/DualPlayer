@@ -6,8 +6,8 @@ deps: ["T60", "T61", "T62", "T63", "T64", "T65", "T66", "T67", "T68"]
 blocks: []
 acs: []
 files_hint: ["docs/features/lip-synced-video/test-plan.md", "docs/features/lip-synced-video/contracts/cli.md", "docs/features/lip-synced-video/screens.md", "docs/features/lip-synced-video/sad.md", "docs/roadmap.md", "docs/features/lip-synced-video/tasks.json", "docs/features/lip-synced-video/tasks/T13-playback-session-start-end-exit.md", "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md"]
-status: "todo"
-step: "SELECT"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -37,9 +37,9 @@ No AC of its own: none (gate reliability / docs).
 
 ## Definition of Done
 
-- [ ] test-plan rows cite the right classes and ACs, the AC-04 row links the Space E2E test, and the rows for T60–T68's tests are added.
-- [ ] cli.md §2.2 and SCR-01 list `previous <file name>`.
-- [ ] sad.md §2/§5/§11 and the roadmap wave-3 zone line record the step-4 edits to `Core/Diagnostics/`, `Core/Outputs/` and `AudioEngine`, with a note for steps 5 and 6; T13's DoD box is resolved with a pointer to that record.
-- [ ] T20's and T31's `acs` list the ACs they build.
-- [ ] The T23 guide uses `PictureDelayChanged` and judges L1 on `LipSyncedAgain`/`NotLipSynced` with command `start`.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] test-plan rows cite the right classes and ACs, the AC-04 row links the Space E2E test, and the rows for T60–T68's tests are added.
+- [x] cli.md §2.2 and SCR-01 list `previous <file name>`.
+- [x] sad.md §2/§5/§11 and the roadmap wave-3 zone line record the step-4 edits to `Core/Diagnostics/`, `Core/Outputs/` and `AudioEngine`, with a note for steps 5 and 6; T13's DoD box is resolved with a pointer to that record.
+- [x] T20's and T31's `acs` list the ACs they build.
+- [x] The T23 guide uses `PictureDelayChanged` and judges L1 on `LipSyncedAgain`/`NotLipSynced` with command `start`.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
