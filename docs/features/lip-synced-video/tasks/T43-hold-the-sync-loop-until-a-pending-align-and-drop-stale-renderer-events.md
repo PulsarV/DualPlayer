@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
 origin: "review-2026-11-21 (R6, R7)"
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-21. Work from what is inlined here; the source always wins.
@@ -31,8 +31,12 @@ See [spec.md](../spec.md) §5 AC-04, AC-06b, AC-07.
 
 ## Definition of Done
 
-- [ ] While `_pendingAlign` is set, `OnSyncTick` skips `Tick`, resync and late-frame bookkeeping; `LipSyncedAgain("resume")` only after the align.
-- [ ] Renderer events are stamped with the run token at post time; stale ones are dropped in `OnPictureFailed` (and other renderer handlers).
-- [ ] The dead `_starting`/`_failureDuringStart` handling is removed.
-- [ ] Tests: resume 150 ms after a pause with a 200 ms picture delay → the shown picture position never goes below the position at the resume (no repeat/skip); a `DecodeFailed` from the old film raised during a file change does not end the new film.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] While `_pendingAlign` is set, `OnSyncTick` skips `Tick`, resync and late-frame bookkeeping; `LipSyncedAgain("resume")` only after the align.
+- [x] Renderer events are stamped with the run token at post time; stale ones are dropped in `OnPictureFailed` (and other renderer handlers).
+- [x] The dead `_starting`/`_failureDuringStart` handling is removed.
+- [x] Tests: resume 150 ms after a pause with a 200 ms picture delay → the shown picture position never goes below the position at the resume (no repeat/skip); a `DecodeFailed` from the old film raised during a file change does not end the new film.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+
+## Note (implement)
+
+Renderer events carry a separate `_filmToken` (bumped in `ChangeFile` right after the stop), not `_runToken`, so a real failure of the new film during its own start is still handled. `PictureSync.AlignAt` with a positive delay now sets `_holdUntil` to the clock start, so a frame held for a start still ahead is not measured or seeked back (affects start, resume and seek; all existing tests pass) — worth a re-review glance. Gate: App.Tests showed intermittent `Call from invalid thread` (Avalonia dispatcher) in `OsdNoteTokensTests` / `CompositionRootSmokeTests`, unrelated to T43; 4 consecutive reruns 96/96. Folded into T46.

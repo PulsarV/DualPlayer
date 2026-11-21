@@ -127,6 +127,8 @@ public sealed class PictureSync : IDisposable
             }
             else if (delay > TimeSpan.Zero)
             {
+                // A frame held for a start still ahead (a resume of the frozen picture) is not an error to correct before then.
+                _holdUntil = clockTimestamp;
                 _renderer.PlayAt(clockPosition - delay, clockTimestamp);
             }
             else

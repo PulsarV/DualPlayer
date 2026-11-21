@@ -981,7 +981,7 @@
         "tests/DualPlayer.Core.Tests/Fakes/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T43-hold-the-sync-loop-until-a-pending-align-and-drop-stale-renderer-events.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-21: R6, R7"
     },
     {

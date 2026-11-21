@@ -216,4 +216,29 @@ public sealed class PlaybackSessionFileChangeTests : IDisposable
         skipped.Profile.ShouldBe("Main 10");
         rig.Events.OfType<FileChanged>().ShouldHaveSingleItem().ToPrevious.ShouldBeTrue();
     }
+
+    [Fact]
+    public void A_picture_failure_of_the_old_film_raised_during_the_folder_scan_does_not_end_the_new_film_AC_06b_AC_07()
+    {
+        using var rig = PlayingRig("Episode 1.mkv", "Episode 2.mkv");
+        var raised = 0;
+        rig.Decoder.BeforeList = () =>
+        {
+            if (raised++ == 0)
+            {
+                // The old film is still playing during the scan: its renderer fails now, the session is busy with the command.
+                rig.Renderer.InjectDecodeFailure(new Error("video.decode_failed", "The old picture cannot be decoded."));
+            }
+        };
+
+        rig.Engine.Call(() => rig.Session.NextFile()).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(50);
+        rig.Flush();
+
+        raised.ShouldBeGreaterThan(0, "the failure was never raised during the scan");
+        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem();
+        rig.Events.OfType<PictureFailed>().ShouldBeEmpty("a failure of the old film ended the new film");
+        rig.Session.State.ShouldBe(PlaybackState.Playing);
+        rig.Renderer.IsPlaying.ShouldBeTrue();
+    }
 }

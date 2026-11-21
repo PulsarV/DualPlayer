@@ -37,6 +37,10 @@ public sealed partial class PlaybackSession : IDisposable
 
     // Which run the engine's events belong to: a summary or loss from a run the session already left is ignored.
     private long _runToken;
+
+    // Which film the renderer's events belong to: one raised by the film a file change left is dropped. It changes when
+    // the old film is left, not when the engine run starts, so a failure of the new film during its start still counts.
+    private long _filmToken;
     private PictureSync? _pictureSync;
     private PlaybackState _state = PlaybackState.Idle;
     private bool _offsetsLoaded;
@@ -79,12 +83,10 @@ public sealed partial class PlaybackSession : IDisposable
     private const string PictureFailedNote = "The picture could not be decoded further - film ended";
     private ITimer? _healthTimer;
     private bool _pictureFailed;
-    private bool _starting;
     private bool _exited;
 
     // Whether the renderer holds the film _request names: a file change that failed to load leaves it holding none.
     private bool _filmLoaded;
-    private string? _failureDuringStart;
     private int _healthTicks;
     private long _damagedSeen;
     private TimeSpan _previousTickClock;
@@ -117,8 +119,8 @@ public sealed partial class PlaybackSession : IDisposable
         _logger = logger;
         _loop = new EngineControlLoop(static () => { }, LogLoopFault, "PlaybackSession");
         _engine.Events.Subscribe(new EngineObserver(this));
-        _renderer.DecodeFailed += error => _loop.Post(() => OnPictureFailed(error.Message));
-        _renderer.HardwareDecodingInactive += () => _loop.Post(() => OnPictureFailed("Hardware decoding is not active"));
+        _renderer.DecodeFailed += error => PostRendererEvent(() => OnPictureFailed(error.Message));
+        _renderer.HardwareDecodingInactive += () => PostRendererEvent(() => OnPictureFailed("Hardware decoding is not active"));
         _offsets.Saved += savedAt => _loop.Post(() => OnOffsetsSaved(savedAt));
     }
 
@@ -249,31 +251,21 @@ public sealed partial class PlaybackSession : IDisposable
             LogLatency(output.DeviceId, output.Type, output.ReportedMs, output.Source, output.TypeDefaultMs, output.OffsetMs, output.AssumedMs, output.LagMs, estimate.PictureDelayMs);
         }
 
-        return Starting(() => StartRun(request with { Outputs = playing }, estimate, commandAt, lost, returning: false));
+        return StartRun(request with { Outputs = playing }, estimate, commandAt, lost, returning: false);
     }
 
-    // A picture failure the renderer raises while the run is still starting is only recorded; the start ends the run.
-    private Result Starting(Func<Result> start)
+    // A renderer event is stamped with the film it was raised for when it is posted: by the time the session thread
+    // gets to it the film may have changed, and it is then about a film that is gone.
+    private void PostRendererEvent(Action handler)
     {
-        lock (_gate)
+        var token = Interlocked.Read(ref _filmToken);
+        _loop.Post(() =>
         {
-            _starting = true;
-            _pictureFailed = false;
-            _failureDuringStart = null;
-        }
-
-        try
-        {
-            return start();
-        }
-        finally
-        {
-            lock (_gate)
+            if (token == Interlocked.Read(ref _filmToken))
             {
-                _starting = false;
-                _failureDuringStart = null;
+                handler();
             }
-        }
+        });
     }
 
     /// <summary>
@@ -310,7 +302,7 @@ public sealed partial class PlaybackSession : IDisposable
             CancelFreeze();
         }
 
-        var started = Starting(() => StartRun(request with { Outputs = playing }, playingEstimate, _time.GetTimestamp(), lost, returning: true, target));
+        var started = StartRun(request with { Outputs = playing }, playingEstimate, _time.GetTimestamp(), lost, returning: true, target);
         if (!started.IsSuccess)
         {
             return started;
@@ -330,6 +322,11 @@ public sealed partial class PlaybackSession : IDisposable
 
     private Result StartRun(StartRequest request, LatencyEstimate estimate, long commandAt, HashSet<string> lost, bool returning, TimeSpan startPosition = default)
     {
+        lock (_gate)
+        {
+            _pictureFailed = false;
+        }
+
         if (!returning)
         {
             lock (_gate)
@@ -390,7 +387,6 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         PictureSync? previous;
-        string? failure;
         lock (_gate)
         {
             previous = _pictureSync;
@@ -417,18 +413,9 @@ public sealed partial class PlaybackSession : IDisposable
             {
                 _state = PlaybackState.Playing;
             }
-
-            _starting = false;
-            failure = _failureDuringStart;
-            _failureDuringStart = null;
         }
 
         previous?.Dispose();
-        if (failure is not null)
-        {
-            EndOnPictureFailure(failure);
-        }
-
         return Result.Success();
     }
 
@@ -509,6 +496,7 @@ public sealed partial class PlaybackSession : IDisposable
         // The old run's summary was raised during the stop with the old token: moving on makes it stale, so it cannot
         // overwrite the end position even when the new file never starts a run.
         Interlocked.Increment(ref _runToken);
+        Interlocked.Increment(ref _filmToken);
         lock (_gate)
         {
             _state = PlaybackState.Idle;
@@ -1060,7 +1048,9 @@ public sealed partial class PlaybackSession : IDisposable
         PictureSync? sync;
         lock (_gate)
         {
-            sync = _state == PlaybackState.Playing ? _pictureSync : null;
+            // Resumed before the picture reached the freeze point: it runs ahead of the clock until the align, so there is
+            // nothing to steer or measure yet.
+            sync = _state == PlaybackState.Playing && _pendingAlign is null ? _pictureSync : null;
         }
 
         if (sync?.Tick() is not { } timing)
@@ -1167,13 +1157,6 @@ public sealed partial class PlaybackSession : IDisposable
         {
             if (_pictureFailed || _state == PlaybackState.Ended)
             {
-                return;
-            }
-
-            if (_starting)
-            {
-                _pictureFailed = true;
-                _failureDuringStart = reason;
                 return;
             }
         }
