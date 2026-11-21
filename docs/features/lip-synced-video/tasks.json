@@ -1672,7 +1672,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T73-log-per-output-records-with-the-start-command-output-number-and-contract-device-type-names.md",
       "origin": "review-2026-11-21d: R6, R8",
-      "status": "todo"
+      "status": "blocked"
     },
     {
       "id": "T74",

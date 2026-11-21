@@ -6,8 +6,8 @@ deps: ["T70", "T72"]
 blocks: []
 acs: ["AC-13", "AC-14", "AC-15", "AC-17"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.App/Startup/SessionEventLogWriter.cs", "tests/DualPlayer.Core.Tests/Playback/", "tests/DualPlayer.App.Tests/Startup/"]
-status: "todo"
-step: "—"
+status: "blocked"
+step: "RED — test defect: ShouldNotContain is case-insensitive"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
