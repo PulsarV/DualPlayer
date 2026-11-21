@@ -142,10 +142,17 @@ internal sealed class TerminalPrinter : IDisposable
         for (var i = 0; i < estimate.Outputs.Count; i++)
         {
             var o = estimate.Outputs[i];
+            var number = o.OutputNumber > 0 ? o.OutputNumber : i + 1;
+            if (o.IsLost)
+            {
+                Print(string.Create(CultureInfo.InvariantCulture, $"output {number}  lost"));
+                continue;
+            }
+
             var label = i < _context.Outputs.Count ? _context.Outputs[i] : new OutputLabel(i + 1, o.DeviceId);
             Print(string.Create(
                 CultureInfo.InvariantCulture,
-                $"output {i + 1}  track {label.Track}  device {label.DeviceName}  type {RunSummaryLines.TypeName(o.Type)}  reported {o.ReportedMs}  default {o.TypeDefaultMs}  offset {Offset(o.OffsetMs)}  assumed {o.AssumedMs}  lag {o.LagMs}"));
+                $"output {number}  track {label.Track}  device {label.DeviceName}  type {RunSummaryLines.TypeName(o.Type)}  reported {o.ReportedMs}  default {o.TypeDefaultMs}  offset {Offset(o.OffsetMs)}  assumed {o.AssumedMs}  lag {o.LagMs}"));
         }
 
         var screen = _context.Screen;

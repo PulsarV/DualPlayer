@@ -30,6 +30,28 @@ public sealed class SessionEventLogWriterTests
     }
 
     [Fact]
+    public void A_lost_output_is_logged_as_lost_with_its_number_and_no_stale_assumed_or_lag()
+    {
+        var h = new Harness();
+        var lost = Out with { OutputNumber = 1, IsLost = true };
+        var playing = Out with { DeviceId = "dev-2", OutputNumber = 2, AssumedMs = 0, LagMs = 0 };
+        h.Feed.Publish(new LatencyEstimated(new LatencyEstimate([lost, playing], 0)));
+        h.Feed.Publish(new PictureDelayChanged(TimeSpan.Zero, PictureDelayCause.FileChange, 200, 0, [lost, playing]));
+
+        foreach (var index in new[] { 0, 3 })
+        {
+            var e = h.Log.Entries[index];
+            e["Output"].ShouldBe(1);
+            e["Lost"].ShouldBe(true);
+            e.ContainsKey("AssumedMs").ShouldBeFalse();
+            e.ContainsKey("LagMs").ShouldBeFalse();
+        }
+
+        h.Log.Entries[1]["Output"].ShouldBe(2);
+        h.Log.Entries[1]["LagMs"].ShouldBe(0);
+    }
+
+    [Fact]
     public void Picture_delay_change_is_logged_with_clock_cause_and_old_and_new_delay()
     {
         var h = new Harness();

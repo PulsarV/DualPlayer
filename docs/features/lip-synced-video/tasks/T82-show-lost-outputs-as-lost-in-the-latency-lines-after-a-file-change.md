@@ -6,8 +6,8 @@ deps: ["T80"]
 blocks: []
 acs: ["AC-07", "AC-12", "AC-13", "AC-17"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.Core/Sync/", "src/DualPlayer.App/Startup/TerminalPrinter.cs", "src/DualPlayer.App/Startup/SessionEventLogWriter.cs", "docs/features/lip-synced-video/contracts/cli.md", "tests/DualPlayer.Core.Tests/Playback/", "tests/DualPlayer.App.Tests/Startup/"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -31,8 +31,8 @@ See [spec.md](../spec.md) §5 AC-07, AC-12, AC-13, AC-17.
 
 ## Definition of Done
 
-- [ ] `OutputLatency` carries whether the output is lost; lost outputs keep their output number.
-- [ ] The terminal prints a lost output as `output N  lost` (no assumed/lag) and the per-output log records mark it lost; the playing outputs' lines satisfy cli.md §1.1 against the printed picture delay.
-- [ ] Test: lose the slowest output, Page Down, assert the printed lines and the `LatencyEstimated` / `PictureDelayChanged(file-change)` records; it fails on the old code.
-- [ ] cli.md §1.1 and §3 state the rule for lost outputs.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `OutputLatency` carries whether the output is lost; lost outputs keep their output number.
+- [x] The terminal prints a lost output as `output N  lost` (no assumed/lag) and the per-output log records mark it lost; the playing outputs' lines satisfy cli.md §1.1 against the printed picture delay.
+- [x] Test: lose the slowest output, Page Down, assert the printed lines and the `LatencyEstimated` / `PictureDelayChanged(file-change)` records; it fails on the old code.
+- [x] cli.md §1.1 and §3 state the rule for lost outputs.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

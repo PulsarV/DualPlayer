@@ -15,6 +15,9 @@ public sealed record OutputLatency(
 
     /// <summary>The output's number from the start command (its 1-based index in the full estimate), kept when others are lost.</summary>
     public int OutputNumber { get; init; }
+
+    /// <summary>The output was lost: it keeps its number, but its assumed latency and lag no longer describe anything playing.</summary>
+    public bool IsLost { get; init; }
 }
 
 public sealed record LatencyEstimate(IReadOnlyList<OutputLatency> Outputs, int PictureDelayMs);

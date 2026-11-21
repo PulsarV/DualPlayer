@@ -130,6 +130,18 @@ internal sealed class SessionEventLogWriter : IDisposable
         for (var i = 0; i < outputs.Count; i++)
         {
             var o = outputs[i];
+            if (o.IsLost)
+            {
+                _log.LogInformation(
+                    "{Event} Output={Output} DeviceId={DeviceId} Lost={Lost} PictureDelayMs={PictureDelayMs}",
+                    name,
+                    o.OutputNumber > 0 ? o.OutputNumber : i + 1,
+                    o.DeviceId,
+                    true,
+                    pictureDelayMs);
+                continue;
+            }
+
             _log.LogInformation(
                 "{Event} Output={Output} DeviceId={DeviceId} Type={Type} ReportedMs={ReportedMs} Source={Source} DefaultMs={DefaultMs} OffsetMs={OffsetMs} AssumedMs={AssumedMs} LagMs={LagMs} PictureDelayMs={PictureDelayMs}",
                 name,

@@ -1899,7 +1899,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T82-show-lost-outputs-as-lost-in-the-latency-lines-after-a-file-change.md",
       "origin": "review-2026-11-22: P4",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T83",

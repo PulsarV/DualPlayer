@@ -36,6 +36,22 @@ public sealed partial class TerminalPrinterTests
     }
 
     [Fact]
+    public void A_lost_output_is_printed_as_lost_without_assumed_or_lag_and_the_playing_outputs_agree_with_the_picture_delay()
+    {
+        var h = new Harness();
+        h.Session.Publish(new LatencyEstimated(new LatencyEstimate(
+            [OutB with { OutputNumber = 1, IsLost = true }, OutA with { OutputNumber = 2, AssumedMs = 0, LagMs = 0 }],
+            0)));
+
+        var lines = h.Finish().Out;
+
+        lines.ShouldContain("output 1 lost");
+        lines.ShouldNotContain(l => l.StartsWith("output 1 ", StringComparison.Ordinal) && l.Contains("assumed", StringComparison.Ordinal));
+        lines.ShouldContain(l => l.StartsWith("output 2 track 2 ", StringComparison.Ordinal) && l.EndsWith("assumed 0 lag 0", StringComparison.Ordinal));
+        lines.ShouldContain("picture delay 0 screen 1 1920x1080");
+    }
+
+    [Fact]
     public void The_started_line_carries_its_timings_when_the_audio_started_event_arrives_first()
     {
         var h = new Harness();

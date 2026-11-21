@@ -266,9 +266,12 @@ public sealed partial class PlaybackSession : IDisposable
         var estimated = LatencyModel.Estimate(outputs);
         var estimate = new LatencyEstimate([.. estimated.Outputs.Select(o => o with { Source = sources[o.DeviceId] })], estimated.PictureDelayMs);
 
-        // Lost outputs keep their place (and so their output number and keys) with the estimate they had when lost.
+        // Lost outputs keep their place (and so their output number and keys), marked lost: the picture delay is worked from the
+        // playing outputs only, so the assumed latency and lag they had when lost would not agree with it.
         var full = new LatencyEstimate(
-            [.. resolved.Select((a, i) => (estimate.Outputs.FirstOrDefault(o => o.DeviceId == a.Device.Id) ?? previous!.Outputs.First(o => o.DeviceId == a.Device.Id)) with { OutputNumber = i + 1 })],
+            [.. resolved.Select((a, i) => estimate.Outputs.FirstOrDefault(o => o.DeviceId == a.Device.Id) is { } playingOutput
+                ? playingOutput with { OutputNumber = i + 1 }
+                : previous!.Outputs.First(o => o.DeviceId == a.Device.Id) with { OutputNumber = i + 1, IsLost = true })],
             estimate.PictureDelayMs);
         _request = request with { Outputs = resolved };
         lock (_gate)

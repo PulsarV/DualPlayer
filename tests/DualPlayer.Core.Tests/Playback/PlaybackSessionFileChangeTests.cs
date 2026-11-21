@@ -1,5 +1,6 @@
 using DualPlayer.Core.Outputs;
 using DualPlayer.Core.Playback;
+using DualPlayer.Core.Sync;
 using DualPlayer.Core.Tests.Fakes;
 
 namespace DualPlayer.Core.Tests.Playback;
@@ -218,6 +219,37 @@ public sealed class PlaybackSessionFileChangeTests : IDisposable
         rig.Events.OfType<OffsetChanged>().ShouldHaveSingleItem().DeviceId.ShouldBe("dev-2");
         rig.Engine.Call(() => rig.Session.ChangeOffset(1, 10)).IsSuccess.ShouldBeTrue();
         rig.Events.OfType<OffsetChanged>().Count().ShouldBe(1, "output 1 is lost: its offset key does nothing");
+    }
+
+    [Fact]
+    public void Next_file_after_the_slowest_output_was_lost_marks_it_lost_in_the_latency_records_and_works_the_delay_from_the_playing_outputs_AC_07_AC_12_AC_13_AC_17()
+    {
+        var rig = new SessionRig(TwoDevices, null, 600);
+        using var _ = rig;
+        File("Episode 2.mkv");
+        // Output 1 is the slow Bluetooth headset (assumed 200), output 2 a wired one (assumed 0).
+        rig.Probe.Set("dev-1", new DeviceLatencyReport(TimeSpan.Zero, "test", ConnectionKind.Bluetooth, FormFactor.Headphones));
+        rig.Probe.Set("dev-2", new DeviceLatencyReport(TimeSpan.Zero, "test", ConnectionKind.Usb, FormFactor.Speaker));
+        rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = File("Episode 1.mkv") })).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(300);
+        rig.Events.OfType<LatencyEstimated>().Single().Estimate.PictureDelayMs.ShouldBe(200);
+        rig.Engine.Devices[0].SimulateLoss();
+        Backend(rig).RemoveDevice("dev-1");
+        rig.Engine.Barrier();
+
+        rig.Engine.Call(() => rig.Session.NextFile()).IsSuccess.ShouldBeTrue();
+
+        var estimate = rig.Events.OfType<LatencyEstimated>().Last().Estimate;
+        estimate.PictureDelayMs.ShouldBe(0, "the picture delay is the largest assumed latency among the outputs still playing");
+        estimate.Outputs.Select(o => o.OutputNumber).ShouldBe([1, 2]);
+        estimate.Outputs[0].IsLost.ShouldBeTrue("output 1 was lost: its old assumed 200 / lag 0 must not be shown next to picture delay 0");
+        estimate.Outputs[1].IsLost.ShouldBeFalse();
+        estimate.Outputs[1].LagMs.ShouldBe(estimate.PictureDelayMs - estimate.Outputs[1].AssumedMs);
+
+        var change = rig.Events.OfType<PictureDelayChanged>().Last(e => e.Cause == PictureDelayCause.FileChange);
+        change.NewPictureDelayMs.ShouldBe(0);
+        change.Outputs.Select(o => o.IsLost).ShouldBe([true, false]);
+        change.Outputs.Select(o => o.OutputNumber).ShouldBe([1, 2]);
     }
 
     [Fact]
