@@ -1203,7 +1203,7 @@
         "tests/DualPlayer.Core.Tests/Playback/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T52-stretch-a-picture-delay-move-so-the-corrected-output-arrives-by-its-end.md",
-      "status": "todo",
+      "status": "blocked",
       "origin": "review-2026-11-21b: Q11"
     },
     {
