@@ -7,6 +7,11 @@ public enum LagChangeMode
     AtOnce,
 }
 
+/// <summary>An output's position error (how far its heard content is from the master clock, in ms, positive = ahead) and when it was measured.</summary>
+/// <param name="ErrorMs">The error of the latest 100 ms reading.</param>
+/// <param name="Timestamp">When that reading was taken (the engine's <c>TimeProvider</c> timeline); <see cref="long.MinValue"/> when the output has none yet.</param>
+public readonly record struct OutputPositionError(double ErrorMs, long Timestamp);
+
 /// <summary>Lag targets per output for the running engine (ADR-0005); implemented by <see cref="AudioEngine"/>.</summary>
 public interface IOutputLagControl
 {
@@ -35,6 +40,13 @@ public interface IOutputLagControl
     /// before that and when the output is not in the run. Heard = this plus the output's assumed latency.
     /// </summary>
     long? FirstAudioTimestamp(string deviceId);
+
+    /// <summary>
+    /// Gets the latest position error reading of every output still connected, keyed by device id; empty when no run is
+    /// active. Unlike a sync record's one-second average this is the current error, so recovery after a command shows
+    /// within a reading or two.
+    /// </summary>
+    IReadOnlyDictionary<string, OutputPositionError> PositionErrors();
 
     /// <summary>Gets a value indicating whether any output's lag is still moving toward its target.</summary>
     bool IsRamping { get; }

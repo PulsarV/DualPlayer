@@ -103,6 +103,23 @@ public sealed class SessionEventLogWriterTests
     }
 
     [Fact]
+    public void Lip_synced_again_is_logged_with_each_outputs_position_error()
+    {
+        const string Other = "{0.0.0.00000000}.{0002}";
+        var h = new Harness();
+        h.Feed.Publish(new LipSyncedAgain(TimeSpan.FromSeconds(75), "seek", 420.5, -3.25)
+        {
+            OutputErrorsMs = new Dictionary<string, double> { [Dev] = 2.5, [Other] = -4.25 },
+        });
+
+        var e = h.Log.Entries.ShouldHaveSingleItem();
+        e["{OriginalFormat}"]!.ToString()!.ShouldStartWith("LipSyncedAgain");
+        var errors = e["OutputErrorsMs"].ShouldBeOfType<string>();
+        errors.ShouldContain($"{Dev}=2.5");
+        errors.ShouldContain($"{Other}=-4.25");
+    }
+
+    [Fact]
     public void A_skipped_damaged_stretch_is_logged_with_where_how_long_and_how_many_frames()
     {
         var h = new Harness();

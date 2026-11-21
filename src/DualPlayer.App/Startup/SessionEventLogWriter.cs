@@ -76,11 +76,12 @@ internal sealed class SessionEventLogWriter : IDisposable
                 break;
             case LipSyncedAgain a:
                 _log.LogInformation(
-                    "LipSyncedAgain Clock={Clock} Command={Command} AfterCommandMs={AfterCommandMs} ErrorMs={ErrorMs}",
+                    "LipSyncedAgain Clock={Clock} Command={Command} AfterCommandMs={AfterCommandMs} ErrorMs={ErrorMs} OutputErrorsMs={OutputErrorsMs}",
                     Clock(a.Clock),
                     a.Command,
                     a.AfterCommandMs,
-                    a.ErrorMs);
+                    a.ErrorMs,
+                    string.Join(' ', a.OutputErrorsMs.Select(p => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{p.Key}={p.Value}"))));
                 break;
             case DamagedStretchSkipped d:
                 _log.LogInformation(

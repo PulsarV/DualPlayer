@@ -59,6 +59,9 @@ public sealed partial class PlaybackSession : IDisposable
     // "Lip-synced again": the picture presented within this of due (sad.md §10, quality scenario 2b).
     private const double LipSyncedMs = 20;
 
+    // ... and every output still playing within this of the clock (spec §6 recovery row, AC-17).
+    private const double OutputLipSyncedMs = 10;
+
     // A frame presented more than this after its due time is late (spec §6 picture presentation).
     private const double LateMs = 20;
     private long _lateFrames;
@@ -1060,6 +1063,8 @@ public sealed partial class PlaybackSession : IDisposable
 
         bool report;
         (string Command, long At)? resynced = null;
+        (string Command, long At)? due = null;
+        Dictionary<string, double>? outputErrors = null;
         (long CommandAt, IReadOnlyList<OutputLatency> Outputs)? starting;
         lock (_gate)
         {
@@ -1078,8 +1083,7 @@ public sealed partial class PlaybackSession : IDisposable
 
             if (_resync is { } owed && Math.Abs(timing.ErrorMs) <= LipSyncedMs && timing.Timestamp >= owed.At)
             {
-                resynced = owed;
-                _resync = null;
+                due = owed;
             }
 
             starting = _startTimings;
@@ -1090,15 +1094,57 @@ public sealed partial class PlaybackSession : IDisposable
             Publish(timing);
         }
 
+        // Asked of the engine only while a record is owed and the picture already qualifies.
+        if (due is { } candidate && OutputsLipSynced(candidate.At) is { } errors)
+        {
+            lock (_gate)
+            {
+                if (_resync == candidate)
+                {
+                    resynced = candidate;
+                    outputErrors = errors;
+                    _resync = null;
+                }
+            }
+        }
+
         if (resynced is var (command, at))
         {
-            _events.Publish(new LipSyncedAgain(timing.Clock, command, _time.GetElapsedTime(at, timing.Timestamp).TotalMilliseconds, timing.ErrorMs));
+            _events.Publish(new LipSyncedAgain(timing.Clock, command, _time.GetElapsedTime(at, timing.Timestamp).TotalMilliseconds, timing.ErrorMs)
+            {
+                OutputErrorsMs = outputErrors ?? [],
+            });
         }
 
         if (starting is var (commandAt, outputs) && timing.Presented > TimeSpan.Zero)
         {
             PublishStartTimings(commandAt, outputs, timing);
         }
+    }
+
+    // Every output still playing has taken, since the command, a position reading within 10 ms: those errors, else null.
+    // The readings are the engine's latest 100 ms ones (not the per-second record's average, which lags a seek's
+    // transient); a reading from before the command says nothing about the outputs now.
+    private Dictionary<string, double>? OutputsLipSynced(long commandAt)
+    {
+        var lost = new HashSet<string>(_lost, StringComparer.Ordinal);
+        var errors = new Dictionary<string, double>(StringComparer.Ordinal);
+        foreach (var (deviceId, reading) in _lags.PositionErrors())
+        {
+            if (lost.Contains(deviceId))
+            {
+                continue;
+            }
+
+            if (reading.Timestamp < commandAt || Math.Abs(reading.ErrorMs) > OutputLipSyncedMs)
+            {
+                return null;
+            }
+
+            errors[deviceId] = reading.ErrorMs;
+        }
+
+        return errors;
     }
 
     // The picture moving from frame 0 dates its first present; each output is heard its assumed latency after its

@@ -15,6 +15,7 @@ internal sealed class SessionRig : IDisposable
     private readonly List<string> _runFiles = [];
     private readonly List<TimeSpan> _seekTargets = [];
     private readonly Lock _gate = new();
+    private readonly Dictionary<string, double> _forcedErrors = new(StringComparer.Ordinal);
     private readonly OffsetBook _offsets;
 
     public SessionRig(
@@ -35,7 +36,7 @@ internal sealed class SessionRig : IDisposable
         _offsets = new OffsetBook(store, Engine.Time, NullLogger<OffsetBook>.Instance);
         Session = new PlaybackSession(
             new FollowingEngine(this),
-            wrapLags is null ? Engine.Engine : wrapLags(Engine.Engine),
+            new ForcedErrorLags(this, wrapLags is null ? Engine.Engine : wrapLags(Engine.Engine)),
             Renderer,
             Decoder,
             Pictures,
@@ -52,6 +53,25 @@ internal sealed class SessionRig : IDisposable
     public void Flush() => Session.Flush();
 
     public EngineRig Engine { get; }
+
+    /// <summary>
+    /// Makes the engine's current position error reading of <paramref name="deviceId"/> report <paramref name="driftMs"/> from now on
+    /// (null = the engine's own measurement again): an output that is slow to re-align, which the fake devices cannot show on their own.
+    /// </summary>
+    public void ForceOutputError(string deviceId, double? driftMs)
+    {
+        lock (_gate)
+        {
+            if (driftMs is { } ms)
+            {
+                _forcedErrors[deviceId] = ms;
+            }
+            else
+            {
+                _forcedErrors.Remove(deviceId);
+            }
+        }
+    }
 
     /// <summary>The files the session started an engine run for, in order (what the audio of each run was opened from).</summary>
     public IReadOnlyList<string> EngineRunFiles
@@ -174,6 +194,34 @@ internal sealed class SessionRig : IDisposable
         }
 
         public void Stop(RunEndReason reason) => Rig.Engine.Stop(reason);
+    }
+
+    /// <summary>The lag control, with each output's position error replaced by the one <see cref="ForceOutputError"/> set.</summary>
+    private sealed class ForcedErrorLags(SessionRig owner, IOutputLagControl inner) : IOutputLagControl
+    {
+        public long? FrameZeroTimestamp => inner.FrameZeroTimestamp;
+
+        public long? ClockStartTimestamp => inner.ClockStartTimestamp;
+
+        public bool IsRamping => inner.IsRamping;
+
+        public Result SetLagTargets(IReadOnlyDictionary<string, TimeSpan> targets, LagChangeMode mode) => inner.SetLagTargets(targets, mode);
+
+        public TimeSpan? CurrentLag(string deviceId) => inner.CurrentLag(deviceId);
+
+        public long? FirstAudioTimestamp(string deviceId) => inner.FirstAudioTimestamp(deviceId);
+
+        public IReadOnlyDictionary<string, OutputPositionError> PositionErrors()
+        {
+            var readings = inner.PositionErrors();
+            lock (owner._gate)
+            {
+                return readings.ToDictionary(
+                    r => r.Key,
+                    r => owner._forcedErrors.TryGetValue(r.Key, out var ms) ? r.Value with { ErrorMs = ms } : r.Value,
+                    StringComparer.Ordinal);
+            }
+        }
     }
 
     private sealed class Collector(SessionRig rig) : IObserver<SessionEvent>

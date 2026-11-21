@@ -191,6 +191,8 @@ public sealed class PlaybackSessionLogRecordsTests : IDisposable
 
         public bool IsRamping => inner.IsRamping;
 
+        public IReadOnlyDictionary<string, OutputPositionError> PositionErrors() => inner.PositionErrors();
+
         public Result SetLagTargets(IReadOnlyDictionary<string, TimeSpan> targets, LagChangeMode mode) => inner.SetLagTargets(targets, mode);
 
         public TimeSpan? CurrentLag(string deviceId) => inner.CurrentLag(deviceId);

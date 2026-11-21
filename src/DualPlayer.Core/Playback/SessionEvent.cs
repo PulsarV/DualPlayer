@@ -85,9 +85,13 @@ public sealed record OffsetsWarning(Error Warning) : SessionEvent;
 
 /// <summary>
 /// After a command, the first picture presented within 20 ms of due (sad.md flow 4, "lip-synced again"):
-/// <paramref name="Command"/> names it (<c>start</c>, <c>seek</c>, <c>resume</c>, <c>file-change</c>).
+/// <paramref name="Command"/> names it (<c>start</c>, <c>seek</c>, <c>resume</c>, <c>file-change</c>); every output still
+/// playing is then within 10 ms too (AC-17), each <see cref="OutputErrorsMs"/> entry its position error in ms keyed by device id.
 /// </summary>
-public sealed record LipSyncedAgain(TimeSpan Clock, string Command, double AfterCommandMs, double ErrorMs) : SessionEvent;
+public sealed record LipSyncedAgain(TimeSpan Clock, string Command, double AfterCommandMs, double ErrorMs) : SessionEvent
+{
+    public IReadOnlyDictionary<string, double> OutputErrorsMs { get; init; } = new Dictionary<string, double>();
+}
 
 /// <summary>A stretch of damaged frames was skipped: where it began and how long it lasted (AC-06b).</summary>
 public sealed record DamagedStretchSkipped(TimeSpan Position, TimeSpan Length, long Frames) : SessionEvent;

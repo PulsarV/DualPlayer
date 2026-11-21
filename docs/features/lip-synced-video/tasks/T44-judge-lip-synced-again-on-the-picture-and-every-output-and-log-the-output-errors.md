@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
 origin: "review-2026-11-21 (R10 (F12 remainder))"
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-21. Work from what is inlined here; the source always wins.
@@ -29,7 +29,11 @@ See [spec.md](../spec.md) §5 AC-17.
 
 ## Definition of Done
 
-- [ ] `LipSyncedAgain` is published only when the picture is within 20 ms and every live output's position error is within 10 ms (from the engine's sync records / lag control).
-- [ ] The record carries each output's position error; `SessionEventLogWriter` writes them per cli.md §3.
-- [ ] Tests: an output that recovers slowly delays `LipSyncedAgain` until it is within 10 ms; the log record contains the per-output errors.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `LipSyncedAgain` is published only when the picture is within 20 ms and every live output's position error is within 10 ms (from the engine's sync records / lag control).
+- [x] The record carries each output's position error; `SessionEventLogWriter` writes them per cli.md §3.
+- [x] Tests: an output that recovers slowly delays `LipSyncedAgain` until it is within 10 ms; the log record contains the per-output errors.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+
+## Note (implement)
+
+The output error comes from the engine's latest 100 ms reading (`IOutputLagControl.PositionErrors()`, set in `SampleOutput`), not from `SyncRecord.DriftMs`: that is the 1 s interval average, which after a seek still holds the pre-alignment transient (+23 ms seen in the fake) and cannot confirm recovery within 1 s. The session queries it only while a `LipSyncedAgain` is owed and the picture is already within 20 ms; readings taken before the command never count; lost outputs are skipped. Test seam: `SessionRig.ForceOutputError` overrides that reading through a lag-control wrapper.

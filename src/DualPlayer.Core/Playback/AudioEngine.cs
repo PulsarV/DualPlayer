@@ -84,6 +84,12 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
 
     public long? ClockStartTimestamp => _loop.Execute(() => _run is { Released: true } run ? run.ClockStartTimestamp : (long?)null);
 
+    public IReadOnlyDictionary<string, OutputPositionError> PositionErrors() => _loop.Execute(() =>
+        (IReadOnlyDictionary<string, OutputPositionError>)(_run?.Outputs
+            .Where(o => !o.Lost)
+            .ToDictionary(o => o.DeviceId, o => new OutputPositionError(o.LatestErrorMs, o.LatestErrorAt), StringComparer.Ordinal)
+            ?? []));
+
     public bool IsRamping => _loop.Execute(() => _run is { } run && run.Outputs.Any(o => !o.Lost && o.Sync is { IsLagMoving: true }));
 
     public Result<TimeSpan> Pause() => _loop.Execute(PauseCore);
@@ -965,6 +971,12 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
             }
         }
 
+        if (measured)
+        {
+            output.LatestErrorMs = drift.TotalMilliseconds;
+            output.LatestErrorAt = now;
+        }
+
         output.Trace!.Add(new DriftReading(
             run.Clock!.PositionAt(now),
             measured,
@@ -1389,6 +1401,11 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
 
         /// <summary>The latest raw sync samples, logged around a drift excursion (set when the clock is created).</summary>
         public DriftTrace? Trace { get; set; }
+
+        /// <summary>The latest measured position error and when it was taken; <see cref="long.MinValue"/> until the first reading.</summary>
+        public double LatestErrorMs { get; set; }
+
+        public long LatestErrorAt { get; set; } = long.MinValue;
     }
 
     /// <summary>
