@@ -1452,7 +1452,7 @@
         "tests/DualPlayer.Core.Tests/Fakes/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T64-answer-a-page-down-or-page-up-within-one-time-budget-however-many-neighbours-are-slow.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-21c: S14"
     },
     {

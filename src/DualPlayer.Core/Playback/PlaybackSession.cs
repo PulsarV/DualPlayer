@@ -53,6 +53,10 @@ public sealed partial class PlaybackSession : IDisposable
     private bool _pictureFrozen;
     private bool _targetsPending;
     private static readonly TimeSpan PictureProbeLimit = TimeSpan.FromSeconds(2);
+
+    // One Page Down/Up press is answered within this, however many neighbours are slow (spec: 3 s key budget).
+    private static readonly TimeSpan NeighbourScanBudget = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan MinProbeTime = TimeSpan.FromMilliseconds(100);
     private readonly HashSet<string> _lost = new(StringComparer.Ordinal);
     private static readonly TimeSpan HealthInterval = TimeSpan.FromSeconds(1);
 
@@ -485,7 +489,13 @@ public sealed partial class PlaybackSession : IDisposable
         {
             foreach (var candidate in FolderNeighbours.Candidates(request.File, direction))
             {
-                var skip = CheckPlayable(candidate, request);
+                var remaining = NeighbourScanBudget - _time.GetElapsedTime(commandAt);
+                if (remaining < MinProbeTime)
+                {
+                    break;
+                }
+
+                var skip = CheckPlayable(candidate, request, remaining < PictureProbeLimit ? remaining : PictureProbeLimit);
                 if (skip is null)
                 {
                     target = candidate;
@@ -589,7 +599,7 @@ public sealed partial class PlaybackSession : IDisposable
         return Result.Success();
     }
 
-    private FileSkipped? CheckPlayable(string path, StartRequest request)
+    private FileSkipped? CheckPlayable(string path, StartRequest request, TimeSpan probeLimit)
     {
         var name = Path.GetFileName(path);
         var tracks = _decoder.ListTracks(path);
@@ -607,7 +617,7 @@ public sealed partial class PlaybackSession : IDisposable
             }
         }
 
-        var picture = _pictureProbe.Probe(path, PictureProbeLimit);
+        var picture = _pictureProbe.Probe(path, probeLimit);
         if (picture.IsSuccess)
         {
             return null;

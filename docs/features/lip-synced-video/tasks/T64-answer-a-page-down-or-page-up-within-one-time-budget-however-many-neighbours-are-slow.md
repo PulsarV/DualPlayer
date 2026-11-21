@@ -6,8 +6,8 @@ deps: ["T63"]
 blocks: []
 acs: ["AC-09b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/", "tests/DualPlayer.Core.Tests/Fakes/"]
-status: "todo"
-step: "SELECT"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -29,6 +29,6 @@ See [spec.md](../spec.md) §5 AC-09b.
 
 ## Definition of Done
 
-- [ ] Each Page Down/Up press has one deadline inside the 3 s budget; each candidate's probe is limited to the time left, and when the deadline passes the scan stops with the combined note ("No next file (skipped N; last: …)" per screens.md) and log entries.
-- [ ] Test with a fake probe that advances fake time: three slow neighbours → the press answers within the budget and names the skipped count.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Each Page Down/Up press has one deadline inside the 3 s budget; each candidate's probe is limited to the time left, and when the deadline passes the scan stops with the combined note ("No next file (skipped N; last: …)" per screens.md) and log entries.
+- [x] Test with a fake probe that advances fake time: three slow neighbours → the press answers within the budget and names the skipped count.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
