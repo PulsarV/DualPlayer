@@ -16,6 +16,7 @@ namespace DualPlayer.Media.Tests.Video;
 public sealed class ClickAndFlashVideoTests
 {
     private const double FrameSeconds = 1001.0 / 24000.0;
+    private const double ClickToFlashSeconds = 0.002; // sample-exact clicks: far inside the 45 ms budget (AC-16)
     private const int SampleRate = 48_000;
 
     // The graphs of the script, verbatim.
@@ -49,8 +50,8 @@ public sealed class ClickAndFlashVideoTests
         for (var i = 0; i < ExpectedSeconds.Length; i++)
         {
             flashes[i].ShouldBe(ExpectedSeconds[i], FrameSeconds, $"flash {i + 1}");
-            clicksOnTrack1[i].ShouldBe(flashes[i], FrameSeconds, $"click {i + 1} of track 1 against its flash");
-            clicksOnTrack2[i].ShouldBe(flashes[i], FrameSeconds, $"click {i + 1} of track 2 against its flash");
+            clicksOnTrack1[i].ShouldBe(flashes[i], ClickToFlashSeconds, $"click {i + 1} of track 1 against its flash");
+            clicksOnTrack2[i].ShouldBe(flashes[i], ClickToFlashSeconds, $"click {i + 1} of track 2 against its flash");
             clicksOnTrack2[i].ShouldBe(clicksOnTrack1[i], 0.001, $"click {i + 1}: the two tracks agree");
         }
     }

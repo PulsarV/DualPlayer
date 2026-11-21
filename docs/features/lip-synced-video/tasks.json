@@ -1279,7 +1279,7 @@
         "tests/DualPlayer.Media.Tests/Video/FfmpegPictureProbeTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T56-tighten-the-click-and-flash-tolerance-and-map-eperm-to-access-denied.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-21b: Q15, Q16"
     },
     {

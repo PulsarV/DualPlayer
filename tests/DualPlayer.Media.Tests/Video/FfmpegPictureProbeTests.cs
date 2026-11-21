@@ -14,6 +14,17 @@ public sealed class FfmpegPictureProbeTests
 
     private static FfmpegPictureProbe NewProbe() => new();
 
+    [Theory]
+    [InlineData(13)] // EACCES
+    [InlineData(1)] // EPERM
+    public void An_open_failure_of_eacces_or_eperm_is_reported_as_access_denied(int posixError)
+    {
+        var result = FfmpegPictureProbe.OpenFailure("/x/film.mkv", -posixError);
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Error!.Code.ShouldBe("playback.file_access_denied");
+    }
+
     [Fact]
     public void Probe_reports_no_picture_for_a_file_with_audio_only()
     {

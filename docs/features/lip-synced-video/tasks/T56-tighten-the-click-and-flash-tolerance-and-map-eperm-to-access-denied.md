@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-21b (Q15, Q16)"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-21b. Work from what is inlined here; the source always wins.
@@ -31,6 +31,6 @@ See [spec.md](../spec.md) §5 AC-03, AC-16.
 
 ## Definition of Done
 
-- [ ] The click-to-flash tolerance is about 2 ms (or one audio sample block), and the test still passes on the generated clip.
-- [ ] `AVERROR(EPERM)` maps to `playback.file_access_denied`; a unit test covers the mapping of both error codes.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The click-to-flash tolerance is about 2 ms (or one audio sample block), and the test still passes on the generated clip.
+- [x] `AVERROR(EPERM)` maps to `playback.file_access_denied`; a unit test covers the mapping of both error codes.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

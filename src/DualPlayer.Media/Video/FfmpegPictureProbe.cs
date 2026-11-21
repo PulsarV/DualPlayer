@@ -17,7 +17,8 @@ public sealed unsafe class FfmpegPictureProbe : IPictureProbe
     private const string Unreadable = "playback.file_unreadable";
     private const string NoPicture = "video.no_picture";
     private const string NotHardwareDecodable = "video.not_hardware_decodable";
-    private const int PosixAccessDenied = 13; // EACCES / EPERM (1) both mean the OS refused the read
+    private const int PosixPermissionDenied = 1; // EPERM
+    private const int PosixAccessDenied = 13; // EACCES; with EPERM both mean the OS refused the read
 
     public Result<PictureInfo> Probe(string path, TimeSpan timeLimit)
     {
@@ -148,8 +149,8 @@ public sealed unsafe class FfmpegPictureProbe : IPictureProbe
         }
     }
 
-    private static Result<PictureInfo> OpenFailure(string path, int rc) =>
-        rc == ffmpeg.AVERROR(PosixAccessDenied)
+    internal static Result<PictureInfo> OpenFailure(string path, int rc) =>
+        rc == ffmpeg.AVERROR(PosixAccessDenied) || rc == ffmpeg.AVERROR(PosixPermissionDenied)
             ? Result<PictureInfo>.Failure(AccessDenied, $"The operating system denied the player access to '{path}'.")
             : Result<PictureInfo>.Failure(Unreadable, $"'{path}' cannot be opened as media.");
 }
