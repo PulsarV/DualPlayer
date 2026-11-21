@@ -6,12 +6,12 @@ deps: ["T48"]
 blocks: []
 acs: ["AC-05", "AC-06b", "AC-15b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/", "tests/DualPlayer.Core.Tests/Fakes/", "docs/features/lip-synced-video/tasks/T40-keep-a-usable-ended-session-when-a-file-change-or-a-return-into-the-film-fails.md"]
+status: "blocked"
+step: "dropped — dep T48 blocked"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
 origin: "review-2026-11-21b (Q3, Q4)"
-status: "todo"
-step: ""
 ---
 
 <!-- Follow-up task from review-2026-11-21b. Work from what is inlined here; the source always wins.
