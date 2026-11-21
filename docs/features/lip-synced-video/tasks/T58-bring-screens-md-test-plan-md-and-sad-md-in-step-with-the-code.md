@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-21b (Q17)"
-status: "blocked"
-step: "COMMIT — dep T49 blocked"
+status: "todo"
+step: ""
 ---
 
 <!-- Follow-up task from review-2026-11-21b. Work from what is inlined here; the source always wins.

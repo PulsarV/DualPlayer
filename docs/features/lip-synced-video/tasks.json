@@ -519,7 +519,8 @@
         "T55",
         "T56",
         "T57",
-        "T58"
+        "T58",
+        "T59"
       ],
       "acs": [
         "AC-16",
@@ -1135,7 +1136,7 @@
         "docs/features/lip-synced-video/tasks/T40-keep-a-usable-ended-session-when-a-file-change-or-a-return-into-the-film-fails.md"
       ],
       "file": "docs/features/lip-synced-video/tasks/T49-let-a-return-into-the-film-retry-every-device-after-all-outputs-are-lost-and-reload-the-pi.md",
-      "status": "blocked",
+      "status": "todo",
       "origin": "review-2026-11-21b: Q3, Q4"
     },
     {
@@ -1161,7 +1162,7 @@
         "tests/DualPlayer.App.Tests/Startup/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T50-poll-output-errors-once-per-engine-reading-give-up-after-the-recovery-budget-with-a-not-li.md",
-      "status": "blocked",
+      "status": "todo",
       "origin": "review-2026-11-21b: Q5, Q6"
     },
     {
@@ -1181,7 +1182,7 @@
         "tests/DualPlayer.Core.Tests/Playback/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T51-record-a-seek-past-the-end-and-log-the-target-picture-delay-for-a-seek-or-resume-during-a.md",
-      "status": "blocked",
+      "status": "todo",
       "origin": "review-2026-11-21b: Q12"
     },
     {
@@ -1203,7 +1204,7 @@
         "tests/DualPlayer.Core.Tests/Playback/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T52-stretch-a-picture-delay-move-so-the-corrected-output-arrives-by-its-end.md",
-      "status": "blocked",
+      "status": "todo",
       "origin": "review-2026-11-21b: Q11"
     },
     {
@@ -1300,7 +1301,7 @@
         "tests/DualPlayer.App.Tests/E2E/PlayEndToEndTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T57-make-the-exit-and-pending-align-assertions-bite-and-test-space-through-the-real-toggle.md",
-      "status": "blocked",
+      "status": "todo",
       "origin": "review-2026-11-21b: Q8, Q10"
     },
     {
@@ -1321,9 +1322,25 @@
         "tests/DualPlayer.App.Tests/Startup/AppEntryTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T58-bring-screens-md-test-plan-md-and-sad-md-in-step-with-the-code.md",
-      "status": "blocked",
+      "status": "todo",
       "origin": "review-2026-11-21b: Q17",
       "step": "COMMIT — dep T49 blocked"
+    },
+    {
+      "id": "T59",
+      "title": "Make the timing-sensitive engine tests deterministic under parallel load",
+      "layer": "test",
+      "deps": [],
+      "acs": [],
+      "dod": "`AudioEngineRunTests.Audio_started_is_published_once_when_the_last_output_renders_its_first_audio_with_that_start_to_audio` no longer depends on the engine having left its pre-roll before a fixed number of `PumpRender` calls: it waits for an observable ready signal (or keeps rendering while waiting) and still asserts the start-to-audio bound it is meant to check.; `AudioEngineSyncRecordTests.An_injected_step_error_logs_the_one_step_re_alignment_and_the_raw_readings_of_every_output_around_it` no longer fails when the reading around the step is not yet measured (`Measured=False`) under load: it waits for measured readings, without weakening what it asserts.; Any other engine test that pumps a fixed number of steps and then waits without rendering is fixed the same way.; No production code is changed unless a real engine race is found (then it is fixed with a test).; `dotnet test tests/DualPlayer.Core.Tests` passes 10 runs in a row on the dev Mac (record the count in the task note).; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineSyncRecordTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T59-make-the-timing-sensitive-engine-tests-deterministic-under-parallel-load.md",
+      "status": "todo",
+      "origin": "implement run 2026-11-21: flaky engine tests seen at d4e23c3 and e0964e9"
     }
   ]
 }
