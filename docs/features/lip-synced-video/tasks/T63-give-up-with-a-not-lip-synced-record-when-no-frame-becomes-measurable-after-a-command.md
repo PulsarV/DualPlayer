@@ -6,8 +6,8 @@ deps: ["T62"]
 blocks: []
 acs: ["AC-17"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionRecoveryBudgetTests.cs", "docs/features/lip-synced-video/contracts/cli.md"]
-status: "todo"
-step: "SELECT"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -29,7 +29,7 @@ See [spec.md](../spec.md) §5 AC-17.
 
 ## Definition of Done
 
-- [ ] When a lip-synced-again record is owed and there is nothing to measure, the budget is checked against `_time.GetTimestamp()`; past it, `NotLipSynced` is published once with a null (or last-known) picture error and the output errors, and polling stops.
-- [ ] cli.md §3 says what the `NotLipSynced` record holds when no frame was measurable.
-- [ ] Test: a seek after which the fake renderer presents no new frame → exactly one `NotLipSynced` after the budget, none before.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] When a lip-synced-again record is owed and there is nothing to measure, the budget is checked against `_time.GetTimestamp()`; past it, `NotLipSynced` is published once with a null (or last-known) picture error and the output errors, and polling stops.
+- [x] cli.md §3 says what the `NotLipSynced` record holds when no frame was measurable.
+- [x] Test: a seek after which the fake renderer presents no new frame → exactly one `NotLipSynced` after the budget, none before.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

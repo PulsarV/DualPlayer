@@ -96,6 +96,41 @@ public sealed class PlaybackSessionRecoveryBudgetTests
         }
     }
 
+    [Fact]
+    public void A_seek_after_which_no_new_frame_is_presented_gives_up_once_after_the_budget_and_not_before_AC_17()
+    {
+        using var rig = PlayingRig();
+        rig.Renderer.Frozen = true; // a stalled decoder: nothing newer than the seek is ever presented
+        var seen = rig.Events.Count;
+
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(10))).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(80); // 0.8 s, inside the 1 s budget
+        rig.Events.Skip(seen).OfType<NotLipSynced>().ShouldBeEmpty("gave up before the budget elapsed");
+        rig.Engine.Render(120); // 2 s in total, past the budget
+        rig.Engine.Render(300); // and polling must not publish it again
+
+        var gaveUp = rig.Events.Skip(seen).OfType<NotLipSynced>().ShouldHaveSingleItem("no give-up record was published although no frame became measurable");
+        gaveUp.Command.ShouldBe("seek");
+        gaveUp.AfterCommandMs.ShouldBeInRange(1000, 1500);
+        rig.Events.OfType<LipSyncedAgain>().Any(e => e.Command == "seek").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void A_start_after_which_no_frame_is_presented_gives_up_once_after_the_start_budget_AC_17()
+    {
+        using var rig = new SessionRig(TwoDevices, null, 600);
+        rig.Renderer.AfterLoad = () => rig.Renderer.Frozen = true;
+        rig.Engine.Call(() => rig.Session.Start(rig.Request(2))).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(200); // 2 s: inside the 3 s start budget
+        rig.Events.OfType<NotLipSynced>().ShouldBeEmpty("gave up before the start budget elapsed");
+        rig.Engine.Render(300);
+        rig.Engine.Render(300);
+
+        var gaveUp = rig.Events.OfType<NotLipSynced>().ShouldHaveSingleItem("no give-up record was published although no frame became measurable");
+        gaveUp.Command.ShouldBe("start");
+        gaveUp.AfterCommandMs.ShouldBeInRange(3000, 3500);
+    }
+
     private sealed class QueryCount
     {
         private int _value;

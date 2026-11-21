@@ -101,7 +101,7 @@ Structured events in the rolling log (not printed unless stated above), from the
 | `PictureTiming` | clock, frame due time, presented time, error ms | every event above and once per second (AC-17) |
 | `FrameCounters` | late (> 20 ms after due), dropped, skipped-damaged, per minute | spec §6 picture presentation, AC-06b |
 | `StartTimings` | start command, first frame presented, first audio heard per output | spec §6 start budget |
-| `NotLipSynced` | clock, command (`start`, `seek`, `resume`, `file-change`), ms since the command, picture error ms, latest error per output; logged as a warning when recovery gave up after its budget (1 s; 3 s for a start or a file change) | spec §6 recovery, AC-17 |
+| `NotLipSynced` | clock, command (`start`, `seek`, `resume`, `file-change`), ms since the command, picture error ms (absent/null when no frame was measurable after the command), latest error per output; logged as a warning when recovery gave up after its budget (1 s; 3 s for a start or a file change) | spec §6 recovery, AC-17 |
 
 ## 4. Exit codes
 

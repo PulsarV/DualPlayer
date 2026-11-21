@@ -8,6 +8,8 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
     private readonly Lock _gate = new();
     private readonly List<(string Text, NoteStyle Style)> _notes = [];
 
+    private bool _frozen;
+    private PresentedPicture? _frozenSnapshot;
     private bool _hasFrame;
     private bool _playing;
     private double _speed = 1.0;
@@ -100,36 +102,55 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
         }
     }
 
+    /// <summary>When set, the screen stops changing: <see cref="Presented"/> keeps returning the snapshot taken when this was set (a stalled decoder presents no new frame).</summary>
+    public bool Frozen
+    {
+        get => _frozen;
+        set
+        {
+            lock (_gate)
+            {
+                _frozenSnapshot = value ? SnapshotNow() : null;
+                _frozen = value;
+            }
+        }
+    }
+
     public PresentedPicture? Presented
     {
         get
         {
             lock (_gate)
             {
-                if (!_hasFrame)
-                {
-                    return null;
-                }
-
-                var now = time.GetTimestamp();
-                if (StampsHeldFrameWithItsStart && _playing && now < _anchorTimestamp)
-                {
-                    return new PresentedPicture(_anchorPosition, _anchorTimestamp);
-                }
-
-                var at = now - (long)Math.Round(SnapshotAge.TotalSeconds * time.TimestampFrequency);
-                var position = PositionAt(at);
-                if (FrameDuration is { } frame && _playing && at > _anchorTimestamp)
-                {
-                    // The frame on screen began when the picture reached its position; it has been shown since then.
-                    var start = TimeSpan.FromTicks(position.Ticks / frame.Ticks * frame.Ticks);
-                    var shownFor = (position - start) / (_speed * (1 + RateError));
-                    return new PresentedPicture(start, at - (long)Math.Round(shownFor.TotalSeconds * time.TimestampFrequency));
-                }
-
-                return new PresentedPicture(position, at);
+                return _frozen ? _frozenSnapshot : SnapshotNow();
             }
         }
+    }
+
+    private PresentedPicture? SnapshotNow()
+    {
+        if (!_hasFrame)
+        {
+            return null;
+        }
+
+        var now = time.GetTimestamp();
+        if (StampsHeldFrameWithItsStart && _playing && now < _anchorTimestamp)
+        {
+            return new PresentedPicture(_anchorPosition, _anchorTimestamp);
+        }
+
+        var at = now - (long)Math.Round(SnapshotAge.TotalSeconds * time.TimestampFrequency);
+        var position = PositionAt(at);
+        if (FrameDuration is { } frame && _playing && at > _anchorTimestamp)
+        {
+            // The frame on screen began when the picture reached its position; it has been shown since then.
+            var start = TimeSpan.FromTicks(position.Ticks / frame.Ticks * frame.Ticks);
+            var shownFor = (position - start) / (_speed * (1 + RateError));
+            return new PresentedPicture(start, at - (long)Math.Round(shownFor.TotalSeconds * time.TimestampFrequency));
+        }
+
+        return new PresentedPicture(position, at);
     }
 
     public FrameCounters Counters

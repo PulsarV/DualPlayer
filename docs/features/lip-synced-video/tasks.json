@@ -1432,7 +1432,7 @@
         "docs/features/lip-synced-video/contracts/cli.md"
       ],
       "file": "docs/features/lip-synced-video/tasks/T63-give-up-with-a-not-lip-synced-record-when-no-frame-becomes-measurable-after-a-command.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-21c: S8"
     },
     {

@@ -1128,8 +1128,14 @@ public sealed partial class PlaybackSession : IDisposable
             sync = _state == PlaybackState.Playing && _pendingAlign is null ? _pictureSync : null;
         }
 
-        if (sync?.Tick() is not { } timing)
+        if (sync is null)
         {
+            return;
+        }
+
+        if (sync.Tick() is not { } timing)
+        {
+            GiveUpWithoutPicture();
             return;
         }
 
@@ -1181,26 +1187,7 @@ public sealed partial class PlaybackSession : IDisposable
         // Asked of the engine only while a record is owed and the picture already qualifies.
         if (gaveUp is { } failed)
         {
-            var latest = OutputErrors();
-            lock (_gate)
-            {
-                if (_resync != failed)
-                {
-                    gaveUp = null;
-                }
-                else
-                {
-                    _resync = null;
-                }
-            }
-
-            if (gaveUp is not null)
-            {
-                _events.Publish(new NotLipSynced(timing.Clock, failed.Command, _time.GetElapsedTime(failed.At, timing.Timestamp).TotalMilliseconds, timing.ErrorMs)
-                {
-                    OutputErrorsMs = latest.ToDictionary(e => e.Key, e => e.Value.ErrorMs, StringComparer.Ordinal),
-                });
-            }
+            PublishNotLipSynced(failed, timing.Clock, timing.Timestamp, timing.ErrorMs);
         }
         else if (due is { } candidate && OutputsLipSynced(candidate.At) is { } errors)
         {
@@ -1230,6 +1217,44 @@ public sealed partial class PlaybackSession : IDisposable
     }
 
     // Every output still playing has taken, since the command, a position reading within 10 ms: those errors, else null.
+    // No frame was measurable after the command: a record that is owed past its budget is still given up, with no picture error.
+    private void GiveUpWithoutPicture()
+    {
+        (string Command, long At)? owed;
+        TimeSpan clock;
+        var now = _time.GetTimestamp();
+        lock (_gate)
+        {
+            owed = _resync;
+            clock = _clock?.PositionAt(now) ?? TimeSpan.Zero;
+        }
+
+        if (owed is { } failed && now >= failed.At
+            && _time.GetElapsedTime(failed.At, now) > (failed.Command is "start" or "file-change" ? StartRecoveryBudget : RecoveryBudget))
+        {
+            PublishNotLipSynced(failed, clock, now, null);
+        }
+    }
+
+    private void PublishNotLipSynced((string Command, long At) failed, TimeSpan clock, long timestamp, double? errorMs)
+    {
+        var latest = OutputErrors();
+        lock (_gate)
+        {
+            if (_resync != failed)
+            {
+                return;
+            }
+
+            _resync = null;
+        }
+
+        _events.Publish(new NotLipSynced(clock, failed.Command, _time.GetElapsedTime(failed.At, timestamp).TotalMilliseconds, errorMs)
+        {
+            OutputErrorsMs = latest.ToDictionary(e => e.Key, e => e.Value.ErrorMs, StringComparer.Ordinal),
+        });
+    }
+
     // The readings are the engine's latest 100 ms ones (not the per-second record's average, which lags a seek's
     // transient); a reading from before the command says nothing about the outputs now.
     private Dictionary<string, OutputPositionError> OutputErrors()
