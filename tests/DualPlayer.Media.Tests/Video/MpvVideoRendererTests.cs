@@ -601,6 +601,24 @@ public sealed class MpvVideoRendererTests
         }
     }
 
+    [HardwareFact(HardwareOs.MacOS)]
+    public void A_reload_paused_at_the_last_position_after_a_failure_puts_a_frame_under_the_note_AC_06b()
+    {
+        RequireLibmpv();
+        var file = Media("long-gop-ramp.mkv");
+        using var renderer = NewRenderer();
+        renderer.Load(file, 0, startPaused: true).IsSuccess.ShouldBeTrue();
+        WaitFor(() => renderer.Presented, p => p is not null).ShouldNotBeNull();
+
+        // What the session does on DecodeFailed: load again paused, seek to the last presented position, then the note.
+        renderer.Load(file, 0, startPaused: true).IsSuccess.ShouldBeTrue();
+        renderer.Seek(TimeSpan.FromSeconds(1));
+        renderer.ShowNote("Picture failed", NoteStyle.Warning);
+        Thread.Sleep(300);
+
+        MpvProbe.Read(renderer, "video-params").ShouldNotBeNullOrEmpty("a frame must be under the note");
+    }
+
     // ---- notes and lifetime ----
 
     [Fact]

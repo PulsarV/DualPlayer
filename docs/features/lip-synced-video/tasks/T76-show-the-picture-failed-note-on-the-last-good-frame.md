@@ -6,8 +6,8 @@ deps: ["T75"]
 blocks: []
 acs: ["AC-06b", "AC-06"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.Core/Playback/IVideoRenderer.cs", "src/DualPlayer.Media/Video/MpvVideoRenderer.cs", "tests/DualPlayer.Core.Tests/", "tests/DualPlayer.Media.Tests/Video/", "tests/Shared/", "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -29,8 +29,8 @@ See [spec.md](../spec.md) §5 AC-06b, AC-06.
 
 ## Definition of Done
 
-- [ ] On `DecodeFailed` the session reloads the file paused at the last presented position, then shows the picture-failed note (fake renderer test: order Load(paused, position) → ShowNote; audio stays stopped per AC-06b).
-- [ ] If that reload itself fails, the note is still shown (on the empty window) and nothing throws.
+- [x] On `DecodeFailed` the session reloads the file paused at the last presented position, then shows the picture-failed note (fake renderer test: order Load(paused, position) → ShowNote; audio stays stopped per AC-06b).
+- [x] If that reload itself fails, the note is still shown (on the empty window) and nothing throws.
 - [ ] The hardware test uses a sample that really raises an error end-file (or drives `DecodeFailed` via a corrupted stream) and asserts a frame is shown (`video-params` non-null) after the note; it fails without the reload.
-- [ ] The T23 checklist item for a truncated file checks the last good frame.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The T23 checklist item for a truncated file checks the last good frame.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

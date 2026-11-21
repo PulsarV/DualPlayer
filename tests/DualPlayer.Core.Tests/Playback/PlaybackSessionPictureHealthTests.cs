@@ -41,6 +41,36 @@ public sealed class PlaybackSessionPictureHealthTests
     }
 
     [Fact]
+    public void A_decode_failure_reloads_the_file_paused_at_the_last_presented_position_before_the_note_AC_06b()
+    {
+        using var rig = PlayingRig();
+        rig.Engine.Render(500);
+        var shownBefore = rig.Renderer.Presented.ShouldNotBeNull().Position;
+        shownBefore.ShouldBeGreaterThan(TimeSpan.Zero);
+        var loadsBefore = rig.Renderer.LoadCount;
+
+        rig.Renderer.InjectDecodeFailure(new Error("video.decode_failed", "The picture cannot be decoded."));
+
+        ShouldHaveEndedOnPictureFailure(rig);
+        rig.Renderer.LoadCount.ShouldBe(loadsBefore + 1);
+        rig.Renderer.IsPlaying.ShouldBeFalse();
+        rig.Renderer.Presented.ShouldNotBeNull().Position.ShouldBe(shownBefore, TimeSpan.FromMilliseconds(250));
+        rig.Renderer.Notes.ShouldHaveSingleItem().Text.ShouldBe("The picture could not be decoded further - film ended");
+    }
+
+    [Fact]
+    public void A_failed_reload_after_a_decode_failure_still_shows_the_note_and_throws_nothing_AC_06b()
+    {
+        using var rig = PlayingRig();
+        rig.Renderer.LoadError = new Error("mpv.load_failed", "The file cannot be opened.");
+
+        rig.Renderer.InjectDecodeFailure(new Error("video.decode_failed", "The picture cannot be decoded."));
+
+        ShouldHaveEndedOnPictureFailure(rig);
+        rig.Renderer.Notes.ShouldContain(n => n.Text == "The picture could not be decoded further - film ended");
+    }
+
+    [Fact]
     public void Hardware_decoding_turning_inactive_ends_the_film_as_a_picture_failure_AC_06b()
     {
         using var rig = PlayingRig();

@@ -140,7 +140,7 @@ public sealed partial class PlaybackSession : IDisposable
         _logger = logger;
         _loop = new EngineControlLoop(static () => { }, LogLoopFault, "PlaybackSession");
         _engine.Events.Subscribe(new EngineObserver(this));
-        _renderer.DecodeFailed += error => PostRendererEvent(() => OnPictureFailed(error.Message));
+        _renderer.DecodeFailed += error => PostRendererEvent(() => OnPictureFailed(error.Message, reloadLastFrame: true));
         _renderer.HardwareDecodingInactive += () => PostRendererEvent(() => OnPictureFailed("Hardware decoding is not active"));
         _offsets.Saved += savedAt => _loop.Post(() => OnOffsetsSaved(savedAt));
     }
@@ -1442,7 +1442,7 @@ public sealed partial class PlaybackSession : IDisposable
         }
     }
 
-    private void OnPictureFailed(string reason)
+    private void OnPictureFailed(string reason, bool reloadLastFrame = false)
     {
         lock (_gate)
         {
@@ -1452,10 +1452,10 @@ public sealed partial class PlaybackSession : IDisposable
             }
         }
 
-        EndOnPictureFailure(reason);
+        EndOnPictureFailure(reason, reloadLastFrame);
     }
 
-    private void EndOnPictureFailure(string reason)
+    private void EndOnPictureFailure(string reason, bool reloadLastFrame)
     {
         TimeSpan position;
         lock (_gate)
@@ -1477,10 +1477,37 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         _renderer.Pause();
+        if (reloadLastFrame)
+        {
+            ReloadLastFrame(position);
+        }
+
         _events.Publish(new PictureFailed(position, reason));
         _events.Publish(new NoteShown(PictureFailedNote, NoteStyle.Warning));
         _renderer.ShowNote(PictureFailedNote, NoteStyle.Warning);
         _engine.Stop(RunEndReason.PictureFailed);
+    }
+
+    // An error end-file unloads the file in mpv, leaving an empty window: load it again paused at the last presented
+    // position so the note sits on the last good frame (SCR-02). A failed reload leaves the empty window; the note follows.
+    private void ReloadLastFrame(TimeSpan fallback)
+    {
+        string? file;
+        lock (_gate)
+        {
+            file = _request?.File;
+        }
+
+        if (file is null)
+        {
+            return;
+        }
+
+        var position = _renderer.Presented?.Position ?? fallback;
+        if (_renderer.Load(file, nint.Zero, startPaused: true).IsSuccess)
+        {
+            _renderer.Seek(position);
+        }
     }
 
     // Once a second: the picture timing, the damaged-stretch book-keeping and, every minute, the frame counters.
