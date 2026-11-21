@@ -1056,7 +1056,7 @@
         "docs/features/lip-synced-video/test-plan.md"
       ],
       "file": "docs/features/lip-synced-video/tasks/T46-close-the-remaining-test-gaps-real-skip-samples-the-click-and-flash-probe-app-entry-real-t.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-21: R11, R13, R15 (F19 remainder)"
     },
     {

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.Versioning;
 using DualPlayer.Core.Playback;
 using DualPlayer.Media.Video;
 using DualPlayer.Tests;
@@ -37,11 +38,24 @@ public sealed class FfmpegPictureProbeTests
     [Fact]
     public void Probe_reports_access_denied_when_the_operating_system_refuses_the_read()
     {
-        if (OperatingSystem.IsWindows() || Environment.UserName == "root")
+        // A real skip, not a silent pass: Windows has no POSIX file mode and root reads files whatever their mode.
+        if (OperatingSystem.IsWindows())
         {
-            return;
+            Assert.Skip("File modes are POSIX; Windows would need an ACL to refuse the read.");
         }
+        else if (Environment.UserName == "root")
+        {
+            Assert.Skip("root reads a file whatever its mode.");
+        }
+        else
+        {
+            ProbeAFileTheOsRefuses();
+        }
+    }
 
+    [UnsupportedOSPlatform("windows")]
+    private static void ProbeAFileTheOsRefuses()
+    {
         var dir = Directory.CreateTempSubdirectory("probe-denied");
         var copy = Path.Combine(dir.FullName, "locked.mkv");
         File.Copy(Media("long-gop-ramp.mkv"), copy);

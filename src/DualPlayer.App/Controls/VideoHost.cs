@@ -18,6 +18,8 @@ public sealed partial class VideoHost : NativeControlHost
     /// <summary>Raised once the native child exists and its handle can be given to the renderer.</summary>
     public event Action<nint>? NativeHandleCreated;
 
+    internal void RaiseNativeHandleCreated(nint handle) => NativeHandleCreated?.Invoke(handle);
+
     protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
     {
         var child = OperatingSystem.IsWindows()
@@ -25,7 +27,7 @@ public sealed partial class VideoHost : NativeControlHost
             : base.CreateNativeControlCore(parent);
 
         NativeHandle = child.Handle;
-        NativeHandleCreated?.Invoke(child.Handle);
+        RaiseNativeHandleCreated(child.Handle);
         return child;
     }
 

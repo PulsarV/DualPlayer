@@ -8,7 +8,11 @@ using NSubstitute;
 
 namespace DualPlayer.Core.Tests.Fakes;
 
-/// <summary>A <see cref="PlaybackSession"/> over the engine rig, a fake renderer, a fake latency probe and a stubbed offsets file.</summary>
+/// <summary>
+/// A <see cref="PlaybackSession"/> over the engine rig, a fake renderer, a fake latency probe and a stubbed offsets file.
+/// <c>neighbourDecoder</c> and <c>neighbourPictureProbe</c> replace the scripted fakes the session checks a next or previous
+/// file with (the Media tests pass the real FFmpeg ones); <see cref="Decoder"/> and <see cref="Pictures"/> are then unused.
+/// </summary>
 internal sealed class SessionRig : IDisposable
 {
     private readonly List<SessionEvent> _events = [];
@@ -23,7 +27,9 @@ internal sealed class SessionRig : IDisposable
         DeviceOffsets? remembered = null,
         double totalSeconds = 600,
         Result<DeviceOffsets>? stored = null,
-        Func<IOutputLagControl, IOutputLagControl>? wrapLags = null)
+        Func<IOutputLagControl, IOutputLagControl>? wrapLags = null,
+        IAudioDecoder? neighbourDecoder = null,
+        IPictureProbe? neighbourPictureProbe = null)
     {
         Engine = new EngineRig(devices, totalSeconds) { EndsAllowed = true };
         Renderer = new FakeVideoRenderer(Engine.Time);
@@ -38,8 +44,8 @@ internal sealed class SessionRig : IDisposable
             new FollowingEngine(this),
             new ForcedErrorLags(this, wrapLags is null ? Engine.Engine : wrapLags(Engine.Engine)),
             Renderer,
-            Decoder,
-            Pictures,
+            neighbourDecoder ?? Decoder,
+            neighbourPictureProbe ?? Pictures,
             Probe,
             _offsets,
             Engine.Backend,

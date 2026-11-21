@@ -275,4 +275,58 @@ public sealed class PlaybackSessionFileChangeTests : IDisposable
         rig.Session.State.ShouldBe(PlaybackState.Playing);
         rig.Renderer.IsPlaying.ShouldBeTrue();
     }
+
+    // What has reached the engine and the renderer so far: runs started, seeks, a stop (the old run's summary), loads, playing, disposed.
+    private sealed record Touched(int Runs, int Seeks, bool Stopped, int Loads, bool Playing, bool Disposed);
+
+    private static Touched Reached(SessionRig rig) =>
+        new(rig.EngineRunFiles.Count, rig.EngineSeekTargets.Count, rig.Engine.Summary is not null, rig.Renderer.LoadCount, rig.Renderer.IsPlaying, rig.Renderer.IsDisposed);
+
+    [Fact]
+    public void Nothing_reaches_the_engine_or_renderer_while_the_neighbours_are_checked_and_the_swap_comes_only_after_a_playable_one_is_found_AC_07()
+    {
+        using var rig = PlayingRig("Episode-01.mkv", "Episode-02.mkv", "Episode-03.mkv", "Episode-04.mkv");
+        rig.Decoder.Script("Episode-02.mkv", 1);
+        rig.Pictures.Fail(Path.Combine(_folder, "Episode-03.mkv"), "video.not_hardware_decodable", "no");
+        var before = Reached(rig);
+        before.ShouldBe(new Touched(1, 0, false, 1, true, false));
+        var checkedFiles = new List<(Touched Reached, int Changes)>();
+        rig.Decoder.BeforeList = () => checkedFiles.Add((Reached(rig), rig.Events.OfType<FileChanged>().Count()));
+
+        rig.Engine.Call(() => rig.Session.NextFile()).IsSuccess.ShouldBeTrue();
+
+        // The three neighbours were each looked at while the film was untouched and no file change had been announced.
+        checkedFiles.Count.ShouldBe(3);
+        checkedFiles.ShouldAllBe(c => c.Reached.Equals(before) && c.Changes == 0);
+        rig.Pictures.Probed.Select(Path.GetFileName).ShouldBe(["Episode-03.mkv", "Episode-04.mkv"]);
+
+        // Only then the old run stops and the new file starts.
+        Path.GetFileName(rig.Events.OfType<FileChanged>().ShouldHaveSingleItem().File).ShouldBe("Episode-04.mkv");
+        rig.Engine.Summary.ShouldNotBeNull();
+        rig.EngineRunFiles.Select(Path.GetFileName).ShouldBe(["Episode-01.mkv", "Episode-04.mkv"]);
+        rig.Renderer.LoadCount.ShouldBe(2);
+    }
+
+    [Fact]
+    public void A_paused_film_is_not_resumed_stopped_or_reloaded_while_no_playable_neighbour_is_found_AC_07()
+    {
+        using var rig = PlayingRig("Episode-01.mkv", "Episode-02.mkv", "Episode-03.mkv");
+        rig.Decoder.Script("Episode-02.mkv", 1);
+        rig.Pictures.Fail(Path.Combine(_folder, "Episode-03.mkv"), "playback.file_unreadable", "no");
+        rig.Engine.Call(() => rig.Session.Pause()).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(100); // the picture freezes within the picture delay after the key
+        var before = Reached(rig);
+        before.Playing.ShouldBeFalse();
+        var checkedFiles = new List<Touched>();
+        rig.Decoder.BeforeList = () => checkedFiles.Add(Reached(rig));
+
+        rig.Engine.Call(() => rig.Session.NextFile());
+
+        checkedFiles.Count.ShouldBe(2);
+        checkedFiles.ShouldAllBe(c => c.Equals(before));
+        Reached(rig).ShouldBe(before);
+        rig.Session.State.ShouldBe(PlaybackState.Paused);
+        rig.Events.OfType<NoNeighbour>().ShouldHaveSingleItem();
+        rig.Events.OfType<FileChanged>().ShouldBeEmpty();
+    }
 }

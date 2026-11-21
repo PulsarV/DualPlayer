@@ -77,12 +77,13 @@ public partial class App : Application
         }
     }
 
-    private static void Play(
+    internal static void Play(
         IClassicDesktopStyleApplicationLifetime desktop,
         IServiceProvider services,
         StartRequest request,
         ValidatedStart validated,
-        ILogger log)
+        ILogger log,
+        Func<PlaybackWindow>? createWindow = null)
     {
         var session = services.GetRequiredService<PlaybackSession>();
         var controls = services.GetRequiredService<PlaybackControls>();
@@ -101,7 +102,7 @@ public partial class App : Application
             new TerminalContext(labels, validated.Screen, validated.File, services.GetRequiredService<TimeProvider>()));
         var sessionLog = new SessionEventLogWriter(session.Events, log);
 
-        var window = new PlaybackWindow { DataContext = services.GetRequiredService<PlaybackViewModel>() };
+        var window = createWindow?.Invoke() ?? new PlaybackWindow { DataContext = services.GetRequiredService<PlaybackViewModel>() };
         window.PlaceOnScreen(validated.Screen.Number);
 
         var exitCode = 0;

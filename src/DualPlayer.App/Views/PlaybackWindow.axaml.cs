@@ -20,6 +20,9 @@ public partial class PlaybackWindow : Window
         remove => Video.NativeHandleCreated -= value;
     }
 
+    /// <summary>Raises <see cref="VideoHandleCreated"/> as the native host does; for tests on a platform without a native child.</summary>
+    internal void RaiseVideoHandleCreated(nint handle) => Video.RaiseNativeHandleCreated(handle);
+
     /// <summary>
     /// Places the window on the screen with the given number (from 1, in the order Avalonia lists them); when no number is
     /// given, or it is unknown, on the main screen. Call before <see cref="Window.Show()"/>.
