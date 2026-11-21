@@ -45,6 +45,25 @@ public sealed class PlaybackSessionLogRecordsTests : IDisposable
     }
 
     [Fact]
+    public void The_run_summary_of_a_run_a_file_change_stopped_carries_the_file_that_run_played_AC_07()
+    {
+        File("Episode 3.mkv");
+        using var rig = PlayingRig();
+        var first = rig.Request(2) with { File = Path.Combine(_folder, "Episode 1.mkv") };
+
+        rig.Engine.Call(() => rig.Session.NextFile()).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(300);
+        rig.Engine.Call(() => rig.Session.NextFile()).IsSuccess.ShouldBeTrue();
+        rig.Engine.Barrier();
+
+        var summaries = rig.Engine.Events.OfType<RunSummary>().Where(s => s.EndReason == RunEndReason.FileChange).ToList();
+        summaries.Count.ShouldBe(2);
+        summaries[0].File.ShouldBe(first.File, "the first stopped run played the file the film was started with, not the file it changed to");
+        Path.GetFileName(summaries[1].File).ShouldBe("Episode 2.mkv", "the second stopped run played the file the first change started");
+        rig.Events.OfType<FileChanged>().Select(c => Path.GetFileName(c.File)).ShouldBe(["Episode 2.mkv", "Episode 3.mkv"]);
+    }
+
+    [Fact]
     public void A_picture_failure_ends_the_run_with_the_picture_failed_reason_AC_06b()
     {
         using var rig = PlayingRig();

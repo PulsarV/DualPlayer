@@ -44,6 +44,37 @@ public sealed class PlaybackSessionNeighbourBudgetTests : IDisposable
         rig.Events.OfType<FileSkipped>().ShouldHaveSingleItem("only the probe that had its full limit is a skip");
         rig.Events.OfType<FileChanged>().ShouldBeEmpty();
         probe.Probed.Count.ShouldBeLessThanOrEqualTo(2, "the scan kept probing after the deadline");
+        var timedOut = rig.Events.OfType<NeighbourSearchTimedOut>().ShouldHaveSingleItem("one press, one budget-expiry event");
+        timedOut.Next.ShouldBeTrue();
+        timedOut.Checked.ShouldBe(1, "one file was judged (skipped) before the budget ran out");
+        note.ShouldBe("Next file not found within 3 s (checked 1)");
+    }
+
+    [Fact]
+    public void One_page_up_over_slow_neighbours_publishes_one_previous_direction_timeout_with_the_checked_count_AC_09b()
+    {
+        var probe = new SlowPictureProbe(TimeSpan.FromSeconds(2));
+        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourPictureProbe: probe);
+        probe.Time = rig.Engine.Time;
+        foreach (var name in new[] { "Episode-01.mkv", "Episode-02.mkv", "Episode-03.mkv", "Episode-04.mkv" })
+        {
+            File(name);
+        }
+
+        rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = File("Episode-05.mkv") })).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(300);
+
+        var key = rig.Engine.Time.GetUtcNow();
+        rig.Engine.Call(() => rig.Session.PreviousFile());
+        var elapsed = rig.Engine.Time.GetUtcNow() - key;
+
+        elapsed.ShouldBeLessThanOrEqualTo(Budget + TimeSpan.FromMilliseconds(250), "the key was answered later than the 3 s budget");
+        var timedOut = rig.Events.OfType<NeighbourSearchTimedOut>().ShouldHaveSingleItem("one press, one budget-expiry event");
+        timedOut.Next.ShouldBeFalse("Page Up searches backwards");
+        timedOut.Checked.ShouldBe(1);
+        rig.Events.OfType<NoteShown>().Select(e => e.Text).ShouldHaveSingleItem().ShouldBe("Previous file not found within 3 s (checked 1)");
+        rig.Events.OfType<NoNeighbour>().ShouldBeEmpty();
+        rig.Events.OfType<FileChanged>().ShouldBeEmpty();
     }
 
     [Fact]
@@ -94,5 +125,37 @@ public sealed class PlaybackSessionNeighbourBudgetTests : IDisposable
         elapsed.ShouldBeLessThanOrEqualTo(Budget + TimeSpan.FromMilliseconds(250), "the track listing ran past the budget");
         rig.Events.OfType<FileChanged>().ShouldBeEmpty();
         rig.Events.OfType<NoteShown>().Select(e => e.Text).ShouldContain(t => t.StartsWith("Next file not found within 3 s", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_track_listing_that_blocks_past_the_budget_is_cut_off_at_the_budget_and_reports_zero_checked_AC_09b()
+    {
+        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600);
+        File("Episode-02.mkv");
+        File("Episode-03.mkv");
+
+        rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = File("Episode-01.mkv") })).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(300);
+
+        rig.Decoder.BeforeList = () =>
+        {
+            var end = rig.Engine.Time.GetTimestamp() + (long)(10 * rig.Engine.Time.TimestampFrequency);
+            while (rig.Engine.Time.GetTimestamp() < end)
+            {
+                Thread.Sleep(1);
+            }
+        };
+
+        var key = rig.Engine.Time.GetUtcNow();
+        rig.Engine.Call(() => rig.Session.NextFile());
+        var elapsed = rig.Engine.Time.GetUtcNow() - key;
+
+        elapsed.ShouldBeLessThanOrEqualTo(Budget + TimeSpan.FromMilliseconds(250), "the press waited for a listing that never came back within the budget");
+        var timedOut = rig.Events.OfType<NeighbourSearchTimedOut>().ShouldHaveSingleItem();
+        timedOut.Next.ShouldBeTrue();
+        timedOut.Checked.ShouldBe(0, "no file was judged: the first listing never returned");
+        rig.Events.OfType<FileSkipped>().ShouldBeEmpty("a listing that ran out of time is not a skipped file");
+        rig.Events.OfType<NoNeighbour>().ShouldBeEmpty();
+        rig.Events.OfType<FileChanged>().ShouldBeEmpty();
     }
 }

@@ -6,8 +6,8 @@ deps: ["T82"]
 blocks: []
 acs: ["AC-08", "AC-09b", "AC-06", "AC-07"]
 files_hint: ["tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourBudgetTests.cs", "tests/DualPlayer.Core.Tests/Playback/", "tests/DualPlayer.App.Tests/Startup/TerminalPrinterTests.cs", "docs/features/lip-synced-video/test-plan.md", "docs/features/lip-synced-video/tasks/T75-keep-page-down-and-page-up-honest-when-the-time-budget-runs-out.md"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,9 +31,9 @@ See [spec.md](../spec.md) §5 AC-08, AC-09b, AC-06, AC-07.
 
 ## Definition of Done
 
-- [ ] The budget test asserts exactly one `NeighbourSearchTimedOut(Next: true, Checked: n)` with the right count; a Page Up case asserts `Next: false`.
-- [ ] `TerminalPrinterTests` covers `next-file-timeout  checked N` and `previous-file-timeout  checked N` (exact spacing per cli.md §2.2).
-- [ ] A Core test asserts `RunSummary.File` is the stopped run's file across a file change (fails if the engine took the file from anywhere else).
-- [ ] A case where `ListTracks` blocks > 3 s: the press returns within budget + 250 ms with `NeighbourSearchTimedOut(checked 0)` and no `FileSkipped`; it fails if the listing deadline is reverted.
-- [ ] test-plan.md lists the new tests.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The budget test asserts exactly one `NeighbourSearchTimedOut(Next: true, Checked: n)` with the right count; a Page Up case asserts `Next: false`.
+- [x] `TerminalPrinterTests` covers `next-file-timeout  checked N` and `previous-file-timeout  checked N` (exact spacing per cli.md §2.2).
+- [x] A Core test asserts `RunSummary.File` is the stopped run's file across a file change (fails if the engine took the file from anywhere else).
+- [x] A case where `ListTracks` blocks > 3 s: the press returns within budget + 250 ms with `NeighbourSearchTimedOut(checked 0)` and no `FileSkipped`; it fails if the listing deadline is reverted.
+- [x] test-plan.md lists the new tests.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

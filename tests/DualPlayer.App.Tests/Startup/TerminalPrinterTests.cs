@@ -170,6 +170,37 @@ public sealed partial class TerminalPrinterTests
     }
 
     [Fact]
+    public void A_budget_expiry_prints_the_direction_timeout_line_with_the_checked_count_AC_09b()
+    {
+        var h = new Harness();
+        h.Session.Publish(new NeighbourSearchTimedOut(Next: true, Checked: 3));
+        h.Session.Publish(new NeighbourSearchTimedOut(Next: false, Checked: 0));
+
+        var result = h.Finish();
+
+        result.Out.ShouldContain("next-file-timeout checked 3");
+        result.Out.ShouldContain("previous-file-timeout checked 0");
+        result.Out.ShouldNotContain(l => l.StartsWith("skipped", StringComparison.Ordinal));
+        result.Out.ShouldNotContain("no-next-file");
+    }
+
+    [Fact]
+    public void A_budget_expiry_line_keeps_the_two_spaces_before_checked_from_the_cli_contract_AC_09b()
+    {
+        var raw = new StringWriter();
+        var feed = new Feed<SessionEvent>();
+        using (new TerminalPrinter(new Feed<EngineEvent>(), feed, raw, new StringWriter(), new ListLogger(), Harness.Context()))
+        {
+            feed.Publish(new NeighbourSearchTimedOut(Next: true, Checked: 12));
+            feed.Publish(new NeighbourSearchTimedOut(Next: false, Checked: 1));
+        }
+
+        var lines = raw.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(l => l.TrimEnd('\r')).ToList();
+        lines.ShouldContain("next-file-timeout  checked 12");
+        lines.ShouldContain("previous-file-timeout  checked 1");
+    }
+
+    [Fact]
     public void The_summary_of_the_run_a_file_change_stopped_names_the_file_it_played_not_the_new_one()
     {
         var h = new Harness();
