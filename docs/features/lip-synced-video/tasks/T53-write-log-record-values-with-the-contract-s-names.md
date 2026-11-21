@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-21b (Q13)"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-21b. Work from what is inlined here; the source always wins.
@@ -29,6 +29,6 @@ See [spec.md](../spec.md) §5 AC-13, AC-17.
 
 ## Definition of Done
 
-- [ ] Every enum value written to the log uses the cli.md string (reuse the `TerminalPrinter`/`RunSummaryLines` mappers; no second mapping table).
-- [ ] Tests assert the contract strings for every `PictureDelayCause` and device type.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Every enum value written to the log uses the cli.md string (reuse the `TerminalPrinter`/`RunSummaryLines` mappers; no second mapping table).
+- [x] Tests assert the contract strings for every `PictureDelayCause` and device type.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

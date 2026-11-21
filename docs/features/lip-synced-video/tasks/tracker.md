@@ -60,7 +60,7 @@
 | T50 | [Poll output errors once per engine reading, give up after the recovery budget with a not-lip-synced record, and hold picture timing until a pending align](./T50-poll-output-errors-once-per-engine-reading-give-up-after-the-recovery-budget-with-a-not-li.md) | app | Volodymyr Kravchuk | M | T49 | todo |  |
 | T51 | [Record a seek past the end and log the target picture delay for a seek or resume during a move](./T51-record-a-seek-past-the-end-and-log-the-target-picture-delay-for-a-seek-or-resume-during-a.md) | app | Volodymyr Kravchuk | S | T50 | todo |  |
 | T52 | [Stretch a picture-delay move so the corrected output arrives by its end](./T52-stretch-a-picture-delay-move-so-the-corrected-output-arrives-by-its-end.md) | app | Volodymyr Kravchuk | M | T51 | todo |  |
-| T53 | [Write log record values with the contract's names](./T53-write-log-record-values-with-the-contract-s-names.md) | ports | Volodymyr Kravchuk | S | — | todo |  |
+| T53 | [Write log record values with the contract's names](./T53-write-log-record-values-with-the-contract-s-names.md) | ports | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T54 | [Flush a saved state file to disk before the rename](./T54-flush-a-saved-state-file-to-disk-before-the-rename.md) | infra | Volodymyr Kravchuk | S | — | todo |  |
 | T55 | [Check that every device opens before the window opens](./T55-check-that-every-device-opens-before-the-window-opens.md) | wiring | Volodymyr Kravchuk | M | — | todo |  |
 | T56 | [Tighten the click-and-flash tolerance and map EPERM to access denied](./T56-tighten-the-click-and-flash-tolerance-and-map-eperm-to-access-denied.md) | integration | Volodymyr Kravchuk | S | — | todo |  |

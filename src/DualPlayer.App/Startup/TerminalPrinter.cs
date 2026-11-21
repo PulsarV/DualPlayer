@@ -154,7 +154,7 @@ internal sealed class TerminalPrinter : IDisposable
             var label = i < _context.Outputs.Count ? _context.Outputs[i] : new OutputLabel(i + 1, o.DeviceId);
             Print(string.Create(
                 CultureInfo.InvariantCulture,
-                $"output {i + 1}  track {label.Track}  device {label.DeviceName}  type {TypeName(o.Type)}  reported {o.ReportedMs}  default {o.TypeDefaultMs}  offset {Offset(o.OffsetMs)}  assumed {o.AssumedMs}  lag {o.LagMs}"));
+                $"output {i + 1}  track {label.Track}  device {label.DeviceName}  type {RunSummaryLines.TypeName(o.Type)}  reported {o.ReportedMs}  default {o.TypeDefaultMs}  offset {Offset(o.OffsetMs)}  assumed {o.AssumedMs}  lag {o.LagMs}"));
         }
 
         var screen = _context.Screen;
@@ -237,15 +237,6 @@ internal sealed class TerminalPrinter : IDisposable
 
         Print(line);
     }
-
-    private static string TypeName(DeviceType type) => type switch
-    {
-        DeviceType.BluetoothHeadphones => "bluetooth-headphones",
-        DeviceType.BluetoothSpeaker => "bluetooth-speaker",
-        DeviceType.Wired => "wired",
-        DeviceType.Hdmi => "hdmi",
-        _ => "other",
-    };
 
     private static string Offset(int ms) => ms.ToString(ms == 0 ? "0" : "+0;-0", CultureInfo.InvariantCulture);
 

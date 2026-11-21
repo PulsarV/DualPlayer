@@ -1,5 +1,7 @@
 using System.Globalization;
 using DualPlayer.Core.Diagnostics;
+using DualPlayer.Core.Playback;
+using DualPlayer.Core.Sync;
 
 namespace DualPlayer.App.Startup;
 
@@ -41,6 +43,26 @@ internal static class RunSummaryLines
         RunEndReason.FileChange => "file-change",
         RunEndReason.PictureFailed => "picture-failed",
         _ => "exit",
+    };
+
+    public static string TypeName(DeviceType type) => type switch
+    {
+        DeviceType.BluetoothHeadphones => "bluetooth-headphones",
+        DeviceType.BluetoothSpeaker => "bluetooth-speaker",
+        DeviceType.Wired => "wired",
+        DeviceType.Hdmi => "hdmi",
+        _ => "other",
+    };
+
+    public static string CauseName(PictureDelayCause cause) => cause switch
+    {
+        PictureDelayCause.Offset => "offset",
+        PictureDelayCause.DeviceLost => "device-lost",
+        PictureDelayCause.Seek => "seek",
+        PictureDelayCause.Pause => "pause",
+        PictureDelayCause.Resume => "resume",
+        PictureDelayCause.FileChange => "file-change",
+        _ => "other",
     };
 
     private static string Row(string output, string device, string played, string drift, string mismatch, string corrections, string underruns, string lost) =>

@@ -37,7 +37,7 @@ internal sealed class SessionEventLogWriter : IDisposable
                 _log.LogInformation(
                     "PictureDelayChanged Clock={Clock} Cause={Cause} OldPictureDelayMs={OldPictureDelayMs} NewPictureDelayMs={NewPictureDelayMs}",
                     Clock(p.Clock),
-                    p.Cause.ToString(),
+                    RunSummaryLines.CauseName(p.Cause),
                     p.OldPictureDelayMs,
                     p.NewPictureDelayMs);
                 LogOutputs("PictureDelayChanged.Output", p.Outputs, p.NewPictureDelayMs);
@@ -105,7 +105,7 @@ internal sealed class SessionEventLogWriter : IDisposable
                 name,
                 i + 1,
                 o.DeviceId,
-                o.Type.ToString(),
+                RunSummaryLines.TypeName(o.Type),
                 o.ReportedMs,
                 o.Source,
                 o.TypeDefaultMs,

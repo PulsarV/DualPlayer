@@ -37,7 +37,7 @@ public sealed class SessionEventLogWriterTests
 
         var e = h.Log.Entries[0];
         e["Clock"].ShouldBe("00:01:15.000");
-        e["Cause"].ShouldBe("Offset");
+        e["Cause"].ShouldBe("offset");
         e["OldPictureDelayMs"].ShouldBe(200);
         e["NewPictureDelayMs"].ShouldBe(240);
         h.Log.Entries.Count.ShouldBe(2);
@@ -130,6 +130,35 @@ public sealed class SessionEventLogWriterTests
         e["Clock"].ShouldBe("00:01:15.000");
         e["LengthMs"].ShouldBe(400.0);
         e["Frames"].ShouldBe(12L);
+    }
+
+    [Theory]
+    [InlineData(PictureDelayCause.Offset, "offset")]
+    [InlineData(PictureDelayCause.DeviceLost, "device-lost")]
+    [InlineData(PictureDelayCause.Seek, "seek")]
+    [InlineData(PictureDelayCause.Pause, "pause")]
+    [InlineData(PictureDelayCause.Resume, "resume")]
+    [InlineData(PictureDelayCause.FileChange, "file-change")]
+    public void The_picture_delay_cause_is_logged_as_cli_md_names_it(PictureDelayCause cause, string logged)
+    {
+        var h = new Harness();
+        h.Feed.Publish(new PictureDelayChanged(TimeSpan.FromSeconds(1), cause, 200, 240, []));
+
+        h.Log.Entries[0]["Cause"].ShouldBe(logged);
+    }
+
+    [Theory]
+    [InlineData(DeviceType.BluetoothHeadphones, "bluetooth-headphones")]
+    [InlineData(DeviceType.BluetoothSpeaker, "bluetooth-speaker")]
+    [InlineData(DeviceType.Wired, "wired")]
+    [InlineData(DeviceType.Hdmi, "hdmi")]
+    [InlineData(DeviceType.Other, "other")]
+    public void The_device_type_is_logged_as_cli_md_names_it(DeviceType type, string logged)
+    {
+        var h = new Harness();
+        h.Feed.Publish(new LatencyEstimated(new LatencyEstimate([Out with { Type = type }], 200)));
+
+        h.Log.Entries.ShouldHaveSingleItem()["Type"].ShouldBe(logged);
     }
 
     [Theory]

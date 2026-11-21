@@ -1221,7 +1221,7 @@
         "tests/DualPlayer.App.Tests/Startup/SessionEventLogWriterTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T53-write-log-record-values-with-the-contract-s-names.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-21b: Q13"
     },
     {
