@@ -1997,7 +1997,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T86-make-the-mpv-speed-reply-update-the-set-speed-under-the-renderer-s-lock.md",
       "origin": "review-2026-11-22: P10",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T87",

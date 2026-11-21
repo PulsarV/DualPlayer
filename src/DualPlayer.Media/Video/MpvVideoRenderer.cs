@@ -1015,9 +1015,16 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
             _confirmedSpeed = speed;
             _timeline.SpeedApplied(speed, at);
         }
-        else if (id == Interlocked.Read(ref _speedIds))
+        else
         {
-            Volatile.Write(ref _setSpeed, _confirmedSpeed); // mpv refused the latest speed: it still runs at the last one it took
+            // Check and write under SetSpeed's lock, so a newer request landing in between is not overwritten.
+            lock (_gate)
+            {
+                if (id == _speedIds)
+                {
+                    Volatile.Write(ref _setSpeed, _confirmedSpeed); // mpv refused the latest speed: it still runs at the last one it took
+                }
+            }
         }
     }
 

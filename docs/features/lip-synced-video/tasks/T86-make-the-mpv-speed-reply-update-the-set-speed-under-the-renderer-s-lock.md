@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-14", "AC-17"]
 files_hint: ["src/DualPlayer.Media/Video/MpvVideoRenderer.cs", "tests/DualPlayer.Media.Tests/Video/"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,6 +31,6 @@ See [spec.md](../spec.md) §5 AC-14, AC-17.
 
 ## Definition of Done
 
-- [ ] The speed-reply error branch checks the request id and writes `_setSpeed` atomically with respect to `SetSpeed` (under `_gate` or CAS keyed on the id).
-- [ ] A unit-level test (via the existing reply-handling seam, or a deterministic interleaving hook) shows a newer `SetSpeed` is not overwritten by a stale refused reply; if no seam exists without native mpv, the reasoning is stated in the task and covered by a `[HardwareFact]`.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The speed-reply error branch checks the request id and writes `_setSpeed` atomically with respect to `SetSpeed` (under `_gate` or CAS keyed on the id).
+- [x] A unit-level test (via the existing reply-handling seam, or a deterministic interleaving hook) shows a newer `SetSpeed` is not overwritten by a stale refused reply; if no seam exists without native mpv, the reasoning is stated in the task and covered by a `[HardwareFact]`.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
