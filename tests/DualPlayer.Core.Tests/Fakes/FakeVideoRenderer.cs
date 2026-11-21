@@ -1,4 +1,5 @@
 using DualPlayer.Core.Playback;
+using Microsoft.Extensions.Time.Testing;
 
 namespace DualPlayer.Core.Tests.Fakes;
 
@@ -173,10 +174,42 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
     /// <summary>When set, runs right after a successful <see cref="Load"/>, as an asynchronous renderer event can.</summary>
     public Action? AfterLoad { get; set; }
 
-    public Result Load(string file, nint nativeWindowHandle, bool startPaused)
+    /// <summary>When set, receives a line for each Load, Seek and ShowNote call, so a test can check the order of calls across fakes.</summary>
+    public Action<string>? Observer { get; set; }
+
+    /// <summary>How long a load takes on the fake clock; a load given a shorter timeout gives up after that timeout and fails.</summary>
+    public TimeSpan LoadTakes { get; set; }
+
+    private readonly List<TimeSpan?> _loadTimeouts = [];
+
+    /// <summary>The wait bound every <see cref="Load"/> was given, in order (null = the renderer's own default).</summary>
+    public IReadOnlyList<TimeSpan?> LoadTimeouts
     {
+        get
+        {
+            lock (_gate)
+            {
+                return [.. _loadTimeouts];
+            }
+        }
+    }
+
+    public Result Load(string file, nint nativeWindowHandle, bool startPaused, TimeSpan? timeout = null)
+    {
+        Observer?.Invoke(startPaused ? "renderer.Load(paused)" : "renderer.Load(playing)");
         lock (_gate)
         {
+            _loadTimeouts.Add(timeout);
+            if (LoadTakes > TimeSpan.Zero && time is FakeTimeProvider fake)
+            {
+                var gaveUp = timeout is { } bound && bound < LoadTakes;
+                fake.Advance(gaveUp ? timeout!.Value : LoadTakes);
+                if (gaveUp)
+                {
+                    return Result.Failure("mpv.load_failed", "mpv did not open the file in time.");
+                }
+            }
+
             if (LoadError is { } error)
             {
                 return Result.Failure(error);
@@ -227,6 +260,7 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
 
     public void Seek(TimeSpan position)
     {
+        Observer?.Invoke("renderer.Seek");
         position += SeekLandsOff;
         lock (_gate)
         {
@@ -266,6 +300,7 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
 
     public void ShowNote(string text, NoteStyle style)
     {
+        Observer?.Invoke("renderer.ShowNote");
         lock (_gate)
         {
             _notes.Add((text, style));

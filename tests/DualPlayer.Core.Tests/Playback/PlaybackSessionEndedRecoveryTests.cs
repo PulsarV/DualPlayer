@@ -151,10 +151,13 @@ public sealed class PlaybackSessionEndedRecoveryTests : IDisposable
     }
 
     [Fact]
-    public void A_backward_seek_after_a_picture_failure_reloads_the_picture_before_any_engine_run_AC_06b_AC_05()
+    public void A_backward_seek_after_a_picture_failure_whose_reload_failed_loads_the_picture_before_any_engine_run_AC_06b_AC_05()
     {
         using var rig = PlayingRig(1_000);
+        // T80: a last-frame reload that worked is kept for the return; only a failed one leaves mpv without a file.
+        rig.Renderer.LoadError = new Error("video.load_failed", "mpv could not open the file.");
         FailThePicture(rig);
+        rig.Renderer.LoadError = null;
         var loadsBefore = rig.Renderer.LoadCount;
         var runsAtReload = -1;
         rig.Renderer.AfterLoad = () => runsAtReload = rig.EngineRunFiles.Count;
@@ -171,8 +174,8 @@ public sealed class PlaybackSessionEndedRecoveryTests : IDisposable
     public void A_backward_seek_after_a_picture_failure_whose_reload_fails_ends_with_a_note_and_starts_no_audio_AC_06b_AC_05()
     {
         using var rig = PlayingRig(1_000);
-        FailThePicture(rig);
         rig.Renderer.LoadError = new Error("video.load_failed", "mpv could not open the file.");
+        FailThePicture(rig);
         var notesBefore = rig.Events.OfType<NoteShown>().Count();
 
         rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-5))).IsSuccess.ShouldBeFalse();

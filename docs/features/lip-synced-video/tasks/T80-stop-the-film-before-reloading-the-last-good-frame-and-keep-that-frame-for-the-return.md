@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-06b", "AC-05"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.Core/Playback/IVideoRenderer.cs", "src/DualPlayer.Media/Video/MpvVideoRenderer.cs", "tests/DualPlayer.Core.Tests/Playback/", "tests/DualPlayer.Media.Tests/Video/"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -33,8 +33,8 @@ See [spec.md](../spec.md) §5 AC-06b, AC-05.
 
 ## Definition of Done
 
-- [ ] On a picture failure the order is: engine stopped (`RunEndReason.PictureFailed`) and `PictureFailed` published → `Load(paused)` → `Seek(last presented position)` → `ShowNote`; a fake-renderer test records the call order and fails on the old order.
-- [ ] The run summary's end position equals the failure position (test with a reload that takes time on the fake clock).
-- [ ] The reload wait is bounded at ≤ 3 s; a reload that does not finish in time leaves the note on the empty window, nothing throws, and the session answers the next key within the budget (test).
-- [ ] When the reload succeeded, `ReturnIntoFilm` does not load the file again (only bumps `_filmToken`); when it failed, it still loads. Tests for both; the stale doc comment is fixed.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] On a picture failure the order is: engine stopped (`RunEndReason.PictureFailed`) and `PictureFailed` published → `Load(paused)` → `Seek(last presented position)` → `ShowNote`; a fake-renderer test records the call order and fails on the old order.
+- [x] The run summary's end position equals the failure position (test with a reload that takes time on the fake clock).
+- [x] The reload wait is bounded at ≤ 3 s; a reload that does not finish in time leaves the note on the empty window, nothing throws, and the session answers the next key within the budget (test).
+- [x] When the reload succeeded, `ReturnIntoFilm` does not load the file again (only bumps `_filmToken`); when it failed, it still loads. Tests for both; the stale doc comment is fixed.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

@@ -46,8 +46,8 @@ internal sealed class WindowBoundRenderer : IVideoRenderer
         remove => _inner.EndOfFile -= value;
     }
 
-    public Result Load(string file, nint nativeWindowHandle, bool startPaused) =>
-        _inner.Load(file, nativeWindowHandle == 0 ? _surface.Handle : nativeWindowHandle, startPaused);
+    public Result Load(string file, nint nativeWindowHandle, bool startPaused, TimeSpan? timeout = null) =>
+        _inner.Load(file, nativeWindowHandle == 0 ? _surface.Handle : nativeWindowHandle, startPaused, timeout);
 
     public void PlayAt(TimeSpan position, long startTimestamp) => _inner.PlayAt(position, startTimestamp);
 

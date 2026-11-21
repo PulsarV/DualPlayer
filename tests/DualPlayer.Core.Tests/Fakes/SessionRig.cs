@@ -18,6 +18,7 @@ internal sealed class SessionRig : IDisposable
 {
     private readonly List<SessionEvent> _events = [];
     private readonly List<string> _runFiles = [];
+    private readonly List<string> _callOrder = [];
     private readonly List<TimeSpan> _seekTargets = [];
     private readonly List<TimeSpan> _startPositions = [];
     private readonly Lock _gate = new();
@@ -35,7 +36,7 @@ internal sealed class SessionRig : IDisposable
         ILogger<PlaybackSession>? log = null)
     {
         Engine = new EngineRig(devices, totalSeconds) { EndsAllowed = true };
-        Renderer = new FakeVideoRenderer(Engine.Time);
+        Renderer = new FakeVideoRenderer(Engine.Time) { Observer = Record };
         Probe = new FakeDeviceLatencyProbe();
         Pictures = new FakePictureProbe();
         Decoder = new TrackListingDecoder();
@@ -139,6 +140,26 @@ internal sealed class SessionRig : IDisposable
 
     public FakeVideoRenderer Renderer { get; }
 
+    /// <summary>The engine stops, published events and renderer calls the order tests care about, in the order they happened.</summary>
+    public IReadOnlyList<string> CallOrder
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return [.. _callOrder];
+            }
+        }
+    }
+
+    private void Record(string call)
+    {
+        lock (_gate)
+        {
+            _callOrder.Add(call);
+        }
+    }
+
     public FakeDeviceLatencyProbe Probe { get; }
 
     public FakePictureProbe Pictures { get; }
@@ -240,7 +261,11 @@ internal sealed class SessionRig : IDisposable
             return result;
         }
 
-        public void Stop(RunEndReason reason) => Rig.Engine.Stop(reason);
+        public void Stop(RunEndReason reason)
+        {
+            owner.Record($"engine.Stop({reason})");
+            Rig.Engine.Stop(reason);
+        }
     }
 
     /// <summary>The lag control, with each output's position error replaced by the one <see cref="ForceOutputError"/> set.</summary>
@@ -288,6 +313,10 @@ internal sealed class SessionRig : IDisposable
             lock (rig._gate)
             {
                 rig._events.Add(value);
+                if (value is PictureFailed)
+                {
+                    rig._callOrder.Add("event.PictureFailed");
+                }
             }
         }
     }

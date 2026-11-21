@@ -1850,7 +1850,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T80-stop-the-film-before-reloading-the-last-good-frame-and-keep-that-frame-for-the-return.md",
       "origin": "review-2026-11-22: P1, P3",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T81",

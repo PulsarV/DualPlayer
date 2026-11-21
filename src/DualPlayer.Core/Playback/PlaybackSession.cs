@@ -99,9 +99,11 @@ public sealed partial class PlaybackSession : IDisposable
     // Offset changes not yet saved: recorded again with their save time once the debounced save lands.
     private readonly List<OffsetChanged> _unsaved = [];
     private const int TicksPerCounterReport = 60;
+    private static readonly TimeSpan ReloadTimeout = TimeSpan.FromSeconds(3);
     private const string PictureFailedNote = "The picture could not be decoded further - film ended";
     private ITimer? _healthTimer;
     private bool _pictureFailed;
+    private bool _lastFrameReloaded;
     private bool _exited;
 
     // Whether a run of the film _request names has started (so ← at the end can return into it): cleared as soon as a
@@ -302,8 +304,10 @@ public sealed partial class PlaybackSession : IDisposable
     /// <summary>
     /// After the end, a new engine run for the same file and outputs (the engine cannot reopen a run that has ended),
     /// started at <paramref name="target"/>: the decoder seeks there before the pre-roll, so no audio of the film's opening
-    /// is heard. The file stays loaded in the renderer and its picture stays paused until the scheduled start, so no frame 0
-    /// is shown; the engine carries the earlier run's summary over and prints no second start line.
+    /// is heard. The picture stays paused until the scheduled start, so no frame 0 is shown: after a picture failure whose
+    /// last-frame reload worked the renderer already holds the last good frame and is not loaded again; if that reload
+    /// failed (or there was none) the file is loaded again first. The engine carries the earlier run's summary over and
+    /// prints no second start line.
     /// </summary>
     private Result ReturnIntoFilm(TimeSpan target, long commandAt)
     {
@@ -311,9 +315,10 @@ public sealed partial class PlaybackSession : IDisposable
         LatencyEstimate? estimate;
         HashSet<string> lost;
         bool pictureFailed;
+        bool lastFrameReloaded;
         lock (_gate)
         {
-            (request, estimate, pictureFailed) = (_request, _estimate, _pictureFailed);
+            (request, estimate, pictureFailed, lastFrameReloaded) = (_request, _estimate, _pictureFailed, _lastFrameReloaded);
             lost = new HashSet<string>(_lost, StringComparer.Ordinal);
         }
 
@@ -324,12 +329,16 @@ public sealed partial class PlaybackSession : IDisposable
 
         if (pictureFailed)
         {
-            // After a picture failure mpv holds no file: reload it paused before any audio starts.
+            // The old picture's events are stale from here. When the last frame was reloaded at the failure, mpv already
+            // holds it; otherwise mpv holds no file and it is loaded paused before any audio starts.
             Interlocked.Increment(ref _filmToken);
-            var reloaded = _renderer.Load(request.File, nint.Zero, startPaused: true);
-            if (!reloaded.IsSuccess)
+            if (!lastFrameReloaded)
             {
-                return reloaded;
+                var reloaded = _renderer.Load(request.File, nint.Zero, startPaused: true);
+                if (!reloaded.IsSuccess)
+                {
+                    return reloaded;
+                }
             }
         }
 
@@ -365,6 +374,7 @@ public sealed partial class PlaybackSession : IDisposable
         lock (_gate)
         {
             _pictureFailed = false;
+            _lastFrameReloaded = false;
         }
 
         if (!returning)
@@ -1473,21 +1483,26 @@ public sealed partial class PlaybackSession : IDisposable
             _syncTimer = null;
         }
 
+        // The sound stops and the failure is published first: the reload below can block, and the run must end at the
+        // failure position, not where the reload finishes.
         _renderer.Pause();
-        if (reloadLastFrame)
+        _events.Publish(new PictureFailed(position, reason));
+        _engine.Stop(RunEndReason.PictureFailed);
+
+        var reloaded = reloadLastFrame && ReloadLastFrame(position);
+        lock (_gate)
         {
-            ReloadLastFrame(position);
+            _lastFrameReloaded = reloaded;
         }
 
-        _events.Publish(new PictureFailed(position, reason));
         _events.Publish(new NoteShown(PictureFailedNote, NoteStyle.Warning));
         _renderer.ShowNote(PictureFailedNote, NoteStyle.Warning);
-        _engine.Stop(RunEndReason.PictureFailed);
     }
 
     // An error end-file unloads the file in mpv, leaving an empty window: load it again paused at the last presented
-    // position so the note sits on the last good frame (SCR-02). A failed reload leaves the empty window; the note follows.
-    private void ReloadLastFrame(TimeSpan fallback)
+    // position so the note sits on the last good frame (SCR-02). The wait is bounded (ReloadTimeout); a failed or late
+    // reload leaves the empty window and the note follows. Returns whether the last frame is up.
+    private bool ReloadLastFrame(TimeSpan fallback)
     {
         string? file;
         lock (_gate)
@@ -1497,14 +1512,17 @@ public sealed partial class PlaybackSession : IDisposable
 
         if (file is null)
         {
-            return;
+            return false;
         }
 
         var position = _renderer.Presented?.Position ?? fallback;
-        if (_renderer.Load(file, nint.Zero, startPaused: true).IsSuccess)
+        if (!_renderer.Load(file, nint.Zero, startPaused: true, ReloadTimeout).IsSuccess)
         {
-            _renderer.Seek(position);
+            return false;
         }
+
+        _renderer.Seek(position);
+        return true;
     }
 
     // Once a second: the picture timing, the damaged-stretch book-keeping and, every minute, the frame counters.

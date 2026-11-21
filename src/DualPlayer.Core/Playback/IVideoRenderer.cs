@@ -36,9 +36,10 @@ public interface IVideoRenderer : IDisposable
     /// <summary>
     /// Opens <paramref name="file"/> into the window <paramref name="nativeWindowHandle"/>, optionally held paused on the
     /// first frame. Once the first frame is up, <see cref="Presented"/> is position zero stamped with that moment; a playing
-    /// load may hold it briefly and start from it as a scheduled start.
+    /// load may hold it briefly and start from it as a scheduled start. The wait for the file to open is bounded by
+    /// <paramref name="timeout"/>, or by the renderer's own default (15 s) when it is <c>null</c>.
     /// </summary>
-    Result Load(string file, nint nativeWindowHandle, bool startPaused);
+    Result Load(string file, nint nativeWindowHandle, bool startPaused, TimeSpan? timeout = null);
 
     /// <summary>Starts playing from content <paramref name="position"/> so that it is shown at monotonic time <paramref name="startTimestamp"/>.</summary>
     void PlayAt(TimeSpan position, long startTimestamp);

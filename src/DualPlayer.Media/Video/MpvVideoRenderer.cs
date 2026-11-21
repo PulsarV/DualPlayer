@@ -241,9 +241,10 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
         new("hwdec", platform == OSPlatform.OSX ? "videotoolbox" : "d3d11va"),
     ];
 
-    public Result Load(string file, nint nativeWindowHandle, bool startPaused)
+    public Result Load(string file, nint nativeWindowHandle, bool startPaused, TimeSpan? timeout = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(file);
+        var wait = timeout ?? LoadTimeout;
 
         int generation;
         var library = MpvLibrary.Load();
@@ -306,7 +307,7 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
             _issuedLoads = generation;
         }
 
-        var completed = _loadDone.Wait(LoadTimeout);
+        var completed = _loadDone.Wait(wait);
         _loading = false;
         if (_disposed)
         {
@@ -317,7 +318,7 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
         {
             // Whatever this file does later is no longer anyone's business: its events are ignored.
             Interlocked.CompareExchange(ref _currentLoad, NoLoad, generation);
-            return Result.Failure("mpv.load_failed", $"mpv did not open '{file}' within {LoadTimeout.TotalSeconds:0} s.");
+            return Result.Failure("mpv.load_failed", $"mpv did not open '{file}' within {wait.TotalSeconds:0.#} s.");
         }
 
         if (_loadError is { } error)
