@@ -6,8 +6,8 @@ deps: ["T70", "T72"]
 blocks: []
 acs: ["AC-13", "AC-14", "AC-15", "AC-17"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.App/Startup/SessionEventLogWriter.cs", "tests/DualPlayer.Core.Tests/Playback/", "tests/DualPlayer.App.Tests/Startup/"]
-status: "blocked"
-step: "RED — test defect: ShouldNotContain is case-insensitive"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,7 +31,7 @@ See [spec.md](../spec.md) §5 AC-13, AC-14, AC-15, AC-17.
 
 ## Definition of Done
 
-- [ ] Every per-output event carries the output's number from the start command (its index in the full estimate), and the log writer prints that number instead of the list position.
-- [ ] Test: three outputs, output 1 lost, then a picture-delay change → the records name outputs 2 and 3.
-- [ ] `PlaybackSession.cs:245, 1639` use `DeviceTypeNames.Of(DeviceType.Other)`; a test asserts the source/warning say `type other`.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Every per-output event carries the output's number from the start command (its index in the full estimate), and the log writer prints that number instead of the list position.
+- [x] Test: three outputs, output 1 lost, then a picture-delay change → the records name outputs 2 and 3.
+- [x] `PlaybackSession.cs:245, 1639` use `DeviceTypeNames.Of(DeviceType.Other)`; a test asserts the source/warning say `type other`.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

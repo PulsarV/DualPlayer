@@ -245,8 +245,8 @@ public sealed partial class PlaybackSession : IDisposable
             else
             {
                 // ADR-0004: no reported part and an unknown type; the fallback is said, not silent.
-                sources[device.Id] = $"probe failed ({probed.Error.Code}): reported 0 ms, type Other";
-                LogProbeFailed(device.Id, probed.Error.Code, probed.Error.Message);
+                sources[device.Id] = $"probe failed ({probed.Error.Code}): reported 0 ms, type {DeviceTypeNames.Of(DeviceType.Other)}";
+                LogProbeFailed(device.Id, probed.Error.Code, probed.Error.Message, DeviceTypeNames.Of(DeviceType.Other));
             }
 
             var (type, reportedMs) = probed.IsSuccess
@@ -265,7 +265,7 @@ public sealed partial class PlaybackSession : IDisposable
 
         // Lost outputs keep their place (and so their output number and keys) with the estimate they had when lost.
         var full = new LatencyEstimate(
-            [.. resolved.Select(a => estimate.Outputs.FirstOrDefault(o => o.DeviceId == a.Device.Id) ?? previous!.Outputs.First(o => o.DeviceId == a.Device.Id))],
+            [.. resolved.Select((a, i) => (estimate.Outputs.FirstOrDefault(o => o.DeviceId == a.Device.Id) ?? previous!.Outputs.First(o => o.DeviceId == a.Device.Id)) with { OutputNumber = i + 1 })],
             estimate.PictureDelayMs);
         _request = request with { Outputs = resolved };
         lock (_gate)
@@ -788,7 +788,7 @@ public sealed partial class PlaybackSession : IDisposable
             var ppm = duration > TimeSpan.Zero
                 ? Math.Clamp((target - current).Ticks / (double)duration.Ticks * 1e6, -LagRamp.MaxRatePpm, LagRamp.MaxRatePpm)
                 : 0;
-            ramps.Add(new OutputRamp(deviceId, ppm));
+            ramps.Add(new OutputRamp(deviceId, ppm) { OutputNumber = to.Outputs.First(o => o.DeviceId == deviceId).OutputNumber });
         }
 
         return new PictureDelayMoved(clock, cause, from.PictureDelayMs, to.PictureDelayMs, duration, picturePpm, ramps);
@@ -802,7 +802,7 @@ public sealed partial class PlaybackSession : IDisposable
     {
         var playing = estimate.Outputs.Where(o => !_lost.Contains(o.DeviceId)).ToList();
         var fresh = LatencyModel.Estimate([.. playing.Select(o => (o.DeviceId, o.Type, o.ReportedMs, o.DeviceId == deviceId ? offsetMs : o.OffsetMs))]);
-        return new LatencyEstimate([.. fresh.Outputs.Select(u => u with { Source = playing.First(o => o.DeviceId == u.DeviceId).Source })], fresh.PictureDelayMs);
+        return new LatencyEstimate([.. fresh.Outputs.Select(u => u with { Source = playing.First(o => o.DeviceId == u.DeviceId).Source, OutputNumber = playing.First(o => o.DeviceId == u.DeviceId).OutputNumber })], fresh.PictureDelayMs);
     }
 
     // Every output keeps its place: the playing ones from the new estimate, the lost ones as they were.
@@ -1645,8 +1645,8 @@ public sealed partial class PlaybackSession : IDisposable
     [LoggerMessage(Level = LogLevel.Information, Message = "Latency for {DeviceId}: type {Type}, reported {ReportedMs} ms ({Source}), default {DefaultMs} ms, offset {OffsetMs} ms, assumed {AssumedMs} ms, lag {LagMs} ms; picture delay {PictureDelayMs} ms")]
     private partial void LogLatency(string deviceId, string type, int reportedMs, string? source, int defaultMs, int offsetMs, int assumedMs, int lagMs, int pictureDelayMs);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Latency probe failed for {DeviceId} ({Code}): {Message}; reported 0 ms, type Other")]
-    private partial void LogProbeFailed(string deviceId, string code, string message);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Latency probe failed for {DeviceId} ({Code}): {Message}; reported 0 ms, type {Type}")]
+    private partial void LogProbeFailed(string deviceId, string code, string message, string type);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Playback session command or callback failed")]
     private partial void LogLoopFault(Exception exception);

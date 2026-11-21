@@ -55,7 +55,7 @@ internal sealed class SessionEventLogWriter : IDisposable
                 {
                     _log.LogInformation(
                         "PictureDelayMoved.Output Output={Output} DeviceId={DeviceId} RampPpm={RampPpm}",
-                        i + 1,
+                        m.Ramps[i].OutputNumber > 0 ? m.Ramps[i].OutputNumber : i + 1,
                         m.Ramps[i].DeviceId,
                         m.Ramps[i].RampPpm);
                 }
@@ -131,7 +131,7 @@ internal sealed class SessionEventLogWriter : IDisposable
             _log.LogInformation(
                 "{Event} Output={Output} DeviceId={DeviceId} Type={Type} ReportedMs={ReportedMs} Source={Source} DefaultMs={DefaultMs} OffsetMs={OffsetMs} AssumedMs={AssumedMs} LagMs={LagMs} PictureDelayMs={PictureDelayMs}",
                 name,
-                i + 1,
+                o.OutputNumber > 0 ? o.OutputNumber : i + 1,
                 o.DeviceId,
                 RunSummaryLines.TypeName(o.Type),
                 o.ReportedMs,

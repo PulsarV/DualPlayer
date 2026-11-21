@@ -73,6 +73,23 @@ public sealed class SessionEventLogWriterTests
     }
 
     [Fact]
+    public void Per_output_records_print_the_output_number_from_the_start_command_not_the_list_position_AC_17()
+    {
+        var h = new Harness();
+        h.Feed.Publish(new PictureDelayChanged(TimeSpan.FromSeconds(75), PictureDelayCause.Offset, 200, 240, [Out with { OutputNumber = 2 }, Out with { OutputNumber = 3 }]));
+        h.Feed.Publish(new PictureDelayMoved(
+            TimeSpan.FromSeconds(75),
+            PictureDelayCause.Offset,
+            200,
+            240,
+            TimeSpan.FromSeconds(5),
+            -2000,
+            [new OutputRamp(Dev, 1500) { OutputNumber = 2 }, new OutputRamp(Dev, 100) { OutputNumber = 3 }]));
+
+        h.Log.Entries.Where(e => e.ContainsKey("Output")).Select(e => e["Output"]).ShouldBe([2, 3, 2, 3]);
+    }
+
+    [Fact]
     public void Offset_change_picture_timing_frame_counters_and_start_timings_are_logged_with_their_fields()
     {
         var h = new Harness();
