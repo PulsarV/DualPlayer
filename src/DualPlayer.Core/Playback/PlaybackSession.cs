@@ -844,7 +844,7 @@ public sealed partial class PlaybackSession : IDisposable
         ApplyPendingTargets(sync);
         clock.JumpTo(position);
         clock.Start();
-        var delay = sync.PictureDelay;
+        var delay = sync.TargetPictureDelay;
         lock (_gate)
         {
             // The freeze may have happened, or not, while the engine was resuming: decide on the state as it is now.
@@ -940,7 +940,7 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         ApplyPendingTargets(sync);
-        var delay = sync.PictureDelay;
+        var delay = sync.TargetPictureDelay;
         if (seeked.Value.OutsideFile && target > TimeSpan.Zero)
         {
             // Past the end: the engine has ended the run; stop the picture as at the natural end.
@@ -954,6 +954,7 @@ public sealed partial class PlaybackSession : IDisposable
             clock.StopAt(_time.GetTimestamp());
             _renderer.Pause();
             _renderer.Seek(seeked.Value.Position); // the last frame (mpv keep-open), not the frame shown at the key
+            PublishDelay(seeked.Value.Position, PictureDelayCause.Seek, delay);
             return Result.Success();
         }
 

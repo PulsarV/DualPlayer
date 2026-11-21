@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-21b (Q12)"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-21b. Work from what is inlined here; the source always wins.
@@ -29,7 +29,7 @@ See [spec.md](../spec.md) §5 AC-17.
 
 ## Definition of Done
 
-- [ ] A seek past the end publishes the same seek record as any other seek.
-- [ ] A seek or resume during a move records the delay the film actually aligned at (read after `AlignAt`, e.g. `TargetPictureDelay`).
-- [ ] Tests: seek past the end → one seek `PictureDelayChanged`; seek and resume during a move → new delay equals the target.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] A seek past the end publishes the same seek record as any other seek.
+- [x] A seek or resume during a move records the delay the film actually aligned at (read after `AlignAt`, e.g. `TargetPictureDelay`).
+- [x] Tests: seek past the end → one seek `PictureDelayChanged`; seek and resume during a move → new delay equals the target.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

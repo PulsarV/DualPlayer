@@ -1182,7 +1182,7 @@
         "tests/DualPlayer.Core.Tests/Playback/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T51-record-a-seek-past-the-end-and-log-the-target-picture-delay-for-a-seek-or-resume-during-a.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-21b: Q12"
     },
     {
