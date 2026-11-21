@@ -6,8 +6,8 @@ deps: ["T71"]
 blocks: []
 acs: ["AC-17"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.Core/Sync/PictureSync.cs", "tests/DualPlayer.Core.Tests/Playback/"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -29,7 +29,7 @@ See [spec.md](../spec.md) §5 AC-17.
 
 ## Definition of Done
 
-- [ ] The session remembers the last picture timing measured after `_resync.At`; `NotLipSynced` publishes its error, and null only when no timing was measured after the command.
-- [ ] Test: a picture that stays 150 ms off with correcting seeks in between → `NotLipSynced` with `ErrorMs ≈ 150`, not null.
-- [ ] The T63 test for no measurable frame still publishes null.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The session remembers the last picture timing measured after `_resync.At`; `NotLipSynced` publishes its error, and null only when no timing was measured after the command.
+- [x] Test: a picture that stays 150 ms off with correcting seeks in between → `NotLipSynced` with `ErrorMs ≈ 150`, not null.
+- [x] The T63 test for no measurable frame still publishes null.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

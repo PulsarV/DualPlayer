@@ -222,8 +222,12 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
         }
     }
 
+    /// <summary>Every seek lands this far from where it was asked (a picture that cannot be corrected by seeking).</summary>
+    public TimeSpan SeekLandsOff { get; set; }
+
     public void Seek(TimeSpan position)
     {
+        position += SeekLandsOff;
         lock (_gate)
         {
             _hasFrame = true;

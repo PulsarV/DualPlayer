@@ -1647,7 +1647,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T72-report-the-last-measured-picture-error-when-giving-up-after-a-correcting-seek.md",
       "origin": "review-2026-11-21d: R9",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T73",

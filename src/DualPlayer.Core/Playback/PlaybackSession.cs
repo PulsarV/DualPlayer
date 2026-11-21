@@ -89,6 +89,9 @@ public sealed partial class PlaybackSession : IDisposable
     // The command whose "lip-synced again" record is still owed (sad.md flow 4), and when it was given.
     private (string Command, long At)? _resync;
 
+    // The latest picture error measured (timestamp, ms): a give-up reports it when it was taken after the command.
+    private (long At, double ErrorMs)? _lastMeasured;
+
     // Start timings measured as they happen: the command time, then the first frame presented and each output's first audio.
     private (long CommandAt, IReadOnlyList<OutputLatency> Outputs)? _startTimings;
 
@@ -1207,6 +1210,8 @@ public sealed partial class PlaybackSession : IDisposable
                 }
             }
 
+            _lastMeasured = (timing.Timestamp, timing.ErrorMs);
+
             if (_resync is { } owed)
             {
                 var budget = owed.Command is "start" or "file-change" or "return" ? StartRecoveryBudget : RecoveryBudget;
@@ -1269,17 +1274,19 @@ public sealed partial class PlaybackSession : IDisposable
     {
         (string Command, long At)? owed;
         TimeSpan clock;
+        (long At, double ErrorMs)? measured;
         var now = _time.GetTimestamp();
         lock (_gate)
         {
             owed = _resync;
+            measured = _lastMeasured;
             clock = _clock?.PositionAt(now) ?? TimeSpan.Zero;
         }
 
         if (owed is { } failed && now >= failed.At
             && _time.GetElapsedTime(failed.At, now) > (failed.Command is "start" or "file-change" or "return" ? StartRecoveryBudget : RecoveryBudget))
         {
-            PublishNotLipSynced(failed, clock, now, null);
+            PublishNotLipSynced(failed, clock, now, measured is { } m && m.At >= failed.At ? m.ErrorMs : null);
         }
     }
 

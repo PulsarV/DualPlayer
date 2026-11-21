@@ -131,6 +131,24 @@ public sealed class PlaybackSessionRecoveryBudgetTests
         gaveUp.AfterCommandMs.ShouldBeInRange(3000, 3500);
     }
 
+    [Fact]
+    public void A_picture_that_stays_150_ms_off_through_correcting_seeks_gives_up_with_that_error_and_not_null_AC_17()
+    {
+        using var rig = PlayingRig();
+        rig.Renderer.SnapshotAge = TimeSpan.FromMilliseconds(40); // every correcting seek hides the picture from the next ticks
+        var seen = rig.Events.Count;
+
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(10))).IsSuccess.ShouldBeTrue();
+        rig.Renderer.SeekLandsOff = TimeSpan.FromMilliseconds(150); // from here on, a correcting seek lands 150 ms ahead again
+        rig.Renderer.Jump(TimeSpan.FromMilliseconds(150));
+        rig.Engine.Render(300);
+
+        var gaveUp = rig.Events.Skip(seen).OfType<NotLipSynced>().ShouldHaveSingleItem("no give-up record was published: " + string.Join(", ", rig.Events.Skip(seen).Select(e => e.ToString())));
+        gaveUp.Command.ShouldBe("seek");
+        gaveUp.ErrorMs.ShouldNotBeNull("frames were measured after the command, yet the give-up carries no error");
+        Math.Abs(gaveUp.ErrorMs.Value).ShouldBe(150, 20);
+    }
+
     private sealed class QueryCount
     {
         private int _value;
