@@ -20,7 +20,7 @@ public class RunSummaryBuilderTests
         b.RecordCorrection("dev-B");
         b.RecordUnderruns("dev-B", 4);
 
-        var summary = b.Build(RunEndReason.FileEnd, At(112));
+        var summary = b.Build(RunEndReason.FileEnd, At(112), "film.mkv");
 
         summary.EndReason.ShouldBe(RunEndReason.FileEnd);
         summary.ClockPosition.ShouldBe(At(112));
@@ -47,7 +47,7 @@ public class RunSummaryBuilderTests
         b.RecordDrift("dev-A", -7.5, false);
         b.RecordDrift("dev-A", 4, false);
 
-        var summary = b.Build(RunEndReason.Stop, At(10));
+        var summary = b.Build(RunEndReason.Stop, At(10), "film.mkv");
 
         summary.Outputs.Single().MaxDriftMs.ShouldBe(7.5, 0.001);
     }
@@ -61,7 +61,7 @@ public class RunSummaryBuilderTests
         var lost = new DeviceLost(1, "dev-B", At(40), OthersContinue: true);
         b.RecordDeviceLost(lost);
 
-        var summary = b.Build(RunEndReason.Interrupt, At(100));
+        var summary = b.Build(RunEndReason.Interrupt, At(100), "film.mkv");
 
         var bOut = summary.Outputs.Single(o => o.DeviceId == "dev-B");
         bOut.Played.ShouldBe(At(40));
@@ -75,6 +75,6 @@ public class RunSummaryBuilderTests
         var b = new RunSummaryBuilder();
         b.OutputStarted("dev-A", At(0));
 
-        b.Build(RunEndReason.AllDevicesLost, At(5)).EndReason.ShouldBe(RunEndReason.AllDevicesLost);
+        b.Build(RunEndReason.AllDevicesLost, At(5), "film.mkv").EndReason.ShouldBe(RunEndReason.AllDevicesLost);
     }
 }

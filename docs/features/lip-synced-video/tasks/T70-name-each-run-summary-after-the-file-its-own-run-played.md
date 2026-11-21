@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-06", "AC-07"]
 files_hint: ["src/DualPlayer.Core/Diagnostics/EngineEvent.cs", "src/DualPlayer.Core/Playback/AudioEngine.cs", "src/DualPlayer.App/Startup/TerminalPrinter.cs", "src/DualPlayer.App/Startup/SessionEventLogWriter.cs", "tests/DualPlayer.App.Tests/Startup/", "tests/DualPlayer.Core.Tests/Playback/"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -29,9 +29,9 @@ See [spec.md](../spec.md) §5 AC-06, AC-07.
 
 ## Definition of Done
 
-- [ ] `RunSummary` carries the file its own run played (the engine already holds `run.File`, `AudioEngine.cs:1180`); the printer and the log writer name the summary from that field.
-- [ ] The `_stoppedFile` / `_changeSummaryPrinted` pairing in `TerminalPrinter` is removed.
-- [ ] The T60 printer test is rewritten in production order (summary before `FileChanged`).
-- [ ] New test in production order: a.mkv ends (summary reason end) → `FileChanged b` → b's summary (reason file-change) names b → `FileChanged c` → c's summary names c.
-- [ ] The exit summary after a failed change still names the old film (the T60 case stays covered).
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `RunSummary` carries the file its own run played (the engine already holds `run.File`, `AudioEngine.cs:1180`); the printer and the log writer name the summary from that field.
+- [x] The `_stoppedFile` / `_changeSummaryPrinted` pairing in `TerminalPrinter` is removed.
+- [x] The T60 printer test is rewritten in production order (summary before `FileChanged`).
+- [x] New test in production order: a.mkv ends (summary reason end) → `FileChanged b` → b's summary (reason file-change) names b → `FileChanged c` → c's summary names c.
+- [x] The exit summary after a failed change still names the old film (the T60 case stays covered).
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

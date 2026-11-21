@@ -8,7 +8,7 @@ namespace DualPlayer.Console.Tests;
 public sealed class ConsoleWriteFailureTests
 {
     private static RunSummary Summary() =>
-        new(RunEndReason.FileEnd, TimeSpan.FromSeconds(10), [new OutputSummary("dev-1", TimeSpan.FromSeconds(10), 1.0, 0, 0, 0, [])]);
+        new(RunEndReason.FileEnd, TimeSpan.FromSeconds(10), [new OutputSummary("dev-1", TimeSpan.FromSeconds(10), 1.0, 0, 0, 0, [])], "film.mkv");
 
     [Fact]
     public void When_every_console_write_fails_each_line_is_still_logged_and_the_run_still_ends()

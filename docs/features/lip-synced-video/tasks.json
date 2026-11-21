@@ -1606,7 +1606,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T70-name-each-run-summary-after-the-file-its-own-run-played.md",
       "origin": "review-2026-11-21d: R1",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T71",
@@ -1771,7 +1771,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T77-load-ffmpeg-before-mapping-an-audio-open-failure-so-the-mapping-tests-run-alone.md",
       "origin": "review-2026-11-21d: R10",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T78",

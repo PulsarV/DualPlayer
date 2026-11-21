@@ -66,7 +66,7 @@ public sealed class RunSummaryBuilder
         }
     }
 
-    public RunSummary Build(RunEndReason reason, TimeSpan clockPosition)
+    public RunSummary Build(RunEndReason reason, TimeSpan clockPosition, string file)
     {
         var current = _outputs
             .Select(kv => new OutputSummary(
@@ -78,7 +78,7 @@ public sealed class RunSummaryBuilder
                 kv.Value.Underruns,
                 kv.Value.Lost.ToArray()))
             .ToList();
-        return new RunSummary(reason, clockPosition, _carried is null ? current : Merge(_carried.Outputs, current));
+        return new RunSummary(reason, clockPosition, _carried is null ? current : Merge(_carried.Outputs, current), file);
     }
 
     // The previous run's outputs keep their order (and so their numbers); the current run's are folded into them.

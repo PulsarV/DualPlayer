@@ -30,12 +30,7 @@ internal sealed class TerminalPrinter : IDisposable
     private LatencyEstimate? _estimate;
     private StartTimings? _timings;
     private AudioStarted? _audioStarted;
-    private string _file;
 
-    // A file change's run summary and its FileChanged event can arrive in either order: whichever comes second must still
-    // name the file the stopped run played, not the new one.
-    private string? _stoppedFile;
-    private bool _changeSummaryPrinted;
     private bool _terminalBroken;
 
     public TerminalPrinter(
@@ -54,7 +49,6 @@ internal sealed class TerminalPrinter : IDisposable
         _output = output;
         _log = log;
         _context = context;
-        _file = Path.GetFileName(context.File);
         _thread = new Thread(Drain) { IsBackground = true, Name = "terminal-printer" };
         _thread.Start();
         _engineSubscription = engine.Subscribe(new Observer<EngineEvent>(OnEngine));
@@ -79,25 +73,7 @@ internal sealed class TerminalPrinter : IDisposable
                 break;
             case RunSummary s:
                 FlushPendingStarted();
-                string file;
-                lock (_gate)
-                {
-                    file = _file;
-                    if (s.EndReason == RunEndReason.FileChange)
-                    {
-                        if (_stoppedFile is { } stopped)
-                        {
-                            file = stopped;
-                            _stoppedFile = null;
-                        }
-                        else
-                        {
-                            _changeSummaryPrinted = true;
-                        }
-                    }
-                }
-
-                foreach (var line in RunSummaryLines.Lines(file, s))
+                foreach (var line in RunSummaryLines.Lines(Path.GetFileName(s.File), s))
                 {
                     Print(line);
                 }
@@ -132,20 +108,6 @@ internal sealed class TerminalPrinter : IDisposable
                 break;
             case FileChanged c:
                 var name = Path.GetFileName(c.File);
-                lock (_gate)
-                {
-                    if (_changeSummaryPrinted)
-                    {
-                        _changeSummaryPrinted = false;
-                    }
-                    else
-                    {
-                        _stoppedFile = _file;
-                    }
-
-                    _file = name;
-                }
-
                 Print($"{(c.ToPrevious ? "previous" : "next"),-8} {name}");
                 break;
             case NoNeighbour n:

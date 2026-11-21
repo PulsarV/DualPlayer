@@ -41,4 +41,4 @@ public sealed record OutputSummary(
     long Underruns,
     IReadOnlyList<DeviceLost> DeviceLostEvents);
 
-public sealed record RunSummary(RunEndReason EndReason, TimeSpan ClockPosition, IReadOnlyList<OutputSummary> Outputs) : EngineEvent;
+public sealed record RunSummary(RunEndReason EndReason, TimeSpan ClockPosition, IReadOnlyList<OutputSummary> Outputs, string File) : EngineEvent;

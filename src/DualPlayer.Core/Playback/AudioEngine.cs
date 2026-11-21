@@ -1168,7 +1168,7 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
             run.Summary.RecordUnderruns(output.DeviceId, output.Source.UnderrunCount);
         }
 
-        var summary = run.Summary.Build(reason, clock.PositionAt(now));
+        var summary = run.Summary.Build(reason, clock.PositionAt(now), run.File ?? string.Empty);
         LogRunEnded(reason.ToString(), summary.ClockPosition.TotalSeconds, summary.Outputs.Count);
         foreach (var output in summary.Outputs)
         {

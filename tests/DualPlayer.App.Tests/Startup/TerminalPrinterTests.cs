@@ -141,7 +141,8 @@ public sealed partial class TerminalPrinterTests
             [
                 new OutputSummary(DevA, TimeSpan.FromMinutes(90), 3.5, 1.2, 4, 0, []),
                 new OutputSummary(DevB, TimeSpan.FromMinutes(90), 4.5, -0.7, 2, 1, []),
-            ]));
+            ],
+            File: "a.mkv"));
 
         var result = h.Finish();
 
@@ -156,16 +157,47 @@ public sealed partial class TerminalPrinterTests
     public void The_summary_of_the_run_a_file_change_stopped_names_the_file_it_played_not_the_new_one()
     {
         var h = new Harness();
-        h.Session.Publish(new FileChanged("c.mkv", "a.mkv"));
         h.Engine.Publish(new RunSummary(
             RunEndReason.FileChange,
             TimeSpan.FromSeconds(20),
-            [new OutputSummary(DevA, TimeSpan.FromSeconds(20), 3.5, 1.2, 4, 0, [])]));
+            [new OutputSummary(DevA, TimeSpan.FromSeconds(20), 3.5, 1.2, 4, 0, [])],
+            File: "a.mkv"));
+        h.Session.Publish(new FileChanged("c.mkv", "a.mkv"));
 
         var lines = h.Finish().Out;
 
         lines.ShouldContain("run-summary file a.mkv reason file-change");
         lines.ShouldNotContain("run-summary file c.mkv reason file-change");
+    }
+
+    [Fact]
+    public void Each_file_change_summary_after_an_ended_film_names_the_file_its_own_run_played()
+    {
+        var h = new Harness();
+        h.Engine.Publish(new RunSummary(RunEndReason.FileEnd, TimeSpan.FromMinutes(90), [], File: "a.mkv"));
+        h.Session.Publish(new FileChanged("b.mkv", "a.mkv"));
+        h.Engine.Publish(new RunSummary(RunEndReason.FileChange, TimeSpan.FromSeconds(20), [], File: "b.mkv"));
+        h.Session.Publish(new FileChanged("c.mkv", "b.mkv"));
+        h.Engine.Publish(new RunSummary(RunEndReason.FileChange, TimeSpan.FromSeconds(30), [], File: "c.mkv"));
+        h.Session.Publish(new FileChanged("d.mkv", "c.mkv"));
+
+        var result = h.Finish();
+
+        result.Out.ShouldContain("run-summary file a.mkv reason end");
+        result.Out.ShouldContain("run-summary file b.mkv reason file-change");
+        result.Out.ShouldContain("run-summary file c.mkv reason file-change");
+        result.Log.ShouldContain(l => Squash(l) == "run-summary file b.mkv reason file-change");
+        result.Log.ShouldContain(l => Squash(l) == "run-summary file c.mkv reason file-change");
+    }
+
+    [Fact]
+    public void The_exit_summary_after_a_failed_change_still_names_the_old_film()
+    {
+        var h = new Harness();
+        h.Session.Publish(new FileSkipped("b.mkv", "track-missing", 2, 2));
+        h.Engine.Publish(new RunSummary(RunEndReason.Stop, TimeSpan.FromSeconds(20), [], File: "a.mkv"));
+
+        h.Finish().Out.ShouldContain("run-summary file a.mkv reason exit");
     }
 
     [Fact]
