@@ -42,6 +42,25 @@ internal sealed class SessionEventLogWriter : IDisposable
                     p.NewPictureDelayMs);
                 LogOutputs("PictureDelayChanged.Output", p.Outputs, p.NewPictureDelayMs);
                 break;
+            case PictureDelayMoved m:
+                _log.LogInformation(
+                    "PictureDelayMoved Clock={Clock} Cause={Cause} FromMs={FromMs} ToMs={ToMs} DurationMs={DurationMs} PicturePpm={PicturePpm}",
+                    Clock(m.Clock),
+                    RunSummaryLines.CauseName(m.Cause),
+                    m.FromMs,
+                    m.ToMs,
+                    m.Duration.TotalMilliseconds,
+                    m.PicturePpm);
+                for (var i = 0; i < m.Ramps.Count; i++)
+                {
+                    _log.LogInformation(
+                        "PictureDelayMoved.Output Output={Output} DeviceId={DeviceId} RampPpm={RampPpm}",
+                        i + 1,
+                        m.Ramps[i].DeviceId,
+                        m.Ramps[i].RampPpm);
+                }
+
+                break;
             case OffsetChanged o:
                 _log.LogInformation(
                     "OffsetChanged Output={Output} DeviceId={DeviceId} OldOffsetMs={OldOffsetMs} NewOffsetMs={NewOffsetMs} SavedAt={SavedAt}",

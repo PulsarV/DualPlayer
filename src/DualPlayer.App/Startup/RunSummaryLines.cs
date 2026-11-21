@@ -45,14 +45,7 @@ internal static class RunSummaryLines
         _ => "exit",
     };
 
-    public static string TypeName(DeviceType type) => type switch
-    {
-        DeviceType.BluetoothHeadphones => "bluetooth-headphones",
-        DeviceType.BluetoothSpeaker => "bluetooth-speaker",
-        DeviceType.Wired => "wired",
-        DeviceType.Hdmi => "hdmi",
-        _ => "other",
-    };
+    public static string TypeName(DeviceType type) => DeviceTypeNames.Of(type);
 
     public static string CauseName(PictureDelayCause cause) => cause switch
     {

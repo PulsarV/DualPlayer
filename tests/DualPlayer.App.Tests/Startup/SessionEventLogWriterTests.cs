@@ -45,6 +45,34 @@ public sealed class SessionEventLogWriterTests
     }
 
     [Fact]
+    public void Picture_delay_move_is_logged_with_cause_delays_duration_and_speeds_in_ppm()
+    {
+        var h = new Harness();
+        h.Feed.Publish(new PictureDelayMoved(
+            TimeSpan.FromSeconds(75),
+            PictureDelayCause.DeviceLost,
+            240,
+            230,
+            TimeSpan.FromSeconds(5),
+            -2000,
+            [new OutputRamp(Dev, 1500)]));
+
+        // One record for the move, then one line per output ramp (same shape as the per-output latency lines).
+        h.Log.Entries.Count.ShouldBe(2);
+        var e = h.Log.Entries[0];
+        e["Clock"].ShouldBe("00:01:15.000");
+        e["Cause"].ShouldBe("device-lost");
+        e["FromMs"].ShouldBe(240);
+        e["ToMs"].ShouldBe(230);
+        Convert.ToDouble(e["DurationMs"]).ShouldBe(5000, 0.5);
+        Convert.ToDouble(e["PicturePpm"]).ShouldBe(-2000, 0.5);
+        var ramp = h.Log.Entries[1];
+        ramp["Output"].ShouldBe(1);
+        ramp["DeviceId"].ShouldBe(Dev);
+        Convert.ToDouble(ramp["RampPpm"]).ShouldBe(1500, 0.5);
+    }
+
+    [Fact]
     public void Offset_change_picture_timing_frame_counters_and_start_timings_are_logged_with_their_fields()
     {
         var h = new Harness();

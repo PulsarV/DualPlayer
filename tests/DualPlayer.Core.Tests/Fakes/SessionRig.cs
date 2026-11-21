@@ -3,6 +3,7 @@ using DualPlayer.Core.Outputs;
 using DualPlayer.Core.Playback;
 using DualPlayer.Core.Settings;
 using DualPlayer.Core.Sync;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
@@ -30,7 +31,8 @@ internal sealed class SessionRig : IDisposable
         Result<DeviceOffsets>? stored = null,
         Func<IOutputLagControl, IOutputLagControl>? wrapLags = null,
         IAudioDecoder? neighbourDecoder = null,
-        IPictureProbe? neighbourPictureProbe = null)
+        IPictureProbe? neighbourPictureProbe = null,
+        ILogger<PlaybackSession>? log = null)
     {
         Engine = new EngineRig(devices, totalSeconds) { EndsAllowed = true };
         Renderer = new FakeVideoRenderer(Engine.Time);
@@ -51,7 +53,7 @@ internal sealed class SessionRig : IDisposable
             _offsets,
             Engine.Backend,
             Engine.Time,
-            NullLogger<PlaybackSession>.Instance);
+            log ?? NullLogger<PlaybackSession>.Instance);
         Session.Events.Subscribe(new Collector(this));
         Engine.AfterStep = Session.Flush;
     }

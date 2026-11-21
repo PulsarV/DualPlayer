@@ -273,7 +273,7 @@ public sealed partial class PlaybackSession : IDisposable
         _events.Publish(new LatencyEstimated(full));
         foreach (var output in estimate.Outputs)
         {
-            LogLatency(output.DeviceId, output.Type, output.ReportedMs, output.Source, output.TypeDefaultMs, output.OffsetMs, output.AssumedMs, output.LagMs, estimate.PictureDelayMs);
+            LogLatency(output.DeviceId, DeviceTypeNames.Of(output.Type), output.ReportedMs, output.Source, output.TypeDefaultMs, output.OffsetMs, output.AssumedMs, output.LagMs, estimate.PictureDelayMs);
         }
 
         return returnTo is { } target
@@ -706,7 +706,7 @@ public sealed partial class PlaybackSession : IDisposable
         _events.Publish(changed);
         _events.Publish(new NoteShown($"Output {outputNumber}: {step.OffsetMs:+0;-0;0} ms", NoteStyle.Info));
         var output = updated.Outputs.First(o => o.DeviceId == deviceId);
-        LogLatency(output.DeviceId, output.Type, output.ReportedMs, output.Source, output.TypeDefaultMs, output.OffsetMs, output.AssumedMs, output.LagMs, updated.PictureDelayMs);
+        LogLatency(output.DeviceId, DeviceTypeNames.Of(output.Type), output.ReportedMs, output.Source, output.TypeDefaultMs, output.OffsetMs, output.AssumedMs, output.LagMs, updated.PictureDelayMs);
 
         var clockPosition = clock.PositionAt(_time.GetTimestamp());
         _events.Publish(new PictureDelayChanged(clockPosition, PictureDelayCause.Offset, estimate.PictureDelayMs, updated.PictureDelayMs, updated.Outputs));
@@ -723,12 +723,14 @@ public sealed partial class PlaybackSession : IDisposable
 
         var targets = LagTargets(updated);
         var duration = MoveDuration(sync, updated, targets);
+        var moved = MoveRecord(PictureDelayCause.Offset, clockPosition, sync, estimate, updated, targets, duration);
         var applied = _lags.SetLagTargets(targets, LagChangeMode.Ramp, duration);
         if (!applied.IsSuccess)
         {
             return applied;
         }
 
+        _events.Publish(moved);
         sync.MoveTo(TimeSpan.FromMilliseconds(updated.PictureDelayMs), duration);
         ReportTiming(sync);
         return Result.Success();
@@ -754,6 +756,39 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         return PictureSync.MoveDurationFor(largest);
+    }
+
+    /// <summary>
+    /// The record of a ramped move, from the same numbers that drive <see cref="PictureSync.MoveTo"/> and the lag ramps:
+    /// the picture covers its change over <paramref name="duration"/>, each output covers its own at up to 2000 ppm.
+    /// </summary>
+    private PictureDelayMoved MoveRecord(
+        PictureDelayCause cause,
+        TimeSpan clock,
+        PictureSync sync,
+        LatencyEstimate from,
+        LatencyEstimate to,
+        IReadOnlyDictionary<string, TimeSpan> targets,
+        TimeSpan duration)
+    {
+        var picturePpm = duration > TimeSpan.Zero
+            ? (TimeSpan.FromMilliseconds(to.PictureDelayMs) - sync.PictureDelay).Ticks / (double)duration.Ticks * 1e6
+            : 0;
+        var ramps = new List<OutputRamp>();
+        foreach (var (deviceId, target) in targets)
+        {
+            if (_lags.CurrentLag(deviceId) is not { } current)
+            {
+                continue;
+            }
+
+            var ppm = duration > TimeSpan.Zero
+                ? Math.Clamp((target - current).Ticks / (double)duration.Ticks * 1e6, -LagRamp.MaxRatePpm, LagRamp.MaxRatePpm)
+                : 0;
+            ramps.Add(new OutputRamp(deviceId, ppm));
+        }
+
+        return new PictureDelayMoved(clock, cause, from.PictureDelayMs, to.PictureDelayMs, duration, picturePpm, ramps);
     }
 
     /// <summary>
@@ -1591,13 +1626,15 @@ public sealed partial class PlaybackSession : IDisposable
 
         var lostTargets = LagTargets(updated);
         var lostDuration = MoveDuration(sync, updated, lostTargets);
+        var lostMoved = MoveRecord(PictureDelayCause.DeviceLost, lost.ClockPosition, sync, estimate, updated, lostTargets, lostDuration);
         _lags.SetLagTargets(lostTargets, LagChangeMode.Ramp, lostDuration);
+        _events.Publish(lostMoved);
         sync.MoveTo(TimeSpan.FromMilliseconds(updated.PictureDelayMs), lostDuration);
         ReportTiming(sync);
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Latency for {DeviceId}: type {Type}, reported {ReportedMs} ms ({Source}), default {DefaultMs} ms, offset {OffsetMs} ms, assumed {AssumedMs} ms, lag {LagMs} ms; picture delay {PictureDelayMs} ms")]
-    private partial void LogLatency(string deviceId, DeviceType type, int reportedMs, string? source, int defaultMs, int offsetMs, int assumedMs, int lagMs, int pictureDelayMs);
+    private partial void LogLatency(string deviceId, string type, int reportedMs, string? source, int defaultMs, int offsetMs, int assumedMs, int lagMs, int pictureDelayMs);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Latency probe failed for {DeviceId} ({Code}): {Message}; reported 0 ms, type Other")]
     private partial void LogProbeFailed(string deviceId, string code, string message);

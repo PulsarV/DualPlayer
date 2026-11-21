@@ -27,6 +27,19 @@ public sealed record PictureDelayChanged(
     int NewPictureDelayMs,
     IReadOnlyList<OutputLatency> Outputs) : SessionEvent;
 
+/// <summary>An output's lag ramp during a picture-delay move: signed speed change in ppm (positive = lag growing).</summary>
+public sealed record OutputRamp(string DeviceId, double RampPpm);
+
+/// <summary>A picture-delay move that ramps: its duration and the speeds the picture and each output ran at (AC-14, AC-17).</summary>
+public sealed record PictureDelayMoved(
+    TimeSpan Clock,
+    PictureDelayCause Cause,
+    int FromMs,
+    int ToMs,
+    TimeSpan Duration,
+    double PicturePpm,
+    IReadOnlyList<OutputRamp> Ramps) : SessionEvent;
+
 /// <summary>An output's offset moved; <paramref name="SavedAt"/> is null until the debounced save has run.</summary>
 public sealed record OffsetChanged(
     int OutputNumber,

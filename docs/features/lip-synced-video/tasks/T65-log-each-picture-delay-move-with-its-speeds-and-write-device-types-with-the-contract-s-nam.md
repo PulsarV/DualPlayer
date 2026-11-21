@@ -6,8 +6,8 @@ deps: ["T64"]
 blocks: []
 acs: ["AC-14", "AC-17", "AC-13"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.Core/Diagnostics/", "src/DualPlayer.Core/Sync/", "src/DualPlayer.App/Startup/SessionEventLogWriter.cs", "src/DualPlayer.App/Startup/RunSummaryLines.cs", "docs/features/lip-synced-video/contracts/cli.md", "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md", "tests/DualPlayer.Core.Tests/", "tests/DualPlayer.App.Tests/Startup/"]
-status: "todo"
-step: "SELECT"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -31,8 +31,8 @@ See [spec.md](../spec.md) §5 AC-14, AC-17, AC-13.
 
 ## Definition of Done
 
-- [ ] Every picture-delay move publishes one move record: cause, from and to picture delay, duration, the picture's speed in ppm and each output's ramp in ppm; the log writer writes it with contract names.
-- [ ] cli.md §3 lists the record; T23 L3 reads it (≤ 2000 ppm for the picture and every ramp).
-- [ ] The device-type mapper lives in Core and both `LogLatency` and the App log writer use it; the Core log line writes `bluetooth-headphones`.
-- [ ] Tests: an offset change publishes the move record with speeds ≤ 2000 ppm and the stretched duration; the writer writes its fields; the latency line uses the contract type name.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Every picture-delay move publishes one move record: cause, from and to picture delay, duration, the picture's speed in ppm and each output's ramp in ppm; the log writer writes it with contract names.
+- [x] cli.md §3 lists the record; T23 L3 reads it (≤ 2000 ppm for the picture and every ramp).
+- [x] The device-type mapper lives in Core and both `LogLatency` and the App log writer use it; the Core log line writes `bluetooth-headphones`.
+- [x] Tests: an offset change publishes the move record with speeds ≤ 2000 ppm and the stretched duration; the writer writes its fields; the latency line uses the contract type name.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
