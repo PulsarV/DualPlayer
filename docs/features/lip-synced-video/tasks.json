@@ -520,7 +520,17 @@
         "T56",
         "T57",
         "T58",
-        "T59"
+        "T59",
+        "T60",
+        "T61",
+        "T62",
+        "T63",
+        "T64",
+        "T65",
+        "T66",
+        "T67",
+        "T68",
+        "T69"
       ],
       "acs": [
         "AC-16",
@@ -1342,6 +1352,219 @@
       "file": "docs/features/lip-synced-video/tasks/T59-make-the-timing-sensitive-engine-tests-deterministic-under-parallel-load.md",
       "status": "done",
       "origin": "implement run 2026-11-21: flaky engine tests seen at d4e23c3 and e0964e9"
+    },
+    {
+      "id": "T60",
+      "title": "Forget the old film as soon as a file change begins and name the right file in the exit summary",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-05",
+        "AC-06"
+      ],
+      "dod": "`ChangeFile` clears `_filmLoaded` right after `_engine.Stop(FileChange)`, so after any failed file change (before or after `Load`) ← is a no-op that leaves the session Ended.; The exit summary names the file its run played: either `RunSummary` carries its file and the printer uses it, or the printer's file goes back to the playing file when a change fails — no `run-summary file <new file>` with the old film's figures.; The Q2 stale-summary test in `PlaybackSessionEndedRecoveryTests.cs:68-84`, which relies on returning into the old film after a failed change, is rewritten to keep its intent (a stale `RunSummary` does not move `_endPosition`) without that return.; The T48 session test asserts after ← that `EngineRunFiles.Count` is unchanged, the state is `Ended` and `summaries.Count == 1` (it fails if `_filmLoaded = true` moves back to after `Load`).; Tests: Page Down with a device unlisted before `Load`, then ← → no engine run, Ended; then Esc → summary line names the old file (printer test).; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.App/Startup/TerminalPrinter.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.App.Tests/Startup/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T60-forget-the-old-film-as-soon-as-a-file-change-begins-and-name-the-right-file-in-the-exit-su.md",
+      "status": "todo",
+      "origin": "review-2026-11-21c: S1, S4"
+    },
+    {
+      "id": "T61",
+      "title": "Return or change file after every output was lost on whichever devices are back",
+      "layer": "app",
+      "deps": [
+        "T60"
+      ],
+      "acs": [
+        "AC-15b",
+        "AC-05",
+        "AC-07"
+      ],
+      "dod": "In the retry after every output was lost (← and Page Down/Up), a device missing from the list is treated as lost — it keeps its output number and estimate, as `keepLost` does — instead of failing the start.; The retry fails with the existing note and log entry only when no device resolves.; Tests: two outputs lost, one relisted and one still unlisted, then ← → the film plays from the end position on the relisted device, the other stays lost; the same for Page Down (the next file plays on the relisted device); none relisted → note, Ended.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.Core.Tests/Fakes/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T61-return-or-change-file-after-every-output-was-lost-on-whichever-devices-are-back.md",
+      "status": "todo",
+      "origin": "review-2026-11-21c: S2"
+    },
+    {
+      "id": "T62",
+      "title": "Hold picture timing at a pause during a pending align and make the hold test bite",
+      "layer": "app",
+      "deps": [
+        "T61"
+      ],
+      "acs": [
+        "AC-04",
+        "AC-17"
+      ],
+      "dod": "`PauseCore` skips the at-key measurement (or routes it through the `ReportTiming` hold) when `_pendingAlign` is set.; Test: pause → resume → pause within the picture delay publishes no `PictureTimingReported` with |error| > 20 ms (fails on the current code).; The T50 hold test renders past the picture delay and asserts at least one `PictureTimingReported` after the align and that all of them are within 20 ms.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionRecoveryBudgetTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T62-hold-picture-timing-at-a-pause-during-a-pending-align-and-make-the-hold-test-bite.md",
+      "status": "todo",
+      "origin": "review-2026-11-21c: S3, S5"
+    },
+    {
+      "id": "T63",
+      "title": "Give up with a not-lip-synced record when no frame becomes measurable after a command",
+      "layer": "app",
+      "deps": [
+        "T62"
+      ],
+      "acs": [
+        "AC-17"
+      ],
+      "dod": "When a lip-synced-again record is owed and there is nothing to measure, the budget is checked against `_time.GetTimestamp()`; past it, `NotLipSynced` is published once with a null (or last-known) picture error and the output errors, and polling stops.; cli.md §3 says what the `NotLipSynced` record holds when no frame was measurable.; Test: a seek after which the fake renderer presents no new frame → exactly one `NotLipSynced` after the budget, none before.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionRecoveryBudgetTests.cs",
+        "docs/features/lip-synced-video/contracts/cli.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T63-give-up-with-a-not-lip-synced-record-when-no-frame-becomes-measurable-after-a-command.md",
+      "status": "todo",
+      "origin": "review-2026-11-21c: S8"
+    },
+    {
+      "id": "T64",
+      "title": "Answer a Page Down or Page Up within one time budget however many neighbours are slow",
+      "layer": "app",
+      "deps": [
+        "T63"
+      ],
+      "acs": [
+        "AC-09b"
+      ],
+      "dod": "Each Page Down/Up press has one deadline inside the 3 s budget; each candidate's probe is limited to the time left, and when the deadline passes the scan stops with the combined note (\"No next file (skipped N; last: …)\" per screens.md) and log entries.; Test with a fake probe that advances fake time: three slow neighbours → the press answers within the budget and names the skipped count.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.Core.Tests/Fakes/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T64-answer-a-page-down-or-page-up-within-one-time-budget-however-many-neighbours-are-slow.md",
+      "status": "todo",
+      "origin": "review-2026-11-21c: S14"
+    },
+    {
+      "id": "T65",
+      "title": "Log each picture-delay move with its speeds and write device types with the contract's names everywhere",
+      "layer": "app",
+      "deps": [
+        "T64"
+      ],
+      "acs": [
+        "AC-14",
+        "AC-17",
+        "AC-13"
+      ],
+      "dod": "Every picture-delay move publishes one move record: cause, from and to picture delay, duration, the picture's speed in ppm and each output's ramp in ppm; the log writer writes it with contract names.; cli.md §3 lists the record; T23 L3 reads it (≤ 2000 ppm for the picture and every ramp).; The device-type mapper lives in Core and both `LogLatency` and the App log writer use it; the Core log line writes `bluetooth-headphones`.; Tests: an offset change publishes the move record with speeds ≤ 2000 ppm and the stretched duration; the writer writes its fields; the latency line uses the contract type name.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Diagnostics/",
+        "src/DualPlayer.Core/Sync/",
+        "src/DualPlayer.App/Startup/SessionEventLogWriter.cs",
+        "src/DualPlayer.App/Startup/RunSummaryLines.cs",
+        "docs/features/lip-synced-video/contracts/cli.md",
+        "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md",
+        "tests/DualPlayer.Core.Tests/",
+        "tests/DualPlayer.App.Tests/Startup/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T65-log-each-picture-delay-move-with-its-speeds-and-write-device-types-with-the-contract-s-nam.md",
+      "status": "todo",
+      "origin": "review-2026-11-21c: S12, S10"
+    },
+    {
+      "id": "T66",
+      "title": "Map access denied on the audio open and name the format when the picture probe times out",
+      "layer": "integration",
+      "deps": [],
+      "acs": [
+        "AC-09b",
+        "AC-02"
+      ],
+      "dod": "`FfmpegAudioDecoder.OpenInput` maps AVERROR(EACCES) and AVERROR(EPERM) to `playback.file_access_denied` (shared mapping with the picture probe).; The probe worker publishes codec and profile as soon as they are read; the timeout error names them in its message and `Fields`.; Tests: the decoder mapping for 13 and 1; a timeout after the codec is read names it.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Media/Audio/FfmpegAudioDecoder.cs",
+        "src/DualPlayer.Media/Video/FfmpegPictureProbe.cs",
+        "tests/DualPlayer.Media.Tests/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T66-map-access-denied-on-the-audio-open-and-name-the-format-when-the-picture-probe-times-out.md",
+      "status": "todo",
+      "origin": "review-2026-11-21c: S9, S17"
+    },
+    {
+      "id": "T67",
+      "title": "Keep the window and last frame up after a picture failure so its note is seen",
+      "layer": "integration",
+      "deps": [],
+      "acs": [
+        "AC-06b",
+        "AC-07"
+      ],
+      "dod": "mpv keeps its window after an error end-file (`force-window=yes`, or a paused reload at the failure position before the note), and a note shown after it is drawn.; A test checks the option is set (unit) and a `[HardwareFact]` test shows a note after an error end-file on a truncated sample and reads `osd`/window state back.; The T23 run guide has a checklist item: a truncated file shows the picture-failed note over the last good frame.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Media/Video/MpvVideoRenderer.cs",
+        "tests/DualPlayer.Media.Tests/Video/MpvVideoRendererTests.cs",
+        "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T67-keep-the-window-and-last-frame-up-after-a-picture-failure-so-its-note-is-seen.md",
+      "status": "todo",
+      "origin": "review-2026-11-21c: S13"
+    },
+    {
+      "id": "T68",
+      "title": "Wait for the pre-roll release without moving the fake clock in the start-to-audio tests",
+      "layer": "test",
+      "deps": [],
+      "acs": [],
+      "dod": "The start-to-audio tests wait for the release (`((IOutputLagControl)Engine).ClockStartTimestamp != null`, or settle the loop after each step as `RenderSettled` does) without advancing the fake clock, then render until `AudioStarted`; the bound is unchanged.; The SlowStartDecoder test is reworked so its delay falls after the first renders, or removed as a duplicate.; No production code changes unless a real engine race is found (then fixed with a test).; `dotnet test tests/DualPlayer.Core.Tests` passes 10 runs in a row, with the count recorded in the task note.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/AudioEngineRunTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T68-wait-for-the-pre-roll-release-without-moving-the-fake-clock-in-the-start-to-audio-tests.md",
+      "status": "todo",
+      "origin": "review-2026-11-21c: S6"
+    },
+    {
+      "id": "T69",
+      "title": "Bring test-plan, contracts, sad, roadmap, tasks and the T23 guide in step with the code",
+      "layer": "docs",
+      "deps": [
+        "T60",
+        "T61",
+        "T62",
+        "T63",
+        "T64",
+        "T65",
+        "T66",
+        "T67",
+        "T68"
+      ],
+      "acs": [],
+      "dod": "test-plan rows cite the right classes and ACs, the AC-04 row links the Space E2E test, and the rows for T60–T68's tests are added.; cli.md §2.2 and SCR-01 list `previous <file name>`.; sad.md §2/§5/§11 and the roadmap wave-3 zone line record the step-4 edits to `Core/Diagnostics/`, `Core/Outputs/` and `AudioEngine`, with a note for steps 5 and 6; T13's DoD box is resolved with a pointer to that record.; T20's and T31's `acs` list the ACs they build.; The T23 guide uses `PictureDelayChanged` and judges L1 on `LipSyncedAgain`/`NotLipSynced` with command `start`.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "docs/features/lip-synced-video/test-plan.md",
+        "docs/features/lip-synced-video/contracts/cli.md",
+        "docs/features/lip-synced-video/screens.md",
+        "docs/features/lip-synced-video/sad.md",
+        "docs/roadmap.md",
+        "docs/features/lip-synced-video/tasks.json",
+        "docs/features/lip-synced-video/tasks/T13-playback-session-start-end-exit.md",
+        "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T69-bring-test-plan-contracts-sad-roadmap-tasks-and-the-t23-guide-in-step-with-the-code.md",
+      "status": "todo",
+      "origin": "review-2026-11-21c: S11, S15, S16, S18, S19"
     }
   ]
 }
