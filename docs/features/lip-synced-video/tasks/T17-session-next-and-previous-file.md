@@ -127,6 +127,6 @@ This task raises the events carrying these fields; printing is T21.
 
 ## Definition of Done
 
-- [ ] `PlaybackSessionFileChangeTests` pass for AC-07, AC-08, AC-09, AC-09b
-- [ ] every Hard Rule inlined above still holds
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
+- [x] `PlaybackSessionFileChangeTests` pass for AC-07, AC-08, AC-09, AC-09b
+- [x] every Hard Rule inlined above still holds
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

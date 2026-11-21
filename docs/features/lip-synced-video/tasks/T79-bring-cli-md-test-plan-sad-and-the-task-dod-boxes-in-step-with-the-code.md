@@ -6,8 +6,8 @@ deps: ["T70", "T71", "T72", "T73", "T74", "T75", "T76", "T77", "T78"]
 blocks: []
 acs: ["AC-01", "AC-17"]
 files_hint: ["docs/features/lip-synced-video/contracts/cli.md", "docs/features/lip-synced-video/test-plan.md", "docs/features/lip-synced-video/sad.md", "docs/features/lip-synced-video/tasks/", "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,9 +31,9 @@ See [spec.md](../spec.md) §5 AC-01, AC-17.
 
 ## Definition of Done
 
-- [ ] cli.md §3 has rows for `LipSyncedAgain` (clock, command, ms after command, picture error, per-output errors) and `DamagedStretchSkipped` (position, length, frames), matching `SessionEventLogWriter`.
-- [ ] test-plan row 75 is rewritten for T66; row 130 is marked integration/hardware; rows for T70–T78's tests are added with the right class names and ACs.
-- [ ] sad.md §8 hardening list matches the renderer's options (incl. `keep-open=yes`, `force-window=yes`).
-- [ ] T13's DoD names T29, T41 and T55.
-- [ ] In T1–T22 the DoD boxes that hold are ticked; T11:109 and T12:129 are resolved with a pointer to sad.md §2 (as T13); T22:115 is folded into the T23 checklist and marked so.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] cli.md §3 has rows for `LipSyncedAgain` (clock, command, ms after command, picture error, per-output errors) and `DamagedStretchSkipped` (position, length, frames), matching `SessionEventLogWriter`.
+- [x] test-plan row 75 is rewritten for T66; row 130 is marked integration/hardware; rows for T70–T78's tests are added with the right class names and ACs.
+- [x] sad.md §8 hardening list matches the renderer's options (incl. `keep-open=yes`, `force-window=yes`).
+- [x] T13's DoD names T29, T41 and T55.
+- [x] In T1–T22 the DoD boxes that hold are ticked; T11:109 and T12:129 are resolved with a pointer to sad.md §2 (as T13); T22:115 is folded into the T23 checklist and marked so.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

@@ -143,7 +143,7 @@ This task returns these as load warnings; printing is T21.
 
 ## Definition of Done
 
-- [ ] `DeviceOffsetsFileTests` + `OffsetBookTests` pass, incl. the abandon-and-reload test
-- [ ] writes go through `IStateStore` (atomic temp + rename)
-- [ ] every Hard Rule inlined above still holds
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
+- [x] `DeviceOffsetsFileTests` + `OffsetBookTests` pass, incl. the abandon-and-reload test
+- [x] writes go through `IStateStore` (atomic temp + rename)
+- [x] every Hard Rule inlined above still holds
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

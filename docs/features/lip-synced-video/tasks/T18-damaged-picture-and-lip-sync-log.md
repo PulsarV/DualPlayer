@@ -117,6 +117,6 @@ Log records `PictureTiming` and `FrameCounters` as defined in `cli.md §3` (inli
 
 ## Definition of Done
 
-- [ ] `PlaybackSessionPictureHealthTests` pass for AC-06b and the AC-17 cadence
-- [ ] every Hard Rule inlined above still holds
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
+- [x] `PlaybackSessionPictureHealthTests` pass for AC-06b and the AC-17 cadence
+- [x] every Hard Rule inlined above still holds
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

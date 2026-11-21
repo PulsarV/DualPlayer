@@ -109,7 +109,7 @@ Internal — no API surface.
 
 ## Definition of Done
 
-- [ ] `LatencyModelTests` pass for every AC-13 mapping rule and the `Aᵢ` / `PD` / `Dᵢ` arithmetic
-- [ ] the type-default table exists in exactly one place
-- [ ] every Hard Rule inlined above still holds
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
+- [x] `LatencyModelTests` pass for every AC-13 mapping rule and the `Aᵢ` / `PD` / `Dᵢ` arithmetic
+- [x] the type-default table exists in exactly one place
+- [x] every Hard Rule inlined above still holds
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

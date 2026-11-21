@@ -99,6 +99,6 @@ Internal — no API surface.
 
 ## Definition of Done
 
-- [ ] `PlaybackSessionDeviceLossTests` pass for AC-15 and AC-15b
-- [ ] every Hard Rule inlined above still holds
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
+- [x] `PlaybackSessionDeviceLossTests` pass for AC-15 and AC-15b
+- [x] every Hard Rule inlined above still holds
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

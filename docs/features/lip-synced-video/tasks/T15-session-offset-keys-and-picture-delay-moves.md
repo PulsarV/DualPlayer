@@ -120,6 +120,6 @@ Internal — no API surface.
 
 ## Definition of Done
 
-- [ ] `PlaybackSessionOffsetTests` pass for AC-10, AC-11 and the offset half of AC-14
-- [ ] every Hard Rule inlined above still holds
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
+- [x] `PlaybackSessionOffsetTests` pass for AC-10, AC-11 and the offset half of AC-14
+- [x] every Hard Rule inlined above still holds
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

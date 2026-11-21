@@ -124,7 +124,7 @@ Internal — no API surface.
 
 ## Definition of Done
 
-- [ ] `PlaybackViewModelTests` pass for every key row
-- [ ] no inline sizes or colours in `PlaybackWindow.axaml`
-- [ ] every Hard Rule inlined above still holds
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
+- [x] `PlaybackViewModelTests` pass for every key row
+- [x] no inline sizes or colours in `PlaybackWindow.axaml`
+- [x] every Hard Rule inlined above still holds
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

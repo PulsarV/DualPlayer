@@ -111,7 +111,7 @@ Uses `contracts/cli.md` §1.1, §4 as implemented by T19/T21; adds no new surfac
 
 ## Definition of Done
 
-- [ ] `CompositionRootSmokeTests` pass
-- [ ] manual dev-Mac run plays a sample and exits 0 with a run summary
-- [ ] every Hard Rule inlined above still holds
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
+- [x] `CompositionRootSmokeTests` pass
+- [ ] manual dev-Mac run plays a sample and exits 0 with a run summary — not run in this task; folded into the T23 checklist ("The T22 manual run")
+- [x] every Hard Rule inlined above still holds
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

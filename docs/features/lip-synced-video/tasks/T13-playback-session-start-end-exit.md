@@ -153,7 +153,7 @@ Internal — no API surface of its own; this task defines the `SessionEvent` rec
 
 ## Definition of Done
 
-- [ ] `PlaybackSessionStartTests` pass for each AC branch listed above
-- [x] no file in `Core/Diagnostics/` or `Core/Outputs/` changed — superseded: later tasks (T60-T68) did edit them; recorded in [sad.md](../sad.md) §2 (review-2026-11-21c S15)
-- [ ] every Hard Rule inlined above still holds
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
+- [x] `PlaybackSessionStartTests` pass for each AC branch listed above
+- [x] no file in `Core/Diagnostics/` or `Core/Outputs/` changed — superseded: later tasks (T29, T41 and T55) did edit them; recorded in [sad.md](../sad.md) §2 (review-2026-11-21c S15)
+- [x] every Hard Rule inlined above still holds
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

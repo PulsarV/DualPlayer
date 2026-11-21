@@ -116,7 +116,7 @@ Internal — no API surface.
 
 ## Definition of Done
 
-- [ ] `FakeVideoRendererTests` pass (position follows clock × speed, pause holds, seek jumps, each injected event raised once)
-- [ ] no package added to `DualPlayer.Core.csproj`
-- [ ] every Hard Rule inlined above still holds
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
+- [x] `FakeVideoRendererTests` pass (position follows clock × speed, pause holds, seek jumps, each injected event raised once)
+- [x] no package added to `DualPlayer.Core.csproj`
+- [x] every Hard Rule inlined above still holds
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

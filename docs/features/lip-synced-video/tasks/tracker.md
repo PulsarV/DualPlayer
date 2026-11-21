@@ -86,6 +86,6 @@
 | T76 | [Show the picture-failed note on the last good frame](./T76-show-the-picture-failed-note-on-the-last-good-frame.md) | integration | Volodymyr Kravchuk | M | T75 | done | COMMIT |
 | T77 | [Load FFmpeg before mapping an audio open failure so the mapping tests run alone](./T77-load-ffmpeg-before-mapping-an-audio-open-failure-so-the-mapping-tests-run-alone.md) | integration | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T78 | [Name the ended-recovery test after what it checks and drop the redundant run-token bump](./T78-name-the-ended-recovery-test-after-what-it-checks-and-drop-the-redundant-run-token-bump.md) | test | Volodymyr Kravchuk | S | T76 | done | COMMIT |
-| T79 | [Bring cli.md, test-plan, sad and the task DoD boxes in step with the code](./T79-bring-cli-md-test-plan-sad-and-the-task-dod-boxes-in-step-with-the-code.md) | docs | Volodymyr Kravchuk | S | T70, T71, T72, T73, T74, T75, T76, T77, T78 | todo | — |
+| T79 | [Bring cli.md, test-plan, sad and the task DoD boxes in step with the code](./T79-bring-cli-md-test-plan-sad-and-the-task-dod-boxes-in-step-with-the-code.md) | docs | Volodymyr Kravchuk | S | T70, T71, T72, T73, T74, T75, T76, T77, T78 | done | COMMIT |
 
 **Total:** 79 tasks (T24–T38 are follow-ups from review-2026-11-20, T39–T47 from review-2026-11-21, T48–T58 from review-2026-11-21b, T59 from the T48–T58 run, T60–T69 from review-2026-11-21c, T70–T79 from review-2026-11-21d; T23 runs last, on the fixed code), ~39 person-days (S = ½ day, M/L = 1 day; T5 and T23 also need the owner's time on the target PC).

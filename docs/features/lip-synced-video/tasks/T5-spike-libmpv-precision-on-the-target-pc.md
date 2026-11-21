@@ -107,8 +107,8 @@ Internal — no API surface.
 
 ## Definition of Done
 
-- [ ] evidence file committed with numbers and a verdict per kill-criterion line
-- [ ] roadmap D1 status updated (decided, or blocked with the superseding-ADR link)
+- [x] evidence file committed with numbers and a verdict per kill-criterion line
+- [x] roadmap D1 status updated (decided, or blocked with the superseding-ADR link)
 - [ ] `ux-flows.md` US-02 wording matches AC-04
-- [ ] every Hard Rule inlined above still holds
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
+- [x] every Hard Rule inlined above still holds
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

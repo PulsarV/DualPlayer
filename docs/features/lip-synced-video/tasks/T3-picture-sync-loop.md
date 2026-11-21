@@ -129,7 +129,7 @@ Internal — no API surface.
 
 ## Definition of Done
 
-- [ ] `PictureSyncTests` pass for steady, start, resume, seek, positive and negative PD, a 10 ms move (≈ 5 s, speed within 1 ± 0.002) and a retarget mid-move
-- [ ] no `DateTime.Now` / `Stopwatch` in the new code
-- [ ] every Hard Rule inlined above still holds
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
+- [x] `PictureSyncTests` pass for steady, start, resume, seek, positive and negative PD, a 10 ms move (≈ 5 s, speed within 1 ± 0.002) and a retarget mid-move
+- [x] no `DateTime.Now` / `Stopwatch` in the new code
+- [x] every Hard Rule inlined above still holds
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

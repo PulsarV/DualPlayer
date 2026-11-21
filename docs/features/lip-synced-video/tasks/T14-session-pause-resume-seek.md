@@ -118,6 +118,6 @@ Internal — no API surface.
 
 ## Definition of Done
 
-- [ ] `PlaybackSessionTransportTests` pass for every AC-04/AC-05 branch on the fake clock
-- [ ] every Hard Rule inlined above still holds
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
+- [x] `PlaybackSessionTransportTests` pass for every AC-04/AC-05 branch on the fake clock
+- [x] every Hard Rule inlined above still holds
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

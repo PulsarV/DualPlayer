@@ -140,7 +140,7 @@ error start.screen_not_found: screen 3 was not found. Connected screens: 1 (1920
 
 ## Definition of Done
 
-- [ ] `StartCommandTests` pass for every pre-start error row and the check order
-- [ ] `DualPlayer.App` is a console-subsystem executable
-- [ ] every Hard Rule inlined above still holds
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
+- [x] `StartCommandTests` pass for every pre-start error row and the check order
+- [x] `DualPlayer.App` is a console-subsystem executable
+- [x] every Hard Rule inlined above still holds
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

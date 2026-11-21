@@ -105,7 +105,7 @@ Internal — no API surface.
 
 ## Definition of Done
 
-- [ ] new and existing `Core.Tests/Sync` tests pass
-- [ ] no file under `src/DualPlayer.Core/Outputs/` changed
-- [ ] every Hard Rule inlined above still holds
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
+- [x] new and existing `Core.Tests/Sync` tests pass
+- [x] no file under `src/DualPlayer.Core/Outputs/` changed — superseded: later tasks (T55 and T64, among others) did edit it; recorded in [sad.md](../sad.md) §2 (review-2026-11-21c S15)
+- [x] every Hard Rule inlined above still holds
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

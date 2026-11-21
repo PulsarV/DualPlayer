@@ -125,7 +125,7 @@ Internal — no API surface.
 
 ## Definition of Done
 
-- [ ] `AudioEngineLagTests` pass; every existing Core and Console test passes unchanged
-- [ ] `IAudioEngine.cs` unchanged; no file in `Core/Outputs/` or `Core/Diagnostics/` changed
-- [ ] every Hard Rule inlined above still holds
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
+- [x] `AudioEngineLagTests` pass; every existing Core and Console test passes unchanged
+- [x] `IAudioEngine.cs` unchanged; no file in `Core/Outputs/` or `Core/Diagnostics/` changed — superseded: later tasks (T29, T41 and T55) did edit them; recorded in [sad.md](../sad.md) §2 (review-2026-11-21c S15)
+- [x] every Hard Rule inlined above still holds
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

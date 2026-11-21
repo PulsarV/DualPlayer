@@ -105,6 +105,6 @@ This task returns the codes as `Result` errors; printing them is T19/T21.
 ## Definition of Done
 
 - [ ] `MpvLibraryTests` pass on macOS (Homebrew libmpv) and on CI Windows (fetched DLL)
-- [ ] `build/mpv/` is git-ignored; the DLL lands beside `DualPlayer.App` and test executables
-- [ ] every Hard Rule inlined above still holds
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
+- [x] `build/mpv/` is git-ignored; the DLL lands beside `DualPlayer.App` and test executables
+- [x] every Hard Rule inlined above still holds
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

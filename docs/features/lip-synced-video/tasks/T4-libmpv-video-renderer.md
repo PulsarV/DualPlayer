@@ -132,7 +132,7 @@ Internal — no API surface.
 
 ## Definition of Done
 
-- [ ] `MpvVideoRendererTests` pass (pure option list everywhere; playback test where libmpv is present)
-- [ ] the hardening option list matches `sad.md §8` exactly
-- [ ] every Hard Rule inlined above still holds
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
+- [x] `MpvVideoRendererTests` pass (pure option list everywhere; playback test where libmpv is present)
+- [x] the hardening option list matches `sad.md §8` exactly
+- [x] every Hard Rule inlined above still holds
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean

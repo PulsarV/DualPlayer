@@ -96,6 +96,6 @@ Internal — no API surface.
 
 ## Definition of Done
 
-- [ ] `FolderNeighboursTests` pass incl. the 10 000-file timing test
-- [ ] every Hard Rule inlined above still holds
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
+- [x] `FolderNeighboursTests` pass incl. the 10 000-file timing test
+- [x] every Hard Rule inlined above still holds
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` are clean
