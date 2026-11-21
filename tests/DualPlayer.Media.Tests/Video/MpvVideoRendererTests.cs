@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using DualPlayer.Core;
 using DualPlayer.Core.Playback;
 using DualPlayer.Media.Video;
+using DualPlayer.Tests;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
@@ -97,6 +98,7 @@ public sealed class MpvVideoRendererTests
             [
                 "audio=no",
                 "config=no",
+                "force-window=yes",
                 "hwdec=d3d11va",
                 "input-default-bindings=no",
                 "input-vo-keyboard=no",
@@ -536,6 +538,57 @@ public sealed class MpvVideoRendererTests
         result.Error.ShouldNotBeNull().Code.ShouldBe("mpv.load_failed");
     }
 
+
+    // ---- T67: the window and last frame stay after a picture failure so its note is seen (AC-06b, AC-07) ----
+
+    [Fact]
+    public void Hardening_options_keep_the_window_up_after_an_error_end_file_with_force_window()
+    {
+        MpvVideoRenderer.HardeningOptions(OSPlatform.Windows).ShouldContain(new KeyValuePair<string, string>("force-window", "yes"));
+        MpvVideoRenderer.HardeningOptions(OSPlatform.OSX).ShouldContain(new KeyValuePair<string, string>("force-window", "yes"));
+    }
+
+    [HardwareFact(HardwareOs.MacOS)]
+    public void A_note_after_an_error_end_file_on_a_truncated_sample_is_drawn_on_a_window_that_is_still_up_AC_06b_AC_07()
+    {
+        RequireLibmpv();
+        var dir = Directory.CreateTempSubdirectory("dualplayer-t67");
+        try
+        {
+            // Valid container header and first packets, then garbage: demuxing the rest ends the file with an error.
+            var bytes = File.ReadAllBytes(Media("video-damaged.mkv"));
+            var broken = Path.Combine(dir.FullName, "truncated.mkv");
+            var cut = bytes.Take(bytes.Length / 4).Concat(Enumerable.Repeat((byte)0xFF, 4096)).ToArray();
+            File.WriteAllBytes(broken, cut);
+
+            using var renderer = NewRenderer();
+
+            // mpv on this Mac ends such a sample with end-of-file rather than an error end-file (verified with the mpv
+            // CLI), so either ending counts: the point is that the window is still configured when the note goes up.
+            var ended = false;
+            renderer.DecodeFailed += _ => ended = true;
+            renderer.EndOfFile += () => ended = true;
+            renderer.Load(broken, 0, startPaused: false).IsSuccess.ShouldBeTrue();
+            var deadline = Stopwatch.GetTimestamp() + (long)(Patience.TotalSeconds * Stopwatch.Frequency);
+            while (!ended && Stopwatch.GetTimestamp() < deadline)
+            {
+                Thread.Sleep(10);
+            }
+
+            ended.ShouldBeTrue("the truncated sample must stop playing");
+
+            renderer.ShowNote("Picture failed", NoteStyle.Warning);
+            Thread.Sleep(300);
+
+            MpvProbe.Read(renderer, "force-window").ShouldBe("yes");
+            MpvProbe.Read(renderer, "vo-configured").ShouldBe("yes", "the video output must not be torn down by the failure");
+        }
+        finally
+        {
+            dir.Delete(true);
+        }
+    }
+
     // ---- notes and lifetime ----
 
     [Fact]
@@ -567,5 +620,43 @@ public sealed class MpvVideoRendererTests
         Should.NotThrow(() => _ = renderer.Counters);
         Thread.Sleep(300);
         raised.ShouldBe(0);
+    }
+}
+
+/// <summary>Test scaffold: reads a property of the renderer's live mpv handle by name.</summary>
+internal static class MpvProbe
+{
+    private static readonly Lazy<nint> Library = new(() =>
+    {
+        foreach (var path in new[] { "/opt/homebrew/lib/libmpv.dylib", "/usr/local/lib/libmpv.dylib", Path.Combine(AppContext.BaseDirectory, "libmpv-2.dll") })
+        {
+            if (NativeLibrary.TryLoad(path, out var handle))
+            {
+                return handle;
+            }
+        }
+
+        throw new InvalidOperationException("libmpv not found");
+    });
+
+    private delegate nint GetPropertyString(nint ctx, [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
+
+    private delegate void Free(nint data);
+
+    public static string? Read(MpvVideoRenderer renderer, string name)
+    {
+        var field = typeof(MpvVideoRenderer).GetField("_handle", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        var ctx = (nint)field.GetValue(renderer)!;
+        var get = Marshal.GetDelegateForFunctionPointer<GetPropertyString>(NativeLibrary.GetExport(Library.Value, "mpv_get_property_string"));
+        var free = Marshal.GetDelegateForFunctionPointer<Free>(NativeLibrary.GetExport(Library.Value, "mpv_free"));
+        var result = get(ctx, name);
+        if (result == 0)
+        {
+            return null;
+        }
+
+        var text = Marshal.PtrToStringUTF8(result);
+        free(result);
+        return text;
     }
 }

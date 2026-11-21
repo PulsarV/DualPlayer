@@ -229,6 +229,10 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
         // At the end, and after a seek past it, mpv pauses on the last frame instead of tearing the video output down,
         // so the picture and any note stay on screen (SCR-02); the end is reported through eof-reached.
         new("keep-open", "yes"),
+
+        // After an error end-file (a truncated sample) mpv would close the window; keeping it up leaves the last good
+        // frame and the "picture failed" note on screen (AC-06b).
+        new("force-window", "yes"),
         new("hwdec", platform == OSPlatform.OSX ? "videotoolbox" : "d3d11va"),
     ];
 

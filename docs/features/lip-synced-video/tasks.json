@@ -1518,7 +1518,7 @@
         "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md"
       ],
       "file": "docs/features/lip-synced-video/tasks/T67-keep-the-window-and-last-frame-up-after-a-picture-failure-so-its-note-is-seen.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-21c: S13"
     },
     {
