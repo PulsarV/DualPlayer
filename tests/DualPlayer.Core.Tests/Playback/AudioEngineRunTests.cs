@@ -103,6 +103,23 @@ public sealed class AudioEngineRunTests
             task.Wait(TimeSpan.FromSeconds(10)).ShouldBeTrue("the stop did not complete");
         }
 
+        /// <summary>Keeps rendering 10 ms steps until <paramref name="condition"/> holds (or the timeout), so a slow engine thread never starves the devices.</summary>
+        public bool RenderUntil(Func<bool> condition)
+        {
+            var deadline = DateTime.UtcNow + Timeout;
+            while (DateTime.UtcNow < deadline)
+            {
+                if (condition())
+                {
+                    return true;
+                }
+
+                Render(1);
+            }
+
+            return condition();
+        }
+
         public bool WaitFor(Func<bool> condition)
         {
             var deadline = DateTime.UtcNow + Timeout;
@@ -246,6 +263,39 @@ public sealed class AudioEngineRunTests
                 {
                     Thread.Sleep(1);
                     return Result<DecodedBlock>.Success(new DecodedBlock(0, 0, 0, []));
+                }
+
+                return inner.Read();
+            }
+
+            public void Dispose() => inner.Dispose();
+        }
+    }
+
+    /// <summary>Delegates to another decoder, but its first reads are slow, as on a loaded machine: the pre-roll ends late.</summary>
+    private sealed class SlowStartDecoder(IAudioDecoder inner, TimeSpan delay) : IAudioDecoder
+    {
+        public Result<IReadOnlyList<AudioTrackInfo>> ListTracks(string path) => inner.ListTracks(path);
+
+        public Result<IDecodeSession> Open(string path, IReadOnlyList<DecodeRequest> outputs)
+        {
+            var opened = inner.Open(path, outputs);
+            return opened.IsSuccess ? Result<IDecodeSession>.Success(new Session(opened.Value, delay)) : opened;
+        }
+
+        private sealed class Session(IDecodeSession inner, TimeSpan delay) : IDecodeSession
+        {
+            private int _reads;
+
+            public TimeSpan? Duration => inner.Duration;
+
+            public Result Seek(TimeSpan position, int epoch) => inner.Seek(position, epoch);
+
+            public Result<DecodedBlock> Read()
+            {
+                if (Interlocked.Increment(ref _reads) == 1)
+                {
+                    Thread.Sleep(delay);
                 }
 
                 return inner.Read();
@@ -439,9 +489,8 @@ public sealed class AudioEngineRunTests
         rig.Events.OfType<AudioStarted>().ShouldBeEmpty("device 2 has not rendered yet");
 
         rig.Time.Advance(TimeSpan.FromMilliseconds(290));
-        rig.Render(5);
 
-        rig.WaitFor(() => rig.Events.OfType<AudioStarted>().Any()).ShouldBeTrue();
+        rig.RenderUntil(() => rig.Events.OfType<AudioStarted>().Any()).ShouldBeTrue();
         var started = rig.Events.OfType<AudioStarted>().Single();
         started.StartToAudio.ShouldBeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(300));
         started.StartToAudio.ShouldBeLessThanOrEqualTo(TimeSpan.FromMilliseconds(360));
@@ -449,6 +498,24 @@ public sealed class AudioEngineRunTests
         rig.Events.OfType<AudioStarted>().Count().ShouldBe(1);
         var events = rig.Events.ToList();
         events.FindIndex(e => e is AudioStarted).ShouldBeLessThan(events.FindIndex(e => e is RunSummary));
+    }
+
+    [Fact]
+    public void Audio_started_is_published_with_the_start_to_audio_bound_even_when_the_pre_roll_ends_long_after_the_first_renders()
+    {
+        using var rig = new Rig(2, decoder: new SlowStartDecoder(new FakeAudioDecoder(Tracks, 48_000 * 30), TimeSpan.FromMilliseconds(400)));
+        rig.Engine.StartRun("film.mkv", [Assign(1, 1), Assign(2, 2)], new EngineOptions()).IsSuccess.ShouldBeTrue();
+
+        rig.Time.Advance(TimeSpan.FromMilliseconds(10));
+        rig.Backend.Devices["dev-1"].PumpRender(480);
+        rig.Time.Advance(TimeSpan.FromMilliseconds(290)); // the last output renders its first audio 300 ms after the start, whenever the pre-roll ends
+        rig.RenderUntil(() => rig.Events.OfType<AudioStarted>().Any()).ShouldBeTrue("audio never started");
+
+        var started = rig.Events.OfType<AudioStarted>().Single();
+        started.StartToAudio.ShouldBeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(300));
+        started.StartToAudio.ShouldBeLessThanOrEqualTo(TimeSpan.FromMilliseconds(360));
+        rig.Stop(RunEndReason.Stop);
+        rig.Events.OfType<AudioStarted>().Count().ShouldBe(1);
     }
 
     [Fact]
