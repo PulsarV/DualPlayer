@@ -12,6 +12,18 @@ public enum LagChangeMode
 /// <param name="Timestamp">When that reading was taken (the engine's <c>TimeProvider</c> timeline); <see cref="long.MinValue"/> when the output has none yet.</param>
 public readonly record struct OutputPositionError(double ErrorMs, long Timestamp);
 
+/// <summary>
+/// An output's speed as its drift controller runs it now, in ppm; positive = its film audio is consumed slower than real
+/// time (its lag grows, as <c>correction=…ppm</c> in the drift trace and sync records).
+/// </summary>
+/// <param name="RampPpm">The lag ramp's rate (ADR-0005), not clamped here: what the controller applies.</param>
+/// <param name="CorrectionPpm">The continuous drift correction.</param>
+public readonly record struct OutputSpeed(double RampPpm, double CorrectionPpm)
+{
+    /// <summary>Gets the total speed change the resampler is driven with: the drift correction plus the ramp.</summary>
+    public double TotalPpm => CorrectionPpm + RampPpm;
+}
+
 /// <summary>Lag targets per output for the running engine (ADR-0005); implemented by <see cref="AudioEngine"/>.</summary>
 public interface IOutputLagControl
 {
@@ -51,6 +63,12 @@ public interface IOutputLagControl
     /// within a reading or two.
     /// </summary>
     IReadOnlyDictionary<string, OutputPositionError> PositionErrors();
+
+    /// <summary>
+    /// Gets the speed every output still connected runs at now (its lag ramp and drift correction as applied), keyed by
+    /// device id; empty when no run is active.
+    /// </summary>
+    IReadOnlyDictionary<string, OutputSpeed> AppliedSpeeds();
 
     /// <summary>Gets a value indicating whether any output's lag is still moving toward its target.</summary>
     bool IsRamping { get; }

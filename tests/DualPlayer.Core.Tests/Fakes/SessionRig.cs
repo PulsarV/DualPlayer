@@ -256,6 +256,8 @@ internal sealed class SessionRig : IDisposable
 
         public TimeSpan? CurrentLag(string deviceId) => inner.CurrentLag(deviceId);
 
+        public IReadOnlyDictionary<string, OutputSpeed> AppliedSpeeds() => inner.AppliedSpeeds();
+
         public long? FirstAudioTimestamp(string deviceId) => inner.FirstAudioTimestamp(deviceId);
 
         public IReadOnlyDictionary<string, OutputPositionError> PositionErrors()

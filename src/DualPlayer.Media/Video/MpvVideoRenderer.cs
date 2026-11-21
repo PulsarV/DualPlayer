@@ -89,6 +89,11 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
     private long _speedIds;
     private bool _playing;
     private double _requestedSpeed = 1.0;
+
+    // The speed last set on mpv (its set command submitted; back to the last one mpv confirmed if it refuses), read
+    // lock-free; and, on the event thread, the last speed mpv confirmed.
+    private double _setSpeed = 1.0;
+    private double _confirmedSpeed = 1.0;
     private TimeSpan? _nextSeekBudgetOverride;
     private readonly List<TimeSpan> _seekTimes = [];
 
@@ -415,9 +420,15 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
                 {
                     _ = _speedRequests.TryRemove(id, out _);
                 }
+                else
+                {
+                    Volatile.Write(ref _setSpeed, speed);
+                }
             }
         }
     }
+
+    public double Speed => Volatile.Read(ref _setSpeed);
 
     /// <summary>The mpv OSD options that draw a note in <paramref name="style"/>: bottom-centre on an opaque box (pure).</summary>
     public static IReadOnlyList<KeyValuePair<string, string>> NoteOptions(OsdNoteStyle style)
@@ -978,11 +989,7 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
                 OnStartSeekQueued((long)(tag >> ReplyIdShift), error, at);
                 break;
             case ReplySpeed:
-                if (_speedRequests.TryRemove((long)(tag >> ReplyIdShift), out var speed) && error >= 0)
-                {
-                    _timeline.SpeedApplied(speed, at);
-                }
-
+                OnSpeedReply((long)(tag >> ReplyIdShift), error, at);
                 break;
             case ReplyResume:
                 OnResumed((long)(tag >> ReplyIdShift), error, at);
@@ -992,6 +999,24 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
                 break;
             default:
                 break;
+        }
+    }
+
+    private void OnSpeedReply(long id, int error, long at)
+    {
+        if (!_speedRequests.TryRemove(id, out var speed))
+        {
+            return;
+        }
+
+        if (error >= 0)
+        {
+            _confirmedSpeed = speed;
+            _timeline.SpeedApplied(speed, at);
+        }
+        else if (id == Interlocked.Read(ref _speedIds))
+        {
+            Volatile.Write(ref _setSpeed, _confirmedSpeed); // mpv refused the latest speed: it still runs at the last one it took
         }
     }
 

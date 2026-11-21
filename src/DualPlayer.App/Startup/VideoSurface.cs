@@ -57,6 +57,8 @@ internal sealed class WindowBoundRenderer : IVideoRenderer
 
     public void SetSpeed(double speed) => _inner.SetSpeed(speed);
 
+    public double Speed => _inner.Speed;
+
     public void ShowNote(string text, NoteStyle style) => _inner.ShowNote(text, style);
 
     public void Dispose() => _inner.Dispose();

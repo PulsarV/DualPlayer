@@ -197,6 +197,8 @@ public sealed class PlaybackSessionLogRecordsTests : IDisposable
 
         public TimeSpan? CurrentLag(string deviceId) => inner.CurrentLag(deviceId);
 
+        public IReadOnlyDictionary<string, OutputSpeed> AppliedSpeeds() => inner.AppliedSpeeds();
+
         public long? FirstAudioTimestamp(string deviceId)
         {
             Interlocked.Increment(ref _firstAudioQueries);

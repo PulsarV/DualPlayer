@@ -27,11 +27,20 @@ public sealed record PictureDelayChanged(
     int NewPictureDelayMs,
     IReadOnlyList<OutputLatency> Outputs) : SessionEvent;
 
-/// <summary>An output's lag ramp during a picture-delay move: signed speed change in ppm (positive = lag growing).</summary>
+/// <summary>
+/// An output's speeds during a picture-delay move, as its drift controller applies them, in ppm; positive = its film audio
+/// is consumed slower than real time (lag growing). <paramref name="RampPpm"/> is the lag ramp.
+/// </summary>
 public sealed record OutputRamp(string DeviceId, double RampPpm)
 {
     /// <summary>The output's number from the start command.</summary>
     public int OutputNumber { get; init; }
+
+    /// <summary>The continuous drift correction the ramp is added to.</summary>
+    public double CorrectionPpm { get; init; }
+
+    /// <summary>The total speed change the output runs at: drift correction plus ramp.</summary>
+    public double TotalPpm { get; init; }
 }
 
 /// <summary>A picture-delay move that ramps: its duration and the speeds the picture and each output ran at (AC-14, AC-17).</summary>

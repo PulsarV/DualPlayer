@@ -55,6 +55,12 @@ public interface IVideoRenderer : IDisposable
     /// <summary>Playback speed factor, 1.0 = natural.</summary>
     void SetSpeed(double speed);
 
+    /// <summary>
+    /// Gets the speed factor last set on the player (1.0 = natural, before any <see cref="SetSpeed"/>): what it was
+    /// handed and accepted, not what was asked of the caller's loop, so a log shows the speed really applied.
+    /// </summary>
+    double Speed { get; }
+
     /// <summary>The latest presented picture, or <c>null</c> until a load has put its first frame up (never a default zero position).</summary>
     PresentedPicture? Presented { get; }
 

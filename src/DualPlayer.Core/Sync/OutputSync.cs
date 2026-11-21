@@ -68,6 +68,9 @@ public sealed class OutputSync(MasterClock clock, TimeSpan driftTolerance)
 
     public double CorrectionPpm => _controller.CorrectionPpm;
 
+    /// <summary>Gets the lag ramp's rate the controller adds to the correction, in ppm; positive while the lag grows.</summary>
+    public double RampPpm => _controller.RampPpm;
+
     /// <summary>Gets the ratio to hand to the output's adaptive resampler.</summary>
     public double ResamplerRatio => _controller.ResamplerRatio;
 

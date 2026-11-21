@@ -91,6 +91,12 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
             .ToDictionary(o => o.DeviceId, o => new OutputPositionError(o.LatestErrorMs, o.LatestErrorAt), StringComparer.Ordinal)
             ?? []));
 
+    public IReadOnlyDictionary<string, OutputSpeed> AppliedSpeeds() => _loop.Execute(() =>
+        (IReadOnlyDictionary<string, OutputSpeed>)(_run?.Outputs
+            .Where(o => !o.Lost && o.Sync is not null)
+            .ToDictionary(o => o.DeviceId, o => new OutputSpeed(o.Sync!.RampPpm, o.Sync.CorrectionPpm), StringComparer.Ordinal)
+            ?? []));
+
     public bool IsRamping => _loop.Execute(() => _run is { } run && run.Outputs.Any(o => !o.Lost && o.Sync is { IsLagMoving: true }));
 
     public Result<TimeSpan> Pause() => _loop.Execute(PauseCore);

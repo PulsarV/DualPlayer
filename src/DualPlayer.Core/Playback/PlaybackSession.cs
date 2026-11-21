@@ -726,15 +726,15 @@ public sealed partial class PlaybackSession : IDisposable
 
         var targets = LagTargets(updated);
         var duration = MoveDuration(sync, updated, targets);
-        var moved = MoveRecord(PictureDelayCause.Offset, clockPosition, sync, estimate, updated, targets, duration);
+        var from = sync.PictureDelay;
         var applied = _lags.SetLagTargets(targets, LagChangeMode.Ramp, duration);
         if (!applied.IsSuccess)
         {
             return applied;
         }
 
-        _events.Publish(moved);
         sync.MoveTo(TimeSpan.FromMilliseconds(updated.PictureDelayMs), duration);
+        _events.Publish(MoveRecord(PictureDelayCause.Offset, clockPosition, from, updated, targets, duration));
         ReportTiming(sync);
         return Result.Success();
     }
@@ -762,36 +762,38 @@ public sealed partial class PlaybackSession : IDisposable
     }
 
     /// <summary>
-    /// The record of a ramped move, from the same numbers that drive <see cref="PictureSync.MoveTo"/> and the lag ramps:
-    /// the picture covers its change over <paramref name="duration"/>, each output covers its own at up to 2000 ppm.
+    /// The record of a ramped move, once it is applied: from the in-flight picture delay <paramref name="from"/> to
+    /// <paramref name="to"/> over <paramref name="duration"/>, with the speeds read back as applied, not recomputed or
+    /// clamped, so the log shows a speed beyond 0.2 % if one runs: the picture's as the renderer runs it (positive = faster
+    /// than real time, cli.md §3), each output's ramp, drift correction and total as its drift controller runs them.
     /// </summary>
     private PictureDelayMoved MoveRecord(
         PictureDelayCause cause,
         TimeSpan clock,
-        PictureSync sync,
-        LatencyEstimate from,
+        TimeSpan from,
         LatencyEstimate to,
         IReadOnlyDictionary<string, TimeSpan> targets,
         TimeSpan duration)
     {
-        var picturePpm = duration > TimeSpan.Zero
-            ? (TimeSpan.FromMilliseconds(to.PictureDelayMs) - sync.PictureDelay).Ticks / (double)duration.Ticks * 1e6
-            : 0;
+        var picturePpm = (_renderer.Speed - 1.0) * 1e6;
+        var applied = _lags.AppliedSpeeds();
         var ramps = new List<OutputRamp>();
-        foreach (var (deviceId, target) in targets)
+        foreach (var deviceId in targets.Keys)
         {
-            if (_lags.CurrentLag(deviceId) is not { } current)
+            if (!applied.TryGetValue(deviceId, out var speed))
             {
-                continue;
+                continue; // lost meanwhile
             }
 
-            var ppm = duration > TimeSpan.Zero
-                ? Math.Clamp((target - current).Ticks / (double)duration.Ticks * 1e6, -LagRamp.MaxRatePpm, LagRamp.MaxRatePpm)
-                : 0;
-            ramps.Add(new OutputRamp(deviceId, ppm) { OutputNumber = to.Outputs.First(o => o.DeviceId == deviceId).OutputNumber });
+            ramps.Add(new OutputRamp(deviceId, speed.RampPpm)
+            {
+                OutputNumber = to.Outputs.First(o => o.DeviceId == deviceId).OutputNumber,
+                CorrectionPpm = speed.CorrectionPpm,
+                TotalPpm = speed.TotalPpm,
+            });
         }
 
-        return new PictureDelayMoved(clock, cause, from.PictureDelayMs, to.PictureDelayMs, duration, picturePpm, ramps);
+        return new PictureDelayMoved(clock, cause, (int)Math.Round(from.TotalMilliseconds), to.PictureDelayMs, duration, picturePpm, ramps);
     }
 
     /// <summary>
@@ -1635,10 +1637,10 @@ public sealed partial class PlaybackSession : IDisposable
 
         var lostTargets = LagTargets(updated);
         var lostDuration = MoveDuration(sync, updated, lostTargets);
-        var lostMoved = MoveRecord(PictureDelayCause.DeviceLost, lost.ClockPosition, sync, estimate, updated, lostTargets, lostDuration);
+        var lostFrom = sync.PictureDelay;
         _lags.SetLagTargets(lostTargets, LagChangeMode.Ramp, lostDuration);
-        _events.Publish(lostMoved);
         sync.MoveTo(TimeSpan.FromMilliseconds(updated.PictureDelayMs), lostDuration);
+        _events.Publish(MoveRecord(PictureDelayCause.DeviceLost, lost.ClockPosition, lostFrom, updated, lostTargets, lostDuration));
         ReportTiming(sync);
     }
 

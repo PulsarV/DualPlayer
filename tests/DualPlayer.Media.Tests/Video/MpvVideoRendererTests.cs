@@ -430,6 +430,18 @@ public sealed class MpvVideoRendererTests
         (contentSeconds / realSeconds).ShouldBe(2.0, 0.4);
     }
 
+    [Fact]
+    public void Speed_reports_the_speed_last_set_on_mpv_natural_before_any_AC_17()
+    {
+        RequireLibmpv();
+        using var renderer = LoadedPaused();
+        renderer.Speed.ShouldBe(1.0);
+
+        renderer.SetSpeed(1.0025);
+
+        renderer.Speed.ShouldBe(1.0025);
+    }
+
     // ---- events and counters (AC-06b) ----
 
     [Fact]

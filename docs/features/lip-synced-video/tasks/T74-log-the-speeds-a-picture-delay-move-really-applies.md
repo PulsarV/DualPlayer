@@ -6,8 +6,8 @@ deps: ["T73"]
 blocks: []
 acs: ["AC-14", "AC-17"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.Core/Playback/AudioEngine.cs", "src/DualPlayer.Core/Sync/DriftController.cs", "src/DualPlayer.Core/Sync/OutputSync.cs", "src/DualPlayer.Core/Sync/PictureSync.cs", "src/DualPlayer.Media/Video/MpvVideoRenderer.cs", "src/DualPlayer.App/Startup/SessionEventLogWriter.cs", "docs/features/lip-synced-video/contracts/cli.md", "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md", "tests/"]
-status: "blocked"
-step: "GATE — gate_green false, applied-speed API not done"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -29,10 +29,10 @@ See [spec.md](../spec.md) §5 AC-14, AC-17.
 
 ## Definition of Done
 
-- [ ] Each output's applied ramp ppm and total speed (drift correction + ramp) come from the engine/drift controller as applied, without a clamp in the logging path, and are logged (engine trace next to `correction=…ppm` and/or in `PictureDelayMoved`).
-- [ ] The speed actually set on mpv during the move is logged (from the renderer's applied value).
-- [ ] cli.md §3 states the sign of each speed field (e.g. positive = faster than real time) and the code matches it.
-- [ ] `FromMs` is taken from the in-flight picture delay (`sync.PictureDelay`); a retargeted move logs consistent From/To/Duration.
-- [ ] T23 L3 in the run guide judges on the applied speeds.
-- [ ] Unit tests: a move logs speeds equal to what the fake engine/renderer applied (a ramp of 2500 ppm would show 2500); sign test; retarget test.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Each output's applied ramp ppm and total speed (drift correction + ramp) come from the engine/drift controller as applied, without a clamp in the logging path, and are logged (engine trace next to `correction=…ppm` and/or in `PictureDelayMoved`).
+- [x] The speed actually set on mpv during the move is logged (from the renderer's applied value).
+- [x] cli.md §3 states the sign of each speed field (e.g. positive = faster than real time) and the code matches it.
+- [x] `FromMs` is taken from the in-flight picture delay (`sync.PictureDelay`); a retargeted move logs consistent From/To/Duration.
+- [x] T23 L3 in the run guide judges on the applied speeds.
+- [x] Unit tests: a move logs speeds equal to what the fake engine/renderer applied (a ramp of 2500 ppm would show 2500); sign test; retarget test.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

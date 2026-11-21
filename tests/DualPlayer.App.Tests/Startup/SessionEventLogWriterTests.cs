@@ -90,6 +90,25 @@ public sealed class SessionEventLogWriterTests
     }
 
     [Fact]
+    public void Each_output_line_of_a_move_logs_its_applied_ramp_drift_correction_and_total_speed_AC_14_AC_17()
+    {
+        var h = new Harness();
+        h.Feed.Publish(new PictureDelayMoved(
+            TimeSpan.FromSeconds(75),
+            PictureDelayCause.Offset,
+            240,
+            230,
+            TimeSpan.FromSeconds(5),
+            2000,
+            [new OutputRamp(Dev, -2500) { OutputNumber = 1, CorrectionPpm = 120, TotalPpm = -2380 }]));
+
+        var line = h.Log.Entries[1];
+        Convert.ToDouble(line["RampPpm"]).ShouldBe(-2500, 0.5);
+        Convert.ToDouble(line["CorrectionPpm"]).ShouldBe(120, 0.5);
+        Convert.ToDouble(line["TotalPpm"]).ShouldBe(-2380, 0.5);
+    }
+
+    [Fact]
     public void Offset_change_picture_timing_frame_counters_and_start_timings_are_logged_with_their_fields()
     {
         var h = new Harness();

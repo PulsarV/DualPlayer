@@ -73,6 +73,8 @@ public sealed class PlaybackSessionRobustnessTests
 
         public TimeSpan? CurrentLag(string deviceId) => inner.CurrentLag(deviceId);
 
+        public IReadOnlyDictionary<string, OutputSpeed> AppliedSpeeds() => inner.AppliedSpeeds();
+
         public long? FirstAudioTimestamp(string deviceId) => inner.FirstAudioTimestamp(deviceId);
     }
 }

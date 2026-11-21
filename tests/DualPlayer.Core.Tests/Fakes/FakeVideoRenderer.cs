@@ -244,9 +244,13 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
     /// <summary>When set, runs at the start of every <see cref="SetSpeed"/> outside the fake's lock (a test can block a command there).</summary>
     public Action? BeforeSetSpeed { get; set; }
 
+    /// <summary>When set, maps the speed asked for to the speed the player really runs at (and <see cref="Speed"/> reports).</summary>
+    public Func<double, double>? AppliesSpeed { get; set; }
+
     public void SetSpeed(double speed)
     {
         BeforeSetSpeed?.Invoke();
+        speed = AppliesSpeed?.Invoke(speed) ?? speed;
         lock (_gate)
         {
             var now = time.GetTimestamp();

@@ -54,10 +54,12 @@ internal sealed class SessionEventLogWriter : IDisposable
                 for (var i = 0; i < m.Ramps.Count; i++)
                 {
                     _log.LogInformation(
-                        "PictureDelayMoved.Output Output={Output} DeviceId={DeviceId} RampPpm={RampPpm}",
+                        "PictureDelayMoved.Output Output={Output} DeviceId={DeviceId} RampPpm={RampPpm} CorrectionPpm={CorrectionPpm} TotalPpm={TotalPpm}",
                         m.Ramps[i].OutputNumber > 0 ? m.Ramps[i].OutputNumber : i + 1,
                         m.Ramps[i].DeviceId,
-                        m.Ramps[i].RampPpm);
+                        m.Ramps[i].RampPpm,
+                        m.Ramps[i].CorrectionPpm,
+                        m.Ramps[i].TotalPpm);
                 }
 
                 break;

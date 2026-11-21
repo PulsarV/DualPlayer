@@ -63,6 +63,27 @@ public sealed class AudioEngineLagTests
     }
 
     [Fact]
+    public void Applied_speeds_are_each_output_ramp_and_drift_correction_as_its_controller_runs_them_AC_14_AC_17()
+    {
+        using var rig = Rig();
+        rig.Start();
+        rig.Render(50);
+        var control = (IOutputLagControl)rig.Engine;
+
+        control.SetLagTargets(new Dictionary<string, TimeSpan> { ["dev-2"] = TimeSpan.FromMilliseconds(20) }, LagChangeMode.Ramp).IsSuccess.ShouldBeTrue();
+
+        var speeds = control.AppliedSpeeds();
+        speeds.Keys.ShouldBe(["dev-1", "dev-2"], ignoreOrder: true);
+        speeds["dev-2"].RampPpm.ShouldBe(2000, 1e-9);
+        speeds["dev-2"].TotalPpm.ShouldBe(speeds["dev-2"].RampPpm + speeds["dev-2"].CorrectionPpm, 1e-9);
+        speeds["dev-1"].RampPpm.ShouldBe(0);
+
+        rig.Render(1500);
+
+        control.AppliedSpeeds()["dev-2"].RampPpm.ShouldBe(0, "the ramp ended at its target");
+    }
+
+    [Fact]
     public void An_at_once_lag_target_is_reached_immediately_without_a_ramp()
     {
         using var rig = Rig();
