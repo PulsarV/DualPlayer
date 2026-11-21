@@ -134,8 +134,8 @@ public sealed class AppEntryTests
         }
     }
 
-    // The window is created inside App.Play and its video handle only appears on a native host, which the headless platform
-    // does not have: the test hands App.Play its own window and raises the handle itself.
+    // The video handle only appears on a native host, which the headless platform does not have:
+    // the test hands App.Play its own window and raises the handle itself.
     [Fact]
     public void A_session_start_that_fails_after_the_window_opened_prints_the_error_line_closes_the_window_and_shuts_down_with_its_exit_code()
     {
@@ -163,9 +163,8 @@ public sealed class AppEntryTests
         stderr.ShouldContain("error outputs.device_not_found");
     }
 
-    // The same seam, part (1) only. Closing the window without Esc (the OS, Alt+F4) must end
-    // the session like Esc: the run summary is printed and the exit code is 0. Without a handle on the window the test
-    // cannot close it, and Esc alone would hide a Closed handler that forgets to end the session.
+    // Closing the window without Esc (the OS, Alt+F4) must end the session like Esc: the run summary is
+    // printed and the exit code is 0. Esc alone would hide a Closed handler that forgets to end the session.
     [Fact]
     public void Closing_the_window_without_Esc_ends_the_session_prints_the_run_summary_and_shuts_down_with_exit_code_0()
     {

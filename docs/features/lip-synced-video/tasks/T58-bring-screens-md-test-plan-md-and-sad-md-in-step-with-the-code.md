@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-21b (Q17)"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-21b. Work from what is inlined here; the source always wins.
@@ -29,6 +29,6 @@ n/a (documentation).
 
 ## Definition of Done
 
-- [ ] SCR-03 lists every note the session shows (incl. the two failure notes and any note T49 adds), with trigger and style.
-- [ ] test-plan.md row 112 names the App-entry tests; the stale test comment is removed; the stale US-02 notes in screens.md and sad.md are removed; test-plan rows reflect T48–T57's new tests.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] SCR-03 lists every note the session shows (incl. the two failure notes and any note T49 adds), with trigger and style.
+- [x] test-plan.md row 112 names the App-entry tests; the stale test comment is removed; the stale US-02 notes in screens.md and sad.md are removed; test-plan rows reflect T48–T57's new tests.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

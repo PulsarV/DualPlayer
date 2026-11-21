@@ -16,9 +16,8 @@ updated_at: "2026-11-20"
 
 - **Tool:** code — `docs/design-system.md` does not exist yet, so the run used code mode; run `/sdd:design-system` before roadmap step 8.
 - **File:** inline wireframes below.
-- **Inventory used in place of a design system:** Avalonia Fluent (dark) `Window`, and the tokens in `src/DualPlayer.App/Themes/Tokens.axaml` (`FontSizeBody` 32, `FontSizeHeading` 48, `FontSizeMinimum` 24, `SurfaceColor` #000000, `ForegroundColor` #FFFFFF, contrast ≥ 7:1). The terminal (SCR-01) is plain text, specified line by line in `contracts/cli.md`.
+- **Inventory used in place of a design system:** Avalonia Fluent (dark) `Window`, and the tokens in `src/DualPlayer.App/Themes/Tokens.axaml` (`FontSizeBody` 32, `FontSizeHeading` 48, `FontSizeMinimum` 24, `SurfaceColor` #000000, `ForegroundColor` #FFFFFF, `FocusColor` #FFD400, contrast ≥ 7:1). The terminal (SCR-01) is plain text, specified line by line in `contracts/cli.md`.
 - **Inputs:** `ux-flows.md` (SCR inventory, flows), `spec.md` §5 (clarified 2026-11-20), `sad.md` §6 flows 1–9 and ADR-0003 (picture = mpv's own video output in a native child window; brief note = mpv OSD styled from tokens), `contracts/cli.md`.
-- **Known divergence:** `ux-flows.md` flow US-02 still says the picture freezes "on the frame shown at the key press"; this manifest follows the clarified AC-04 (freezes on the frame matching the last sound heard). `ux-flows.md` needs that one-line update.
 
 ## Screens
 
@@ -98,18 +97,22 @@ SCR-02 paused                        SCR-02 ended
 
 ### SCR-03 — Brief note
 
-A single line of text over the picture, drawn by mpv's OSD (ADR-0003), styled from tokens: `FontSizeBody` 32 px at 1080p, `ForegroundColor` white on a `SurfaceColor` black backing box at ≥ 7:1 contrast, bottom-centre, 5 % from the bottom edge. Held 2 s after the last change; a new note replaces the current one and restarts the 2 s (spec §5). English text in this step (Ukrainian UI is step 8).
+A single line of text over the picture, drawn by mpv's OSD (ADR-0003), styled from tokens: `FontSizeBody` 32 px at 1080p on a `SurfaceColor` black backing box at ≥ 7:1 contrast, bottom-centre, 5 % from the bottom edge. Held 2 s after the last change; a new note replaces the current one and restarts the 2 s (spec §5). English text in this step (Ukrainian UI is step 8).
+
+Two styles, set by the `NoteStyle` the session publishes with each note: **info** — text in `ForegroundColor` white (`OsdNoteForegroundColor`); **warning** — text in `FocusColor` yellow #FFD400 (`OsdNoteWarningColor`). Both sit on the same `SurfaceColor` backing box (`OsdNoteBackingColor`).
 
 | State | Trigger / condition | Components (from the inventory) | Source-ref |
 |---|---|---|---|
 | hidden (default) | No note in the last 2 s | — | — |
-| offset changed | Offset key within range, any window state (AC-10, flow 8) | NEW: `OsdNote` — `Output 1: +40 ms` | wireframe below |
-| offset limit | Offset key past ±500 ms (AC-11, flow 8) | `OsdNote` — `Output 1: offset cannot go beyond ±500 ms` | wireframe below |
-| no next / previous | No playable file in that direction (AC-08, flow 3); when every neighbour in that direction was skipped, one combined note (AC-08 + AC-09) | `OsdNote` — `No next file` / `No previous file`; combined: `No next file (skipped 2; last: Episode-05.mkv - picture cannot be played on this PC)` | wireframe below |
-| skipped file | Neighbour lacks a track, unreadable, no picture, not hardware-decodable (AC-09, AC-09b); several on one press → the last note counts them | `OsdNote` — `Skipped Episode-03.mkv: no track 2 for output 2` / `Skipped 3 files; last: Episode-05.mkv - picture cannot be played on this PC` | wireframe below |
-| output lost | A device lost while others remain (AC-15, flow 2) | `OsdNote` — `Output 2 lost` | wireframe below |
-| last output lost | The only remaining device lost (AC-15b, flow 6) | `OsdNote` — `Output 1 lost - last output, film ended` | wireframe below |
-| picture failed | Picture cannot be decoded further (AC-06b, flow 7) | `OsdNote` — `The picture could not be decoded further - film ended` | wireframe below |
+| offset changed | Offset key within range, any window state (AC-10, flow 8) | NEW: `OsdNote` (info) — `Output 1: +40 ms` | wireframe below |
+| offset limit | Offset key past ±500 ms (AC-11, flow 8) | `OsdNote` (warning) — `Output 1: offset cannot go beyond ±500 ms` | wireframe below |
+| no next / previous | No playable file in that direction (AC-08, flow 3); when every neighbour in that direction was skipped, one combined note (AC-08 + AC-09) | `OsdNote` (info) — `No next file` / `No previous file`; combined: `No next file (skipped 2; last: Episode-05.mkv - picture cannot be played on this PC)` | wireframe below |
+| skipped file | Neighbour lacks a track, unreadable, no picture, not hardware-decodable (AC-09, AC-09b); several on one press → the last note counts them | `OsdNote` (warning) — `Skipped Episode-03.mkv: no track 2 for output 2` / `Skipped 3 files; last: Episode-05.mkv - picture cannot be played on this PC` | wireframe below |
+| output lost | A device lost while others remain (AC-15, flow 2) | `OsdNote` (warning) — `Output 2 lost` | wireframe below |
+| last output lost | The only remaining device lost (AC-15b, flow 6) | `OsdNote` (warning) — `Output 1 lost - last output, film ended` | wireframe below |
+| picture failed | Picture cannot be decoded further (AC-06b, flow 7) | `OsdNote` (warning) — `The picture could not be decoded further - film ended` | wireframe below |
+| could not go back | A backward seek after the film ended cannot return into it (every device still gone or the picture will not reload; AC-05, AC-06b, AC-15b) | `OsdNote` (warning) — `Could not go back: <reason>` | wireframe below |
+| could not play next | Next/previous file chosen but its start fails after the old film stopped; the session ends and keeps answering keys (AC-07) | `OsdNote` (warning) — `Could not play Episode-03.mkv: <reason>` | wireframe below |
 | error / empty / loading | N/A: the note is itself the feedback channel; it has no data to load and no empty content | — | — |
 
 ```text

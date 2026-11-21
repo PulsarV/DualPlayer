@@ -507,7 +507,6 @@ sequenceDiagram
 **Coverage (AC → flow):** AC-01 → 1 · AC-02 → 1 (no picture branch) · AC-03 → 1 (access branch) · AC-03b → 1 (screen branch) · AC-04 → 4 · AC-05 → 5 · AC-06 → 6 · AC-06b → 7 · AC-07 → 3 · AC-08 → 3 (no playable file) · AC-09 → 3 (missing track branch, both directions) · AC-09b → 3 (unreadable or not hardware-decodable branch) · AC-10 → 2, 8 · AC-11 → 8 · AC-12 → 1 (offsets loaded) · AC-13 → 1, 9 · AC-14 → 2 · AC-15 → 2 (device lost branch) · AC-15b → 6 · AC-16 → non-runtime · AC-17 → 9.
 
 **Flagged for later stages (not decided here):**
-- `ux-flows.md` flow US-02 still says the picture freezes "on the frame shown at the key press"; spec AC-04 (clarified 2026-11-20) and flow 4 freeze it on the frame matching the last sound heard. Update `ux-flows.md` before `screens`.
 - Flows 1–3 (seeded by `design`) name §5 containers; flows 4–9 use generic participants. Same participants, two vocabularies.
 - `sad.md` §11 rows on the offset-sign wording and on AC-13's reported part are now closed in the spec (`clarify`, 2026-11-20); the §1 decision override stays as the record of why.
 - `data-model`: the only persisted entity is the device offset (flow 8), keyed by OS endpoint id in `device-offsets.json` (ADR-0006) — no database, no index.

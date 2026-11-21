@@ -65,7 +65,7 @@
 | T55 | [Check that every device opens before the window opens](./T55-check-that-every-device-opens-before-the-window-opens.md) | wiring | Volodymyr Kravchuk | M | — | done | COMMIT |
 | T56 | [Tighten the click-and-flash tolerance and map EPERM to access denied](./T56-tighten-the-click-and-flash-tolerance-and-map-eperm-to-access-denied.md) | integration | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T57 | [Make the exit and pending-align assertions bite and test Space through the real toggle](./T57-make-the-exit-and-pending-align-assertions-bite-and-test-space-through-the-real-toggle.md) | test | Volodymyr Kravchuk | S | T50 | blocked | GATE — no gate result (red phase false_pass, gate not run) |
-| T58 | [Bring screens.md, test-plan.md and sad.md in step with the code](./T58-bring-screens-md-test-plan-md-and-sad-md-in-step-with-the-code.md) | docs | Volodymyr Kravchuk | S | T49, T50, T55 | todo |  |
+| T58 | [Bring screens.md, test-plan.md and sad.md in step with the code](./T58-bring-screens-md-test-plan-md-and-sad-md-in-step-with-the-code.md) | docs | Volodymyr Kravchuk | S | T49, T50, T55 | done | COMMIT |
 | T59 | [Make the timing-sensitive engine tests deterministic under parallel load](./T59-make-the-timing-sensitive-engine-tests-deterministic-under-parallel-load.md) | test | Volodymyr Kravchuk | S | — | done | COMMIT |
 
 **Total:** 59 tasks (T24–T38 are follow-ups from review-2026-11-20, T39–T47 from review-2026-11-21, T48–T58 from review-2026-11-21b, T59 from the T48–T58 run; T23 runs last, on the fixed code), ~33 person-days (S = ½ day, M/L = 1 day; T5 and T23 also need the owner's time on the target PC).
