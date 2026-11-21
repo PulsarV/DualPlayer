@@ -127,6 +127,12 @@ public sealed unsafe class FfmpegAudioDecoder : IAudioDecoder
 
     internal static string ErrorText(int code)
     {
+        // av_strerror needs the native library bound; Load is idempotent.
+        if (!FfmpegLibrary.Load().IsSuccess)
+        {
+            return $"error {code}";
+        }
+
         var buffer = stackalloc byte[256];
         ffmpeg.av_strerror(code, buffer, 256);
         return System.Runtime.InteropServices.Marshal.PtrToStringAnsi((IntPtr)buffer) ?? $"error {code}";

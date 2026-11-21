@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-09b", "AC-03"]
 files_hint: ["src/DualPlayer.Media/Audio/FfmpegAudioDecoder.cs", "tests/DualPlayer.Media.Tests/Audio/FfmpegAudioDecoderTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -29,6 +29,6 @@ See [spec.md](../spec.md) §5 AC-09b, AC-03.
 
 ## Definition of Done
 
-- [ ] `OpenFailure` (or the path that builds the error text) ensures FFmpeg is loaded before calling `av_strerror`.
-- [ ] The two theories pass when run alone with the filter above (RED is that filtered run failing).
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `OpenFailure` (or the path that builds the error text) ensures FFmpeg is loaded before calling `av_strerror`.
+- [x] The two theories pass when run alone with the filter above (RED is that filtered run failing).
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
