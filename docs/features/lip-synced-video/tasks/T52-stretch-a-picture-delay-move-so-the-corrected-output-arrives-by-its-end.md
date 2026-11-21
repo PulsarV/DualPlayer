@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
 origin: "review-2026-11-21b (Q11)"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-21b. Work from what is inlined here; the source always wins.
@@ -29,6 +29,6 @@ See [spec.md](../spec.md) §5 AC-14.
 
 ## Definition of Done
 
-- [ ] The move duration is max(|ΔPD|, |ΔD_c| over changed outputs)/0.2 %; the picture and every output's ramp finish together at ≤ 2000 ppm.
-- [ ] Test: an offset press where both ΔPD and the corrected output's lag change are non-zero and differ — the corrected output reaches its target no later than the picture move ends; no rate exceeds 0.2 %.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The move duration is max(|ΔPD|, |ΔD_c| over changed outputs)/0.2 %; the picture and every output's ramp finish together at ≤ 2000 ppm.
+- [x] Test: an offset press where both ΔPD and the corrected output's lag change are non-zero and differ — the corrected output reaches its target no later than the picture move ends; no rate exceeds 0.2 %.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

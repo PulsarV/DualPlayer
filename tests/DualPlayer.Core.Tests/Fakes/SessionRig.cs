@@ -225,7 +225,7 @@ internal sealed class SessionRig : IDisposable
 
         public bool IsRamping => inner.IsRamping;
 
-        public Result SetLagTargets(IReadOnlyDictionary<string, TimeSpan> targets, LagChangeMode mode) => inner.SetLagTargets(targets, mode);
+        public Result SetLagTargets(IReadOnlyDictionary<string, TimeSpan> targets, LagChangeMode mode, TimeSpan moveDuration = default) => inner.SetLagTargets(targets, mode, moveDuration);
 
         public TimeSpan? CurrentLag(string deviceId) => inner.CurrentLag(deviceId);
 

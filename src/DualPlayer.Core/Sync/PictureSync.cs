@@ -47,6 +47,7 @@ public sealed class PictureSync : IDisposable
     private TimeSpan _moveTarget;
     private long _moveStart;
     private TimeSpan _moveDuration;
+    private double _moveRate = MaxSpeedDeviation;
     private double _speed = double.NaN;
     private ITimer? _moveTimer;
     private long _moveVersion;
@@ -208,8 +209,12 @@ public sealed class PictureSync : IDisposable
         return new PictureTiming(due, presented.Position) { Clock = clock, Timestamp = presented.Timestamp };
     }
 
-    /// <summary>Moves the picture delay to <paramref name="newPictureDelay"/> at ≤ 0.2 % speed change; retargets a move under way.</summary>
-    public void MoveTo(TimeSpan newPictureDelay)
+    /// <summary>
+    /// Moves the picture delay to <paramref name="newPictureDelay"/> at ≤ 0.2 % speed change; retargets a move under way.
+    /// A <paramref name="moveDuration"/> longer than the change needs at 0.2 % (the outputs' lags move further, AC-14)
+    /// stretches the move: the picture slows its rate so it arrives together with them.
+    /// </summary>
+    public void MoveTo(TimeSpan newPictureDelay, TimeSpan moveDuration = default)
     {
         lock (_gate)
         {
@@ -229,7 +234,9 @@ public sealed class PictureSync : IDisposable
             _moveFrom = current;
             _moveTarget = newPictureDelay;
             _moveStart = now;
-            _moveDuration = TimeSpan.FromTicks((long)Math.Round(Math.Abs(delta.Ticks) / MaxSpeedDeviation));
+            var shortest = MoveDurationFor(delta);
+            _moveDuration = moveDuration > shortest ? moveDuration : shortest;
+            _moveRate = Math.Abs(delta.Ticks) / (double)_moveDuration.Ticks;
             ApplySpeed(MoveSpeed());
 
             // The move ends on its own at the target even when nobody ticks: the timer runs on the injected clock.
@@ -251,6 +258,10 @@ public sealed class PictureSync : IDisposable
                 Timeout.InfiniteTimeSpan);
         }
     }
+
+    /// <summary>Gets how long a move of <paramref name="change"/> takes at the largest allowed rate, 0.2 %.</summary>
+    public static TimeSpan MoveDurationFor(TimeSpan change) =>
+        TimeSpan.FromTicks((long)Math.Round(Math.Abs(change.Ticks) / MaxSpeedDeviation));
 
     /// <summary>Sets the picture delay at once and re-aligns the picture (seek, file change, resume).</summary>
     public void SetAtOnce(TimeSpan newPictureDelay)
@@ -319,12 +330,12 @@ public sealed class PictureSync : IDisposable
             return _moveTarget;
         }
 
-        var moved = TimeSpan.FromTicks((long)Math.Round(elapsed.Ticks * MaxSpeedDeviation));
+        var moved = TimeSpan.FromTicks((long)Math.Round(elapsed.Ticks * _moveRate));
         return _moveTarget > _moveFrom ? _moveFrom + moved : _moveFrom - moved;
     }
 
     // A larger picture delay means the picture is shown later: it runs slower; a smaller one runs faster.
-    private double MoveSpeed() => _moveTarget > _moveFrom ? 1.0 - MaxSpeedDeviation : 1.0 + MaxSpeedDeviation;
+    private double MoveSpeed() => _moveTarget > _moveFrom ? 1.0 - _moveRate : 1.0 + _moveRate;
 
     private static double Steer(TimeSpan error)
     {

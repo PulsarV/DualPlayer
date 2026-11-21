@@ -698,16 +698,39 @@ public sealed partial class PlaybackSession : IDisposable
             return Result.Success();
         }
 
-        var targets = updated.Outputs.ToDictionary(o => o.DeviceId, o => TimeSpan.FromMilliseconds(o.LagMs), StringComparer.Ordinal);
-        var applied = _lags.SetLagTargets(targets, LagChangeMode.Ramp);
+        var targets = LagTargets(updated);
+        var duration = MoveDuration(sync, updated, targets);
+        var applied = _lags.SetLagTargets(targets, LagChangeMode.Ramp, duration);
         if (!applied.IsSuccess)
         {
             return applied;
         }
 
-        sync.MoveTo(TimeSpan.FromMilliseconds(updated.PictureDelayMs));
+        sync.MoveTo(TimeSpan.FromMilliseconds(updated.PictureDelayMs), duration);
         ReportTiming(sync);
         return Result.Success();
+    }
+
+    private static Dictionary<string, TimeSpan> LagTargets(LatencyEstimate estimate) =>
+        estimate.Outputs.ToDictionary(o => o.DeviceId, o => TimeSpan.FromMilliseconds(o.LagMs), StringComparer.Ordinal);
+
+    /// <summary>
+    /// How long a move of the picture delay and every output's lag to <paramref name="updated"/> lasts (AC-14): as long
+    /// as the largest change needs at 0.2 %. The picture and each output spread their own change over it, so they all
+    /// arrive together at its end and none moves faster than 2000 ppm.
+    /// </summary>
+    private TimeSpan MoveDuration(PictureSync sync, LatencyEstimate updated, IReadOnlyDictionary<string, TimeSpan> targets)
+    {
+        var largest = (TimeSpan.FromMilliseconds(updated.PictureDelayMs) - sync.PictureDelay).Duration();
+        foreach (var (deviceId, target) in targets)
+        {
+            if (_lags.CurrentLag(deviceId) is { } current && (target - current).Duration() > largest)
+            {
+                largest = (target - current).Duration();
+            }
+        }
+
+        return PictureSync.MoveDurationFor(largest);
     }
 
     /// <summary>
@@ -1516,8 +1539,10 @@ public sealed partial class PlaybackSession : IDisposable
             return;
         }
 
-        _lags.SetLagTargets(updated.Outputs.ToDictionary(o => o.DeviceId, o => TimeSpan.FromMilliseconds(o.LagMs), StringComparer.Ordinal), LagChangeMode.Ramp);
-        sync.MoveTo(TimeSpan.FromMilliseconds(updated.PictureDelayMs));
+        var lostTargets = LagTargets(updated);
+        var lostDuration = MoveDuration(sync, updated, lostTargets);
+        _lags.SetLagTargets(lostTargets, LagChangeMode.Ramp, lostDuration);
+        sync.MoveTo(TimeSpan.FromMilliseconds(updated.PictureDelayMs), lostDuration);
         ReportTiming(sync);
     }
 

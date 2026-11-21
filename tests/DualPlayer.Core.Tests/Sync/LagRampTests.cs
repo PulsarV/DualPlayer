@@ -77,4 +77,33 @@ public sealed class LagRampTests
         ramp.Target.ShouldBe(TimeSpan.FromMilliseconds(50));
         ramp.IsMoving.ShouldBeFalse();
     }
+
+    [Fact]
+    public void A_ramp_given_a_longer_move_spreads_its_change_over_it_and_arrives_at_its_end_AC_14()
+    {
+        var ramp = new LagRamp();
+        ramp.SetAtOnce(TimeSpan.Zero);
+        ramp.Retarget(TimeSpan.FromMilliseconds(10), TimeSpan.FromSeconds(10));
+
+        ramp.RatePpm.ShouldBe(1000, 1e-6);
+        for (var i = 0; i < 9; i++)
+        {
+            ramp.Advance(Second);
+        }
+
+        ramp.Current.TotalMilliseconds.ShouldBe(9, 1e-6);
+        ramp.Advance(Second);
+        ramp.Current.ShouldBe(TimeSpan.FromMilliseconds(10));
+        ramp.IsMoving.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void A_ramp_given_too_short_a_move_still_never_exceeds_two_thousand_ppm_AC_14()
+    {
+        var ramp = new LagRamp();
+        ramp.SetAtOnce(TimeSpan.Zero);
+        ramp.Retarget(TimeSpan.FromMilliseconds(-10), TimeSpan.FromSeconds(1));
+
+        ramp.RatePpm.ShouldBe(-2000, 1e-6);
+    }
 }

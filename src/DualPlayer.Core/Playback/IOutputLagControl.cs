@@ -15,8 +15,12 @@ public readonly record struct OutputPositionError(double ErrorMs, long Timestamp
 /// <summary>Lag targets per output for the running engine (ADR-0005); implemented by <see cref="AudioEngine"/>.</summary>
 public interface IOutputLagControl
 {
-    /// <summary>Sets each listed output's lag target, keyed by device id; lost or unknown outputs are ignored.</summary>
-    Result SetLagTargets(IReadOnlyDictionary<string, TimeSpan> targets, LagChangeMode mode);
+    /// <summary>
+    /// Sets each listed output's lag target, keyed by device id; lost or unknown outputs are ignored. A ramp given a
+    /// <paramref name="moveDuration"/> moves every output over that time, so all arrive together with the picture
+    /// (AC-14), never faster than 2000 ppm; without one each output ramps at 2000 ppm.
+    /// </summary>
+    Result SetLagTargets(IReadOnlyDictionary<string, TimeSpan> targets, LagChangeMode mode, TimeSpan moveDuration = default);
 
     /// <summary>Gets an output's current lag, or null when the output is not in the run.</summary>
     TimeSpan? CurrentLag(string deviceId);

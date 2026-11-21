@@ -71,10 +71,10 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
         return _loop.Execute(() => StartCore(file, assignments, options));
     }
 
-    public Result SetLagTargets(IReadOnlyDictionary<string, TimeSpan> targets, LagChangeMode mode)
+    public Result SetLagTargets(IReadOnlyDictionary<string, TimeSpan> targets, LagChangeMode mode, TimeSpan moveDuration = default)
     {
         ArgumentNullException.ThrowIfNull(targets);
-        return _loop.Execute(() => SetLagTargetsCore(targets, mode));
+        return _loop.Execute(() => SetLagTargetsCore(targets, mode, moveDuration));
     }
 
     public TimeSpan? CurrentLag(string deviceId) => _loop.Execute(() => FindOutput(deviceId)?.Sync?.Lag);
@@ -250,7 +250,7 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
     private Output? FindOutput(string deviceId) =>
         _run?.Outputs.FirstOrDefault(o => !o.Lost && string.Equals(o.DeviceId, deviceId, StringComparison.Ordinal));
 
-    private Result SetLagTargetsCore(IReadOnlyDictionary<string, TimeSpan> targets, LagChangeMode mode)
+    private Result SetLagTargetsCore(IReadOnlyDictionary<string, TimeSpan> targets, LagChangeMode mode, TimeSpan moveDuration)
     {
         if (_run is not { } run)
         {
@@ -273,7 +273,7 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
 
             if (mode == LagChangeMode.Ramp)
             {
-                sync.RetargetLag(target);
+                sync.RetargetLag(target, moveDuration);
                 continue;
             }
 

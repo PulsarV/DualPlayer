@@ -47,9 +47,10 @@ public sealed class OutputSync(MasterClock clock, TimeSpan driftTolerance)
     /// <summary>Gets a value indicating whether the lag is still moving toward its target.</summary>
     public bool IsLagMoving => _lag.IsMoving;
 
-    public void RetargetLag(TimeSpan target)
+    /// <summary>Moves the lag toward <paramref name="target"/>, over <paramref name="duration"/> when one is given (≤ 2000 ppm).</summary>
+    public void RetargetLag(TimeSpan target, TimeSpan duration = default)
     {
-        _lag.Retarget(target);
+        _lag.Retarget(target, duration);
         _controller.RampPpm = _lag.RatePpm;
     }
 

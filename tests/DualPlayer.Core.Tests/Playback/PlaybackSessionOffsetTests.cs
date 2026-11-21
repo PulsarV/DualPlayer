@@ -110,6 +110,83 @@ public sealed class PlaybackSessionOffsetTests
     }
 
     [Fact]
+    public void A_press_whose_corrected_output_moves_further_than_the_picture_stretches_the_whole_move_so_both_arrive_together_AC_14()
+    {
+        // dev-1: 240 ms assumed (slowest), dev-2: 235 ms, dev-3: 0 ms. PD = 240; lags 0 / 5 / 240.
+        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000), new RigDevice(48_000)], null, 600);
+        rig.Probe.Set("dev-1", new DeviceLatencyReport(TimeSpan.FromMilliseconds(40), "test", ConnectionKind.Bluetooth, FormFactor.Headphones));
+        rig.Probe.Set("dev-2", new DeviceLatencyReport(TimeSpan.FromMilliseconds(235), "test", ConnectionKind.Usb, FormFactor.Speaker));
+        rig.Probe.Set("dev-3", new DeviceLatencyReport(TimeSpan.Zero, "test", ConnectionKind.Usb, FormFactor.Speaker));
+        rig.Engine.Call(() => rig.Session.Start(rig.Request(3))).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(300);
+
+        // Output 1 gets +50 ms offset (assumed 240 -> 190): dev-2 becomes the slowest, PD 240 -> 235 (5 ms), dev-1's lag 0 -> 45 ms (45 ms).
+        var pressed = Mark(rig);
+        rig.Engine.Call(() => rig.Session.ChangeOffset(1, 50)).IsSuccess.ShouldBeTrue();
+
+        // The move lasts 45 ms / 0.2 % = 22.5 s; after 5 s nothing is at its target yet and no rate exceeds 0.2 %.
+        rig.Engine.Render(500);
+        Math.Abs(rig.Renderer.Speed - 1.0).ShouldBeGreaterThan(0);
+        Math.Abs(rig.Renderer.Speed - 1.0).ShouldBeLessThanOrEqualTo(0.002 + 1e-9);
+        LagMs(rig, "dev-1").ShouldBeLessThan(45 - 1);
+
+        // Past the end of the picture move the corrected output has arrived, and the picture is back at 1x.
+        rig.Engine.Render(2000);
+        rig.Renderer.Speed.ShouldBe(1.0, 1e-9);
+        LagMs(rig, "dev-1").ShouldBe(45, 1);
+        PictureDelayMs(rig, pressed, 240).ShouldBe(235, 0.5);
+    }
+
+    [Fact]
+    public void A_long_stretched_move_keeps_every_unchanged_output_within_ten_ms_of_the_picture_and_ends_all_together_AC_14()
+    {
+        // dev-1: 120 ms assumed (slowest), dev-2: 60 ms, dev-3: 0 ms. PD = 120; lags 0 / 60 / 120.
+        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000), new RigDevice(48_000)], null, 600);
+        rig.Probe.Set("dev-1", new DeviceLatencyReport(TimeSpan.FromMilliseconds(120), "test", ConnectionKind.Usb, FormFactor.Speaker));
+        rig.Probe.Set("dev-2", new DeviceLatencyReport(TimeSpan.FromMilliseconds(60), "test", ConnectionKind.Usb, FormFactor.Speaker));
+        rig.Probe.Set("dev-3", new DeviceLatencyReport(TimeSpan.Zero, "test", ConnectionKind.Usb, FormFactor.Speaker));
+        rig.Engine.Call(() => rig.Session.Start(rig.Request(3))).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(300);
+        LagMs(rig, "dev-2").ShouldBe(60, 1);
+        LagMs(rig, "dev-3").ShouldBe(120, 1);
+
+        // Output 3 gets -180 ms (assumed 0 -> 180): PD 120 -> 180 (60 ms), dev-3's lag 120 -> 0 (120 ms), so the move
+        // lasts 120 ms / 0.2 % = 60 s; dev-1 (0 -> 60) and dev-2 (60 -> 120) move with the picture over the whole of it.
+        var pressed = Mark(rig);
+        rig.Engine.Call(() => rig.Session.ChangeOffset(3, -180)).IsSuccess.ShouldBeTrue();
+
+        for (var second = 5; second <= 55; second += 5)
+        {
+            rig.Engine.Render(500);
+            var pictureDelay = PictureDelayMs(rig, pressed, 120);
+            (LagMs(rig, "dev-1") - pictureDelay).ShouldBe(0 - 120, 10, $"dev-1 against the picture at {second} s");
+            (LagMs(rig, "dev-2") - pictureDelay).ShouldBe(60 - 120, 10, $"dev-2 against the picture at {second} s");
+            Math.Abs(rig.Renderer.Speed - 1.0).ShouldBeGreaterThan(0);
+            Math.Abs(rig.Renderer.Speed - 1.0).ShouldBeLessThanOrEqualTo(0.002 + 1e-9);
+        }
+
+        // Half-way the unchanged outputs are half-way too, not already at their targets.
+        LagMs(rig, "dev-2").ShouldBeLessThan(119);
+
+        // 1 s before the end the corrected output still has about 2 ms to go; it arrives by the render where the
+        // picture returns to 1x.
+        rig.Engine.Render(400);
+        LagMs(rig, "dev-3").ShouldBeGreaterThan(1.5);
+        var renders = 0;
+        while (Math.Abs(rig.Renderer.Speed - 1.0) > 1e-9 && renders < 300)
+        {
+            rig.Engine.Render(1);
+            renders++;
+        }
+
+        rig.Renderer.Speed.ShouldBe(1.0, 1e-9);
+        LagMs(rig, "dev-3").ShouldBe(0, 0.5);
+        LagMs(rig, "dev-1").ShouldBe(60, 0.5);
+        LagMs(rig, "dev-2").ShouldBe(120, 0.5);
+        PictureDelayMs(rig, pressed, 120).ShouldBe(180, 1);
+    }
+
+    [Fact]
     public void A_key_for_an_output_that_is_not_in_the_run_is_ignored_AC_10()
     {
         using var rig = PlayingRig();

@@ -69,7 +69,7 @@ public sealed class PlaybackSessionRobustnessTests
 
         public IReadOnlyDictionary<string, OutputPositionError> PositionErrors() => inner.PositionErrors();
 
-        public Result SetLagTargets(IReadOnlyDictionary<string, TimeSpan> targets, LagChangeMode mode) => inner.SetLagTargets(targets, mode);
+        public Result SetLagTargets(IReadOnlyDictionary<string, TimeSpan> targets, LagChangeMode mode, TimeSpan moveDuration = default) => inner.SetLagTargets(targets, mode, moveDuration);
 
         public TimeSpan? CurrentLag(string deviceId) => inner.CurrentLag(deviceId);
 
