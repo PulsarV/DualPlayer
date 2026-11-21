@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -13,11 +14,20 @@ public sealed class JsonFileStateStore : IStateStore
     public const string SchemaVersionProperty = "schemaVersion";
 
     private readonly string _directory;
+    private readonly Func<string, FileStream> _openTempFile;
 
     public JsonFileStateStore(string directory)
+        : this(directory, static path => new FileStream(path, FileMode.Create, FileAccess.Write))
+    {
+    }
+
+    /// <summary>Test seam: opens the temp file the store writes before renaming it.</summary>
+    public JsonFileStateStore(string directory, Func<string, FileStream> openTempFile)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        ArgumentNullException.ThrowIfNull(openTempFile);
         _directory = directory;
+        _openTempFile = openTempFile;
     }
 
     public Result<T> Load<T>(StateFileDefinition<T> definition) where T : class
@@ -83,7 +93,16 @@ public sealed class JsonFileStateStore : IStateStore
             document[SchemaVersionProperty] = definition.CurrentVersion;
 
             Directory.CreateDirectory(_directory);
-            File.WriteAllText(tempPath, document.ToJsonString(WriteOptions));
+            using (var stream = _openTempFile(tempPath))
+            {
+                using (var writer = new StreamWriter(stream, new UTF8Encoding(false), leaveOpen: true))
+                {
+                    writer.Write(document.ToJsonString(WriteOptions));
+                }
+
+                stream.Flush(flushToDisk: true);
+            }
+
             File.Move(tempPath, path, overwrite: true);
             return Result.Success();
         }

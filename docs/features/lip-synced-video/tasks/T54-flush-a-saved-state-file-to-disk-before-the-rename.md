@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-21b (Q9)"
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-21b. Work from what is inlined here; the source always wins.
@@ -29,6 +29,6 @@ See [spec.md](../spec.md) §5 AC-10.
 
 ## Definition of Done
 
-- [ ] The temp file is written through a `FileStream` and `Flush(flushToDisk: true)` before `File.Move(..., overwrite: true)`; expected IO errors still return `Result` failures.
-- [ ] A test pins the write path (e.g. the temp file is complete and flushed before the move, through a seam or by asserting the written content after a simulated rename failure); existing store tests stay green.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The temp file is written through a `FileStream` and `Flush(flushToDisk: true)` before `File.Move(..., overwrite: true)`; expected IO errors still return `Result` failures.
+- [x] A test pins the write path (e.g. the temp file is complete and flushed before the move, through a seam or by asserting the written content after a simulated rename failure); existing store tests stay green.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
