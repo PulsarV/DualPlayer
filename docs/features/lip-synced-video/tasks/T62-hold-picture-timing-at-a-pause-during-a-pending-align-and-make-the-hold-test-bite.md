@@ -6,8 +6,8 @@ deps: ["T61"]
 blocks: []
 acs: ["AC-04", "AC-17"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionRecoveryBudgetTests.cs"]
-status: "todo"
-step: "SELECT"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,7 +31,7 @@ See [spec.md](../spec.md) §5 AC-04, AC-17.
 
 ## Definition of Done
 
-- [ ] `PauseCore` skips the at-key measurement (or routes it through the `ReportTiming` hold) when `_pendingAlign` is set.
-- [ ] Test: pause → resume → pause within the picture delay publishes no `PictureTimingReported` with |error| > 20 ms (fails on the current code).
-- [ ] The T50 hold test renders past the picture delay and asserts at least one `PictureTimingReported` after the align and that all of them are within 20 ms.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `PauseCore` skips the at-key measurement (or routes it through the `ReportTiming` hold) when `_pendingAlign` is set.
+- [x] Test: pause → resume → pause within the picture delay publishes no `PictureTimingReported` with |error| > 20 ms (fails on the current code).
+- [x] The T50 hold test renders past the picture delay and asserts at least one `PictureTimingReported` after the align and that all of them are within 20 ms.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

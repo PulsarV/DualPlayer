@@ -791,6 +791,7 @@ public sealed partial class PlaybackSession : IDisposable
     {
         PictureSync sync;
         MasterClock clock;
+        bool aligning;
         lock (_gate)
         {
             switch (_state)
@@ -803,6 +804,7 @@ public sealed partial class PlaybackSession : IDisposable
             }
 
             (sync, clock) = (_pictureSync!, _clock!);
+            aligning = _pendingAlign is not null;
         }
 
         var paused = _engine.Pause();
@@ -812,7 +814,7 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         var freeze = paused.Value;
-        var atKey = sync.Measure();
+        var atKey = aligning ? null : sync.Measure();
         clock.StopAt(_time.GetTimestamp());
         clock.JumpTo(freeze);
         var delay = sync.PictureDelay;

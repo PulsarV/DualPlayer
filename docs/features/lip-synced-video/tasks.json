@@ -1412,7 +1412,7 @@
         "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionRecoveryBudgetTests.cs"
       ],
       "file": "docs/features/lip-synced-video/tasks/T62-hold-picture-timing-at-a-pause-during-a-pending-align-and-make-the-hold-test-bite.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-21c: S3, S5"
     },
     {

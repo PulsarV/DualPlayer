@@ -70,9 +70,29 @@ public sealed class PlaybackSessionRecoveryBudgetTests
         rig.Engine.Render(60);
 
         var timings = rig.Events.Skip(seen).OfType<PictureTimingReported>().ToList();
+        timings.ShouldNotBeEmpty("no picture timing was published after the align, so the hold was never checked");
         foreach (var t in timings)
         {
             Math.Abs(t.ErrorMs).ShouldBeLessThanOrEqualTo(20, "picture timing was reported against a stale hold while an align was pending");
+        }
+    }
+
+    [Fact]
+    public void Pause_resume_pause_within_the_picture_delay_publishes_no_picture_timing_off_by_more_than_20_ms_AC_04()
+    {
+        using var rig = PlayingRig();
+        rig.Engine.Call(() => rig.Session.Pause()).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(15); // the picture is still running up to the freeze point, ~150 ms ahead of due once resumed
+        rig.Engine.Call(() => rig.Session.Resume()).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(3); // well inside the 200 ms picture delay: the align is still pending
+        var seen = rig.Events.Count;
+
+        rig.Engine.Call(() => rig.Session.Pause()).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(60);
+
+        foreach (var t in rig.Events.Skip(seen).OfType<PictureTimingReported>())
+        {
+            Math.Abs(t.ErrorMs).ShouldBeLessThanOrEqualTo(20, "the second pause published the at-key error of a picture that was still aligning");
         }
     }
 
