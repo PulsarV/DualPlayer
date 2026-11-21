@@ -6,8 +6,8 @@ deps: ["T80"]
 blocks: []
 acs: ["AC-06b"]
 files_hint: ["tests/DualPlayer.Media.Tests/Video/MpvVideoRendererTests.cs", "tests/Shared/", "docs/features/lip-synced-video/tasks/T76-show-the-picture-failed-note-on-the-last-good-frame.md", "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md", "docs/features/lip-synced-video/test-plan.md"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,6 +31,6 @@ See [spec.md](../spec.md) §5 AC-06b.
 
 ## Definition of Done
 
-- [ ] Either a `[HardwareFact]` test raises a real error end-file, waits for `DecodeFailed`, runs the reload + seek and asserts `video-params` non-null and `time-pos` within one frame interval of the last presented position — and it fails without the reload; or, if no sample on the dev Mac raises an error end-file, the T23 checklist carries the item explicitly (with what to look at) and T76 :34 points there.
-- [ ] The misleading healthy-file test at `MpvVideoRendererTests.cs:604-620` is removed or renamed to what it actually checks; test-plan.md rows match.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Either a `[HardwareFact]` test raises a real error end-file, waits for `DecodeFailed`, runs the reload + seek and asserts `video-params` non-null and `time-pos` within one frame interval of the last presented position — and it fails without the reload; or, if no sample on the dev Mac raises an error end-file, the T23 checklist carries the item explicitly (with what to look at) and T76 :34 points there.
+- [x] The misleading healthy-file test at `MpvVideoRendererTests.cs:604-620` is removed or renamed to what it actually checks; test-plan.md rows match.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

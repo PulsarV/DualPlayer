@@ -602,7 +602,7 @@ public sealed class MpvVideoRendererTests
     }
 
     [HardwareFact(HardwareOs.MacOS)]
-    public void A_reload_paused_at_the_last_position_after_a_failure_puts_a_frame_under_the_note_AC_06b()
+    public void Loading_again_paused_and_seeking_on_a_healthy_file_leaves_a_decoded_frame_for_a_note_to_sit_on_AC_06b()
     {
         RequireLibmpv();
         var file = Media("long-gop-ramp.mkv");
@@ -610,7 +610,10 @@ public sealed class MpvVideoRendererTests
         renderer.Load(file, 0, startPaused: true).IsSuccess.ShouldBeTrue();
         WaitFor(() => renderer.Presented, p => p is not null).ShouldNotBeNull();
 
-        // What the session does on DecodeFailed: load again paused, seek to the last presented position, then the note.
+        // Renderer-level mechanics only: the same calls the session makes on DecodeFailed (load again paused, seek, note).
+        // No sample on the dev Mac raises a real error end-file (truncated, damaged and cut-off HTTP streams all end with
+        // a plain end of file), so this does NOT prove the note sits on the last good frame after a failure: that is
+        // the T23 acceptance-run checklist item, and the order Load(paused, position) -> ShowNote is the unit test.
         renderer.Load(file, 0, startPaused: true).IsSuccess.ShouldBeTrue();
         renderer.Seek(TimeSpan.FromSeconds(1));
         renderer.ShowNote("Picture failed", NoteStyle.Warning);

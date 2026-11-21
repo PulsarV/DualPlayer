@@ -32,5 +32,6 @@ See [spec.md](../spec.md) §5 AC-06b, AC-06.
 - [x] On `DecodeFailed` the session reloads the file paused at the last presented position, then shows the picture-failed note (fake renderer test: order Load(paused, position) → ShowNote; audio stays stopped per AC-06b).
 - [x] If that reload itself fails, the note is still shown (on the empty window) and nothing throws.
 - [ ] The hardware test uses a sample that really raises an error end-file (or drives `DecodeFailed` via a corrupted stream) and asserts a frame is shown (`video-params` non-null) after the note; it fails without the reload.
+  - Moved to the T23 checklist (truncated-file item, "Що дивитись") by T81: no sample on the dev Mac raises a real error end-file, so the hardware proof is manual on Windows.
 - [x] The T23 checklist item for a truncated file checks the last good frame.
 - [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

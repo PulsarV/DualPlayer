@@ -1872,7 +1872,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T81-prove-on-hardware-that-the-picture-failed-note-sits-on-the-last-good-frame.md",
       "origin": "review-2026-11-22: P2",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T82",
