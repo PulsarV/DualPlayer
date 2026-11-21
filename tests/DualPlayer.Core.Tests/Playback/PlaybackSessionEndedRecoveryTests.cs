@@ -181,4 +181,61 @@ public sealed class PlaybackSessionEndedRecoveryTests : IDisposable
         rig.EngineStartPositions.Count.ShouldBe(1, "no audio without a picture");
         rig.Events.OfType<NoteShown>().Count().ShouldBeGreaterThan(notesBefore);
     }
+
+    // Output 1 is lost early and stays unlisted; output 2 carries on alone, is lost too (AC-15b), then comes back.
+    private static void LoseOneThenTheOtherAndRelistOnlyTheSecond(SessionRig rig)
+    {
+        rig.Engine.Devices[0].SimulateLoss();
+        rig.Engine.Barrier();
+        rig.Engine.Unlist(1);
+        rig.Engine.Render(100);
+        rig.Engine.Devices[1].SimulateLoss();
+        rig.Engine.WaitFor(() => rig.Engine.Summary is not null).ShouldBeTrue();
+        rig.Session.State.ShouldBe(PlaybackState.Ended);
+    }
+
+    [Fact]
+    public void A_backward_seek_after_every_output_was_lost_plays_on_the_device_that_is_back_and_keeps_the_other_lost_AC_15b_AC_05()
+    {
+        using var rig = PlayingRig(2_000);
+        LoseOneThenTheOtherAndRelistOnlyTheSecond(rig);
+        var notesBefore = rig.Events.OfType<NoteShown>().Count();
+
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-10))).IsSuccess.ShouldBeTrue("output 2 is listed again, output 1 stays lost");
+
+        rig.Session.State.ShouldBe(PlaybackState.Playing);
+        rig.EngineStartPositions.Count.ShouldBe(2);
+        rig.EngineStartPositions.Last().ShouldBeGreaterThan(TimeSpan.Zero);
+        rig.Engine.Devices.Count.ShouldBe(1, "the new run opens only the relisted device; the unlisted one stays lost (the rig follows the new run's outputs)");
+        rig.Events.OfType<NoteShown>().Count().ShouldBe(notesBefore, "no 'could not go back' note");
+    }
+
+    [Fact]
+    public void Next_file_after_every_output_was_lost_plays_on_the_device_that_is_back_AC_15b_AC_07()
+    {
+        using var rig = PlayingRig(2_000);
+        LoseOneThenTheOtherAndRelistOnlyTheSecond(rig);
+        var notesBefore = rig.Events.OfType<NoteShown>().Count();
+
+        rig.Engine.Call(() => rig.Session.NextFile()).IsSuccess.ShouldBeTrue("output 2 is listed again, output 1 stays lost");
+
+        rig.Session.State.ShouldBe(PlaybackState.Playing);
+        RunFileNames(rig).Last().ShouldBe("Episode 3.mkv");
+        rig.Engine.Devices.Count.ShouldBe(1, "the new run opens only the relisted device");
+        rig.Events.OfType<NoteShown>().Count().ShouldBe(notesBefore, "no 'could not play' note");
+    }
+
+    [Fact]
+    public void A_backward_seek_after_one_output_was_lost_early_and_none_is_back_keeps_the_session_ended_with_a_note_AC_15b()
+    {
+        using var rig = PlayingRig(2_000);
+        LoseOneThenTheOtherAndRelistOnlyTheSecond(rig);
+        rig.Engine.Unlist(2);
+        var notesBefore = rig.Events.OfType<NoteShown>().Count();
+
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-10)));
+
+        rig.Session.State.ShouldBe(PlaybackState.Ended);
+        rig.Events.OfType<NoteShown>().Count().ShouldBeGreaterThan(notesBefore);
+    }
 }

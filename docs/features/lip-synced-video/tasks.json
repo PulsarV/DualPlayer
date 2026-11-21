@@ -1392,7 +1392,7 @@
         "tests/DualPlayer.Core.Tests/Fakes/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T61-return-or-change-file-after-every-output-was-lost-on-whichever-devices-are-back.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-21c: S2"
     },
     {

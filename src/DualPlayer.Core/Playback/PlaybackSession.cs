@@ -185,9 +185,9 @@ public sealed partial class PlaybackSession : IDisposable
     /// <summary>
     /// Starts <paramref name="request"/>. A device named by its list number is resolved once, on the first start; the
     /// session then keeps its OS id, so a later start (a file change) plays each track on the same device even when the
-    /// list has been renumbered. With <paramref name="keepLost"/> the outputs lost so far stay lost and keep their numbers.
+    /// list has been renumbered. With <paramref name="missingIsLost"/> a device missing from the list stays lost instead of failing the start. With <paramref name="keepLost"/> the outputs lost so far stay lost and keep their numbers.
     /// </summary>
-    private Result StartCore(StartRequest request, bool keepLost = false, TimeSpan? returnTo = null)
+    private Result StartCore(StartRequest request, bool keepLost = false, TimeSpan? returnTo = null, bool missingIsLost = false)
     {
         var commandAt = request.CommandTimestamp ?? _time.GetTimestamp();
 
@@ -216,6 +216,14 @@ public sealed partial class PlaybackSession : IDisposable
 
             if (catalog.Find(assignment.Device) is not { } device)
             {
+                // After every output was lost, a device still missing stays lost (with its number and estimate) instead of failing.
+                if (missingIsLost && assignment.Device.Id is { } missingId && previous?.Outputs.Any(o => o.DeviceId == missingId) == true)
+                {
+                    lost.Add(missingId);
+                    resolved.Add(assignment);
+                    continue;
+                }
+
                 return Result.Failure("outputs.device_not_found", $"{assignment.Device} is not a connected playback device");
             }
 
@@ -325,7 +333,7 @@ public sealed partial class PlaybackSession : IDisposable
 
         // Every output lost: resolve all devices again against the current list, as a file change does.
         var started = playing.Count == 0
-            ? StartCore(request with { CommandTimestamp = null }, keepLost: false, returnTo: target)
+            ? StartCore(request with { CommandTimestamp = null }, keepLost: false, returnTo: target, missingIsLost: true)
             : StartRun(request with { Outputs = playing }, new LatencyEstimate([.. estimate.Outputs.Where(o => !lost.Contains(o.DeviceId))], estimate.PictureDelayMs), _time.GetTimestamp(), lost, returning: true, target);
         if (!started.IsSuccess)
         {
@@ -549,7 +557,7 @@ public sealed partial class PlaybackSession : IDisposable
         _events.Publish(new FileChanged(target, request.File) { ToPrevious = direction == NeighbourDirection.Previous });
 
         // Timed from the key, not from the command line the first file was started with.
-        var started = StartCore(request with { File = target, CommandTimestamp = commandAt }, keepLost: someStillPlay);
+        var started = StartCore(request with { File = target, CommandTimestamp = commandAt }, keepLost: someStillPlay, missingIsLost: !someStillPlay);
         if (!started.IsSuccess)
         {
             // The old film has stopped and the new one cannot play: end here, say why, and keep answering keys.

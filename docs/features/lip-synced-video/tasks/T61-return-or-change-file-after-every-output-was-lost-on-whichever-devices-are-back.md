@@ -6,8 +6,8 @@ deps: ["T60"]
 blocks: []
 acs: ["AC-15b", "AC-05", "AC-07"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/", "tests/DualPlayer.Core.Tests/Fakes/"]
-status: "todo"
-step: "SELECT"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -29,7 +29,7 @@ See [spec.md](../spec.md) §5 AC-15b, AC-05, AC-07.
 
 ## Definition of Done
 
-- [ ] In the retry after every output was lost (← and Page Down/Up), a device missing from the list is treated as lost — it keeps its output number and estimate, as `keepLost` does — instead of failing the start.
-- [ ] The retry fails with the existing note and log entry only when no device resolves.
-- [ ] Tests: two outputs lost, one relisted and one still unlisted, then ← → the film plays from the end position on the relisted device, the other stays lost; the same for Page Down (the next file plays on the relisted device); none relisted → note, Ended.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] In the retry after every output was lost (← and Page Down/Up), a device missing from the list is treated as lost — it keeps its output number and estimate, as `keepLost` does — instead of failing the start.
+- [x] The retry fails with the existing note and log entry only when no device resolves.
+- [x] Tests: two outputs lost, one relisted and one still unlisted, then ← → the film plays from the end position on the relisted device, the other stays lost; the same for Page Down (the next file plays on the relisted device); none relisted → note, Ended.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
