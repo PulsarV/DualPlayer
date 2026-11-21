@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-04", "AC-05", "AC-17"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "docs/features/lip-synced-video/spec.md", "docs/features/lip-synced-video/contracts/cli.md", "tests/DualPlayer.Core.Tests/Playback/"]
-status: "todo"
-step: "—"
+status: "blocked"
+step: "GATE — flaky backward-seek-from-Ended test (SessionRig.EngineCommandTakes 2 s jump race)"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
