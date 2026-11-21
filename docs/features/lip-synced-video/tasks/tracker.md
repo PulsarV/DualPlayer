@@ -92,7 +92,7 @@
 | T82 | [Show lost outputs as lost in the latency lines after a file change](./T82-show-lost-outputs-as-lost-in-the-latency-lines-after-a-file-change.md) | app | Volodymyr Kravchuk | M | T80 | done | COMMIT |
 | T83 | [Pin the budget-expiry line, the listing deadline and the run summary's own file with tests](./T83-pin-the-budget-expiry-line-the-listing-deadline-and-the-run-summary-s-own-file-with-tests.md) | test | Volodymyr Kravchuk | S | T82 | done | COMMIT |
 | T84 | [Cancel abandoned probe and listing workers and step past neighbours that timed out](./T84-cancel-abandoned-probe-and-listing-workers-and-step-past-neighbours-that-timed-out.md) | integration | Volodymyr Kravchuk | M | T83 | done | COMMIT |
-| T85 | [Time recovery from the key's arrival and judge outputs on readings after the engine command](./T85-time-recovery-from-the-key-s-arrival-and-judge-outputs-on-readings-after-the-engine-command.md) | app | Volodymyr Kravchuk | M | T84 | todo | — |
+| T85 | [Time recovery from the key's arrival and judge outputs on readings after the engine command](./T85-time-recovery-from-the-key-s-arrival-and-judge-outputs-on-readings-after-the-engine-command.md) | app | Volodymyr Kravchuk | M | T84 | done | COMMIT |
 | T86 | [Make the mpv speed reply update the set speed under the renderer's lock](./T86-make-the-mpv-speed-reply-update-the-set-speed-under-the-renderer-s-lock.md) | integration | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T87 | [Bring sad, the T23 guide, cli.md, test-plan, screens and DoD boxes in step with the code](./T87-bring-sad-the-t23-guide-cli-md-test-plan-screens-and-dod-boxes-in-step-with-the-code.md) | docs | Volodymyr Kravchuk | S | T80, T81, T82, T83, T84, T85, T86 | todo | — |
 

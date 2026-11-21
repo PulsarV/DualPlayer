@@ -12,11 +12,13 @@ internal sealed class PlaybackControls : IPlaybackControls, IDisposable
 {
     private readonly PlaybackSession _session;
     private readonly CommandQueue _queue;
+    private readonly TimeProvider _time;
     private int _exited;
 
-    public PlaybackControls(PlaybackSession session, ILogger<PlaybackControls> logger)
+    public PlaybackControls(PlaybackSession session, ILogger<PlaybackControls> logger, TimeProvider time)
     {
         _session = session;
+        _time = time;
         _queue = new CommandQueue(logger);
     }
 
@@ -28,15 +30,15 @@ internal sealed class PlaybackControls : IPlaybackControls, IDisposable
     public IObservable<SessionEvent> Events => _session.Events;
 
     public void TogglePause() =>
-        Post("pause", () => _session.State == PlaybackState.Paused ? _session.Resume() : _session.Pause());
+        Post("pause", keyAt => _session.State == PlaybackState.Paused ? _session.Resume(keyAt) : _session.Pause());
 
-    public void Seek(TimeSpan step) => Post("seek", () => _session.Seek(step));
+    public void Seek(TimeSpan step) => Post("seek", keyAt => _session.Seek(step, keyAt));
 
-    public void NextFile() => Post("next-file", _session.NextFile);
+    public void NextFile() => Post("next-file", keyAt => _session.NextFile(keyAt));
 
-    public void PreviousFile() => Post("previous-file", _session.PreviousFile);
+    public void PreviousFile() => Post("previous-file", keyAt => _session.PreviousFile(keyAt));
 
-    public void ChangeOffset(int outputNumber, int deltaMs) => Post("offset", () => _session.ChangeOffset(outputNumber, deltaMs));
+    public void ChangeOffset(int outputNumber, int deltaMs) => Post("offset", _ => _session.ChangeOffset(outputNumber, deltaMs));
 
     public void Exit() => _queue.Post("exit", () =>
     {
@@ -58,7 +60,11 @@ internal sealed class PlaybackControls : IPlaybackControls, IDisposable
 
     public void Dispose() => _queue.Dispose();
 
-    // Exit is terminal: a key that comes after it, or is still queued behind it, never reaches the session.
-    private void Post(string name, Func<Result> command) =>
-        _queue.Post(name, () => Volatile.Read(ref _exited) == 1 ? Result.Success() : command());
+    // Exit is terminal: a key that comes after it, or is still queued behind it, never reaches the session. The key is
+    // stamped when it arrives, so its recovery is timed from the press however long it waits behind earlier commands.
+    private void Post(string name, Func<long, Result> command)
+    {
+        var keyAt = _time.GetTimestamp();
+        _queue.Post(name, () => Volatile.Read(ref _exited) == 1 ? Result.Success() : command(keyAt));
+    }
 }

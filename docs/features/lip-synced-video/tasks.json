@@ -1979,7 +1979,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T85-time-recovery-from-the-key-s-arrival-and-judge-outputs-on-readings-after-the-engine-command.md",
       "origin": "review-2026-11-22: P8, P9",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T86",

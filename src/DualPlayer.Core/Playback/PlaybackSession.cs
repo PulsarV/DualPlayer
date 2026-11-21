@@ -92,7 +92,12 @@ public sealed partial class PlaybackSession : IDisposable
     private bool _timingPending;
 
     // The command whose "lip-synced again" record is still owed (sad.md flow 4), and when it was given.
+    // At is the key's arrival (the origin of the elapsed time and of the give-up budget).
     private (string Command, long At)? _resync;
+
+    // Output readings count as fresh only when taken at or after this: the instant the engine's command returned, not the
+    // key's arrival, since the engine never clears a reading on a seek and one taken in between is still from before it.
+    private long _readingsAfter;
 
     // The latest picture error measured (timestamp, ms): a give-up reports it when it was taken after the command.
     private (long At, double ErrorMs)? _lastMeasured;
@@ -437,12 +442,14 @@ public sealed partial class PlaybackSession : IDisposable
             if (returning)
             {
                 _resync = ("return", commandAt);
+                _readingsAfter = commandAt;
             }
             else
             {
                 // Measured by the sync ticks: the first frame on screen and each output's first audio plus its latency.
                 _startTimings = (commandAt, estimate.Outputs);
                 _resync = ("start", commandAt);
+                _readingsAfter = commandAt;
             }
         }
 
@@ -479,15 +486,24 @@ public sealed partial class PlaybackSession : IDisposable
         return Result.Success();
     }
 
-    /// <summary>Moves to the next playable file in the folder (T17).</summary>
-    public Result NextFile() => Run(() => ChangeFile(NeighbourDirection.Next));
+    /// <summary>
+    /// Moves to the next playable file in the folder (T17). <paramref name="commandTimestamp"/> is when the key arrived,
+    /// stamped by the caller before the command waited its turn; none means now.
+    /// </summary>
+    public Result NextFile(long? commandTimestamp) => Run(() => ChangeFile(NeighbourDirection.Next, commandTimestamp));
 
-    /// <summary>Moves to the previous playable file in the folder (T17).</summary>
-    public Result PreviousFile() => Run(() => ChangeFile(NeighbourDirection.Previous));
+    /// <summary>Moves to the next playable file in the folder (T17), timed from now.</summary>
+    public Result NextFile() => NextFile(null);
 
-    private Result ChangeFile(NeighbourDirection direction)
+    /// <summary>Moves to the previous playable file in the folder (T17); <paramref name="commandTimestamp"/> as for <see cref="NextFile"/>.</summary>
+    public Result PreviousFile(long? commandTimestamp) => Run(() => ChangeFile(NeighbourDirection.Previous, commandTimestamp));
+
+    /// <summary>Moves to the previous playable file in the folder (T17), timed from now.</summary>
+    public Result PreviousFile() => PreviousFile(null);
+
+    private Result ChangeFile(NeighbourDirection direction, long? commandTimestamp)
     {
-        var commandAt = _time.GetTimestamp();
+        var commandAt = commandTimestamp ?? _time.GetTimestamp();
         StartRequest? request;
         LatencyEstimate? estimateBefore;
         lock (_gate)
@@ -621,6 +637,7 @@ public sealed partial class PlaybackSession : IDisposable
         {
             now = _estimate;
             _resync = ("file-change", commandAt);
+            _readingsAfter = commandAt;
         }
 
         if (now is not null)
@@ -997,11 +1014,12 @@ public sealed partial class PlaybackSession : IDisposable
         return Result.Success();
     }
 
-    public Result Resume() => Run(ResumeCore);
+    /// <summary>Resumes; <paramref name="commandTimestamp"/> is when the key arrived (none: now).</summary>
+    public Result Resume(long? commandTimestamp = null) => Run(() => ResumeCore(commandTimestamp));
 
-    private Result ResumeCore()
+    private Result ResumeCore(long? commandTimestamp)
     {
-        var commandAt = _time.GetTimestamp();
+        var commandAt = commandTimestamp ?? _time.GetTimestamp();
         PictureSync sync;
         MasterClock clock;
         lock (_gate)
@@ -1025,7 +1043,7 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         var position = resumed.Value;
-        var now = _time.GetTimestamp();
+        var now = _time.GetTimestamp(); // the engine has resumed: only readings from here on say anything about the outputs now
         ApplyPendingTargets(sync);
         clock.JumpTo(position);
         clock.Start();
@@ -1052,6 +1070,7 @@ public sealed partial class PlaybackSession : IDisposable
         lock (_gate)
         {
             _resync = ("resume", commandAt);
+            _readingsAfter = now;
         }
 
         PublishDelay(position, PictureDelayCause.Resume, delay);
@@ -1059,12 +1078,15 @@ public sealed partial class PlaybackSession : IDisposable
         return Result.Success();
     }
 
-    /// <summary>Seeks by <paramref name="step"/> relative to the current position (negative = backward).</summary>
-    public Result Seek(TimeSpan step) => Run(() => SeekCore(step));
+    /// <summary>
+    /// Seeks by <paramref name="step"/> relative to the current position (negative = backward). <paramref name="commandTimestamp"/>
+    /// is when the key arrived (none: now).
+    /// </summary>
+    public Result Seek(TimeSpan step, long? commandTimestamp = null) => Run(() => SeekCore(step, commandTimestamp));
 
-    private Result SeekCore(TimeSpan step)
+    private Result SeekCore(TimeSpan step, long? commandTimestamp)
     {
-        var commandAt = _time.GetTimestamp();
+        var commandAt = commandTimestamp ?? _time.GetTimestamp();
         PlaybackState state;
         TimeSpan current;
         lock (_gate)
@@ -1125,6 +1147,7 @@ public sealed partial class PlaybackSession : IDisposable
             return Result.Failure(seeked.Error);
         }
 
+        var engineDone = _time.GetTimestamp(); // readings taken before this are from before the seek
         ApplyPendingTargets(sync);
         var delay = sync.TargetPictureDelay;
         if (seeked.Value.OutsideFile && target > TimeSpan.Zero)
@@ -1168,6 +1191,7 @@ public sealed partial class PlaybackSession : IDisposable
             lock (_gate)
             {
                 _resync = ("seek", commandAt);
+                _readingsAfter = engineDone;
             }
 
             ReportTiming(sync);
@@ -1291,6 +1315,7 @@ public sealed partial class PlaybackSession : IDisposable
         (string Command, long At)? resynced = null;
         (string Command, long At)? due = null;
         (string Command, long At)? gaveUp = null;
+        long readingsAfter = 0;
         Dictionary<string, double>? outputErrors = null;
         (long CommandAt, IReadOnlyList<OutputLatency> Outputs)? starting;
         lock (_gate)
@@ -1323,6 +1348,7 @@ public sealed partial class PlaybackSession : IDisposable
                 {
                     _outputsPolledAt = timing.Timestamp;
                     due = owed;
+                    readingsAfter = _readingsAfter;
                 }
             }
 
@@ -1339,7 +1365,7 @@ public sealed partial class PlaybackSession : IDisposable
         {
             PublishNotLipSynced(failed, timing.Clock, timing.Timestamp, timing.ErrorMs);
         }
-        else if (due is { } candidate && OutputsLipSynced(candidate.At) is { } errors)
+        else if (due is { } candidate && OutputsLipSynced(readingsAfter) is { } errors)
         {
             lock (_gate)
             {
@@ -1424,12 +1450,12 @@ public sealed partial class PlaybackSession : IDisposable
         return readings;
     }
 
-    private Dictionary<string, double>? OutputsLipSynced(long commandAt)
+    private Dictionary<string, double>? OutputsLipSynced(long readingsAfter)
     {
         var errors = new Dictionary<string, double>(StringComparer.Ordinal);
         foreach (var (deviceId, reading) in OutputErrors())
         {
-            if (reading.Timestamp < commandAt || Math.Abs(reading.ErrorMs) > OutputLipSyncedMs)
+            if (reading.Timestamp < readingsAfter || Math.Abs(reading.ErrorMs) > OutputLipSyncedMs)
             {
                 return null;
             }

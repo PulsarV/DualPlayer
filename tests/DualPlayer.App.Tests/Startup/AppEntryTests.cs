@@ -96,7 +96,7 @@ public sealed class AppEntryTests
         using var rig = new SessionRig(TwoDevices, null, 600);
         rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = file })).IsSuccess.ShouldBeTrue();
         rig.Engine.Render(300);
-        using var controls = new PlaybackControls(rig.Session, NullLogger<PlaybackControls>.Instance);
+        using var controls = new PlaybackControls(rig.Session, NullLogger<PlaybackControls>.Instance, rig.Engine.Time);
         var desktop = Substitute.For<IClassicDesktopStyleApplicationLifetime>();
         var services = PlayServices(rig, controls);
         var validated = new ValidatedStart(
@@ -140,7 +140,7 @@ public sealed class AppEntryTests
     public void A_session_start_that_fails_after_the_window_opened_prints_the_error_line_closes_the_window_and_shuts_down_with_its_exit_code()
     {
         using var rig = new SessionRig(TwoDevices, null, 600);
-        using var controls = new PlaybackControls(rig.Session, NullLogger<PlaybackControls>.Instance);
+        using var controls = new PlaybackControls(rig.Session, NullLogger<PlaybackControls>.Instance, rig.Engine.Time);
         var desktop = Substitute.For<IClassicDesktopStyleApplicationLifetime>();
         var services = PlayServices(rig, controls);
 
@@ -174,7 +174,7 @@ public sealed class AppEntryTests
         using var rig = new SessionRig(TwoDevices, null, 600);
         rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = file })).IsSuccess.ShouldBeTrue();
         rig.Engine.Render(300);
-        using var controls = new PlaybackControls(rig.Session, NullLogger<PlaybackControls>.Instance);
+        using var controls = new PlaybackControls(rig.Session, NullLogger<PlaybackControls>.Instance, rig.Engine.Time);
         var desktop = Substitute.For<IClassicDesktopStyleApplicationLifetime>();
         var services = PlayServices(rig, controls);
         var validated = new ValidatedStart(

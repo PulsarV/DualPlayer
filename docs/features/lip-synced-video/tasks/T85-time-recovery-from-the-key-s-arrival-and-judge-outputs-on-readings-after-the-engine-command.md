@@ -6,8 +6,8 @@ deps: ["T84"]
 blocks: []
 acs: ["AC-04", "AC-05", "AC-17"]
 files_hint: ["src/DualPlayer.App/ViewModels/PlaybackControls.cs", "src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.Core/Playback/", "src/DualPlayer.Core/Playback/AudioEngine.cs", "tests/DualPlayer.Core.Tests/Playback/", "tests/DualPlayer.App.Tests/"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -33,7 +33,7 @@ See [spec.md](../spec.md) §5 AC-04, AC-05, AC-17.
 
 ## Definition of Done
 
-- [ ] Every key command carries the timestamp of the key's arrival from `PlaybackControls`; the session uses it as `_resync.At`. Test: a seek queued behind a 2 s command reports `AfterCommandMs` ≥ the queue wait and gives up per its budget counted from the key.
-- [ ] Output readings count as fresh only when taken after the engine command returned (a second stamp); `At` stays the elapsed-time origin. Test: a reading stamped between key and engine seek does not let `LipSyncedAgain` fire; fails on the old filter.
-- [ ] cli.md §3 / spec §6 wording matches ("since the key press").
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Every key command carries the timestamp of the key's arrival from `PlaybackControls`; the session uses it as `_resync.At`. Test: a seek queued behind a 2 s command reports `AfterCommandMs` ≥ the queue wait and gives up per its budget counted from the key.
+- [x] Output readings count as fresh only when taken after the engine command returned (a second stamp); `At` stays the elapsed-time origin. Test: a reading stamped between key and engine seek does not let `LipSyncedAgain` fire; fails on the old filter.
+- [x] cli.md §3 / spec §6 wording matches ("since the key press").
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

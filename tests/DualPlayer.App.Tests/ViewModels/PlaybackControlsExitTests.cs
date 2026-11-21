@@ -25,7 +25,7 @@ public sealed class PlaybackControlsExitTests : IDisposable
         rig.Decoder.BeforeList = () => Interlocked.Increment(ref probed);
         rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = current })).IsSuccess.ShouldBeTrue();
         rig.Engine.Render(300);
-        var controls = new PlaybackControls(rig.Session, _log);
+        var controls = new PlaybackControls(rig.Session, _log, rig.Engine.Time);
         var exited = 0;
         controls.Exited += () => exited++;
 

@@ -104,9 +104,9 @@ Structured events in the rolling log (not printed unless stated above), from the
 | `PictureTiming` | clock, frame due time, presented time, error ms | every event above and once per second (AC-17) |
 | `FrameCounters` | late (> 20 ms after due), dropped, skipped-damaged, per minute | spec §6 picture presentation, AC-06b |
 | `StartTimings` | start command, first frame presented, first audio heard per output | spec §6 start budget |
-| `LipSyncedAgain` | clock, command (as `NotLipSynced`), ms since the key press (the engine's own wait included), picture error ms (absent/null when no frame was measurable), latest error per output; logged as information when recovery succeeded within its budget; the T23 guide judges L1/L2 on it | spec §6 recovery, AC-17 |
+| `LipSyncedAgain` | clock, command (as `NotLipSynced`), ms since the key press (its wait in the command queue and the engine's own wait included), picture error ms (absent/null when no frame was measurable), latest error per output; logged as information when recovery succeeded within its budget; the T23 guide judges L1/L2 on it | spec §6 recovery, AC-17 |
 | `DamagedStretchSkipped` | clock (the position where the damaged stretch starts), length (ms), frames skipped | AC-06b, AC-17 |
-| `NotLipSynced` | clock, command (`start`, `seek`, `resume`, `file-change`, `return` = a backward seek at the end that returns into the film), ms since the key press (the engine's own wait included), picture error ms (absent/null when no frame was measurable after the command), latest error per output; logged as a warning when recovery gave up after its budget (1 s; 3 s for a start, a file change or a return) | spec §6 recovery, AC-17 |
+| `NotLipSynced` | clock, command (`start`, `seek`, `resume`, `file-change`, `return` = a backward seek at the end that returns into the film), ms since the key press (its wait in the command queue and the engine's own wait included), picture error ms (absent/null when no frame was measurable after the command), latest error per output; logged as a warning when recovery gave up after its budget (1 s; 3 s for a start, a file change or a return) | spec §6 recovery, AC-17 |
 
 ## 4. Exit codes
 

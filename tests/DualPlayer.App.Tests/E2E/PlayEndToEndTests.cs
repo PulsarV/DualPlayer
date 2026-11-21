@@ -36,7 +36,7 @@ public sealed partial class PlayEndToEndTests : IDisposable
             _err,
             NullLogger.Instance,
             new TerminalContext([new OutputLabel(1, "Device 1"), new OutputLabel(2, "Device 2")], new ScreenInfo(1, 1920, 1080, true), file, rig.Engine.Time));
-        var controls = new PlaybackControls(rig.Session, NullLogger<PlaybackControls>.Instance);
+        var controls = new PlaybackControls(rig.Session, NullLogger<PlaybackControls>.Instance, rig.Engine.Time);
         rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = file })).IsSuccess.ShouldBeTrue();
         rig.Engine.Render(300);
         return (rig, printer, controls);
