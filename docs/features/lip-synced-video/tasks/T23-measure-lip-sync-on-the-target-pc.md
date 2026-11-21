@@ -2,7 +2,7 @@
 id: T23
 title: "Measure lip-sync per output on the target PC with a click-and-flash video and record the acceptance evidence"
 layer: "tests"
-deps: ["T22", "T24", "T25", "T26", "T27", "T28", "T29", "T30", "T31", "T32", "T33", "T34", "T35", "T36", "T37", "T38", "T39", "T40", "T41", "T42", "T43", "T44", "T45", "T46", "T47"]
+deps: ["T22", "T24", "T25", "T26", "T27", "T28", "T29", "T30", "T31", "T32", "T33", "T34", "T35", "T36", "T37", "T38", "T39", "T40", "T41", "T42", "T43", "T44", "T45", "T46", "T47", "T48", "T49", "T50", "T51", "T52", "T53", "T54", "T55", "T56", "T57", "T58"]
 blocks: []
 acs: ["AC-16", "AC-01"]
 files_hint: ["build/make-click-flash-video.ps1", "docs/features/lip-synced-video/evidence/"]
@@ -22,7 +22,7 @@ text and follow that. Do not invent the missing part. -->
 
 ## Place in the sequence
 
-- **Blocked by:** T22 — Wire the App composition root and host: validate, open the window on the screen, run the session, exit with the right code; T24–T38 — the follow-ups from review-2026-11-20; T39–T47 — the follow-ups from review-2026-11-21 (the measurement runs on the fixed code)
+- **Blocked by:** T22 — Wire the App composition root and host: validate, open the window on the screen, run the session, exit with the right code; T24–T38 — the follow-ups from review-2026-11-20; T39–T47 — the follow-ups from review-2026-11-21; T48–T58 — the follow-ups from review-2026-11-21b (the measurement runs on the fixed code)
 - **Blocks:** — (last task)
 - **Wave:** 11 — after its deepest dependency finishes (wave 10).
 - **Lane:** shares `docs/features/lip-synced-video/evidence/` with T5 — serialized.

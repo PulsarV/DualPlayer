@@ -508,7 +508,18 @@
         "T44",
         "T45",
         "T46",
-        "T47"
+        "T47",
+        "T48",
+        "T49",
+        "T50",
+        "T51",
+        "T52",
+        "T53",
+        "T54",
+        "T55",
+        "T56",
+        "T57",
+        "T58"
       ],
       "acs": [
         "AC-16",
@@ -1080,6 +1091,238 @@
       "file": "docs/features/lip-synced-video/tasks/T47-add-the-target-pc-load-scenarios-to-the-t23-run-guide.md",
       "status": "done",
       "origin": "review-2026-11-21: R12"
+    },
+    {
+      "id": "T48",
+      "title": "Return into the film only after a run of that file started, carry a summary only for its own file, and bump the film token before Load",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-05",
+        "AC-06",
+        "AC-06b",
+        "AC-07"
+      ],
+      "dod": "← at Ended is a return only when a run of `_request.File` actually started (a flag set after `_engine.StartRun` succeeds, cleared on a file change); otherwise ← is a no-op (or a fresh start) and never carries another file's summary.; The engine carries `_lastSummary` over only when its file (or run id) matches the new run's file.; The film token is bumped just before `_renderer.Load` in the not-returning branch, so an old film's `DecodeFailed` raised during device listing/probing is stale.; `SessionRig` records `EngineOptions.StartPosition`; the stale-summary test uses a failure that leaves the old film loaded, asserts `ShouldNotBeEmpty` before `ShouldAllBe`, and fails if the token bump is removed.; Tests: engine start fails after `Load` on the next file, then ←, then Esc — no return run of the new file carries the old summary (exit summary played time < 1 s or no run); an old-film `DecodeFailed` posted between the file-change key and `Load` does not end the new film.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.Core.Tests/Fakes/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T48-return-into-the-film-only-after-a-run-of-that-file-started-carry-a-summary-only-for-its-ow.md",
+      "status": "todo",
+      "origin": "review-2026-11-21b: Q1, Q2, Q7"
+    },
+    {
+      "id": "T49",
+      "title": "Let a return into the film retry every device after all outputs are lost and reload the picture after a picture failure",
+      "layer": "app",
+      "deps": [
+        "T48"
+      ],
+      "acs": [
+        "AC-05",
+        "AC-06b",
+        "AC-15b"
+      ],
+      "dod": "When every output is lost, a return into the film resolves `_request.Outputs` again against the current device list (as `ChangeFile` does with `keepLost: false`) and plays on every device that is back; if none is back it fails to Ended with the note and a log entry.; A `DecodeFailed` clears the film-loaded/started state; `ReturnIntoFilm` then reloads the file paused before starting audio, and if the reload fails it goes back to Ended with a note and a log entry — no audio without a picture.; T40's DoD box and its note are corrected to match the behaviour.; Tests: last output lost, the device comes back, then ← plays from the end position on it; picture failure, then ← reloads the picture before any engine run (or ends with a note when the reload fails).; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.Core.Tests/Fakes/",
+        "docs/features/lip-synced-video/tasks/T40-keep-a-usable-ended-session-when-a-file-change-or-a-return-into-the-film-fails.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T49-let-a-return-into-the-film-retry-every-device-after-all-outputs-are-lost-and-reload-the-pi.md",
+      "status": "todo",
+      "origin": "review-2026-11-21b: Q3, Q4"
+    },
+    {
+      "id": "T50",
+      "title": "Poll output errors once per engine reading, give up after the recovery budget with a not-lip-synced record, and hold picture timing until a pending align",
+      "layer": "app",
+      "deps": [
+        "T49"
+      ],
+      "acs": [
+        "AC-04",
+        "AC-17"
+      ],
+      "dod": "Output errors are queried from the engine only when its reading time has moved on (about every 100 ms), never on every 5 ms tick.; After the recovery budget (1 s; 3 s for a file change, per spec §6) a `NotLipSynced`-style record is published with the cause, picture error and per-output errors, and polling stops; cli.md §3 lists the new record and `SessionEventLogWriter` writes it.; While `_pendingAlign` is set, picture timing is treated as a hold: no `PictureTimingReported` is published until after the align.; Tests: an output that never recovers → one give-up record after the budget and a bounded number of engine queries; resume 30 ms and 150 ms after a pause with a 200 ms delay → no `PictureTimingReported` with |error| > 20 ms; log writer test for the new record.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "src/DualPlayer.Core/Playback/SessionEvent.cs",
+        "src/DualPlayer.Core/Sync/PictureSync.cs",
+        "src/DualPlayer.App/Startup/SessionEventLogWriter.cs",
+        "docs/features/lip-synced-video/contracts/cli.md",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.App.Tests/Startup/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T50-poll-output-errors-once-per-engine-reading-give-up-after-the-recovery-budget-with-a-not-li.md",
+      "status": "todo",
+      "origin": "review-2026-11-21b: Q5, Q6"
+    },
+    {
+      "id": "T51",
+      "title": "Record a seek past the end and log the target picture delay for a seek or resume during a move",
+      "layer": "app",
+      "deps": [
+        "T50"
+      ],
+      "acs": [
+        "AC-17"
+      ],
+      "dod": "A seek past the end publishes the same seek record as any other seek.; A seek or resume during a move records the delay the film actually aligned at (read after `AlignAt`, e.g. `TargetPictureDelay`).; Tests: seek past the end → one seek `PictureDelayChanged`; seek and resume during a move → new delay equals the target.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Sync/PictureSync.cs",
+        "tests/DualPlayer.Core.Tests/Playback/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T51-record-a-seek-past-the-end-and-log-the-target-picture-delay-for-a-seek-or-resume-during-a.md",
+      "status": "todo",
+      "origin": "review-2026-11-21b: Q12"
+    },
+    {
+      "id": "T52",
+      "title": "Stretch a picture-delay move so the corrected output arrives by its end",
+      "layer": "app",
+      "deps": [
+        "T51"
+      ],
+      "acs": [
+        "AC-14"
+      ],
+      "dod": "The move duration is max(|ΔPD|, |ΔD_c| over changed outputs)/0.2 %; the picture and every output's ramp finish together at ≤ 2000 ppm.; Test: an offset press where both ΔPD and the corrected output's lag change are non-zero and differ — the corrected output reaches its target no later than the picture move ends; no rate exceeds 0.2 %.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Sync/PictureSync.cs",
+        "src/DualPlayer.Core/Sync/LagRamp.cs",
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Sync/",
+        "tests/DualPlayer.Core.Tests/Playback/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T52-stretch-a-picture-delay-move-so-the-corrected-output-arrives-by-its-end.md",
+      "status": "todo",
+      "origin": "review-2026-11-21b: Q11"
+    },
+    {
+      "id": "T53",
+      "title": "Write log record values with the contract's names",
+      "layer": "ports",
+      "deps": [],
+      "acs": [
+        "AC-13",
+        "AC-17"
+      ],
+      "dod": "Every enum value written to the log uses the cli.md string (reuse the `TerminalPrinter`/`RunSummaryLines` mappers; no second mapping table).; Tests assert the contract strings for every `PictureDelayCause` and device type.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.App/Startup/SessionEventLogWriter.cs",
+        "tests/DualPlayer.App.Tests/Startup/SessionEventLogWriterTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T53-write-log-record-values-with-the-contract-s-names.md",
+      "status": "todo",
+      "origin": "review-2026-11-21b: Q13"
+    },
+    {
+      "id": "T54",
+      "title": "Flush a saved state file to disk before the rename",
+      "layer": "infra",
+      "deps": [],
+      "acs": [
+        "AC-10"
+      ],
+      "dod": "The temp file is written through a `FileStream` and `Flush(flushToDisk: true)` before `File.Move(..., overwrite: true)`; expected IO errors still return `Result` failures.; A test pins the write path (e.g. the temp file is complete and flushed before the move, through a seam or by asserting the written content after a simulated rename failure); existing store tests stay green.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Settings/JsonFileStateStore.cs",
+        "tests/DualPlayer.Core.Tests/Settings/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T54-flush-a-saved-state-file-to-disk-before-the-rename.md",
+      "status": "todo",
+      "origin": "review-2026-11-21b: Q9"
+    },
+    {
+      "id": "T55",
+      "title": "Check that every device opens before the window opens",
+      "layer": "wiring",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-12"
+      ],
+      "dod": "`Validate` tries to open each chosen device (through a Core port the platform adapters implement; open and release, no playback) and maps a refusal to `outputs.device_access_denied`, exit 4, before any window opens.; Tests: a device that refuses to open → exit 4, the cli.md error line, and the window factory is never called.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.App/Startup/StartCommand.cs",
+        "src/DualPlayer.App/App.axaml.cs",
+        "src/DualPlayer.Core/Outputs/",
+        "src/DualPlayer.Platform.Windows/",
+        "src/DualPlayer.Platform.MacOS/",
+        "tests/DualPlayer.App.Tests/Startup/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T55-check-that-every-device-opens-before-the-window-opens.md",
+      "status": "todo",
+      "origin": "review-2026-11-21b: Q14"
+    },
+    {
+      "id": "T56",
+      "title": "Tighten the click-and-flash tolerance and map EPERM to access denied",
+      "layer": "integration",
+      "deps": [],
+      "acs": [
+        "AC-03",
+        "AC-16"
+      ],
+      "dod": "The click-to-flash tolerance is about 2 ms (or one audio sample block), and the test still passes on the generated clip.; `AVERROR(EPERM)` maps to `playback.file_access_denied`; a unit test covers the mapping of both error codes.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Media.Tests/Video/ClickAndFlashVideoTests.cs",
+        "src/DualPlayer.Media/Video/FfmpegPictureProbe.cs",
+        "tests/DualPlayer.Media.Tests/Video/FfmpegPictureProbeTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T56-tighten-the-click-and-flash-tolerance-and-map-eperm-to-access-denied.md",
+      "status": "todo",
+      "origin": "review-2026-11-21b: Q15, Q16"
+    },
+    {
+      "id": "T57",
+      "title": "Make the exit and pending-align assertions bite and test Space through the real toggle",
+      "layer": "test",
+      "deps": [
+        "T50"
+      ],
+      "acs": [
+        "AC-04",
+        "AC-06"
+      ],
+      "dod": "Exit tests assert `rig.EngineRunFiles.Count` (or equivalent) is unchanged after exit.; The pending-align test asserts the resume record exists before checking it.; An E2E test calls the real `PlaybackControls.TogglePause` twice on the real session (Paused, then Playing) and once after the natural end (stays Ended).; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionExitTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionPendingAlignTests.cs",
+        "tests/DualPlayer.App.Tests/E2E/PlayEndToEndTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T57-make-the-exit-and-pending-align-assertions-bite-and-test-space-through-the-real-toggle.md",
+      "status": "todo",
+      "origin": "review-2026-11-21b: Q8, Q10"
+    },
+    {
+      "id": "T58",
+      "title": "Bring screens.md, test-plan.md and sad.md in step with the code",
+      "layer": "docs",
+      "deps": [
+        "T49",
+        "T50",
+        "T55"
+      ],
+      "acs": [],
+      "dod": "SCR-03 lists every note the session shows (incl. the two failure notes and any note T49 adds), with trigger and style.; test-plan.md row 112 names the App-entry tests; the stale test comment is removed; the stale US-02 notes in screens.md and sad.md are removed; test-plan rows reflect T48–T57's new tests.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "docs/features/lip-synced-video/screens.md",
+        "docs/features/lip-synced-video/test-plan.md",
+        "docs/features/lip-synced-video/sad.md",
+        "tests/DualPlayer.App.Tests/Startup/AppEntryTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T58-bring-screens-md-test-plan-md-and-sad-md-in-step-with-the-code.md",
+      "status": "todo",
+      "origin": "review-2026-11-21b: Q17"
     }
   ]
 }
