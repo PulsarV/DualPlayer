@@ -96,8 +96,9 @@ public sealed partial class PlaybackSession : IDisposable
     private bool _pictureFailed;
     private bool _exited;
 
-    // Whether a run of the film _request names has started (so ← at the end can return into it): cleared when a file
-    // change begins, set once the engine has started the new file, so a change that fails to load or to start leaves none.
+    // Whether a run of the film _request names has started (so ← at the end can return into it): cleared as soon as a
+    // file change stops the old run, set once the engine has started the new file, so a change that fails before the
+    // picture loads, to load or to start leaves none.
     private bool _filmLoaded;
     private int _healthTicks;
     private long _damagedSeen;
@@ -522,6 +523,10 @@ public sealed partial class PlaybackSession : IDisposable
 
         var previousDelay = estimateBefore?.PictureDelayMs ?? 0;
         _engine.Stop(RunEndReason.FileChange);
+        lock (_gate)
+        {
+            _filmLoaded = false;
+        }
 
         // The old run's summary was raised during the stop with the old token: moving on makes it stale, so it cannot
         // overwrite the end position even when the new file never starts a run.

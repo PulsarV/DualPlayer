@@ -1370,7 +1370,7 @@
         "tests/DualPlayer.App.Tests/Startup/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T60-forget-the-old-film-as-soon-as-a-file-change-begins-and-name-the-right-file-in-the-exit-su.md",
-      "status": "todo",
+      "status": "done",
       "origin": "review-2026-11-21c: S1, S4"
     },
     {

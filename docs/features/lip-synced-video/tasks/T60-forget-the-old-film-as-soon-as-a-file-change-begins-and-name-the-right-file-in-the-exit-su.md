@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-05", "AC-06"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.App/Startup/TerminalPrinter.cs", "tests/DualPlayer.Core.Tests/Playback/", "tests/DualPlayer.App.Tests/Startup/"]
-status: "todo"
-step: "SELECT"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -31,9 +31,9 @@ See [spec.md](../spec.md) §5 AC-05, AC-06.
 
 ## Definition of Done
 
-- [ ] `ChangeFile` clears `_filmLoaded` right after `_engine.Stop(FileChange)`, so after any failed file change (before or after `Load`) ← is a no-op that leaves the session Ended.
-- [ ] The exit summary names the file its run played: either `RunSummary` carries its file and the printer uses it, or the printer's file goes back to the playing file when a change fails — no `run-summary file <new file>` with the old film's figures.
-- [ ] The Q2 stale-summary test in `PlaybackSessionEndedRecoveryTests.cs:68-84`, which relies on returning into the old film after a failed change, is rewritten to keep its intent (a stale `RunSummary` does not move `_endPosition`) without that return.
-- [ ] The T48 session test asserts after ← that `EngineRunFiles.Count` is unchanged, the state is `Ended` and `summaries.Count == 1` (it fails if `_filmLoaded = true` moves back to after `Load`).
-- [ ] Tests: Page Down with a device unlisted before `Load`, then ← → no engine run, Ended; then Esc → summary line names the old file (printer test).
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `ChangeFile` clears `_filmLoaded` right after `_engine.Stop(FileChange)`, so after any failed file change (before or after `Load`) ← is a no-op that leaves the session Ended.
+- [x] The exit summary names the file its run played: either `RunSummary` carries its file and the printer uses it, or the printer's file goes back to the playing file when a change fails — no `run-summary file <new file>` with the old film's figures.
+- [x] The Q2 stale-summary test in `PlaybackSessionEndedRecoveryTests.cs:68-84`, which relies on returning into the old film after a failed change, is rewritten to keep its intent (a stale `RunSummary` does not move `_endPosition`) without that return.
+- [x] The T48 session test asserts after ← that `EngineRunFiles.Count` is unchanged, the state is `Ended` and `summaries.Count == 1` (it fails if `_filmLoaded = true` moves back to after `Load`).
+- [x] Tests: Page Down with a device unlisted before `Load`, then ← → no engine run, Ended; then Esc → summary line names the old file (printer test).
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

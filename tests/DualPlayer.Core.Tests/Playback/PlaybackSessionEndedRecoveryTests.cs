@@ -65,22 +65,30 @@ public sealed class PlaybackSessionEndedRecoveryTests : IDisposable
     }
 
     [Fact]
-    public void A_stale_run_summary_after_a_failed_file_change_does_not_move_the_end_position_used_by_a_backward_seek_AC_05()
+    public void A_stale_run_summary_after_a_failed_file_change_does_not_move_the_end_position_of_the_next_film_AC_05()
     {
         using var rig = PlayingRig(2_000);
-        // Output 2 leaves the list: the change fails with outputs.device_not_found before the new picture loads, so the
-        // old film stays loaded and its run is still the one ← returns into.
+        // Output 2 leaves the list: the change fails with outputs.device_not_found before the new picture loads.
         rig.Engine.Unlist(2);
         rig.Engine.Call(() => rig.Session.NextFile()).Error!.Code.ShouldBe("outputs.device_not_found");
         rig.Engine.Barrier(); // the old run's RunSummary(FileChange) has now reached the session
         rig.Engine.Events.OfType<RunSummary>().ShouldContain(s => s.EndReason == RunEndReason.FileChange);
         rig.Engine.Relist(2);
 
-        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-10)));
+        // Page Down again plays Episode 3, which ends after half a second when every output is lost.
+        rig.Engine.Call(() => rig.Session.NextFile()).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(50);
+        var devices = rig.Engine.Devices; // the devices of every run so far; the last two belong to Episode 3
+        devices[^1].SimulateLoss();
+        rig.Engine.Barrier();
+        devices[^2].SimulateLoss();
+        rig.Engine.WaitFor(() => rig.Engine.Events.OfType<RunSummary>().Count(r => r.EndReason == RunEndReason.AllDevicesLost) == 1).ShouldBeTrue();
+        rig.Session.State.ShouldBe(PlaybackState.Ended);
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-10))).IsSuccess.ShouldBeTrue();
 
-        // The failed change set the end position to 0; the old film's 20 s must not come back through its late summary.
-        rig.EngineStartPositions.Count.ShouldBe(2, "the first start and the return into the old film");
-        rig.EngineStartPositions.Last().ShouldBeLessThan(TimeSpan.FromSeconds(1), "a seek back from an end position of 0 lands at 0, not near 10 s");
+        // Episode 3 played well under a second; the 20 s of the old film's summary must not be its end position.
+        RunFileNames(rig).Last().ShouldBe("Episode 3.mkv");
+        rig.EngineStartPositions.Last().ShouldBeLessThan(TimeSpan.FromSeconds(1), "a seek back from an end position under 1 s lands at 0, not near 10 s");
     }
 
     // Both outputs are lost one after the other, which ends the film (AC-15b); the devices are still listed, so they can be tried again.

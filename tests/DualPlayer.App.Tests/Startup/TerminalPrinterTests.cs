@@ -153,6 +153,22 @@ public sealed partial class TerminalPrinterTests
     }
 
     [Fact]
+    public void The_summary_of_the_run_a_file_change_stopped_names_the_file_it_played_not_the_new_one()
+    {
+        var h = new Harness();
+        h.Session.Publish(new FileChanged("c.mkv", "a.mkv"));
+        h.Engine.Publish(new RunSummary(
+            RunEndReason.FileChange,
+            TimeSpan.FromSeconds(20),
+            [new OutputSummary(DevA, TimeSpan.FromSeconds(20), 3.5, 1.2, 4, 0, [])]));
+
+        var lines = h.Finish().Out;
+
+        lines.ShouldContain("run-summary file a.mkv reason file-change");
+        lines.ShouldNotContain("run-summary file c.mkv reason file-change");
+    }
+
+    [Fact]
     public void File_change_lines_are_printed_for_a_skipped_file_and_the_next_one()
     {
         var h = new Harness();

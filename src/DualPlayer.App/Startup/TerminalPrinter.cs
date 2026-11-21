@@ -31,6 +31,11 @@ internal sealed class TerminalPrinter : IDisposable
     private StartTimings? _timings;
     private AudioStarted? _audioStarted;
     private string _file;
+
+    // A file change's run summary and its FileChanged event can arrive in either order: whichever comes second must still
+    // name the file the stopped run played, not the new one.
+    private string? _stoppedFile;
+    private bool _changeSummaryPrinted;
     private bool _terminalBroken;
 
     public TerminalPrinter(
@@ -78,6 +83,18 @@ internal sealed class TerminalPrinter : IDisposable
                 lock (_gate)
                 {
                     file = _file;
+                    if (s.EndReason == RunEndReason.FileChange)
+                    {
+                        if (_stoppedFile is { } stopped)
+                        {
+                            file = stopped;
+                            _stoppedFile = null;
+                        }
+                        else
+                        {
+                            _changeSummaryPrinted = true;
+                        }
+                    }
                 }
 
                 foreach (var line in RunSummaryLines.Lines(file, s))
@@ -117,6 +134,15 @@ internal sealed class TerminalPrinter : IDisposable
                 var name = Path.GetFileName(c.File);
                 lock (_gate)
                 {
+                    if (_changeSummaryPrinted)
+                    {
+                        _changeSummaryPrinted = false;
+                    }
+                    else
+                    {
+                        _stoppedFile = _file;
+                    }
+
                     _file = name;
                 }
 

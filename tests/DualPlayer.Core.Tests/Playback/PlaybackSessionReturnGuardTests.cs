@@ -40,8 +40,11 @@ public sealed class PlaybackSessionReturnGuardTests : IDisposable
         rig.Engine.Call(() => rig.Session.NextFile()).IsSuccess.ShouldBeFalse("the engine could not open the device");
         rig.Engine.AllowAccess(2); // the device is back, so a return run that is wrongly started would succeed
         rig.Engine.Barrier();
+        var runsBefore = rig.EngineRunFiles.Count;
 
         rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-10)));
+        rig.Session.State.ShouldBe(PlaybackState.Ended);
+        rig.EngineRunFiles.Count.ShouldBe(runsBefore, "the failed start left no film to return into");
         rig.Engine.Render(100);
         rig.Engine.Call(() =>
         {
@@ -51,6 +54,7 @@ public sealed class PlaybackSessionReturnGuardTests : IDisposable
         rig.Engine.Barrier();
 
         var summaries = rig.Engine.Events.OfType<RunSummary>().ToList();
+        summaries.Count.ShouldBe(1, "only Episode 2's run ever played");
         summaries[0].EndReason.ShouldBe(RunEndReason.FileChange);
         foreach (var later in summaries.Skip(1))
         {
@@ -74,5 +78,21 @@ public sealed class PlaybackSessionReturnGuardTests : IDisposable
 
         rig.Session.State.ShouldBe(PlaybackState.Playing, "the failure belonged to the old film");
         rig.Events.OfType<NoteShown>().ShouldNotContain(n => n.Text.Contains("decode", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void After_a_file_change_failed_before_the_picture_loaded_a_backward_seek_starts_no_run_and_the_session_stays_ended_AC_05_AC_06()
+    {
+        using var rig = PlayingRig(2_000);
+        rig.Engine.Unlist(2);
+        rig.Engine.Call(() => rig.Session.NextFile()).Error!.Code.ShouldBe("outputs.device_not_found");
+        rig.Engine.Relist(2); // the device is back, so a return run that is wrongly started would succeed
+        rig.Engine.Barrier();
+        var runsBefore = rig.EngineRunFiles.Count;
+
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-10)));
+
+        rig.EngineRunFiles.Count.ShouldBe(runsBefore, "the old film was given up when the change began");
+        rig.Session.State.ShouldBe(PlaybackState.Ended);
     }
 }
