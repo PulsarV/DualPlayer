@@ -6,8 +6,8 @@ deps: ["T48"]
 blocks: []
 acs: ["AC-05", "AC-06b", "AC-15b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/", "tests/DualPlayer.Core.Tests/Fakes/", "docs/features/lip-synced-video/tasks/T40-keep-a-usable-ended-session-when-a-file-change-or-a-return-into-the-film-fails.md"]
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -31,8 +31,8 @@ See [spec.md](../spec.md) §5 AC-05, AC-06b, AC-15b.
 
 ## Definition of Done
 
-- [ ] When every output is lost, a return into the film resolves `_request.Outputs` again against the current device list (as `ChangeFile` does with `keepLost: false`) and plays on every device that is back; if none is back it fails to Ended with the note and a log entry.
-- [ ] A `DecodeFailed` clears the film-loaded/started state; `ReturnIntoFilm` then reloads the file paused before starting audio, and if the reload fails it goes back to Ended with a note and a log entry — no audio without a picture.
-- [ ] T40's DoD box and its note are corrected to match the behaviour.
-- [ ] Tests: last output lost, the device comes back, then ← plays from the end position on it; picture failure, then ← reloads the picture before any engine run (or ends with a note when the reload fails).
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] When every output is lost, a return into the film resolves `_request.Outputs` again against the current device list (as `ChangeFile` does with `keepLost: false`) and plays on every device that is back; if none is back it fails to Ended with the note and a log entry.
+- [x] A `DecodeFailed` clears the film-loaded/started state; `ReturnIntoFilm` then reloads the file paused before starting audio, and if the reload fails it goes back to Ended with a note and a log entry — no audio without a picture.
+- [x] T40's DoD box and its note are corrected to match the behaviour.
+- [x] Tests: last output lost, the device comes back, then ← plays from the end position on it; picture failure, then ← reloads the picture before any engine run (or ends with a note when the reload fails).
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

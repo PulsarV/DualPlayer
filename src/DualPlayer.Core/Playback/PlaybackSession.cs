@@ -178,7 +178,7 @@ public sealed partial class PlaybackSession : IDisposable
     /// session then keeps its OS id, so a later start (a file change) plays each track on the same device even when the
     /// list has been renumbered. With <paramref name="keepLost"/> the outputs lost so far stay lost and keep their numbers.
     /// </summary>
-    private Result StartCore(StartRequest request, bool keepLost = false)
+    private Result StartCore(StartRequest request, bool keepLost = false, TimeSpan? returnTo = null)
     {
         var commandAt = request.CommandTimestamp ?? _time.GetTimestamp();
 
@@ -255,7 +255,9 @@ public sealed partial class PlaybackSession : IDisposable
             LogLatency(output.DeviceId, output.Type, output.ReportedMs, output.Source, output.TypeDefaultMs, output.OffsetMs, output.AssumedMs, output.LagMs, estimate.PictureDelayMs);
         }
 
-        return StartRun(request with { Outputs = playing }, estimate, commandAt, lost, returning: false);
+        return returnTo is { } target
+            ? StartRun(request with { Outputs = playing }, estimate, commandAt, lost, returning: true, target)
+            : StartRun(request with { Outputs = playing }, estimate, commandAt, lost, returning: false);
     }
 
     // A renderer event is stamped with the film it was raised for when it is posted: by the time the session thread
@@ -283,9 +285,10 @@ public sealed partial class PlaybackSession : IDisposable
         StartRequest? request;
         LatencyEstimate? estimate;
         HashSet<string> lost;
+        bool pictureFailed;
         lock (_gate)
         {
-            (request, estimate) = (_request, _estimate);
+            (request, estimate, pictureFailed) = (_request, _estimate, _pictureFailed);
             lost = new HashSet<string>(_lost, StringComparer.Ordinal);
         }
 
@@ -294,19 +297,27 @@ public sealed partial class PlaybackSession : IDisposable
             return Result.Failure("playback.no_run", "No film is playing.");
         }
 
-        var playing = request.Outputs.Where(a => a.Device.Id is not { } id || !lost.Contains(id)).ToList();
-        if (playing.Count == 0)
+        if (pictureFailed)
         {
-            return Result.Failure("outputs.all_lost", "Every output has been lost.");
+            // After a picture failure mpv holds no file: reload it paused before any audio starts.
+            Interlocked.Increment(ref _filmToken);
+            var reloaded = _renderer.Load(request.File, nint.Zero, startPaused: true);
+            if (!reloaded.IsSuccess)
+            {
+                return reloaded;
+            }
         }
 
-        var playingEstimate = new LatencyEstimate([.. estimate.Outputs.Where(o => !lost.Contains(o.DeviceId))], estimate.PictureDelayMs);
+        var playing = request.Outputs.Where(a => a.Device.Id is not { } id || !lost.Contains(id)).ToList();
         lock (_gate)
         {
             CancelFreeze();
         }
 
-        var started = StartRun(request with { Outputs = playing }, playingEstimate, _time.GetTimestamp(), lost, returning: true, target);
+        // Every output lost: resolve all devices again against the current list, as a file change does.
+        var started = playing.Count == 0
+            ? StartCore(request with { CommandTimestamp = null }, keepLost: false, returnTo: target)
+            : StartRun(request with { Outputs = playing }, new LatencyEstimate([.. estimate.Outputs.Where(o => !lost.Contains(o.DeviceId))], estimate.PictureDelayMs), _time.GetTimestamp(), lost, returning: true, target);
         if (!started.IsSuccess)
         {
             return started;

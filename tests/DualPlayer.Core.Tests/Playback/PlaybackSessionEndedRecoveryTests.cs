@@ -98,6 +98,8 @@ public sealed class PlaybackSessionEndedRecoveryTests : IDisposable
     {
         using var rig = PlayingRig(300);
         LoseEveryOutput(rig);
+        rig.Engine.Unlist(1); // no device is back, so the retry finds none (T49)
+        rig.Engine.Unlist(2);
         var notesBefore = rig.Events.OfType<NoteShown>().Count();
 
         rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-10)));
@@ -118,5 +120,57 @@ public sealed class PlaybackSessionEndedRecoveryTests : IDisposable
         Path.GetFileName(rig.Events.OfType<FileChanged>().ShouldHaveSingleItem().File).ShouldBe("Episode 3.mkv");
         rig.Session.State.ShouldBe(PlaybackState.Playing);
         RunFileNames(rig).Last().ShouldBe("Episode 3.mkv");
+    }
+
+    [Fact]
+    public void A_backward_seek_after_every_output_was_lost_and_a_device_is_back_plays_from_the_end_position_on_it_AC_15b_AC_05()
+    {
+        using var rig = PlayingRig(2_000);
+        LoseEveryOutput(rig);
+
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-10))).IsSuccess.ShouldBeTrue("the devices are listed again, so the return retries them");
+
+        rig.Session.State.ShouldBe(PlaybackState.Playing);
+        rig.EngineStartPositions.Count.ShouldBe(2, "the first start and the return into the film");
+        rig.EngineStartPositions.Last().ShouldBeInRange(TimeSpan.FromSeconds(8), TimeSpan.FromSeconds(12), "20 s end position minus 10 s");
+    }
+
+    private static void FailThePicture(SessionRig rig)
+    {
+        rig.Renderer.InjectDecodeFailure(new Error("video.decode_failed", "The picture cannot be decoded."));
+        rig.Engine.WaitFor(() => rig.Engine.Summary is not null).ShouldBeTrue();
+        rig.Session.State.ShouldBe(PlaybackState.Ended);
+    }
+
+    [Fact]
+    public void A_backward_seek_after_a_picture_failure_reloads_the_picture_before_any_engine_run_AC_06b_AC_05()
+    {
+        using var rig = PlayingRig(1_000);
+        FailThePicture(rig);
+        var loadsBefore = rig.Renderer.LoadCount;
+        var runsAtReload = -1;
+        rig.Renderer.AfterLoad = () => runsAtReload = rig.EngineRunFiles.Count;
+
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-5))).IsSuccess.ShouldBeTrue();
+
+        rig.Renderer.LoadCount.ShouldBe(loadsBefore + 1, "the picture failure left mpv without a file");
+        runsAtReload.ShouldBe(1, "the reload comes before the second engine run");
+        rig.EngineStartPositions.Count.ShouldBe(2);
+        rig.Session.State.ShouldBe(PlaybackState.Playing);
+    }
+
+    [Fact]
+    public void A_backward_seek_after_a_picture_failure_whose_reload_fails_ends_with_a_note_and_starts_no_audio_AC_06b_AC_05()
+    {
+        using var rig = PlayingRig(1_000);
+        FailThePicture(rig);
+        rig.Renderer.LoadError = new Error("video.load_failed", "mpv could not open the file.");
+        var notesBefore = rig.Events.OfType<NoteShown>().Count();
+
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-5))).IsSuccess.ShouldBeFalse();
+
+        rig.Session.State.ShouldBe(PlaybackState.Ended);
+        rig.EngineStartPositions.Count.ShouldBe(1, "no audio without a picture");
+        rig.Events.OfType<NoteShown>().Count().ShouldBeGreaterThan(notesBefore);
     }
 }

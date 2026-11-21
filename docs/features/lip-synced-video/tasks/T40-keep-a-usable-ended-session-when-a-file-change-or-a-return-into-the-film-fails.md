@@ -33,10 +33,10 @@ See [spec.md](../spec.md) §5 AC-05, AC-07, AC-15b.
 
 - [x] After a failed file change the session knows which film the renderer holds: `_request`/`_estimate` are restored to the loaded film (or a 'no film loaded' state makes seeks a no-op while next/previous/Esc still work); ← never starts audio for a file that did not load.
 - [x] The run token is bumped before `_engine.Stop(FileChange)` so a stale summary cannot overwrite `_endPosition`.
-- [x] A failed `ReturnIntoFilm`/`StartRun` returns the session to Ended with a note and a log entry (as `ChangeFile` does); when all outputs are lost, a return/file change retries every device.
+- [x] A failed `ReturnIntoFilm`/`StartRun` returns the session to Ended with a note and a log entry (as `ChangeFile` does); when all outputs are lost, a return/file change retries every device (return: corrected by T49).
 - [x] Tests: Load fails on the next file, then Seek(-10 s) starts no engine run on that file; last output lost, then ←, then Page Down plays the next file; a stale RunSummary does not move `_endPosition`.
 - [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
 
 ## Note (implement)
 
-"No film loaded" option chosen: `_filmLoaded` is false from before `Load` until it succeeds; a backward seek at the end with no loaded film is a no-op. The run token is bumped right after the synchronous `_engine.Stop(FileChange)` (the engine stamps the summary during the stop), so the old summary is always stale. Retrying every device applies to a file change (already via `keepLost: false`); a backward return after all outputs are lost does not retry — it fails back to Ended with a note and a log entry (AC-15b requires next, previous and exit to keep working, not the return).
+"No film loaded" option chosen: `_filmLoaded` is false from before `Load` until it succeeds; a backward seek at the end with no loaded film is a no-op. The run token is bumped right after the synchronous `_engine.Stop(FileChange)` (the engine stamps the summary during the stop), so the old summary is always stale. Retrying every device applies to a file change (already via `keepLost: false`); a backward return after all outputs are lost also retries every device (T49); if none is back it fails to Ended with a note and a log entry.
