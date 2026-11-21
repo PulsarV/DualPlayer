@@ -42,6 +42,7 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
     private readonly EngineControlLoop _loop;
     private readonly EventPublisher _events;
     private Run? _run; // control-loop thread only
+    private string? _lastSummaryFile; // the file that summary belongs to
     private RunSummary? _lastSummary; // the summary of the run that ended last; carried into a run that continues it
     private int _disposed;
 
@@ -155,7 +156,7 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
             return Result<RunStarted>.Failure(resolved.Error);
         }
 
-        var run = new Run(startTimestamp) { StopWaitMaxPolls = options.StopWaitMaxPolls };
+        var run = new Run(startTimestamp) { StopWaitMaxPolls = options.StopWaitMaxPolls, File = file };
         foreach (var output in resolved.Value)
         {
             var name = catalog.Devices.First(d => string.Equals(d.Id, output.DeviceId, StringComparison.Ordinal)).Name;
@@ -207,7 +208,7 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
         run.Clock = new MasterClock(_time);
         run.Clock.JumpTo(options.StartPosition);
         run.ContinuesPreviousRun = options.ContinuesPreviousRun;
-        if (options.ContinuesPreviousRun && _lastSummary is { } carried)
+        if (options.ContinuesPreviousRun && _lastSummary is { } carried && string.Equals(_lastSummaryFile, file, StringComparison.Ordinal))
         {
             run.Summary.CarryOver(carried);
         }
@@ -1176,6 +1177,7 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
 
         _run = null;
         _lastSummary = summary;
+        _lastSummaryFile = run.File;
         _loop.Polling = false;
         _events.Publish(summary);
         Teardown(run);
@@ -1269,6 +1271,8 @@ public sealed partial class AudioEngine : IAudioEngine, IOutputLagControl, IDisp
         public long? LatestFirstAudio { get; set; }
 
         public bool AudioStartedPublished { get; set; }
+
+        public string? File { get; init; }
 
         public bool ContinuesPreviousRun { get; set; }
 

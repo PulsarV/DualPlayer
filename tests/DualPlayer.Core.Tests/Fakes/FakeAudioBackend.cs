@@ -36,6 +36,8 @@ internal sealed class FakeAudioBackend(TimeProvider time, MixFormat format) : IA
 
     public void DenyAccess(string id) => _denied.Add(id);
 
+    public void AllowAccess(string id) => _denied.Remove(id);
+
     /// <summary>The device <paramref name="id"/> is lost as soon as it starts, before it has rendered any audio (a loss in the pre-roll).</summary>
     public void LoseOnStart(string id) => _lostOnStart.Add(id);
 

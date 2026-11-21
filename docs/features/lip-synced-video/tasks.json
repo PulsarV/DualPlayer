@@ -1112,7 +1112,7 @@
         "tests/DualPlayer.Core.Tests/Fakes/"
       ],
       "file": "docs/features/lip-synced-video/tasks/T48-return-into-the-film-only-after-a-run-of-that-file-started-carry-a-summary-only-for-its-ow.md",
-      "status": "blocked",
+      "status": "done",
       "origin": "review-2026-11-21b: Q1, Q2, Q7"
     },
     {

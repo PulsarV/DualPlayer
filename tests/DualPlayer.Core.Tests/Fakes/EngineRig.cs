@@ -84,6 +84,17 @@ internal sealed class EngineRig : IDisposable
     /// <summary>Device <paramref name="number"/> (dev-n) is lost the moment the engine starts it: in the pre-roll, before its first audio.</summary>
     public void LoseOutputInPreRoll(int number) => _fakeBackend.LoseOnStart($"dev-{number}");
 
+    /// <summary>Device <paramref name="number"/> (dev-n) refuses to open (access denied) until <see cref="AllowAccess"/>.</summary>
+    public void DenyAccess(int number) => _fakeBackend.DenyAccess($"dev-{number}");
+
+    public void AllowAccess(int number) => _fakeBackend.AllowAccess($"dev-{number}");
+
+    /// <summary>Device <paramref name="number"/> (dev-n) leaves the device list (a run already playing on it keeps it open).</summary>
+    public void Unlist(int number) => _fakeBackend.RemoveDevice($"dev-{number}");
+
+    /// <summary>Device <paramref name="number"/> (dev-n) is listed again, at the end of the list.</summary>
+    public void Relist(int number) => _fakeBackend.AddDevice(new AudioDeviceInfo($"Device {number}", null, $"dev-{number}"));
+
     public AudioEngine Engine { get; }
 
     public IReadOnlyList<FakeAudioDevice> Devices => _devices;

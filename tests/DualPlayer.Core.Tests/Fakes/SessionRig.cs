@@ -18,6 +18,7 @@ internal sealed class SessionRig : IDisposable
     private readonly List<SessionEvent> _events = [];
     private readonly List<string> _runFiles = [];
     private readonly List<TimeSpan> _seekTargets = [];
+    private readonly List<TimeSpan> _startPositions = [];
     private readonly Lock _gate = new();
     private readonly Dictionary<string, double> _forcedErrors = new(StringComparer.Ordinal);
     private readonly OffsetBook _offsets;
@@ -91,6 +92,18 @@ internal sealed class SessionRig : IDisposable
         }
     }
 
+    /// <summary>The start position of every engine run the session asked for, in order.</summary>
+    public IReadOnlyList<TimeSpan> EngineStartPositions
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return [.. _startPositions];
+            }
+        }
+    }
+
     /// <summary>The targets the session asked the engine to seek to, in order.</summary>
     public IReadOnlyList<TimeSpan> EngineSeekTargets
     {
@@ -149,6 +162,7 @@ internal sealed class SessionRig : IDisposable
             lock (owner._gate)
             {
                 owner._runFiles.Add(file);
+                owner._startPositions.Add(options.StartPosition);
             }
 
             var result = Rig.Engine.StartRun(file, assignments, options);

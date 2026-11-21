@@ -88,7 +88,8 @@ public sealed partial class PlaybackSession : IDisposable
     private bool _pictureFailed;
     private bool _exited;
 
-    // Whether the renderer holds the film _request names: a file change that failed to load leaves it holding none.
+    // Whether a run of the film _request names has started (so ← at the end can return into it): cleared when a file
+    // change begins, set once the engine has started the new file, so a change that fails to load or to start leaves none.
     private bool _filmLoaded;
     private int _healthTicks;
     private long _damagedSeen;
@@ -337,15 +338,12 @@ public sealed partial class PlaybackSession : IDisposable
                 _filmLoaded = false;
             }
 
+            // The old film plays on until Load: from here its renderer events are stale.
+            Interlocked.Increment(ref _filmToken);
             var loaded = _renderer.Load(request.File, nint.Zero, startPaused: true);
             if (!loaded.IsSuccess)
             {
                 return loaded;
-            }
-
-            lock (_gate)
-            {
-                _filmLoaded = true;
             }
         }
 
@@ -355,6 +353,12 @@ public sealed partial class PlaybackSession : IDisposable
         if (!started.IsSuccess)
         {
             return Result.Failure(started.Error);
+        }
+
+        // Only now is there a run of this file to return into.
+        lock (_gate)
+        {
+            _filmLoaded = true;
         }
 
         // A lag command replies once the pre-roll is released and the master clock has started.
@@ -503,7 +507,6 @@ public sealed partial class PlaybackSession : IDisposable
         // The old run's summary was raised during the stop with the old token: moving on makes it stale, so it cannot
         // overwrite the end position even when the new file never starts a run.
         Interlocked.Increment(ref _runToken);
-        Interlocked.Increment(ref _filmToken);
         lock (_gate)
         {
             _state = PlaybackState.Idle;
@@ -872,7 +875,7 @@ public sealed partial class PlaybackSession : IDisposable
             case PlaybackState.Ended:
                 if (step >= TimeSpan.Zero || _request is null || !_filmLoaded)
                 {
-                    // Nothing to return into: the renderer holds no film (a file change failed to load).
+                    // Nothing to return into: no run of this file started (a file change failed to load or to start).
                     return Result.Success();
                 }
 

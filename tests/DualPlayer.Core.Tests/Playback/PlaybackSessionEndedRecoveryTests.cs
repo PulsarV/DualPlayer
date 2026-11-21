@@ -68,15 +68,19 @@ public sealed class PlaybackSessionEndedRecoveryTests : IDisposable
     public void A_stale_run_summary_after_a_failed_file_change_does_not_move_the_end_position_used_by_a_backward_seek_AC_05()
     {
         using var rig = PlayingRig(2_000);
-        rig.Renderer.LoadError = new Error("video.load_failed", "mpv could not open the file.");
-        rig.Engine.Call(() => rig.Session.NextFile()).IsSuccess.ShouldBeFalse();
+        // Output 2 leaves the list: the change fails with outputs.device_not_found before the new picture loads, so the
+        // old film stays loaded and its run is still the one ← returns into.
+        rig.Engine.Unlist(2);
+        rig.Engine.Call(() => rig.Session.NextFile()).Error!.Code.ShouldBe("outputs.device_not_found");
         rig.Engine.Barrier(); // the old run's RunSummary(FileChange) has now reached the session
         rig.Engine.Events.OfType<RunSummary>().ShouldContain(s => s.EndReason == RunEndReason.FileChange);
+        rig.Engine.Relist(2);
 
         rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-10)));
 
         // The failed change set the end position to 0; the old film's 20 s must not come back through its late summary.
-        rig.EngineSeekTargets.ShouldAllBe(t => t < TimeSpan.FromSeconds(1), "a seek back from an end position of 0 lands at 0, not near 10 s");
+        rig.EngineStartPositions.Count.ShouldBe(2, "the first start and the return into the old film");
+        rig.EngineStartPositions.Last().ShouldBeLessThan(TimeSpan.FromSeconds(1), "a seek back from an end position of 0 lands at 0, not near 10 s");
     }
 
     // Both outputs are lost one after the other, which ends the film (AC-15b); the devices are still listed, so they can be tried again.

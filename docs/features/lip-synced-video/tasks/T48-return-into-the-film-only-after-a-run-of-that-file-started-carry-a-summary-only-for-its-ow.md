@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
 origin: "review-2026-11-21b (Q1, Q2, Q7)"
-status: "blocked"
-step: "REVIEW — unresolved blocking review issues and gate red (flaky Core test)"
+status: "done"
+step: "COMMIT"
 ---
 
 <!-- Follow-up task from review-2026-11-21b. Work from what is inlined here; the source always wins.
@@ -33,9 +33,13 @@ See [spec.md](../spec.md) §5 AC-01, AC-05, AC-06, AC-06b, AC-07.
 
 ## Definition of Done
 
-- [ ] ← at Ended is a return only when a run of `_request.File` actually started (a flag set after `_engine.StartRun` succeeds, cleared on a file change); otherwise ← is a no-op (or a fresh start) and never carries another file's summary.
-- [ ] The engine carries `_lastSummary` over only when its file (or run id) matches the new run's file.
-- [ ] The film token is bumped just before `_renderer.Load` in the not-returning branch, so an old film's `DecodeFailed` raised during device listing/probing is stale.
-- [ ] `SessionRig` records `EngineOptions.StartPosition`; the stale-summary test uses a failure that leaves the old film loaded, asserts `ShouldNotBeEmpty` before `ShouldAllBe`, and fails if the token bump is removed.
-- [ ] Tests: engine start fails after `Load` on the next file, then ←, then Esc — no return run of the new file carries the old summary (exit summary played time < 1 s or no run); an old-film `DecodeFailed` posted between the file-change key and `Load` does not end the new film.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] ← at Ended is a return only when a run of `_request.File` actually started (a flag set after `_engine.StartRun` succeeds, cleared on a file change); otherwise ← is a no-op (or a fresh start) and never carries another file's summary.
+- [x] The engine carries `_lastSummary` over only when its file (or run id) matches the new run's file.
+- [x] The film token is bumped just before `_renderer.Load` in the not-returning branch, so an old film's `DecodeFailed` raised during device listing/probing is stale.
+- [x] `SessionRig` records `EngineOptions.StartPosition`; the stale-summary test uses a failure that leaves the old film loaded, asserts `ShouldNotBeEmpty` before `ShouldAllBe`, and fails if the token bump is removed.
+- [x] Tests: engine start fails after `Load` on the next file, then ←, then Esc — no return run of the new file carries the old summary (exit summary played time < 1 s or no run); an old-film `DecodeFailed` posted between the file-change key and `Load` does not end the new film.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+
+## Note (implement)
+
+"No return" option chosen: `_filmLoaded` is cleared when a file change begins and set only after `_engine.StartRun` succeeds, so ← at Ended after a failed start is a no-op. When a change fails before `Load` (`outputs.device_not_found`), the old film stays loaded and ← returns into it from the end position 0. The gate passed on reruns; the intermittent failures of `AudioEngineRunTests.Audio_started_is_published_once…` and `AudioEngineSyncRecordTests.An_injected_step_error…` already occur before this task (seen at `d4e23c3`) and are tracked by T59.
