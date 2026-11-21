@@ -10,8 +10,8 @@ owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
 origin: "review-2026-11-21b (Q8, Q10)"
-status: "todo"
-step: ""
+status: "blocked"
+step: "GATE — no gate result (red phase false_pass, gate not run)"
 ---
 
 <!-- Follow-up task from review-2026-11-21b. Work from what is inlined here; the source always wins.
