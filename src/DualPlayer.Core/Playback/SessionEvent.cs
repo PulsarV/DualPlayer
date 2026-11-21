@@ -93,6 +93,9 @@ public sealed record FileChanged(string File, string? PreviousFile) : SessionEve
 /// <summary>No playable file in the pressed direction.</summary>
 public sealed record NoNeighbour(bool Next) : SessionEvent;
 
+/// <summary>The per-press time budget ran out before a playable neighbour was found (not the no-neighbour outcome).</summary>
+public sealed record NeighbourSearchTimedOut(bool Next, int Checked) : SessionEvent;
+
 /// <summary>An output's device was lost; <paramref name="OthersContinue"/> is false when it was the last one.</summary>
 public sealed record OutputLost(int OutputNumber, string DeviceId, TimeSpan Clock, bool OthersContinue) : SessionEvent
 {

@@ -33,7 +33,7 @@ Text only; every line's exact format is in `contracts/cli.md` (section in bracke
 | validation | Malformed arguments, more than three outputs (`cli.usage`, `outputs.too_many`) | `error <code>: <message>` on standard error, exit 2 [cli §5] | wireframe below |
 | error | File access denied (AC-03, exit 4), unreadable, no picture or not hardware-decodable (AC-02), track or device not found, device twice, device access denied, screen not found with the screen list (AC-03b), renderer missing — nothing plays, no window [cli §4, §5] | `error <code>: <message>`, exit 2 or 4 | wireframe below |
 | warning | Remembered offsets unreadable / invalid / too new, or a value clamped (spec §6.1) — the film still starts | `warning <code>: <message>` before the start lines [cli §1.1] | wireframe below |
-| running | During the film: files skipped, next file, device lost, picture failed (AC-07…AC-09b, AC-15, AC-15b, AC-06b) | `skipped`, `next`, `previous`, `no-next-file`, `device-lost`, `picture-failed` lines [cli §2.2, §2.3] | wireframe below |
+| running | During the film: files skipped, next file, device lost, picture failed (AC-07…AC-09b, AC-15, AC-15b, AC-06b) | `skipped`, `next`, `previous`, `no-next-file`, `next-file-timeout`, `device-lost`, `picture-failed` lines [cli §2.2, §2.3] | wireframe below |
 | success | Natural end, exit or file change — run summary per output (AC-06, AC-07, AC-15b) | `run-summary …` + step-3 summary block; exit 0 after the window closes [cli §2.1, §4] | wireframe below |
 
 ```text
@@ -106,7 +106,7 @@ Two styles, set by the `NoteStyle` the session publishes with each note: **info*
 | hidden (default) | No note in the last 2 s | — | — |
 | offset changed | Offset key within range, any window state (AC-10, flow 8) | NEW: `OsdNote` (info) — `Output 1: +40 ms` | wireframe below |
 | offset limit | Offset key past ±500 ms (AC-11, flow 8) | `OsdNote` (warning) — `Output 1: offset cannot go beyond ±500 ms` | wireframe below |
-| no next / previous | No playable file in that direction (AC-08, flow 3); when every neighbour in that direction was skipped, one combined note (AC-08 + AC-09) | `OsdNote` (info) — `No next file` / `No previous file`; combined: `No next file (skipped 2; last: Episode-05.mkv - picture cannot be played on this PC)` | wireframe below |
+| no next / previous | No playable file in that direction (AC-08, flow 3); when every neighbour in that direction was skipped, one combined note (AC-08 + AC-09) | `OsdNote` (info) — `No next file` / `No previous file`; combined: `No next file (skipped 2; last: Episode-05.mkv - picture cannot be played on this PC)`; budget expired (3 s) before the search finished: `Next file not found within 3 s (checked N)` / `Previous file not found within 3 s (checked N)` | wireframe below |
 | skipped file | Neighbour lacks a track, unreadable, no picture, not hardware-decodable (AC-09, AC-09b); several on one press → the last note counts them | `OsdNote` (warning) — `Skipped Episode-03.mkv: no track 2 for output 2` / `Skipped 3 files; last: Episode-05.mkv - picture cannot be played on this PC` | wireframe below |
 | output lost | A device lost while others remain (AC-15, flow 2) | `OsdNote` (warning) — `Output 2 lost` | wireframe below |
 | last output lost | The only remaining device lost (AC-15b, flow 6) | `OsdNote` (warning) — `Output 1 lost - last output, film ended` | wireframe below |

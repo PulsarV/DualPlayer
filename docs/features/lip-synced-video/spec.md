@@ -156,7 +156,7 @@ Traceability: requirements PLY-01 (formats, hardware decoding), PLY-02 (play, pa
 
 **Given** a film is playing, paused or has reached its end, and no playable file follows it in its folder in natural name order (or precedes it, for the previous-file key)
 **When** a Viewer presses the next-file key (or the previous-file key)
-**Then** the current film stays as it was — playing, paused or at its end — and the window shows briefly that there is no next (or previous) file
+**Then** the current film stays as it was — playing, paused or at its end — and the window shows briefly that there is no next (or previous) file; when the 3 s key budget runs out before every file in that direction was checked, the window instead says the file was not found within 3 s (and how many files were checked), which is not the no-next-file outcome, and a file whose probe was cut short by the budget is not reported as skipped
 
 ### AC-09 (US-03) — cross-context
 
@@ -246,7 +246,7 @@ All targets apply to the target Windows 11 PC; the macOS development path is not
 - **Abuse cases:**
   - A malformed or hostile video file: if it cannot be read, or its first picture cannot be decoded in hardware within the start budget (§6), the player refuses it at start with a plain explanation (AC-02), or skips it on next or previous (AC-09b); damage found after playback has started is handled as in AC-06b. The player never crashes, and no key goes unanswered for longer than 3 s.
   - A remembered-offsets file edited by hand with values out of range: the player clamps them to ±500 ms and logs it; values off the 10 ms grid are rounded to the nearest 10 ms and logged. If the file cannot be read, the film still starts with every offset at 0, the Developer is warned in the terminal and the log, and the file is not overwritten until a Viewer presses an offset key.
-  - A folder with thousands of files: next and previous still answer within the start budget (§6).
+  - A folder with thousands of files: next and previous still answer within the 3 s key budget (§6); track listing and picture probe both run under that one deadline, and running out of it is reported as `next-file-timeout` / `previous-file-timeout`, not as no next file.
 - **Security review:** N/A — local program with no network access, no new access boundary and no personal data beyond operating-system device names.
 
 ## 7. Metrics / KPIs

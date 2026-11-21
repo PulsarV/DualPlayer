@@ -82,7 +82,7 @@
 | T72 | [Report the last measured picture error when giving up after a correcting seek](./T72-report-the-last-measured-picture-error-when-giving-up-after-a-correcting-seek.md) | app | Volodymyr Kravchuk | S | T71 | done | COMMIT |
 | T73 | [Log per-output records with the start-command output number and contract device-type names](./T73-log-per-output-records-with-the-start-command-output-number-and-contract-device-type-names.md) | app | Volodymyr Kravchuk | S | T70, T72 | done | COMMIT |
 | T74 | [Log the speeds a picture-delay move really applies](./T74-log-the-speeds-a-picture-delay-move-really-applies.md) | app | Volodymyr Kravchuk | M | T73 | done | COMMIT |
-| T75 | [Keep Page Down and Page Up honest when the time budget runs out](./T75-keep-page-down-and-page-up-honest-when-the-time-budget-runs-out.md) | app | Volodymyr Kravchuk | M | T74 | todo | — |
+| T75 | [Keep Page Down and Page Up honest when the time budget runs out](./T75-keep-page-down-and-page-up-honest-when-the-time-budget-runs-out.md) | app | Volodymyr Kravchuk | M | T74 | done | COMMIT |
 | T76 | [Show the picture-failed note on the last good frame](./T76-show-the-picture-failed-note-on-the-last-good-frame.md) | integration | Volodymyr Kravchuk | M | T75 | todo | — |
 | T77 | [Load FFmpeg before mapping an audio open failure so the mapping tests run alone](./T77-load-ffmpeg-before-mapping-an-audio-open-failure-so-the-mapping-tests-run-alone.md) | integration | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T78 | [Name the ended-recovery test after what it checks and drop the redundant run-token bump](./T78-name-the-ended-recovery-test-after-what-it-checks-and-drop-the-redundant-run-token-bump.md) | test | Volodymyr Kravchuk | S | T76 | todo | — |

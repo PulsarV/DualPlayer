@@ -56,6 +56,7 @@ public sealed partial class PlaybackSession : IDisposable
 
     // One Page Down/Up press is answered within this, however many neighbours are slow (spec: 3 s key budget).
     private static readonly TimeSpan NeighbourScanBudget = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan ProbeTimingSlack = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan MinProbeTime = TimeSpan.FromMilliseconds(100);
     private readonly HashSet<string> _lost = new(StringComparer.Ordinal);
     private static readonly TimeSpan HealthInterval = TimeSpan.FromSeconds(1);
@@ -488,17 +489,18 @@ public sealed partial class PlaybackSession : IDisposable
         string? lastSkipped = null;
         FileSkipped? lastSkip = null;
         var skipped = 0;
+        var outOfTime = false;
         try
         {
             foreach (var candidate in FolderNeighbours.Candidates(request.File, direction))
             {
-                var remaining = NeighbourScanBudget - _time.GetElapsedTime(commandAt);
-                if (remaining < MinProbeTime)
+                var (skip, expired) = CheckPlayable(candidate, request, commandAt);
+                if (expired)
                 {
+                    outOfTime = true;
                     break;
                 }
 
-                var skip = CheckPlayable(candidate, request, remaining < PictureProbeLimit ? remaining : PictureProbeLimit);
                 if (skip is null)
                 {
                     target = candidate;
@@ -519,6 +521,16 @@ public sealed partial class PlaybackSession : IDisposable
 
         var isNext = direction == NeighbourDirection.Next;
         var reason = skipped > 0 ? SkipText(lastSkip!) : null;
+        if (target is null && outOfTime)
+        {
+            // The budget ran out with files unchecked: not the AC-08 "no neighbour" outcome.
+            _events.Publish(new NeighbourSearchTimedOut(isNext, skipped));
+            _events.Publish(new NoteShown(
+                $"{(isNext ? "Next" : "Previous")} file not found within {NeighbourScanBudget.TotalSeconds:0} s (checked {skipped})",
+                NoteStyle.Info));
+            return Result.Success();
+        }
+
         if (target is null)
         {
             // One note per press: when every neighbour was skipped, it says so together with the last skipped file.
@@ -602,13 +614,32 @@ public sealed partial class PlaybackSession : IDisposable
         return Result.Success();
     }
 
-    private FileSkipped? CheckPlayable(string path, StartRequest request, TimeSpan probeLimit)
+    // Skip = null and Expired = false: playable. Expired: the press budget ran out before this file could be judged.
+    private (FileSkipped? Skip, bool Expired) CheckPlayable(string path, StartRequest request, long commandAt)
     {
         var name = Path.GetFileName(path);
-        var tracks = _decoder.ListTracks(path);
+        var remaining = NeighbourScanBudget - _time.GetElapsedTime(commandAt);
+        if (remaining < MinProbeTime)
+        {
+            return (null, true);
+        }
+
+        // The track listing runs on a worker under the same deadline as the probe.
+        var listing = Task.Run(() => _decoder.ListTracks(path));
+        while (!listing.IsCompleted)
+        {
+            if (NeighbourScanBudget - _time.GetElapsedTime(commandAt) <= TimeSpan.Zero)
+            {
+                return (null, true);
+            }
+
+            listing.Wait(1);
+        }
+
+        var tracks = listing.GetAwaiter().GetResult();
         if (!tracks.IsSuccess)
         {
-            return new FileSkipped(name, ReasonOf(tracks.Error.Code), null, null);
+            return (new FileSkipped(name, ReasonOf(tracks.Error.Code), null, null), false);
         }
 
         for (var i = 0; i < request.Outputs.Count; i++)
@@ -616,22 +647,39 @@ public sealed partial class PlaybackSession : IDisposable
             var track = request.Outputs[i].TrackNumber;
             if (!tracks.Value.Any(t => t.Number == track))
             {
-                return new FileSkipped(name, "track-missing", i + 1, track);
+                return (new FileSkipped(name, "track-missing", i + 1, track), false);
             }
         }
 
+        // The limit is re-derived after the listing.
+        remaining = NeighbourScanBudget - _time.GetElapsedTime(commandAt);
+        if (remaining < MinProbeTime)
+        {
+            return (null, true);
+        }
+
+        var cut = remaining < PictureProbeLimit;
+        var probeLimit = cut ? remaining : PictureProbeLimit;
+        var probeStart = _time.GetTimestamp();
         var picture = _pictureProbe.Probe(path, probeLimit);
         if (picture.IsSuccess)
         {
-            return null;
+            return (null, false);
+        }
+
+        // A probe that used up a limit the budget had cut proves nothing about the file.
+        if (cut && _time.GetElapsedTime(probeStart) + ProbeTimingSlack >= probeLimit
+            && picture.Error.Code is "video.not_hardware_decodable" or "video.probe_timeout")
+        {
+            return (null, true);
         }
 
         var fields = picture.Error.Fields;
-        return new FileSkipped(name, ReasonOf(picture.Error.Code), null, null)
+        return (new FileSkipped(name, ReasonOf(picture.Error.Code), null, null)
         {
             Codec = fields?.GetValueOrDefault("codec"),
             Profile = fields?.GetValueOrDefault("profile"),
-        };
+        }, false);
     }
 
     private static string ReasonOf(string code) => code switch

@@ -113,6 +113,9 @@ internal sealed class TerminalPrinter : IDisposable
             case NoNeighbour n:
                 Print(n.Next ? "no-next-file" : "no-previous-file");
                 break;
+            case NeighbourSearchTimedOut t:
+                Print(string.Create(CultureInfo.InvariantCulture, $"{(t.Next ? "next" : "previous")}-file-timeout  checked {t.Checked}"));
+                break;
             case OutputLost l:
                 var move = l.OthersContinue && l.OldPictureDelayMs is { } from && l.NewPictureDelayMs is { } to ? $"  picture-delay {from} -> {to}" : string.Empty;
                 Print($"device-lost  output {l.OutputNumber}  device {l.DeviceId}  clock {RunSummaryLines.Clock(l.Clock)}  {(l.OthersContinue ? "others continue" : "last output, film ended")}{move}");

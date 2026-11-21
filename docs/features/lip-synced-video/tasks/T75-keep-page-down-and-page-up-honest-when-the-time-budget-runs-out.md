@@ -6,8 +6,8 @@ deps: ["T74"]
 blocks: []
 acs: ["AC-07", "AC-08", "AC-09b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.Core/Playback/", "src/DualPlayer.Media/Video/FfmpegPictureProbe.cs", "src/DualPlayer.App/Startup/TerminalPrinter.cs", "src/DualPlayer.App/Startup/SessionEventLogWriter.cs", "docs/features/lip-synced-video/spec.md", "docs/features/lip-synced-video/contracts/cli.md", "docs/features/lip-synced-video/screens.md", "tests/"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -29,9 +29,9 @@ See [spec.md](../spec.md) §5 AC-07, AC-08, AC-09b.
 
 ## Definition of Done
 
-- [ ] When the budget runs out before a playable neighbour is found, the Viewer gets its own note (e.g. "Next file not found within 3 s (checked N)") and the terminal its own line; it is not the AC-08 `no-next-file` outcome.
-- [ ] A probe that timed out because the budget cut its limit below the normal 2 s is not reported as a skipped file; the scan stops before that candidate.
-- [ ] `ListTracks` runs under the same per-press deadline (worker + wait, like the probe) and the probe limit is re-derived after it; one press never exceeds the budget by more than one scheduling tick.
-- [ ] spec.md §6.1 / AC-08 wording, cli.md §2.2 and screens.md SCR-01/SCR-02 name the budget-expiry outcome.
-- [ ] Tests with fake time: slow `ListTracks` (`rig.Decoder.BeforeList`) keeps the press within budget; a budget-cut probe timeout is not a skip; the budget-expiry note/line appear; `PlaybackSessionNeighbourBudgetTests` updated.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] When the budget runs out before a playable neighbour is found, the Viewer gets its own note (e.g. "Next file not found within 3 s (checked N)") and the terminal its own line; it is not the AC-08 `no-next-file` outcome.
+- [x] A probe that timed out because the budget cut its limit below the normal 2 s is not reported as a skipped file; the scan stops before that candidate.
+- [x] `ListTracks` runs under the same per-press deadline (worker + wait, like the probe) and the probe limit is re-derived after it; one press never exceeds the budget by more than one scheduling tick.
+- [x] spec.md §6.1 / AC-08 wording, cli.md §2.2 and screens.md SCR-01/SCR-02 name the budget-expiry outcome.
+- [x] Tests with fake time: slow `ListTracks` (`rig.Decoder.BeforeList`) keeps the press within budget; a budget-cut probe timeout is not a skip; the budget-expiry note/line appear; `PlaybackSessionNeighbourBudgetTests` updated.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
