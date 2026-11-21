@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-04", "AC-05", "AC-17"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "docs/features/lip-synced-video/spec.md", "docs/features/lip-synced-video/contracts/cli.md", "tests/DualPlayer.Core.Tests/Playback/"]
-status: "blocked"
-step: "GATE — flaky backward-seek-from-Ended test (SessionRig.EngineCommandTakes 2 s jump race)"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -29,8 +29,8 @@ See [spec.md](../spec.md) §5 AC-04, AC-05, AC-17.
 
 ## Definition of Done
 
-- [ ] `SeekCore` and `ResumeCore` take the recovery timestamp at entry (before the engine call); `ReturnIntoFilm` receives the key's timestamp from its caller.
-- [ ] Return-into-the-film is judged against the start budget (3 s) and is published with its own command name (e.g. `return`), not `seek`.
-- [ ] spec.md §6 recovery row and cli.md §3 (`LipSyncedAgain`/`NotLipSynced` command values) name the new command and its budget.
-- [ ] Tests with the fake clock: a seek whose engine call takes 300 ms reports ms-since-command including those 300 ms; a resume likewise; a backward seek from Ended that recovers in 2 s logs `LipSyncedAgain` with the return command, not `NotLipSynced`.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `SeekCore` and `ResumeCore` take the recovery timestamp at entry (before the engine call); `ReturnIntoFilm` receives the key's timestamp from its caller.
+- [x] Return-into-the-film is judged against the start budget (3 s) and is published with its own command name (e.g. `return`), not `seek`.
+- [x] spec.md §6 recovery row and cli.md §3 (`LipSyncedAgain`/`NotLipSynced` command values) name the new command and its budget.
+- [x] Tests with the fake clock: a seek whose engine call takes 300 ms reports ms-since-command including those 300 ms; a resume likewise; a backward seek from Ended that recovers in 2 s logs `LipSyncedAgain` with the return command, not `NotLipSynced`.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

@@ -64,6 +64,25 @@ internal sealed class SessionRig : IDisposable
     public EngineRig Engine { get; }
 
     /// <summary>
+    /// How long every engine start, resume and seek takes on the fake clock (a headset's pre-roll, a slow seek): the command
+    /// returns only once the caller's rendered steps (<see cref="EngineRig.Call{T}"/>, <see cref="EngineRig.AdvanceUntil"/>)
+    /// have moved the clock on that far. The devices keep being fed meanwhile, as a real device is while an engine command
+    /// runs; one jump of the clock would leave them that long without audio and the outputs that far off.
+    /// </summary>
+    public TimeSpan EngineCommandTakes { get; set; }
+
+    private void EngineCommandTook()
+    {
+        if (EngineCommandTakes <= TimeSpan.Zero)
+        {
+            return;
+        }
+
+        var until = Engine.Time.GetUtcNow() + EngineCommandTakes;
+        RigLoops.WaitOrFail(() => Engine.Time.GetUtcNow() >= until, TimeSpan.FromSeconds(10), $"the caller to render {EngineCommandTakes.TotalMilliseconds:F0} ms of the engine command");
+    }
+
+    /// <summary>
     /// Makes the engine's current position error reading of <paramref name="deviceId"/> report <paramref name="driftMs"/> from now on
     /// (null = the engine's own measurement again): an output that is slow to re-align, which the fake devices cannot show on their own.
     /// </summary>
@@ -173,6 +192,8 @@ internal sealed class SessionRig : IDisposable
                 Rig.CommandDone(options.StartPosition, paused: false); // the new run's clock reads its start position from now on
             }
 
+            owner.EngineCommandTook();
+
             return result;
         }
 
@@ -195,6 +216,8 @@ internal sealed class SessionRig : IDisposable
                 Rig.CommandDone(result.Value, paused: false);
             }
 
+            owner.EngineCommandTook();
+
             return result;
         }
 
@@ -211,6 +234,8 @@ internal sealed class SessionRig : IDisposable
             {
                 Rig.CommandDone(result.Value.Position, result.Value.Paused);
             }
+
+            owner.EngineCommandTook();
 
             return result;
         }

@@ -301,7 +301,7 @@ public sealed partial class PlaybackSession : IDisposable
     /// is heard. The file stays loaded in the renderer and its picture stays paused until the scheduled start, so no frame 0
     /// is shown; the engine carries the earlier run's summary over and prints no second start line.
     /// </summary>
-    private Result ReturnIntoFilm(TimeSpan target)
+    private Result ReturnIntoFilm(TimeSpan target, long commandAt)
     {
         StartRequest? request;
         LatencyEstimate? estimate;
@@ -337,8 +337,8 @@ public sealed partial class PlaybackSession : IDisposable
 
         // Every output lost: resolve all devices again against the current list, as a file change does.
         var started = playing.Count == 0
-            ? StartCore(request with { CommandTimestamp = null }, keepLost: false, returnTo: target, missingIsLost: true)
-            : StartRun(request with { Outputs = playing }, new LatencyEstimate([.. estimate.Outputs.Where(o => !lost.Contains(o.DeviceId))], estimate.PictureDelayMs), _time.GetTimestamp(), lost, returning: true, target);
+            ? StartCore(request with { CommandTimestamp = commandAt }, keepLost: false, returnTo: target, missingIsLost: true)
+            : StartRun(request with { Outputs = playing }, new LatencyEstimate([.. estimate.Outputs.Where(o => !lost.Contains(o.DeviceId))], estimate.PictureDelayMs), commandAt, lost, returning: true, target);
         if (!started.IsSuccess)
         {
             return started;
@@ -415,7 +415,7 @@ public sealed partial class PlaybackSession : IDisposable
         {
             if (returning)
             {
-                _resync = ("seek", commandAt);
+                _resync = ("return", commandAt);
             }
             else
             {
@@ -900,6 +900,7 @@ public sealed partial class PlaybackSession : IDisposable
 
     private Result ResumeCore()
     {
+        var commandAt = _time.GetTimestamp();
         PictureSync sync;
         MasterClock clock;
         lock (_gate)
@@ -949,7 +950,7 @@ public sealed partial class PlaybackSession : IDisposable
 
         lock (_gate)
         {
-            _resync = ("resume", now);
+            _resync = ("resume", commandAt);
         }
 
         PublishDelay(position, PictureDelayCause.Resume, delay);
@@ -962,6 +963,7 @@ public sealed partial class PlaybackSession : IDisposable
 
     private Result SeekCore(TimeSpan step)
     {
+        var commandAt = _time.GetTimestamp();
         PlaybackState state;
         TimeSpan current;
         lock (_gate)
@@ -987,7 +989,7 @@ public sealed partial class PlaybackSession : IDisposable
                     _state = PlaybackState.Idle;
                 }
 
-                var restarted = ReturnIntoFilm(current + step < TimeSpan.Zero ? TimeSpan.Zero : current + step);
+                var restarted = ReturnIntoFilm(current + step < TimeSpan.Zero ? TimeSpan.Zero : current + step, commandAt);
                 if (!restarted.IsSuccess)
                 {
                     // The film stays ended and the keys keep answering; say why.
@@ -1003,11 +1005,11 @@ public sealed partial class PlaybackSession : IDisposable
 
                 return restarted;
             default:
-                return SeekTo(current + step);
+                return SeekTo(current + step, commandAt);
         }
     }
 
-    private Result SeekTo(TimeSpan target)
+    private Result SeekTo(TimeSpan target, long commandAt)
     {
         PictureSync sync;
         MasterClock clock;
@@ -1064,7 +1066,7 @@ public sealed partial class PlaybackSession : IDisposable
             sync.AlignAt(position, now);
             lock (_gate)
             {
-                _resync = ("seek", now);
+                _resync = ("seek", commandAt);
             }
 
             ReportTiming(sync);
@@ -1207,7 +1209,7 @@ public sealed partial class PlaybackSession : IDisposable
 
             if (_resync is { } owed)
             {
-                var budget = owed.Command is "start" or "file-change" ? StartRecoveryBudget : RecoveryBudget;
+                var budget = owed.Command is "start" or "file-change" or "return" ? StartRecoveryBudget : RecoveryBudget;
                 if (timing.Timestamp >= owed.At && _time.GetElapsedTime(owed.At, timing.Timestamp) > budget)
                 {
                     gaveUp = owed;
@@ -1275,7 +1277,7 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         if (owed is { } failed && now >= failed.At
-            && _time.GetElapsedTime(failed.At, now) > (failed.Command is "start" or "file-change" ? StartRecoveryBudget : RecoveryBudget))
+            && _time.GetElapsedTime(failed.At, now) > (failed.Command is "start" or "file-change" or "return" ? StartRecoveryBudget : RecoveryBudget))
         {
             PublishNotLipSynced(failed, clock, now, null);
         }
