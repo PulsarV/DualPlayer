@@ -545,7 +545,15 @@
         "T76",
         "T77",
         "T78",
-        "T79"
+        "T79",
+        "T80",
+        "T81",
+        "T82",
+        "T83",
+        "T84",
+        "T85",
+        "T86",
+        "T87"
       ],
       "acs": [
         "AC-16",
@@ -1822,6 +1830,206 @@
       "file": "docs/features/lip-synced-video/tasks/T79-bring-cli-md-test-plan-sad-and-the-task-dod-boxes-in-step-with-the-code.md",
       "origin": "review-2026-11-21d: R7, R12",
       "status": "done"
+    },
+    {
+      "id": "T80",
+      "title": "Stop the film before reloading the last good frame and keep that frame for the return",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-06b",
+        "AC-05"
+      ],
+      "dod": "On a picture failure the order is: engine stopped (`RunEndReason.PictureFailed`) and `PictureFailed` published → `Load(paused)` → `Seek(last presented position)` → `ShowNote`; a fake-renderer test records the call order and fails on the old order.; The run summary's end position equals the failure position (test with a reload that takes time on the fake clock).; The reload wait is bounded at ≤ 3 s; a reload that does not finish in time leaves the note on the empty window, nothing throws, and the session answers the next key within the budget (test).; When the reload succeeded, `ReturnIntoFilm` does not load the file again (only bumps `_filmToken`); when it failed, it still loads. Tests for both; the stale doc comment is fixed.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Playback/IVideoRenderer.cs",
+        "src/DualPlayer.Media/Video/MpvVideoRenderer.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.Media.Tests/Video/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T80-stop-the-film-before-reloading-the-last-good-frame-and-keep-that-frame-for-the-return.md",
+      "origin": "review-2026-11-22: P1, P3",
+      "status": "todo"
+    },
+    {
+      "id": "T81",
+      "title": "Prove on hardware that the picture-failed note sits on the last good frame",
+      "layer": "integration",
+      "deps": [
+        "T80"
+      ],
+      "acs": [
+        "AC-06b"
+      ],
+      "dod": "Either a `[HardwareFact]` test raises a real error end-file, waits for `DecodeFailed`, runs the reload + seek and asserts `video-params` non-null and `time-pos` within one frame interval of the last presented position — and it fails without the reload; or, if no sample on the dev Mac raises an error end-file, the T23 checklist carries the item explicitly (with what to look at) and T76 :34 points there.; The misleading healthy-file test at `MpvVideoRendererTests.cs:604-620` is removed or renamed to what it actually checks; test-plan.md rows match.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Media.Tests/Video/MpvVideoRendererTests.cs",
+        "tests/Shared/",
+        "docs/features/lip-synced-video/tasks/T76-show-the-picture-failed-note-on-the-last-good-frame.md",
+        "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md",
+        "docs/features/lip-synced-video/test-plan.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T81-prove-on-hardware-that-the-picture-failed-note-sits-on-the-last-good-frame.md",
+      "origin": "review-2026-11-22: P2",
+      "status": "todo"
+    },
+    {
+      "id": "T82",
+      "title": "Show lost outputs as lost in the latency lines after a file change",
+      "layer": "app",
+      "deps": [
+        "T80"
+      ],
+      "acs": [
+        "AC-07",
+        "AC-12",
+        "AC-13",
+        "AC-17"
+      ],
+      "dod": "`OutputLatency` carries whether the output is lost; lost outputs keep their output number.; The terminal prints a lost output as `output N  lost` (no assumed/lag) and the per-output log records mark it lost; the playing outputs' lines satisfy cli.md §1.1 against the printed picture delay.; Test: lose the slowest output, Page Down, assert the printed lines and the `LatencyEstimated` / `PictureDelayChanged(file-change)` records; it fails on the old code.; cli.md §1.1 and §3 state the rule for lost outputs.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Sync/",
+        "src/DualPlayer.App/Startup/TerminalPrinter.cs",
+        "src/DualPlayer.App/Startup/SessionEventLogWriter.cs",
+        "docs/features/lip-synced-video/contracts/cli.md",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.App.Tests/Startup/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T82-show-lost-outputs-as-lost-in-the-latency-lines-after-a-file-change.md",
+      "origin": "review-2026-11-22: P4",
+      "status": "todo"
+    },
+    {
+      "id": "T83",
+      "title": "Pin the budget-expiry line, the listing deadline and the run summary's own file with tests",
+      "layer": "test",
+      "deps": [
+        "T82"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-09b",
+        "AC-06",
+        "AC-07"
+      ],
+      "dod": "The budget test asserts exactly one `NeighbourSearchTimedOut(Next: true, Checked: n)` with the right count; a Page Up case asserts `Next: false`.; `TerminalPrinterTests` covers `next-file-timeout  checked N` and `previous-file-timeout  checked N` (exact spacing per cli.md §2.2).; A Core test asserts `RunSummary.File` is the stopped run's file across a file change (fails if the engine took the file from anywhere else).; A case where `ListTracks` blocks > 3 s: the press returns within budget + 250 ms with `NeighbourSearchTimedOut(checked 0)` and no `FileSkipped`; it fails if the listing deadline is reverted.; test-plan.md lists the new tests.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourBudgetTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.App.Tests/Startup/TerminalPrinterTests.cs",
+        "docs/features/lip-synced-video/test-plan.md",
+        "docs/features/lip-synced-video/tasks/T75-keep-page-down-and-page-up-honest-when-the-time-budget-runs-out.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T83-pin-the-budget-expiry-line-the-listing-deadline-and-the-run-summary-s-own-file-with-tests.md",
+      "origin": "review-2026-11-22: P5, P6",
+      "status": "todo"
+    },
+    {
+      "id": "T84",
+      "title": "Cancel abandoned probe and listing workers and step past neighbours that timed out",
+      "layer": "integration",
+      "deps": [
+        "T83"
+      ],
+      "acs": [
+        "AC-07",
+        "AC-08",
+        "AC-09b"
+      ],
+      "dod": "`ListTracks` and the picture probe accept a cancellation token; the FFmpeg calls install an interrupt callback that checks it, so a cancelled open/probe returns promptly and closes the file.; The session cancels the in-flight worker when it gives up on a candidate (budget or probe limit).; The session remembers files that timed out during this session and, on the next press in the same direction, steps past them (they count as checked); a file is retried only after the remembered set is cleared on a successful file change — or per the rule stated in spec §6.1 / cli.md §2.2.; Tests: two hanging neighbours in a row → the second press reaches the third file; a cancelled fake worker is observed cancelled; a Media test shows an interrupted open returns (on a blocking custom AVIO or slow pipe).; spec §6.1, cli.md §2.2 and sad.md describe the cancel + step-past rule.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Playback/IAudioDecoder.cs",
+        "src/DualPlayer.Core/Playback/",
+        "src/DualPlayer.Media/Video/FfmpegPictureProbe.cs",
+        "src/DualPlayer.Media/Audio/FfmpegAudioDecoder.cs",
+        "src/DualPlayer.Media/",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.Media.Tests/",
+        "docs/features/lip-synced-video/spec.md",
+        "docs/features/lip-synced-video/contracts/cli.md",
+        "docs/features/lip-synced-video/sad.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T84-cancel-abandoned-probe-and-listing-workers-and-step-past-neighbours-that-timed-out.md",
+      "origin": "review-2026-11-22: P7",
+      "status": "todo"
+    },
+    {
+      "id": "T85",
+      "title": "Time recovery from the key's arrival and judge outputs on readings after the engine command",
+      "layer": "app",
+      "deps": [
+        "T84"
+      ],
+      "acs": [
+        "AC-04",
+        "AC-05",
+        "AC-17"
+      ],
+      "dod": "Every key command carries the timestamp of the key's arrival from `PlaybackControls`; the session uses it as `_resync.At`. Test: a seek queued behind a 2 s command reports `AfterCommandMs` ≥ the queue wait and gives up per its budget counted from the key.; Output readings count as fresh only when taken after the engine command returned (a second stamp); `At` stays the elapsed-time origin. Test: a reading stamped between key and engine seek does not let `LipSyncedAgain` fire; fails on the old filter.; cli.md §3 / spec §6 wording matches (\"since the key press\").; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.App/ViewModels/PlaybackControls.cs",
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Playback/",
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.App.Tests/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T85-time-recovery-from-the-key-s-arrival-and-judge-outputs-on-readings-after-the-engine-command.md",
+      "origin": "review-2026-11-22: P8, P9",
+      "status": "todo"
+    },
+    {
+      "id": "T86",
+      "title": "Make the mpv speed reply update the set speed under the renderer's lock",
+      "layer": "integration",
+      "deps": [],
+      "acs": [
+        "AC-14",
+        "AC-17"
+      ],
+      "dod": "The speed-reply error branch checks the request id and writes `_setSpeed` atomically with respect to `SetSpeed` (under `_gate` or CAS keyed on the id).; A unit-level test (via the existing reply-handling seam, or a deterministic interleaving hook) shows a newer `SetSpeed` is not overwritten by a stale refused reply; if no seam exists without native mpv, the reasoning is stated in the task and covered by a `[HardwareFact]`.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Media/Video/MpvVideoRenderer.cs",
+        "tests/DualPlayer.Media.Tests/Video/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T86-make-the-mpv-speed-reply-update-the-set-speed-under-the-renderer-s-lock.md",
+      "origin": "review-2026-11-22: P10",
+      "status": "todo"
+    },
+    {
+      "id": "T87",
+      "title": "Bring sad, the T23 guide, cli.md, test-plan, screens and DoD boxes in step with the code",
+      "layer": "docs",
+      "deps": [
+        "T80",
+        "T81",
+        "T82",
+        "T83",
+        "T84",
+        "T85",
+        "T86"
+      ],
+      "acs": [
+        "AC-05",
+        "AC-07",
+        "AC-17"
+      ],
+      "dod": "sad.md QG-2(b) and T23 L2 include `return` at 3 s and say timing counts from the key press.; cli.md `LipSyncedAgain` row has no null clause for the picture error (unless T80–T86 made null possible again — then say when).; test-plan.md:119 removed or pointed at the renamed test; all test names in test-plan.md exist.; screens.md SCR-01 wireframe prints `run-summary` before `next`.; sad.md §2 (and line 138) names `RunSummary.File` / `RunSummaryBuilder.Build(…, file)` (T70) and any Core changes T80–T86 made.; T10:97 and T21:130 ticked; every DoD box of T80–T86 that holds is ticked.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "docs/features/lip-synced-video/sad.md",
+        "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md",
+        "docs/features/lip-synced-video/contracts/cli.md",
+        "docs/features/lip-synced-video/test-plan.md",
+        "docs/features/lip-synced-video/screens.md",
+        "docs/features/lip-synced-video/tasks/T10-device-latency-probes.md",
+        "docs/features/lip-synced-video/tasks/T21-terminal-lines-and-run-summaries.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T87-bring-sad-the-t23-guide-cli-md-test-plan-screens-and-dod-boxes-in-step-with-the-code.md",
+      "origin": "review-2026-11-22: P11",
+      "status": "todo"
     }
   ]
 }
