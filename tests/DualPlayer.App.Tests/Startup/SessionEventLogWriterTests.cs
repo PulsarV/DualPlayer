@@ -137,7 +137,7 @@ public sealed class SessionEventLogWriterTests
         h.Feed.Publish(new OffsetChanged(2, Dev, 0, 10, null));
         h.Feed.Publish(new PictureTimingReported(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1.5), TimeSpan.FromSeconds(1.51), 10.0));
         h.Feed.Publish(new FrameCountersReported(TimeSpan.FromSeconds(60), new FrameCounters(3, 2, 1)));
-        h.Feed.Publish(new StartTimings(5, 1905, new Dictionary<string, long> { [Dev] = 1950 }));
+        h.Feed.Publish(new StartTimings(5, 1905, new Dictionary<string, long> { [Dev] = 1950 }) { TimestampFrequency = 1000 });
 
         var entries = h.Log.Entries;
         entries[0]["Output"].ShouldBe(2);
@@ -150,9 +150,49 @@ public sealed class SessionEventLogWriterTests
         entries[2]["Late"].ShouldBe(3L);
         entries[2]["Dropped"].ShouldBe(2L);
         entries[2]["SkippedDamaged"].ShouldBe(1L);
-        entries[3]["CommandTimestamp"].ShouldBe(5L);
-        entries[3]["FirstFramePresented"].ShouldBe(1905L);
-        entries[3]["FirstAudioHeard"].ShouldBe($"{Dev}=1950");
+        Convert.ToDouble(entries[3]["CommandToFirstFrameMs"]).ShouldBe(1900, 0.5);
+        entries[3]["CommandToFirstAudioMs"].ShouldBe($"{Dev}=1945");
+    }
+
+    [Fact]
+    public void Start_timings_are_logged_in_milliseconds_not_as_raw_clock_ticks_AC_01()
+    {
+        var h = new Harness();
+        // 10 MHz ticks (the Windows performance counter): 19 000 000 ticks are 1900 ms.
+        h.Feed.Publish(new StartTimings(100_000_000, 119_000_000, new Dictionary<string, long> { [Dev] = 120_500_000, ["dev-2"] = 118_000_000 }) { TimestampFrequency = 10_000_000 });
+
+        var e = h.Log.Entries.ShouldHaveSingleItem();
+        Convert.ToDouble(e["CommandToFirstFrameMs"]).ShouldBe(1900, 0.5);
+        e["CommandToFirstAudioMs"].ShouldBe($"{Dev}=2050 dev-2=1800");
+        e.ContainsKey("CommandTimestamp").ShouldBeFalse("raw ticks without their frequency cannot be read");
+        e.ContainsKey("FirstFramePresented").ShouldBeFalse();
+        e.ContainsKey("FirstAudioHeard").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void A_picture_failure_is_logged_with_its_clock_error_code_and_reason_AC_06b()
+    {
+        var h = new Harness();
+        h.Feed.Publish(new PictureFailed(new TimeSpan(1, 10, 5), "The picture could not be decoded further: broken.") { Code = "video.decode_failed" });
+
+        var e = h.Log.Entries.ShouldHaveSingleItem();
+        e["Clock"].ShouldBe("01:10:05.000");
+        e["Code"].ShouldBe("video.decode_failed");
+        e["Reason"].ShouldBe("The picture could not be decoded further: broken.");
+    }
+
+    [Theory]
+    [InlineData(PictureReloadOutcome.Reloaded, "reloaded")]
+    [InlineData(PictureReloadOutcome.Failed, "failed")]
+    [InlineData(PictureReloadOutcome.TimedOut, "timed-out")]
+    public void The_reload_of_the_last_frame_is_logged_with_its_outcome_and_position_AC_06b(PictureReloadOutcome outcome, string logged)
+    {
+        var h = new Harness();
+        h.Feed.Publish(new PictureReloadFinished(new TimeSpan(1, 10, 5), outcome));
+
+        var e = h.Log.Entries.ShouldHaveSingleItem();
+        e["Clock"].ShouldBe("01:10:05.000");
+        e["Outcome"].ShouldBe(logged);
     }
 
     [Fact]

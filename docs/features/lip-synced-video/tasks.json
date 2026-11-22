@@ -2154,7 +2154,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T92-log-the-picture-failure-the-reload-outcome-and-start-timings-in-milliseconds.md",
       "origin": "review-2026-11-22b: S6, S7",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T93",

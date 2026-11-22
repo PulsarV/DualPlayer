@@ -155,8 +155,8 @@ public sealed partial class PlaybackSession : IDisposable
         _logger = logger;
         _loop = new EngineControlLoop(static () => { }, LogLoopFault, "PlaybackSession");
         _engine.Events.Subscribe(new EngineObserver(this));
-        _renderer.DecodeFailed += error => PostRendererEvent(() => OnPictureFailed(error.Message, reloadLastFrame: true));
-        _renderer.HardwareDecodingInactive += () => PostRendererEvent(() => OnPictureFailed("Hardware decoding is not active"));
+        _renderer.DecodeFailed += error => PostRendererEvent(() => OnPictureFailed(error.Message, error.Code, reloadLastFrame: true));
+        _renderer.HardwareDecodingInactive += () => PostRendererEvent(() => OnPictureFailed("Hardware decoding is not active", code: null));
         _offsets.Saved += savedAt => _loop.Post(() => OnOffsetsSaved(savedAt));
     }
 
@@ -1562,7 +1562,7 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         var firstFrame = timing.Timestamp - ToTimestamp(timing.Presented);
-        _events.Publish(new StartTimings(commandAt, firstFrame, heard));
+        _events.Publish(new StartTimings(commandAt, firstFrame, heard) { TimestampFrequency = _time.TimestampFrequency });
     }
 
     private void OnOffsetsSaved(DateTimeOffset savedAt)
@@ -1580,7 +1580,7 @@ public sealed partial class PlaybackSession : IDisposable
         }
     }
 
-    private void OnPictureFailed(string reason, bool reloadLastFrame = false)
+    private void OnPictureFailed(string reason, string? code, bool reloadLastFrame = false)
     {
         lock (_gate)
         {
@@ -1601,10 +1601,10 @@ public sealed partial class PlaybackSession : IDisposable
             }
         }
 
-        EndOnPictureFailure(reason, reloadLastFrame);
+        EndOnPictureFailure(reason, code, reloadLastFrame);
     }
 
-    private void EndOnPictureFailure(string reason, bool reloadLastFrame)
+    private void EndOnPictureFailure(string reason, string? code, bool reloadLastFrame)
     {
         TimeSpan position;
         lock (_gate)
@@ -1628,10 +1628,17 @@ public sealed partial class PlaybackSession : IDisposable
         // The sound stops and the failure is published first: the reload below can block, and the run must end at the
         // failure position, not where the reload finishes.
         _renderer.Pause();
-        _events.Publish(new PictureFailed(position, reason));
+        _events.Publish(new PictureFailed(position, reason) { Code = code });
         _engine.Stop(RunEndReason.PictureFailed);
 
-        var reloaded = reloadLastFrame && ReloadLastFrame(position);
+        var reloaded = false;
+        if (reloadLastFrame)
+        {
+            var (outcome, at) = ReloadLastFrame(position);
+            reloaded = outcome == PictureReloadOutcome.Reloaded;
+            _events.Publish(new PictureReloadFinished(at, outcome));
+        }
+
         lock (_gate)
         {
             _lastFrameReloaded = reloaded;
@@ -1643,8 +1650,8 @@ public sealed partial class PlaybackSession : IDisposable
 
     // An error end-file unloads the file in mpv, leaving an empty window: load it again paused at the last presented
     // position so the note sits on the last good frame (SCR-02). The wait is bounded (ReloadTimeout); a failed or late
-    // reload leaves the empty window and the note follows. Returns whether the last frame is up.
-    private bool ReloadLastFrame(TimeSpan fallback)
+    // reload leaves the empty window and the note follows. Returns how it ended and the position it was loaded at.
+    private (PictureReloadOutcome Outcome, TimeSpan Position) ReloadLastFrame(TimeSpan fallback)
     {
         string? file;
         lock (_gate)
@@ -1652,19 +1659,21 @@ public sealed partial class PlaybackSession : IDisposable
             file = _request?.File;
         }
 
+        var position = _renderer.Presented?.Position ?? fallback;
         if (file is null)
         {
-            return false;
+            return (PictureReloadOutcome.Failed, position);
         }
 
-        var position = _renderer.Presented?.Position ?? fallback;
+        var began = _time.GetTimestamp();
         if (!_renderer.Load(file, nint.Zero, startPaused: true, ReloadTimeout).IsSuccess)
         {
-            return false;
+            var took = _time.GetElapsedTime(began);
+            return (took >= ReloadTimeout ? PictureReloadOutcome.TimedOut : PictureReloadOutcome.Failed, position);
         }
 
         _renderer.Seek(position);
-        return true;
+        return (PictureReloadOutcome.Reloaded, position);
     }
 
     // Once a second: the picture timing, the damaged-stretch book-keeping and, every minute, the frame counters.

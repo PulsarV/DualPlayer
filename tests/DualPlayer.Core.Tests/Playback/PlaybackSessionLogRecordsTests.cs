@@ -116,6 +116,14 @@ public sealed class PlaybackSessionLogRecordsTests : IDisposable
     }
 
     [Fact]
+    public void Start_timings_carry_the_tick_frequency_so_the_log_can_state_milliseconds_AC_01()
+    {
+        using var rig = PlayingRig();
+
+        rig.Events.OfType<StartTimings>().ShouldHaveSingleItem().TimestampFrequency.ShouldBe(rig.Engine.Time.TimestampFrequency);
+    }
+
+    [Fact]
     public void Start_timings_carry_the_command_time_given_and_the_measured_first_frame_and_first_audio_AC_01()
     {
         var late = TimeSpan.FromMilliseconds(30);

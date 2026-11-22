@@ -26,6 +26,8 @@ internal sealed class SessionEventLogWriter : IDisposable
 
     private static string Clock(TimeSpan clock) => clock.ToString("hh\\:mm\\:ss\\.fff", System.Globalization.CultureInfo.InvariantCulture);
 
+    private static double Milliseconds(long ticks, long frequency) => frequency > 0 ? ticks * 1000.0 / frequency : double.NaN;
+
     private void OnEvent(SessionEvent value)
     {
         switch (value)
@@ -90,10 +92,23 @@ internal sealed class SessionEventLogWriter : IDisposable
                 break;
             case StartTimings s:
                 _log.LogInformation(
-                    "StartTimings CommandTimestamp={CommandTimestamp} FirstFramePresented={FirstFramePresented} FirstAudioHeard={FirstAudioHeard}",
-                    s.CommandTimestamp,
-                    s.FirstFramePresented,
-                    string.Join(' ', s.FirstAudioHeard.Select(p => $"{p.Key}={p.Value}")));
+                    "StartTimings CommandToFirstFrameMs={CommandToFirstFrameMs} CommandToFirstAudioMs={CommandToFirstAudioMs}",
+                    Milliseconds(s.FirstFramePresented - s.CommandTimestamp, s.TimestampFrequency),
+                    string.Join(' ', s.FirstAudioHeard.Select(p => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{p.Key}={Math.Round(Milliseconds(p.Value - s.CommandTimestamp, s.TimestampFrequency))}"))));
+                break;
+            case PictureFailed p:
+                _log.LogWarning("PictureFailed Clock={Clock} Code={Code} Reason={Reason}", Clock(p.Clock), p.Code, p.Reason);
+                break;
+            case PictureReloadFinished r:
+                _log.LogInformation(
+                    "PictureReload Clock={Clock} Outcome={Outcome}",
+                    Clock(r.Position),
+                    r.Outcome switch
+                    {
+                        PictureReloadOutcome.Reloaded => "reloaded",
+                        PictureReloadOutcome.TimedOut => "timed-out",
+                        _ => "failed",
+                    });
                 break;
             case LipSyncedAgain a:
                 _log.LogInformation(

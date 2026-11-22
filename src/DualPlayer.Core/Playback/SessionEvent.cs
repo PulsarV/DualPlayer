@@ -68,7 +68,11 @@ public sealed record PictureTimingReported(TimeSpan Clock, TimeSpan FrameDue, Ti
 public sealed record FrameCountersReported(TimeSpan Clock, FrameCounters Counters) : SessionEvent;
 
 /// <summary>Start command, first frame presented and first audio heard per output, all in the session's timestamp base.</summary>
-public sealed record StartTimings(long CommandTimestamp, long FirstFramePresented, IReadOnlyDictionary<string, long> FirstAudioHeard) : SessionEvent;
+public sealed record StartTimings(long CommandTimestamp, long FirstFramePresented, IReadOnlyDictionary<string, long> FirstAudioHeard) : SessionEvent
+{
+    /// <summary>Gets the timestamp ticks per second, so the raw ticks can be stated as time.</summary>
+    public long TimestampFrequency { get; init; }
+}
 
 /// <summary>A note shown briefly on the picture.</summary>
 public sealed record NoteShown(string Text, NoteStyle Style) : SessionEvent;
@@ -107,7 +111,27 @@ public sealed record OutputLost(int OutputNumber, string DeviceId, TimeSpan Cloc
 }
 
 /// <summary>The picture could not continue (decode failure or hardware decoding inactive).</summary>
-public sealed record PictureFailed(TimeSpan Clock, string Reason) : SessionEvent;
+public sealed record PictureFailed(TimeSpan Clock, string Reason) : SessionEvent
+{
+    /// <summary>Gets the error code of the failure (<c>video.decode_failed</c>), when it came from the renderer.</summary>
+    public string? Code { get; init; }
+}
+
+/// <summary>How the paused reload of the last frame after a picture failure ended.</summary>
+public enum PictureReloadOutcome
+{
+    /// <summary>The file is loaded again, paused at the last presented position.</summary>
+    Reloaded,
+
+    /// <summary>The renderer refused the load.</summary>
+    Failed,
+
+    /// <summary>The load used the whole reload bound.</summary>
+    TimedOut,
+}
+
+/// <summary>The reload of the last frame after a picture failure finished; <paramref name="Position"/> is where it was loaded.</summary>
+public sealed record PictureReloadFinished(TimeSpan Position, PictureReloadOutcome Outcome) : SessionEvent;
 
 /// <summary>A warning about the remembered offsets (<c>state.*</c>, <c>offsets.clamped</c>); the film starts anyway.</summary>
 public sealed record OffsetsWarning(Error Warning) : SessionEvent;

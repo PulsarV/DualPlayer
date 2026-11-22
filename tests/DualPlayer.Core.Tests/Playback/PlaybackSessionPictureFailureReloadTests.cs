@@ -146,4 +146,53 @@ public sealed class PlaybackSessionPictureFailureReloadTests
         rig.EngineRunFiles.Count.ShouldBe(runs, "no engine run may start before the load succeeds");
         rig.Session.State.ShouldBe(PlaybackState.Ended);
     }
+
+    [Fact]
+    public void The_published_failure_carries_the_renderer_error_code_and_reason_AC_06b()
+    {
+        using var rig = PlayingRig();
+
+        FailThePicture(rig);
+
+        var failed = rig.Events.OfType<PictureFailed>().ShouldHaveSingleItem();
+        failed.Code.ShouldBe("video.decode_failed");
+        failed.Reason.ShouldBe(DecodeError.Message);
+    }
+
+    [Fact]
+    public void A_reload_that_worked_is_published_after_the_failure_as_reloaded_at_the_last_presented_position_AC_06b()
+    {
+        using var rig = PlayingRig();
+
+        FailThePicture(rig);
+
+        var events = rig.Events.ToList();
+        var reload = events.OfType<PictureReloadFinished>().ShouldHaveSingleItem();
+        reload.Outcome.ShouldBe(PictureReloadOutcome.Reloaded);
+        var failed = events.OfType<PictureFailed>().Single();
+        reload.Position.ShouldBe(failed.Clock, TimeSpan.FromSeconds(1), "the reloaded frame is at the last presented position");
+        events.IndexOf(reload).ShouldBeGreaterThan(events.IndexOf(failed));
+    }
+
+    [Fact]
+    public void A_reload_the_renderer_refused_is_published_as_failed_AC_06b()
+    {
+        using var rig = PlayingRig();
+        rig.Renderer.LoadError = new Error("mpv.load_failed", "The file cannot be opened.");
+
+        FailThePicture(rig);
+
+        rig.Events.OfType<PictureReloadFinished>().ShouldHaveSingleItem().Outcome.ShouldBe(PictureReloadOutcome.Failed);
+    }
+
+    [Fact]
+    public void A_reload_that_used_its_whole_bound_is_published_as_timed_out_AC_06b()
+    {
+        using var rig = PlayingRig();
+        rig.Renderer.LoadTakes = TimeSpan.FromSeconds(15);
+
+        FailThePicture(rig);
+
+        rig.Events.OfType<PictureReloadFinished>().ShouldHaveSingleItem().Outcome.ShouldBe(PictureReloadOutcome.TimedOut);
+    }
 }
