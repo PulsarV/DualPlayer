@@ -102,6 +102,27 @@ public sealed class PlaybackSessionPictureFailureReloadTests
     }
 
     [Fact]
+    public void A_return_into_the_film_after_a_picture_failure_seeks_the_picture_to_the_target_before_the_engine_run_starts_AC_05()
+    {
+        using var rig = PlayingRig();
+        FailThePicture(rig);
+        var before = rig.CallOrder.Count;
+        rig.Renderer.ResetLowestShown();
+
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-3))).IsSuccess.ShouldBeTrue();
+
+        var order = rig.CallOrder.Skip(before).ToList();
+        var load = order.IndexOf("renderer.Load(paused)");
+        var run = order.IndexOf("engine.StartRun");
+        var seek = order.IndexOf("renderer.Seek");
+        load.ShouldBeGreaterThanOrEqualTo(0, string.Join(" > ", order));
+        run.ShouldBeGreaterThan(load, string.Join(" > ", order));
+        seek.ShouldBeGreaterThan(load, "frame 0 stays on screen until the engine releases its pre-roll: " + string.Join(" > ", order));
+        seek.ShouldBeLessThan(run, "the picture must be at the target before any audio starts: " + string.Join(" > ", order));
+        rig.Renderer.LowestShown.ShouldNotBeNull().ShouldBeGreaterThan(TimeSpan.FromSeconds(4), "no frame before the target (8 s played minus 3 s) may be presented");
+    }
+
+    [Fact]
     public void A_return_into_the_film_after_a_failed_reload_loads_the_file_AC_05()
     {
         using var rig = PlayingRig();

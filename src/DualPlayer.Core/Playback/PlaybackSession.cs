@@ -325,10 +325,9 @@ public sealed partial class PlaybackSession : IDisposable
     /// <summary>
     /// After the end, a new engine run for the same file and outputs (the engine cannot reopen a run that has ended),
     /// started at <paramref name="target"/>: the decoder seeks there before the pre-roll, so no audio of the film's opening
-    /// is heard. The picture stays paused until the scheduled start, so no frame 0 is shown: after a picture failure whose
-    /// last-frame reload worked the renderer already holds the last good frame and is not loaded again; if that reload
-    /// failed (or there was none) the file is loaded again first. The engine carries the earlier run's summary over and
-    /// prints no second start line.
+    /// is heard. The picture stays paused until the scheduled start, so no frame 0 is shown: after a picture failure the
+    /// file is always loaded again, paused, and seeked to the target before any audio starts. The engine
+    /// carries the earlier run's summary over and prints no second start line.
     /// </summary>
     private Result ReturnIntoFilm(TimeSpan target, long commandAt)
     {
@@ -357,6 +356,9 @@ public sealed partial class PlaybackSession : IDisposable
             {
                 return reloaded;
             }
+
+            // Load shows frame 0: move the picture to the target now, so no frame before it is presented during the pre-roll.
+            _renderer.Seek(target);
         }
 
         var playing = request.Outputs.Where(a => a.Device.Id is not { } id || !lost.Contains(id)).ToList();

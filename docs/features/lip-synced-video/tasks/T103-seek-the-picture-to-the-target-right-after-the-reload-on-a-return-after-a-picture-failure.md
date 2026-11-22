@@ -6,8 +6,8 @@ deps: ["T102"]
 blocks: []
 acs: ["AC-05", "AC-06b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionPictureFailureReloadTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,7 +31,7 @@ See [spec.md](../spec.md) §5 AC-05, AC-06b.
 
 ## Definition of Done
 
-- [ ] After the paused `Load` in `ReturnIntoFilm`, the renderer is seeked to the return target (as `ReloadLastFrame` does at `:1739`) before the engine run starts, so no frame before the target is presented.
-- [ ] Test: picture failure, good reload, ← → `LowestShown` (or the presented positions after the load) stays near the target, never 0; fails if the seek is removed.
-- [ ] The XML doc of `ReturnIntoFilm` says that after a picture failure the file is always loaded again, paused, and seeked to the target before any audio starts.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] After the paused `Load` in `ReturnIntoFilm`, the renderer is seeked to the return target (as `ReloadLastFrame` does at `:1739`) before the engine run starts, so no frame before the target is presented.
+- [x] Test: picture failure, good reload, ← → `LowestShown` (or the presented positions after the load) stays near the target, never 0; fails if the seek is removed.
+- [x] The XML doc of `ReturnIntoFilm` says that after a picture failure the file is always loaded again, paused, and seeked to the target before any audio starts.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

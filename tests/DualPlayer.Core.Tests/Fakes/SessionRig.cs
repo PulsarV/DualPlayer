@@ -201,6 +201,7 @@ internal sealed class SessionRig : IDisposable
 
         public Result<RunStarted> StartRun(string file, IReadOnlyList<OutputAssignment> assignments, EngineOptions options)
         {
+            owner.Record("engine.StartRun");
             lock (owner._gate)
             {
                 owner._runFiles.Add(file);

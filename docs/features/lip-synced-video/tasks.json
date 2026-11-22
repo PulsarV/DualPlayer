@@ -2439,7 +2439,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T103-seek-the-picture-to-the-target-right-after-the-reload-on-a-return-after-a-picture-failure.md",
       "origin": "review-2026-11-22d: V5",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T104",
