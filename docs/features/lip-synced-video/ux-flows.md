@@ -51,11 +51,11 @@ flowchart TD
     P -->|"film reaches its end - AC-06"| END
     END --> RS["SCR-01 run summary printed and logged"]
     P -->|"Esc - AC-06"| X["SCR-02 closes"]
-    END -->|"Esc"| X
+    END -->|"Esc - nothing more is printed, the end's summary covers the file"| XE["SCR-02 closes"]
     X --> RS2["SCR-01 run summary printed and logged"]
 ```
 
-The Developer gives the start command in the terminal. If the file has no picture or its picture cannot be decoded in hardware, if the operating system denies access, or if the named screen is not connected, nothing plays and the terminal says why in plain words (for a missing screen it lists the connected ones). Otherwise the window opens fullscreen on the named screen (or the main one) and the film plays, each Viewer hearing their own track. A device with a remembered offset is lip-synced from the start (AC-12). A damaged stretch of picture is skipped while the sound plays on. If the picture never decodes again, a brief note says so and the film stops as at its end. At the natural end the picture stays on the last frame and the run summary goes to the terminal and the log. Esc closes the window at any time, and the run summary is printed then too.
+The Developer gives the start command in the terminal. If the file has no picture or its picture cannot be decoded in hardware, if the operating system denies access, or if the named screen is not connected, nothing plays and the terminal says why in plain words (for a missing screen it lists the connected ones). Otherwise the window opens fullscreen on the named screen (or the main one) and the film plays, each Viewer hearing their own track. A device with a remembered offset is lip-synced from the start (AC-12). A damaged stretch of picture is skipped while the sound plays on. If the picture never decodes again, a brief note says so and the film stops as at its end. At the natural end the picture stays on the last frame and the run summary goes to the terminal and the log. Esc closes the window at any time; while the film plays or is paused the run summary is printed then, and after the end the window just closes, since the end's summary already covers the file.
 
 ### Flow: US-02 — Control playback from the couch
 
@@ -74,10 +74,10 @@ flowchart TD
     EN -->|"backward seek - AC-05"| R
     PL -->|"Esc - AC-06"| X["SCR-02 closes, SCR-01 run summary"]
     PA -->|"Esc"| X
-    EN -->|"Esc"| X
+    EN -->|"Esc - nothing more is printed"| XE["SCR-02 closes"]
 ```
 
-Space pauses: the picture freezes on the frame matching the last sound heard, and every output stops being given sound at the same moment (the device's own buffer plays out). Space again resumes, and picture and sound are lip-synced again within 1 s. A seek key (±10 s, ±60 s) during play jumps there and re-syncs within 1 s. A seek before the start goes to the start, and a seek past the end ends the film as at its natural end. While paused, a seek shows the frame at the new position and stays paused. At the end, a backward seek returns into the film and plays from there. Esc closes the window from any state and prints the run summary.
+Space pauses: the picture freezes on the frame matching the last sound heard, and every output stops being given sound at the same moment (the device's own buffer plays out). Space again resumes, and picture and sound are lip-synced again within 1 s. A seek key (±10 s, ±60 s) during play jumps there and re-syncs within 1 s. A seek before the start goes to the start, and a seek past the end ends the film as at its natural end. While paused, a seek shows the frame at the new position and stays paused. At the end, a backward seek returns into the film and plays from there. Esc closes the window from any state; while the film plays or is paused it prints the run summary, and after the end it adds nothing, since the end's summary already covers the file.
 
 ### Flow: US-03 — Move to the next or previous file
 
@@ -146,7 +146,7 @@ When one output's device is lost while others remain, a brief note names the los
 | AC-03b | Flow US-01 → E3 | |
 | AC-04 | Flow US-02 → PL → PA → R | |
 | AC-05 | Flow US-02 → T, PS, EN → R | playing, paused and ended branches |
-| AC-06 | Flow US-01 → END, X; Flow US-02 → X | run summary on end and on exit |
+| AC-06 | Flow US-01 → END, X; Flow US-02 → X, XE | run summary on end and on exit while playing or paused; Esc after the end adds none |
 | AC-06b | Flow US-01 → D → N1 → END | |
 | AC-07 | Flow US-03 → C yes → RS → NEW | |
 | AC-08 | Flow US-03 → N no → NO → SAME | also when every remaining file is skipped |

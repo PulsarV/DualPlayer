@@ -14,6 +14,7 @@ Conventions:
 - Normal output goes to standard output; errors go to standard error as `error <code>: <plain-language message>`, with the same `code` as the Core `Error(Code, Message)` record (`src/DualPlayer.Core/Result.cs`). Every printed line is also written to the log.
 - Times are master-clock positions formatted `hh:mm:ss.fff`; latency, offset and picture delay are integer milliseconds with a sign; a positive offset makes that output's sound heard later (`CONTEXT.md` Offset).
 - Device and track arguments follow the step-3 console: a device is a number from `DualPlayer.Console devices` or a full OS endpoint id; a track is a number among the file's audio tracks, from 1 (`DualPlayer.Console tracks <file>`). This step adds no listing command.
+- Fields on a printed line are separated by exactly two spaces (the code does not pad columns). The alignment of columns in the examples below is illustrative only; match on the two-space separators, not on the padding.
 - Placeholder values only in the examples below.
 
 ## 1. Command
@@ -69,6 +70,8 @@ Printed in the step-3 run-summary format (two-outputs-one-clock `contracts/cli.m
 ```
 run-summary  file <file name>  reason end|exit|file-change|last-output-lost|picture-failed
 ```
+
+Once the film has ended (reasons `end` (also a seek past the end), `last-output-lost` and `picture-failed`) its run summary is already printed, so the exit key afterwards closes the window and prints no second run summary: the end's summary covers the file (AC-06).
 
 ### 2.2 File change (US-03, AC-07, AC-08, AC-09, AC-09b)
 

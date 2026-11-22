@@ -74,7 +74,7 @@ One fullscreen Avalonia window on the chosen screen (main screen by default); no
 | default — playing | Film playing, lip-synced (AC-01); also during a seek re-alignment (AC-05) and a picture-delay move, which look identical — no visible indicator (AC-14) | `Window`, `VideoHost` | wireframe below |
 | paused | Pause key: picture runs on until the sound already in the devices has played out (≤ picture delay), then holds the frame matching the last sound heard (AC-04); a seek while paused shows the new frame (AC-05) | `Window`, `VideoHost` | wireframe below |
 | ended | Natural end (last frame), seek past the end, last output lost (AC-15b, picture frozen), or picture could not be decoded further (AC-06b, last good frame); pause key ignored; next, previous, backward seek and exit still work | `Window`, `VideoHost`, with SCR-03 note when caused by loss or decode failure | wireframe below |
-| closed | Exit key from any state — window closes, terminal shows the run summary (AC-06) | — | — |
+| closed | Exit key from any state — window closes; while playing or paused the terminal shows the run summary (AC-06), after the film has ended it adds nothing, as the end's summary already covers the file | — | — |
 | error | N/A: start errors never open the window (AC-02, AC-03, AC-03b → SCR-01); errors during play show as SCR-03 notes and the `ended` state | — | — |
 | empty | N/A: the window only exists while a file is open | — | — |
 

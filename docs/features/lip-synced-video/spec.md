@@ -138,7 +138,7 @@ Traceability: requirements PLY-01 (formats, hardware decoding), PLY-02 (play, pa
 
 **Given** a film is playing
 **When** it reaches its end, or a Viewer presses the exit key
-**Then** the picture stops on its last frame at the end of the film, or the window closes on exit, every output falls silent together, and the run summary of step 3 is printed and logged for every output; at the end of the film the pause key does nothing (a backward seek or a file change continues), and a run summary is printed at every natural end, exit and file change, each covering the file's playback since it was opened
+**Then** the picture stops on its last frame at the end of the film, or the window closes on exit, every output falls silent together, and the run summary of step 3 is printed and logged for every output; at the end of the film the pause key does nothing (a backward seek or a file change continues), and a run summary is printed at every natural end, exit while the film plays or is paused, and file change, each covering the file's playback since it was opened; once the film has ended (natural end, seek past the end, last output lost, picture that cannot be decoded, or a file change that failed) its summary has already been printed, so the exit key then closes the window and adds nothing — the end's summary already covers the file
 
 ### AC-06b (US-01) — error
 

@@ -6,8 +6,8 @@ deps: ["T88", "T89", "T90", "T91", "T92", "T93", "T94"]
 blocks: []
 acs: ["AC-06", "AC-04", "AC-06b", "AC-07", "AC-09b", "AC-17"]
 files_hint: ["docs/features/lip-synced-video/spec.md", "docs/features/lip-synced-video/screens.md", "docs/features/lip-synced-video/ux-flows.md", "docs/features/lip-synced-video/test-plan.md", "docs/features/lip-synced-video/sad.md", "docs/features/lip-synced-video/contracts/cli.md", "tests/DualPlayer.Core.Tests/Playback/"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -37,9 +37,9 @@ See [spec.md](../spec.md) §5 AC-06, AC-04, AC-06b, AC-07, AC-09b, AC-17.
 
 ## Definition of Done
 
-- [ ] AC-06, screens.md SCR-02 "closed" and the ux-flows Ended → Esc edge say Esc after the end adds nothing (the end's summary already covers the file); a Core test pins that Esc after Ended publishes no second run summary.
-- [ ] test-plan.md has rows for every T80–T94 test, row :136 counts the queue wait, and the Levels table describes the e2e-through-UI substitute truthfully; every test name in test-plan.md exists.
-- [ ] sad.md §5 describes the session's own control loop; sad.md §2 and §11 list `Error.Fields`, the `JsonFileStateStore` flush/test seam and the new Core registrations, plus any Core change T88–T94 made.
-- [ ] cli.md states fields are separated by two spaces and the examples' alignment is illustrative.
-- [ ] Every DoD box of T88–T94 that holds is ticked.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] AC-06, screens.md SCR-02 "closed" and the ux-flows Ended → Esc edge say Esc after the end adds nothing (the end's summary already covers the file); a Core test pins that Esc after Ended publishes no second run summary.
+- [x] test-plan.md has rows for every T80–T94 test, row :136 counts the queue wait, and the Levels table describes the e2e-through-UI substitute truthfully; every test name in test-plan.md exists.
+- [x] sad.md §5 describes the session's own control loop; sad.md §2 and §11 list `Error.Fields`, the `JsonFileStateStore` flush/test seam and the new Core registrations, plus any Core change T88–T94 made.
+- [x] cli.md states fields are separated by two spaces and the examples' alignment is illustrative.
+- [x] Every DoD box of T88–T94 that holds is ticked.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

@@ -51,6 +51,26 @@ public sealed class PlaybackSessionExitTests
     }
 
     [Fact]
+    public void Esc_after_the_film_has_ended_publishes_no_second_run_summary_AC_06()
+    {
+        using var rig = PlayingRig(totalSeconds: 30);
+        rig.Renderer.Duration = TimeSpan.FromSeconds(30);
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(60))).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(50);
+        rig.Session.State.ShouldBe(PlaybackState.Ended);
+        rig.Engine.Barrier();
+        var summariesAtTheEnd = rig.Engine.Events.OfType<RunSummary>().Count();
+        summariesAtTheEnd.ShouldBe(1, "the end of the film prints the one summary that covers the file");
+
+        Exit(rig);
+        rig.Engine.Render(50);
+        rig.Engine.Barrier();
+
+        rig.Engine.Events.OfType<RunSummary>().Count().ShouldBe(summariesAtTheEnd, "Esc after the end printed a second run summary");
+        rig.Session.State.ShouldBe(PlaybackState.Ended);
+    }
+
+    [Fact]
     public void A_backward_seek_queued_behind_Exit_while_playing_starts_no_engine_run_AC_06()
     {
         using var rig = PlayingRig(totalSeconds: 600);
