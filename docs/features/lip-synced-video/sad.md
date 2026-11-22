@@ -310,6 +310,13 @@ sequenceDiagram
     opt no playable file left
         Core-->>Window: note no next file, current film unchanged
     end
+    opt the 3 s budget runs out before a playable file is found
+        Core-->>Window: note next file not found within 3 s (checked N), current film unchanged
+        Core->>Core: log and print next-file-timeout with the count checked
+    end
+    opt the new file fails to start after the old film stopped
+        Core-->>Window: note could not play the file, film ended (run summary reason file-change)
+    end
 ```
 
 The flows below are drawn by the `sequences` stage with generic participants: `ui` is the playback window (SCR-02, SCR-03) or the start command's terminal (SCR-01); `service` is the playback session with the audio engine and the picture sync; `external-system` stands for the OS audio devices and the video renderer; `data-store` is the remembered-offsets file. Timeline as above: content position *p* is heard and shown at master-clock time `p + PD`.
@@ -504,7 +511,7 @@ sequenceDiagram
 
 **Coverage (use cases → flows):** US-01 → flows 1, 6, 7 · US-02 → flows 4, 5, 6 · US-03 → flow 3 · US-04 → flows 2, 8 · US-05 → flow 1 · US-06 → flows 2, 6 · US-07 → flow 9 (+ AC-16 non-runtime).
 
-**Coverage (AC → flow):** AC-01 → 1 · AC-02 → 1 (no picture branch) · AC-03 → 1 (access branch) · AC-03b → 1 (screen branch) · AC-04 → 4 · AC-05 → 5 · AC-06 → 6 · AC-06b → 7 · AC-07 → 3 · AC-08 → 3 (no playable file) · AC-09 → 3 (missing track branch, both directions) · AC-09b → 3 (unreadable or not hardware-decodable branch) · AC-10 → 2, 8 · AC-11 → 8 · AC-12 → 1 (offsets loaded) · AC-13 → 1, 9 · AC-14 → 2 · AC-15 → 2 (device lost branch) · AC-15b → 6 · AC-16 → non-runtime · AC-17 → 9.
+**Coverage (AC → flow):** AC-01 → 1 · AC-02 → 1 (no picture branch) · AC-03 → 1 (access branch) · AC-03b → 1 (screen branch) · AC-04 → 4 · AC-05 → 5 · AC-06 → 6 · AC-06b → 7 · AC-07 → 3 · AC-08 → 3 (no playable file; budget ran out: next-file-timeout) · AC-09 → 3 (missing track branch, both directions) · AC-09b → 3 (unreadable or not hardware-decodable branch) · AC-10 → 2, 8 · AC-11 → 8 · AC-12 → 1 (offsets loaded) · AC-13 → 1, 9 · AC-14 → 2 · AC-15 → 2 (device lost branch) · AC-15b → 6 · AC-16 → non-runtime · AC-17 → 9.
 
 **Flagged for later stages (not decided here):**
 - Flows 1–3 (seeded by `design`) name §5 containers; flows 4–9 use generic participants. Same participants, two vocabularies.

@@ -35,8 +35,8 @@ See [spec.md](../spec.md) §5 AC-06b, AC-05.
 
 ## Definition of Done
 
-- [ ] After a picture failure, `ReturnIntoFilm` always calls `Load` (one paused load) before starting the engine, whatever `_lastFrameReloaded` says; test: a `DecodeFailed` for the reloaded frame queued behind a ← → the return loads again and no engine run starts on an idle renderer.
-- [ ] `MpvVideoRenderer.Load` returns a distinct `mpv.load_timeout` when its wait runs out (documented on `IVideoRenderer`); the session maps the reload outcome from the code (`mpv.load_timeout` → `timed-out`, other failures → `failed`), not from elapsed time; tests for both.
-- [ ] A `DecodeFailed` for the reloaded frame publishes `PictureReloadFinished` with a new outcome `failed-again`, which the log writer prints as `PictureReload Outcome=failed-again`; test on the Core and log-writer sides.
-- [ ] cli.md §3 lists the `failed-again` outcome; the T23 guide (:80) explains it.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] After a picture failure, `ReturnIntoFilm` always calls `Load` (one paused load) before starting the engine, whatever `_lastFrameReloaded` says; test: a `DecodeFailed` for the reloaded frame queued behind a ← → the return loads again and no engine run starts on an idle renderer.
+- [x] `MpvVideoRenderer.Load` returns a distinct `mpv.load_timeout` when its wait runs out (documented on `IVideoRenderer`); the session maps the reload outcome from the code (`mpv.load_timeout` → `timed-out`, other failures → `failed`), not from elapsed time; tests for both.
+- [x] A `DecodeFailed` for the reloaded frame publishes `PictureReloadFinished` with a new outcome `failed-again`, which the log writer prints as `PictureReload Outcome=failed-again`; test on the Core and log-writer sides.
+- [x] cli.md §3 lists the `failed-again` outcome; the T23 guide (:80) explains it.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

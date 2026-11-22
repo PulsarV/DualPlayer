@@ -50,24 +50,71 @@ public sealed class PlaybackSessionExitTests
         rig.Session.State.ShouldBe(PlaybackState.Ended);
     }
 
-    [Fact]
-    public void Esc_after_the_film_has_ended_publishes_no_second_run_summary_AC_06()
+    [Theory]
+    [InlineData("natural end")]
+    [InlineData("seek past end")]
+    [InlineData("last output lost")]
+    [InlineData("picture failure")]
+    [InlineData("failed file change")]
+    public void Esc_after_the_film_has_ended_publishes_no_second_run_summary_AC_06(string endCause)
     {
-        using var rig = PlayingRig(totalSeconds: 30);
-        rig.Renderer.Duration = TimeSpan.FromSeconds(30);
-        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(60))).IsSuccess.ShouldBeTrue();
-        rig.Engine.Render(50);
-        rig.Session.State.ShouldBe(PlaybackState.Ended);
-        rig.Engine.Barrier();
-        var summariesAtTheEnd = rig.Engine.Events.OfType<RunSummary>().Count();
-        summariesAtTheEnd.ShouldBe(1, "the end of the film prints the one summary that covers the file");
+        var folder = Directory.CreateTempSubdirectory("dualplayer-exit-end-").FullName;
+        try
+        {
+            var current = Path.Combine(folder, "a.mkv");
+            File.WriteAllBytes(current, []);
+            File.WriteAllBytes(Path.Combine(folder, "b.mkv"), []);
+            using var rig = PlayingRig(totalSeconds: 30, file: current);
+            rig.Renderer.Duration = TimeSpan.FromSeconds(30);
 
-        Exit(rig);
-        rig.Engine.Render(50);
-        rig.Engine.Barrier();
+            EndTheFilm(rig, endCause);
 
-        rig.Engine.Events.OfType<RunSummary>().Count().ShouldBe(summariesAtTheEnd, "Esc after the end printed a second run summary");
-        rig.Session.State.ShouldBe(PlaybackState.Ended);
+            rig.Session.State.ShouldBe(PlaybackState.Ended);
+            rig.Flush();
+            var summariesAtTheEnd = rig.Engine.Events.OfType<RunSummary>().Count();
+            summariesAtTheEnd.ShouldBe(1, $"the end ({endCause}) prints the one summary that covers the file");
+
+            Exit(rig);
+            rig.Engine.Render(50);
+            rig.Flush();
+
+            rig.Engine.Events.OfType<RunSummary>().Count().ShouldBe(summariesAtTheEnd, $"Esc after the end ({endCause}) printed a second run summary");
+            rig.Session.State.ShouldBe(PlaybackState.Ended);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    private static void EndTheFilm(SessionRig rig, string endCause)
+    {
+        switch (endCause)
+        {
+            case "natural end":
+                rig.Engine.Render(3_200); // past the 30 s of the film
+                break;
+            case "seek past end":
+                rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(60))).IsSuccess.ShouldBeTrue();
+                rig.Engine.Render(50);
+                break;
+            case "last output lost":
+                rig.Engine.Devices[1].SimulateLoss();
+                rig.Engine.Barrier();
+                rig.Engine.Devices[0].SimulateLoss();
+                rig.Engine.WaitFor(() => rig.Engine.Summary is not null).ShouldBeTrue();
+                break;
+            case "picture failure":
+                rig.Renderer.InjectDecodeFailure(new Error("video.decode_failed", "The picture cannot be decoded."));
+                rig.Flush();
+                break;
+            case "failed file change":
+                rig.Renderer.LoadError = new Error("video.load_failed", "mpv could not open the file.");
+                rig.Engine.Call(() => rig.Session.NextFile()).IsSuccess.ShouldBeFalse();
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(endCause), endCause, null);
+        }
     }
 
     [Fact]

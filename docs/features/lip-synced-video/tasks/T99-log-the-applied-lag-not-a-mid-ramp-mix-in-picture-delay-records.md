@@ -31,6 +31,6 @@ See [spec.md](../spec.md) §5 AC-17.
 
 ## Definition of Done
 
-- [ ] Every `PictureDelayChanged` publishes, for each playing output, a lag equal to the lag the engine actually applies at that moment (e.g. `_lags.CurrentLag(deviceId)`), and `AssumedMs` consistent with the published picture delay and that lag; or Pause publishes the target delay and target lags as Resume and Seek do — whichever keeps cli.md §1.1 (lag = picture delay − assumed) true.
-- [ ] Test: change an offset, press Space mid-ramp, and assert each published lag equals the engine's applied lag (read from the fake engine/rig, not recomputed by the test's own formula) and is never negative.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Every `PictureDelayChanged` publishes, for each playing output, a lag equal to the lag the engine actually applies at that moment (e.g. `_lags.CurrentLag(deviceId)`), and `AssumedMs` consistent with the published picture delay and that lag; or Pause publishes the target delay and target lags as Resume and Seek do — whichever keeps cli.md §1.1 (lag = picture delay − assumed) true.
+- [x] Test: change an offset, press Space mid-ramp, and assert each published lag equals the engine's applied lag (read from the fake engine/rig, not recomputed by the test's own formula) and is never negative.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

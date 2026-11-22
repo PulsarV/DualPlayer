@@ -6,8 +6,8 @@ deps: ["T96", "T97", "T98", "T99", "T100"]
 blocks: []
 acs: ["AC-01", "AC-05", "AC-06", "AC-07", "AC-08"]
 files_hint: ["docs/features/lip-synced-video/contracts/cli.md", "docs/features/lip-synced-video/ux-flows.md", "docs/features/lip-synced-video/sad.md", "docs/features/lip-synced-video/screens.md", "docs/features/lip-synced-video/test-plan.md", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionExitTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -36,9 +36,9 @@ See [spec.md](../spec.md) §5 AC-01, AC-05, AC-06, AC-07, AC-08.
 
 ## Definition of Done
 
-- [ ] cli.md:17 lists the fixed-width labels (`next`/`previous`, `picture`, `started`) and the padded run-summary rows; the rest of the rule matches `TerminalPrinter`/`RunSummaryLines`.
-- [ ] ux-flows US-03 and sad flow 3 have a budget-ran-out branch (`next-file-timeout`); US-03 has a new-file-fails-to-start → SCR-03 "Could not play" → SCR-02 ended edge; US-02 has a return-fails → SCR-03 "Could not go back" edge; the AC-08 coverage rows in both files are updated.
-- [ ] cli.md §2.1 and SCR-02 `ended` include the failed file change (reason `file-change`).
-- [ ] The Esc-after-end test is a theory over the five end causes (natural end, seek past end, last output lost, picture failure, failed file change), each asserting exactly one run summary before and after Esc; test-plan.md:146 matches it, and rows exist for every test T96–T100 added.
-- [ ] Every DoD box of T96–T100 that holds is ticked; the tracker's T23 row is blocked by T22, T24–T101.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] cli.md:17 lists the fixed-width labels (`next`/`previous`, `picture`, `started`) and the padded run-summary rows; the rest of the rule matches `TerminalPrinter`/`RunSummaryLines`.
+- [x] ux-flows US-03 and sad flow 3 have a budget-ran-out branch (`next-file-timeout`); US-03 has a new-file-fails-to-start → SCR-03 "Could not play" → SCR-02 ended edge; US-02 has a return-fails → SCR-03 "Could not go back" edge; the AC-08 coverage rows in both files are updated.
+- [x] cli.md §2.1 and SCR-02 `ended` include the failed file change (reason `file-change`).
+- [x] The Esc-after-end test is a theory over the five end causes (natural end, seek past end, last output lost, picture failure, failed file change), each asserting exactly one run summary before and after Esc; test-plan.md:146 matches it, and rows exist for every test T96–T100 added.
+- [x] Every DoD box of T96–T100 that holds is ticked; the tracker's T23 row is blocked by T22, T24–T101.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

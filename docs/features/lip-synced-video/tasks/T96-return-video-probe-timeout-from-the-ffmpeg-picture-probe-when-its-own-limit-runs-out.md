@@ -31,8 +31,8 @@ See [spec.md](../spec.md) §5 AC-07, AC-08, AC-09b, AC-02.
 
 ## Definition of Done
 
-- [ ] When the probe's own limit runs out before the first picture is decoded (`worker.Wait` false), `FfmpegPictureProbe` returns `video.probe_timeout`, with `codec`/`profile` in `Error.Fields` when already known; a picture that decoded but not in hardware still returns `video.not_hardware_decodable`.
-- [ ] `IPictureProbe`'s doc comment lists `video.probe_timeout` and when it is returned.
-- [ ] At start (`StartCommand.Validate`), `video.probe_timeout` is refused exactly as cli.md §5 refuses `video.not_hardware_decodable` (same exit code and message class), so the AC-02 start refusal is unchanged; the session's `ReasonOf` maps `video.probe_timeout` to `unreadable`.
-- [ ] Media test on the stalled pipe asserts the returned code is `video.probe_timeout`; App test asserts the start refusal for a probe returning `video.probe_timeout`.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] When the probe's own limit runs out before the first picture is decoded (`worker.Wait` false), `FfmpegPictureProbe` returns `video.probe_timeout`, with `codec`/`profile` in `Error.Fields` when already known; a picture that decoded but not in hardware still returns `video.not_hardware_decodable`.
+- [x] `IPictureProbe`'s doc comment lists `video.probe_timeout` and when it is returned.
+- [x] At start (`StartCommand.Validate`), `video.probe_timeout` is refused exactly as cli.md §5 refuses `video.not_hardware_decodable` (same exit code and message class), so the AC-02 start refusal is unchanged; the session's `ReasonOf` maps `video.probe_timeout` to `unreadable`.
+- [x] Media test on the stalled pipe asserts the returned code is `video.probe_timeout`; App test asserts the start refusal for a probe returning `video.probe_timeout`.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

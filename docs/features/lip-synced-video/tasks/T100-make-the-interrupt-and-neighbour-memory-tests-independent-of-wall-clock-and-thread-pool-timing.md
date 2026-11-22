@@ -34,7 +34,8 @@ See [spec.md](../spec.md) §5 AC-07, AC-08, AC-09b.
 
 ## Definition of Done
 
-- [ ] `AbandonedWorkerTests` no longer compares Stopwatch time against a TickCount-based wait without slack: it allows a slack (e.g. `limit - 50 ms`) or proves "still reading" another way (e.g. `ReaderClosed` not set just before the limit).
-- [ ] The neighbour-memory tests (including any T97 added) do not depend on when the thread pool starts the listing worker: the scripted decoder and probe advance the fake clock themselves, and the command runs without free-running time (or time advance is gated until the worker has run).
-- [ ] The Core and Media test projects pass 10 runs in a row under load (e.g. three full-solution runs in parallel) with no failure in these tests.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `AbandonedWorkerTests` no longer compares Stopwatch time against a TickCount-based wait without slack: it allows a slack (e.g. `limit - 50 ms`) or proves "still reading" another way (e.g. `ReaderClosed` not set just before the limit).
+- [x] The neighbour-memory tests (including any T97 added) do not depend on when the thread pool starts the listing worker: the scripted decoder and probe advance the fake clock themselves, and the command runs without free-running time (or time advance is gated until the worker has run).
+- [x] The Core and Media test projects pass 10 runs in a row under load (e.g. three full-solution runs in parallel) with no failure in these tests.
+  - Verified: 10 Core + 10 Media runs, three at a time; these tests passed every run. Two unrelated Core tests (`PlaybackSessionLateFrameTests…AC_17`, `AudioEngineRecoveryTests…no_underruns`) each failed once under that load — outside this task, left for the next review.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

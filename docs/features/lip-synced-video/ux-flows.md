@@ -72,12 +72,14 @@ flowchart TD
     PA -->|"seek key - AC-05"| PS["SCR-02 still paused, showing the frame at the new position"]
     PS --> PA
     EN -->|"backward seek - AC-05"| R
+    EN -->|"backward seek cannot return - AC-05"| GB["SCR-03 Could not go back"]
+    GB --> EN
     PL -->|"Esc - AC-06"| X["SCR-02 closes, SCR-01 run summary"]
     PA -->|"Esc"| X
     EN -->|"Esc - nothing more is printed"| XE["SCR-02 closes"]
 ```
 
-Space pauses: the picture freezes on the frame matching the last sound heard, and every output stops being given sound at the same moment (the device's own buffer plays out). Space again resumes, and picture and sound are lip-synced again within 1 s. A seek key (±10 s, ±60 s) during play jumps there and re-syncs within 1 s. A seek before the start goes to the start, and a seek past the end ends the film as at its natural end. While paused, a seek shows the frame at the new position and stays paused. At the end, a backward seek returns into the film and plays from there. Esc closes the window from any state; while the film plays or is paused it prints the run summary, and after the end it adds nothing, since the end's summary already covers the file.
+Space pauses: the picture freezes on the frame matching the last sound heard, and every output stops being given sound at the same moment (the device's own buffer plays out). Space again resumes, and picture and sound are lip-synced again within 1 s. A seek key (±10 s, ±60 s) during play jumps there and re-syncs within 1 s. A seek before the start goes to the start, and a seek past the end ends the film as at its natural end. While paused, a seek shows the frame at the new position and stays paused. At the end, a backward seek returns into the film and plays from there; if it cannot return (every device is still gone, or the picture will not reload), a brief note says "Could not go back: <reason>" and the window stays ended. Esc closes the window from any state; while the film plays or is paused it prints the run summary, and after the end it adds nothing, since the end's summary already covers the file.
 
 ### Flow: US-03 — Move to the next or previous file
 
@@ -86,6 +88,8 @@ flowchart TD
     S["SCR-02 playing, paused or ended"] -->|"Page Down or Page Up"| N{"Another .mkv or .mp4 file in that direction, natural name order?"}
     N -->|"no - AC-08"| NO["SCR-03 no next or previous file"]
     NO --> SAME["SCR-02 unchanged, same state"]
+    N -->|"3 s budget ran out - AC-08"| TO["SCR-03 next or previous file not found within 3 s"]
+    TO --> SAME
     N -->|"yes"| C{"Neighbour playable with every output's track?"}
     C -->|"lacks an output's track - AC-09"| K1["SCR-03 skipped file and whose track it lacks"]
     C -->|"unreadable, no picture or not hardware-decodable - AC-09b"| K2["SCR-03 skipped file and why"]
@@ -93,9 +97,11 @@ flowchart TD
     K2 --> N
     C -->|"yes - AC-07"| RS["SCR-01 run summary of the current file"]
     RS --> NEW["SCR-02 playing the new file, same outputs, track numbers and offsets"]
+    RS -->|"new file fails to start - AC-07"| F["SCR-03 Could not play the file"]
+    F --> END3["SCR-02 ended, run summary reason file-change"]
 ```
 
-From any state of the window, Page Down (next) or Page Up (previous) looks for the neighbouring `.mkv` or `.mp4` file in natural name order. If there is none, a brief note says "no next (or previous) file" and the current film stays exactly as it was. If the neighbour lacks a track number one of the outputs plays, or cannot be read, has no picture, or cannot be decoded in hardware, a brief note names the skipped file and the reason, and the player tries the next file in the same direction. When every remaining file is skipped this way, one note says so: "No next file (skipped N; last: <file> - <reason>)" (or "No previous file (…)"), and the current film stays as it was. When a playable neighbour is found, the current file's run summary is printed and logged, and the new file plays on the same outputs with the same track numbers and offsets, lip-synced within the start budget.
+From any state of the window, Page Down (next) or Page Up (previous) looks for the neighbouring `.mkv` or `.mp4` file in natural name order. If there is none, a brief note says "no next (or previous) file" and the current film stays exactly as it was. If the neighbour lacks a track number one of the outputs plays, or cannot be read, has no picture, or cannot be decoded in hardware, a brief note names the skipped file and the reason, and the player tries the next file in the same direction. If the 3 s budget for the search runs out before a playable file is found, one note says "Next file not found within 3 s (checked N)" (or "Previous file …"), the terminal prints `next-file-timeout` / `previous-file-timeout`, and the current film stays as it was. When every remaining file is skipped this way, one note says so: "No next file (skipped N; last: <file> - <reason>)" (or "No previous file (…)"), and the current film stays as it was. When a playable neighbour is found, the current file's run summary is printed and logged, and the new file plays on the same outputs with the same track numbers and offsets, lip-synced within the start budget. If the new file then fails to start, the old film has already stopped (its run summary is printed with reason `file-change`): a brief note says "Could not play <file>: <reason>", the window stays on its last frame as ended, and the keys keep answering.
 
 ### Flow: US-04 — Correct lip-sync by ear
 
@@ -145,11 +151,11 @@ When one output's device is lost while others remain, a brief note names the los
 | AC-03 | Flow US-01 → E2 | |
 | AC-03b | Flow US-01 → E3 | |
 | AC-04 | Flow US-02 → PL → PA → R | |
-| AC-05 | Flow US-02 → T, PS, EN → R | playing, paused and ended branches |
+| AC-05 | Flow US-02 → T, PS, EN → R; EN → GB → EN | playing, paused and ended branches; return fails: "Could not go back" |
 | AC-06 | Flow US-01 → END, X; Flow US-02 → X, XE | run summary on end and on exit while playing or paused; Esc after the end adds none |
 | AC-06b | Flow US-01 → D → N1 → END | |
-| AC-07 | Flow US-03 → C yes → RS → NEW | |
-| AC-08 | Flow US-03 → N no → NO → SAME | also when every remaining file is skipped |
+| AC-07 | Flow US-03 → C yes → RS → NEW; RS → F → END3 | new file fails to start: "Could not play", ended |
+| AC-08 | Flow US-03 → N no → NO → SAME; N budget → TO → SAME | also when every remaining file is skipped, and when the 3 s budget runs out (`next-file-timeout`) |
 | AC-09 | Flow US-03 → K1 → N | |
 | AC-09b | Flow US-03 → K2 → N | |
 | AC-10 | Flow US-04 → O → NOTE → Q / PD no → M1 | paused and ended branch → W |
