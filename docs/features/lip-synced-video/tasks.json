@@ -2625,7 +2625,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T111-answer-playback-file-unreadable-from-the-picture-probe-for-an-empty-or-whitespace-path-instead-of-throwing.md",
       "origin": "review-2026-11-22e: W6",
-      "status": "blocked"
+      "status": "done"
     },
     {
       "id": "T112",

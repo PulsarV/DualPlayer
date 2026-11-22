@@ -6,8 +6,8 @@ deps: ["T109"]
 blocks: []
 acs: ["AC-02"]
 files_hint: ["src/DualPlayer.Media/Video/FfmpegPictureProbe.cs", "tests/DualPlayer.Media.Tests/Video/FfmpegPictureProbeTests.cs", "tests/DualPlayer.App.Tests/Startup/StartCommandTests.cs"]
-status: "blocked"
-step: "DEPS — dep T109 blocked"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,6 +31,6 @@ See [spec.md](../spec.md) §5 AC-02.
 
 ## Definition of Done
 
-- [ ] `FfmpegPictureProbe.Probe` returns `Result.Failure("playback.file_unreadable", …)` for a null, empty or whitespace path before it builds the key, and never lets an `ArgumentException` / `PathTooLongException` / `NotSupportedException` from `GetFullPath` escape.
-- [ ] Tests: a Media test for `""` and `"   "` → `playback.file_unreadable`; a start-path test (`StartCommand` with the real probe or a matching fake) → exit 2 with `playback.file_unreadable`. Each fails if the fix is reverted.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `FfmpegPictureProbe.Probe` returns `Result.Failure("playback.file_unreadable", …)` for a null, empty or whitespace path before it builds the key, and never lets an `ArgumentException` / `PathTooLongException` / `NotSupportedException` from `GetFullPath` escape.
+- [x] Tests: a Media test for `""` and `"   "` → `playback.file_unreadable`; a start-path test (`StartCommand` with the real probe or a matching fake) → exit 2 with `playback.file_unreadable`. Each fails if the fix is reverted.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

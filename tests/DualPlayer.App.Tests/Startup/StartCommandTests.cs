@@ -108,6 +108,22 @@ public sealed class StartCommandTests
         StartExitCodes.For(r.Error).ShouldBe(2);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Validate_with_the_real_probe_answers_an_empty_or_whitespace_file_as_unreadable_with_exit_2(string file)
+    {
+        var request = StartCommand.Parse(["play", file, "--out", "1=1"]);
+        request.IsSuccess.ShouldBeTrue();
+        var rig = new Rig();
+
+        var r = StartCommand.Validate(request.Value, new DualPlayer.Media.Video.FfmpegPictureProbe(), rig.Decoder, new DeviceCatalog([DevA, DevB]), rig.Screens);
+
+        r.IsSuccess.ShouldBeFalse();
+        r.Error!.Code.ShouldBe("playback.file_unreadable");
+        StartExitCodes.For(r.Error).ShouldBe(2);
+    }
+
     [Fact]
     public void Validate_file_the_os_denies_is_reported_with_exit_4()
     {

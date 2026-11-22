@@ -27,7 +27,27 @@ public sealed unsafe class FfmpegPictureProbe : IPictureProbe
     // Test seam: runs on the worker right after codec and profile are published.
     internal Action? AfterFormatRead { get; init; }
 
-    public bool IsBusy(string path) => _running.TryGetValue(Path.GetFullPath(path), out var worker) && !worker.IsCompleted;
+    public bool IsBusy(string path) =>
+        TryFullPath(path, out var key) && _running.TryGetValue(key, out var worker) && !worker.IsCompleted;
+
+    private static bool TryFullPath(string? path, out string key)
+    {
+        key = string.Empty;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return false;
+        }
+
+        try
+        {
+            key = Path.GetFullPath(path);
+            return true;
+        }
+        catch (Exception ex) when (ex is ArgumentException or PathTooLongException or NotSupportedException)
+        {
+            return false;
+        }
+    }
 
     public Result<PictureInfo> Probe(string path, TimeSpan timeLimit) => Probe(path, timeLimit, CancellationToken.None);
 
@@ -39,7 +59,11 @@ public sealed unsafe class FfmpegPictureProbe : IPictureProbe
             return Result<PictureInfo>.Failure(loaded.Error);
         }
 
-        var key = Path.GetFullPath(path);
+        if (!TryFullPath(path, out var key))
+        {
+            return Result<PictureInfo>.Failure(Unreadable, $"'{path}' is not a usable file path.");
+        }
+
         if (_running.TryGetValue(key, out var earlier) && !earlier.IsCompleted)
         {
             // The earlier probe's worker is still blocked on this file: start no other and say so at once, so the caller steps

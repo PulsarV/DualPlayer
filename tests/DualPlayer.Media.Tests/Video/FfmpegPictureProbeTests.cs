@@ -46,6 +46,18 @@ public sealed class FfmpegPictureProbeTests
         result.Error!.Code.ShouldBe("playback.file_unreadable");
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void Probe_reports_unreadable_instead_of_throwing_for_a_null_empty_or_whitespace_path(string? path)
+    {
+        var result = NewProbe().Probe(path!, Limit, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Error!.Code.ShouldBe("playback.file_unreadable");
+    }
+
     [Fact]
     public void Probe_reports_access_denied_when_the_operating_system_refuses_the_read()
     {
