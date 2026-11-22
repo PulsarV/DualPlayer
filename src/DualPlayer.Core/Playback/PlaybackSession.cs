@@ -194,7 +194,20 @@ public sealed partial class PlaybackSession : IDisposable
     public Result Start(StartRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return Run(() => StartCore(request));
+        return Run(() => ForgetNeighboursOnSuccess(StartCore(request)));
+    }
+
+    // The neighbour memories (timed out, judged) are forgotten only after a successful file change or the first start; a failed
+    // change and a return into the same film keep them.
+    private Result ForgetNeighboursOnSuccess(Result started)
+    {
+        if (started.IsSuccess)
+        {
+            _timedOut.Clear();
+            _judged.Clear();
+        }
+
+        return started;
     }
 
     /// <summary>Waits until every command and event posted so far has run.</summary>
@@ -290,8 +303,6 @@ public sealed partial class PlaybackSession : IDisposable
                 : previous!.Outputs.First(o => o.DeviceId == a.Device.Id) with { OutputNumber = i + 1, IsLost = true })],
             estimate.PictureDelayMs);
         _request = request with { Outputs = resolved };
-        _timedOut.Clear();
-        _judged.Clear();
         lock (_gate)
         {
             _estimate = full;
@@ -535,6 +546,7 @@ public sealed partial class PlaybackSession : IDisposable
         var skipped = 0;
         List<string> order = [];
         var outOfTime = false;
+        var judgedAny = false; // a file of this press was judged (not merely stepped past)
         var checkStarted = false; // set once a file of this press starts a check: only the first has the press's whole budget
         HashSet<string> visited = [];
         try
@@ -544,9 +556,10 @@ public sealed partial class PlaybackSession : IDisposable
             {
                 visited.Add(candidate);
                 var key = KeyOf(candidate);
+                var steppedPast = false;
                 var (skip, expired) = _judged.TryGetValue(key, out var verdict)
                     ? (verdict, false)
-                    : CheckPlayable(candidate, key, request, scanAt, ref checkStarted);
+                    : CheckPlayable(candidate, key, request, scanAt, ref checkStarted, out steppedPast);
                 if (expired)
                 {
                     outOfTime = true;
@@ -560,6 +573,7 @@ public sealed partial class PlaybackSession : IDisposable
                 }
 
                 skipped++;
+                judgedAny |= !steppedPast;
                 lastSkipped = Path.GetFileName(candidate);
                 lastSkip = skip;
                 _events.Publish(skip);
@@ -594,7 +608,7 @@ public sealed partial class PlaybackSession : IDisposable
 
         var isNext = direction == NeighbourDirection.Next;
         var reason = skipped > 0 ? SkipText(lastSkip!) : null;
-        if (target is null && outOfTime)
+        if (target is null && (outOfTime || (skipped > 0 && !judgedAny)))
         {
             // The budget ran out with files unchecked: not the AC-08 "no neighbour" outcome.
             _events.Publish(new NeighbourSearchTimedOut(isNext, skipped));
@@ -669,6 +683,7 @@ public sealed partial class PlaybackSession : IDisposable
             return started;
         }
 
+        ForgetNeighboursOnSuccess(started);
         LatencyEstimate? now;
         lock (_gate)
         {
@@ -721,13 +736,14 @@ public sealed partial class PlaybackSession : IDisposable
     // probe ran its full, uncut limit; a file judged unplayable keeps that verdict for the film (AC-08, AC-09b).
     // A file stepped past because its worker is still running is reported skipped for this press only: it is not judged, so
     // it is checked again once the worker has completed.
-    private (FileSkipped? Skip, bool Expired) CheckPlayable(string path, NeighbourKey key, StartRequest request, long scanAt, ref bool checkStarted)
+    private (FileSkipped? Skip, bool Expired) CheckPlayable(string path, NeighbourKey key, StartRequest request, long scanAt, ref bool checkStarted, out bool steppedPast)
     {
+        steppedPast = false;
         var cancel = new CancellationTokenSource();
         var gaveUp = false;
         try
         {
-            var outcome = CheckPlayable(path, key, request, scanAt, ref checkStarted, cancel.Token, out gaveUp, out var timedOut, out var steppedPast);
+            var outcome = CheckPlayable(path, key, request, scanAt, ref checkStarted, cancel.Token, out gaveUp, out var timedOut, out steppedPast);
             if (steppedPast)
             {
                 return outcome;
@@ -797,7 +813,7 @@ public sealed partial class PlaybackSession : IDisposable
             if (NeighbourScanBudget - _time.GetElapsedTime(scanAt) <= TimeSpan.Zero)
             {
                 gaveUp = true;
-                timedOut = listingUncut;
+                timedOut = listingUncut || wholeBudget;
                 _workers[key] = listing;
                 return (null, true);
             }

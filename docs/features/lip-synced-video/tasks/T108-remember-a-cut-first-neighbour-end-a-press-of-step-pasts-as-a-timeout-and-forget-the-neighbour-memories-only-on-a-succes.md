@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-07", "AC-08", "AC-09b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourMemoryTests.cs", "docs/features/lip-synced-video/spec.md", "docs/features/lip-synced-video/sad.md", "docs/features/lip-synced-video/contracts/cli.md"]
-status: "blocked"
-step: "verify — gate not green (test/format unconfirmed)"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -33,9 +33,9 @@ See [spec.md](../spec.md) §5 AC-07, AC-08, AC-09b.
 
 ## Definition of Done
 
-- [ ] The listing-cut exit sets `timedOut = listingUncut || wholeBudget`, so a first file of the press whose listing is cut by the budget is remembered however long the folder work took.
-- [ ] When every skip of a press was a step-past (a live listing/probe worker, or `video.probe_busy`) and no file was judged, the press ends with the not-found-within-3-s outcome (`NeighbourSearchTimedOut`, `checked N`, the timeout note), not `NoNeighbour` / `no-next-file`; the stepped-past files are still reported as `skipped … unreadable` and counted. A press that judged at least one file unplayable and found no target still ends `no-next-file`.
-- [ ] `_timedOut` and `_judged` are cleared only after a successful file change (after `StartCore` succeeds in the file change; and at the first `Start`), not inside `StartCore`: a failed file change and a ← return into the same film keep both memories.
-- [ ] Tests: (1) a folder that costs 1.2 s of fake time and an E2 listing of 2.5 s → E2 remembered, the next press reaches E3; (2) E2 the only neighbour with its listing blocked through press 2 → press 2 publishes `NeighbourSearchTimedOut`, no `NoNeighbour`; press 3 after release plays E2 (update RecoveryTests :69-70); (3) B judged `not-hardware-decodable`, every output lost, ← return, next press does not probe B again; (4) a file change whose `Load` fails keeps the memories. Each fails if its fix is reverted.
-- [ ] spec.md:249, sad.md §7 (:538) and cli.md §2.2 (:85) say that a press that only stepped past files ends as the timeout outcome (`next-file-timeout  checked N`), and that the memories survive a failed file change and a return.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The listing-cut exit sets `timedOut = listingUncut || wholeBudget`, so a first file of the press whose listing is cut by the budget is remembered however long the folder work took.
+- [x] When every skip of a press was a step-past (a live listing/probe worker, or `video.probe_busy`) and no file was judged, the press ends with the not-found-within-3-s outcome (`NeighbourSearchTimedOut`, `checked N`, the timeout note), not `NoNeighbour` / `no-next-file`; the stepped-past files are still reported as `skipped … unreadable` and counted. A press that judged at least one file unplayable and found no target still ends `no-next-file`.
+- [x] `_timedOut` and `_judged` are cleared only after a successful file change (after `StartCore` succeeds in the file change; and at the first `Start`), not inside `StartCore`: a failed file change and a ← return into the same film keep both memories.
+- [x] Tests: (1) a folder that costs 1.2 s of fake time and an E2 listing of 2.5 s → E2 remembered, the next press reaches E3; (2) E2 the only neighbour with its listing blocked through press 2 → press 2 publishes `NeighbourSearchTimedOut`, no `NoNeighbour`; press 3 after release plays E2 (update RecoveryTests :69-70); (3) B judged `not-hardware-decodable`, every output lost, ← return, next press does not probe B again; (4) a file change whose `Load` fails keeps the memories. Each fails if its fix is reverted.
+- [x] spec.md:249, sad.md §7 (:538) and cli.md §2.2 (:85) say that a press that only stepped past files ends as the timeout outcome (`next-file-timeout  checked N`), and that the memories survive a failed file change and a return.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

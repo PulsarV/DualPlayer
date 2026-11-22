@@ -2560,7 +2560,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T108-remember-a-cut-first-neighbour-end-a-press-of-step-pasts-as-a-timeout-and-forget-the-neighbour-memories-only-on-a-succes.md",
       "origin": "review-2026-11-22e: W1, W2, W5",
-      "status": "blocked"
+      "status": "done"
     },
     {
       "id": "T109",

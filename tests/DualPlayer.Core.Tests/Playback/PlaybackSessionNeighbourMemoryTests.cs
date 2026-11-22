@@ -130,6 +130,58 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         reasons.ShouldAllBe(r => r == "not-hardware-decodable", "a skipped file was later reported with another reason");
     }
 
+    // Both outputs are lost one after the other, which ends the film (AC-15b); the devices are still listed, so a return retries them.
+    private static void LoseEveryOutput(SessionRig rig)
+    {
+        rig.Engine.Devices[1].SimulateLoss();
+        rig.Engine.Barrier();
+        rig.Engine.Devices[0].SimulateLoss();
+        rig.Engine.WaitFor(() => rig.Engine.Summary is not null).ShouldBeTrue();
+        rig.Session.State.ShouldBe(PlaybackState.Ended);
+    }
+
+    [Fact]
+    public void A_file_judged_not_hardware_decodable_is_not_probed_again_after_every_output_was_lost_and_the_return_into_the_film_AC_08()
+    {
+        var (rig, probe) = PlayingRig();
+        using var _ = rig;
+        File("Episode-02.mkv");
+        File("Episode-03.mkv");
+        probe.NotHardwareDecodableAfterLimit("Episode-02.mkv");
+        probe.Hang("Episode-03.mkv");
+        rig.Engine.Call(() => rig.Session.NextFile());
+        rig.Events.OfType<FileChanged>().ShouldBeEmpty();
+        LoseEveryOutput(rig);
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-10))).IsSuccess.ShouldBeTrue();
+        probe.Probed.Clear();
+
+        rig.Engine.Call(() => rig.Session.NextFile());
+
+        probe.Probed.Select(Path.GetFileName).ShouldNotContain("Episode-02.mkv", "a return into the same film forgot the verdict and spent budget on the file again");
+    }
+
+    [Fact]
+    public void A_file_change_whose_load_fails_keeps_the_judged_files_and_they_are_not_probed_again_AC_08()
+    {
+        var (rig, probe) = PlayingRig();
+        using var _ = rig;
+        File("Episode-02.mkv");
+        File("Episode-03.mkv");
+        probe.NotHardwareDecodableAfterLimit("Episode-02.mkv");
+        probe.Hang("Episode-03.mkv");
+        rig.Engine.Call(() => rig.Session.NextFile());
+        rig.Events.OfType<FileChanged>().ShouldBeEmpty();
+        probe.Ok("Episode-03.mkv");
+        rig.Renderer.LoadError = new Error("video.load_failed", "mpv could not open the file.");
+        rig.Engine.Call(() => rig.Session.NextFile()).IsSuccess.ShouldBeFalse(); // plays E3, which does not load
+        rig.Renderer.LoadError = null;
+        probe.Probed.Clear();
+
+        rig.Engine.Call(() => rig.Session.PreviousFile()); // from E3: E2 first
+
+        probe.Probed.Select(Path.GetFileName).ShouldNotContain("Episode-02.mkv", "a failed file change forgot the verdict and spent budget on the file again");
+    }
+
     /// <summary>Per-file behaviour on the session's fake time; a file with none probes fine at once.</summary>
     private sealed class ScriptedProbe : IPictureProbe
     {

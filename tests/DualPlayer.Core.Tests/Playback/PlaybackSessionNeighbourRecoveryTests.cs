@@ -67,7 +67,10 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
 
         Press(rig); // the listing hangs its full limit: E2 is remembered
         Press(rig); // its worker is still blocked: stepped past, counted, reported for this press only
-        Notes(rig).ShouldContain(t => t.StartsWith("No next file (skipped 1; last: Episode-02.mkv", StringComparison.Ordinal), "the live worker's file was not reported as skipped");
+        rig.Events.OfType<FileSkipped>().ShouldContain(e => e.File == "Episode-02.mkv" && e.Reason == "unreadable", "the live worker's file was not reported as skipped");
+        Notes(rig).ShouldContain(t => t.StartsWith("Next file not found within 3 s (checked 1)", StringComparison.Ordinal), "a press that only stepped past a file ended as no next file");
+        rig.Events.OfType<NoNeighbour>().ShouldBeEmpty("a press reports no file nobody judged");
+        rig.Events.OfType<NeighbourSearchTimedOut>().Count().ShouldBe(2);
         rig.Events.OfType<FileChanged>().ShouldBeEmpty();
         decoder.Release("Episode-02.mkv"); // the NAS is back
         LetWorkerFinish(rig, decoder, "Episode-02.mkv");
@@ -117,6 +120,26 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
         PressOnSlowFolder(rig, TimeSpan.FromMilliseconds(200));
 
         rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("the folder work counted against E2's whole budget, so it was not remembered and held up every press").File.ShouldBe(third);
+    }
+
+    [Fact]
+    public void A_first_file_whose_listing_is_cut_is_remembered_after_folder_work_of_1200_ms_and_the_next_press_reaches_the_file_after_it_AC_09b()
+    {
+        using var decoder = new ScriptedDecoder();
+        using var probe = new ScriptedProbe();
+        File("Episode-02.mkv");
+        var third = File("Episode-03.mkv");
+        using var rig = Playing(decoder, probe);
+        decoder.Cost("Episode-02.mkv", TimeSpan.FromMilliseconds(2500));
+
+        PressOnSlowFolder(rig, TimeSpan.FromMilliseconds(1200)); // E2 is the first file checked: its listing is cut by the budget
+        rig.Events.OfType<FileChanged>().ShouldBeEmpty("the first press cannot judge E2 within its budget");
+        rig.Engine.Render(100); // fake time moves on: E2's cut listing completes, so only a memory can keep the next press off it
+        LetWorkerFinish(rig, decoder, "Episode-02.mkv");
+
+        PressOnSlowFolder(rig, TimeSpan.FromMilliseconds(1200));
+
+        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("the first file of the press, cut during its listing, was not remembered and held up every press").File.ShouldBe(third);
     }
 
     [Fact]
