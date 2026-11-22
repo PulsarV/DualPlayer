@@ -573,7 +573,14 @@
         "T104",
         "T105",
         "T106",
-        "T107"
+        "T107",
+        "T108",
+        "T109",
+        "T110",
+        "T111",
+        "T112",
+        "T113",
+        "T114"
       ],
       "acs": [
         "AC-16",
@@ -2531,6 +2538,172 @@
       "file": "docs/features/lip-synced-video/tasks/T107-list-the-new-start-error-codes-in-cli-md-redraw-sad-flow-1-in-the-code-s-check-order-and-bring-test-plan-and-the-tracker-in-step.md",
       "origin": "review-2026-11-22d: V7, V11",
       "status": "done"
+    },
+    {
+      "id": "T108",
+      "title": "Remember a cut first neighbour, end a press of step-pasts as a timeout, and forget the neighbour memories only on a successful file change",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-07",
+        "AC-08",
+        "AC-09b"
+      ],
+      "dod": "The listing-cut exit sets `timedOut = listingUncut || wholeBudget`, so a first file of the press whose listing is cut by the budget is remembered however long the folder work took.; When every skip of a press was a step-past (a live listing/probe worker, or `video.probe_busy`) and no file was judged, the press ends with the not-found-within-3-s outcome (`NeighbourSearchTimedOut`, `checked N`, the timeout note), not `NoNeighbour` / `no-next-file`; the stepped-past files are still reported as `skipped … unreadable` and counted. A press that judged at least one file unplayable and found no target still ends `no-next-file`.; `_timedOut` and `_judged` are cleared only after a successful file change (after `StartCore` succeeds in the file change; and at the first `Start`), not inside `StartCore`: a failed file change and a ← return into the same film keep both memories.; Tests: (1) a folder that costs 1.2 s of fake time and an E2 listing of 2.5 s → E2 remembered, the next press reaches E3; (2) E2 the only neighbour with its listing blocked through press 2 → press 2 publishes `NeighbourSearchTimedOut`, no `NoNeighbour`; press 3 after release plays E2 (update RecoveryTests :69-70); (3) B judged `not-hardware-decodable`, every output lost, ← return, next press does not probe B again; (4) a file change whose `Load` fails keeps the memories. Each fails if its fix is reverted.; spec.md:249, sad.md §7 (:538) and cli.md §2.2 (:85) say that a press that only stepped past files ends as the timeout outcome (`next-file-timeout  checked N`), and that the memories survive a failed file change and a return.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourMemoryTests.cs",
+        "docs/features/lip-synced-video/spec.md",
+        "docs/features/lip-synced-video/sad.md",
+        "docs/features/lip-synced-video/contracts/cli.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T108-remember-a-cut-first-neighbour-end-a-press-of-step-pasts-as-a-timeout-and-forget-the-neighbour-memories-only-on-a-succes.md",
+      "origin": "review-2026-11-22e: W1, W2, W5",
+      "status": "todo"
+    },
+    {
+      "id": "T109",
+      "title": "Step past a file whose probe worker is still running before its listing starts, and time the probe from when its worker enters the probe",
+      "layer": "app",
+      "deps": [
+        "T108"
+      ],
+      "acs": [
+        "AC-09b"
+      ],
+      "dod": "Before it starts a listing, the session knows whether the probe adapter still has a live worker on that file (e.g. `IPictureProbe.IsBusy(path)`, or the adapter hands its live worker back and the session keeps it in `_workers`); such a file is stepped past without a listing, as a live listing worker is. At most one blocked thread per file, listing or probe.; The probe wrapper does not depend on thread-pool scheduling for its time limit: it runs with `TaskCreationOptions.LongRunning` and/or the session counts the limit + slack from a signal raised once the wrapper has entered `Probe`; when the adapter's own result arrives it is used with its codec/profile.; Tests: (1) press 1 E2's listing returns and its probe blocks (adapter returns `probe_timeout`); press 2 E2's listing would block → zero `ListTracks` calls on E2 in press 2, E2 stepped past; (2) a probe wrapper whose start is delayed by more than the slack (fake scheduler / gated start) → the adapter's own result (success, or `probe_timeout` with codec/profile) is used, not an invented timeout; (3) a Media test for the busy query on `FfmpegPictureProbe`. Each fails if its fix is reverted.; spec.md:249 and sad.md:538 still state \"at most one blocked thread per file, listing or probe\" and now hold; reword only if the mechanism they name changed.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Playback/IPictureProbe.cs",
+        "src/DualPlayer.Media/Video/FfmpegPictureProbe.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs",
+        "tests/DualPlayer.Media.Tests/Video/FfmpegPictureProbeTests.cs",
+        "docs/features/lip-synced-video/spec.md",
+        "docs/features/lip-synced-video/sad.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T109-step-past-a-file-whose-probe-worker-is-still-running-before-its-listing-starts-and-time-the-probe-from-when-its-worker-e.md",
+      "origin": "review-2026-11-22e: W3, W7",
+      "status": "todo"
+    },
+    {
+      "id": "T110",
+      "title": "Bound the reload on a return after a picture failure by the 3 s reload timeout",
+      "layer": "app",
+      "deps": [
+        "T109"
+      ],
+      "acs": [
+        "AC-05",
+        "AC-06b"
+      ],
+      "dod": "The return's `Load` passes `ReloadTimeout` (3 s); a `Load` that times out ends the return the way a failed return load already does.; Test: on the return after a picture failure the fake renderer's `LoadTimeouts.Last()` is 3 s; fails if the timeout is dropped.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionPictureFailureReloadTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T110-bound-the-reload-on-a-return-after-a-picture-failure-by-the-3-s-reload-timeout.md",
+      "origin": "review-2026-11-22e: W4",
+      "status": "todo"
+    },
+    {
+      "id": "T111",
+      "title": "Answer playback.file_unreadable from the picture probe for an empty or whitespace path instead of throwing",
+      "layer": "integration",
+      "deps": [
+        "T109"
+      ],
+      "acs": [
+        "AC-02"
+      ],
+      "dod": "`FfmpegPictureProbe.Probe` returns `Result.Failure(\"playback.file_unreadable\", …)` for a null, empty or whitespace path before it builds the key, and never lets an `ArgumentException` / `PathTooLongException` / `NotSupportedException` from `GetFullPath` escape.; Tests: a Media test for `\"\"` and `\"   \"` → `playback.file_unreadable`; a start-path test (`StartCommand` with the real probe or a matching fake) → exit 2 with `playback.file_unreadable`. Each fails if the fix is reverted.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Media/Video/FfmpegPictureProbe.cs",
+        "tests/DualPlayer.Media.Tests/Video/FfmpegPictureProbeTests.cs",
+        "tests/DualPlayer.App.Tests/Startup/StartCommandTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T111-answer-playback-file-unreadable-from-the-picture-probe-for-an-empty-or-whitespace-path-instead-of-throwing.md",
+      "origin": "review-2026-11-22e: W6",
+      "status": "todo"
+    },
+    {
+      "id": "T112",
+      "title": "Count only the current press's waiters in the fake-time gate of the neighbour tests",
+      "layer": "test",
+      "deps": [
+        "T109"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-09b"
+      ],
+      "dod": "The gate moves fake time only for waiters that entered during the current `Call` (a generation captured at `Call` start), or the Block/Never fakes leave their `Waiting()` scope once the session cancels their token; an abandoned waiter from press N never moves time in press N+1. No real-time cap.; A rig self-test pins that: an abandoned waiter from press N, then press N+1 with no fake waiting → fake time does not move during the folder work of press N+1. Fails if the generation check is removed.; The neighbour test classes pass 10 runs in a row (`--no-build`), and each still takes well under 1 s.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/CountingTimeProvider.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRememberedFilesTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourWorkerTimingTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T112-count-only-the-current-press-s-waiters-in-the-fake-time-gate-of-the-neighbour-tests.md",
+      "origin": "review-2026-11-22e: W8",
+      "status": "todo"
+    },
+    {
+      "id": "T113",
+      "title": "Pin cli.md's exact terminal line shapes and the full start-check order with tests",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-03b",
+        "AC-06",
+        "AC-07",
+        "AC-09",
+        "AC-13"
+      ],
+      "dod": "Raw-writer assertions (exact text, no whitespace squashing) for each line shape of cli.md §1.1, §2.2 and §2.3 that `TerminalPrinter` writes; each fails if a label's padding or a two-space separator changes.; Two start-order cases: missing screen + failing renderer library → `start.screen_not_found`; refusing device + missing screen → `outputs.device_access_denied`. Each fails if the two checks are swapped in `StartCommand`.; Test-only: no production change, unless a raw assertion exposes a real mismatch with cli.md (then fix the printer, not the test).; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.App.Tests/Startup/TerminalPrinterTests.cs",
+        "tests/DualPlayer.App.Tests/E2E/PlayEndToEndTests.cs",
+        "tests/DualPlayer.App.Tests/Startup/StartCommandTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T113-pin-cli-md-s-exact-terminal-line-shapes-and-the-full-start-check-order-with-tests.md",
+      "origin": "review-2026-11-22e: W11, W12",
+      "status": "todo"
+    },
+    {
+      "id": "T114",
+      "title": "Redraw sad flow 1 after the checks as the code runs it, list every start error code in cli.md, and bring test-plan and the tracker in step",
+      "layer": "docs",
+      "deps": [
+        "T108",
+        "T109",
+        "T110",
+        "T111",
+        "T112",
+        "T113"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-12",
+        "AC-13"
+      ],
+      "dod": "sad flow 1, after \"checks pass\": Cli→Window open on the screen, Window→Cli handle, Cli→Core start session (offsets, latency probe + log, load, pre-roll), with a failure branch that closes the window and exits with the code.; cli.md §5 has rows (exit 2, with when each is printed) for `ffmpeg.not_found`, `ffmpeg.load_failed`, `outputs.device_open_failed` and `playback.start_timeout`; §4's exit-2 meaning mentions a missing FFmpeg and a device that cannot be opened; the code list in sad.md (:547) includes them; `StartExitCodes.For` maps each to 2 (add a test case if one is missing).; test-plan.md has a row for every test T108–T113 added, and the T107 start-order row (:170) matches what T113 pins; every DoD box of T108–T113 that holds is ticked; the tracker's T23 row and T23's deps include T108–T114.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "docs/features/lip-synced-video/sad.md",
+        "docs/features/lip-synced-video/contracts/cli.md",
+        "docs/features/lip-synced-video/test-plan.md",
+        "docs/features/lip-synced-video/tasks/tracker.md",
+        "docs/features/lip-synced-video/tasks/T23-measure-lip-sync-on-the-target-pc.md",
+        "docs/features/lip-synced-video/tasks.json"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T114-redraw-sad-flow-1-after-the-checks-as-the-code-runs-it-list-every-start-error-code-in-cli-md-and-bring-test-plan-and-the.md",
+      "origin": "review-2026-11-22e: W9, W10",
+      "status": "todo"
     }
   ]
 }
