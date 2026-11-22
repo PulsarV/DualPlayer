@@ -28,7 +28,7 @@ public sealed class FfmpegPictureProbeTests
     [Fact]
     public void Probe_reports_no_picture_for_a_file_with_audio_only()
     {
-        var result = NewProbe().Probe(Media("mono.wav"), Limit);
+        var result = NewProbe().Probe(Media("mono.wav"), Limit, TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeFalse();
         result.Error!.Code.ShouldBe("video.no_picture");
@@ -40,7 +40,7 @@ public sealed class FfmpegPictureProbeTests
     [InlineData("does-not-exist.mkv")]
     public void Probe_reports_unreadable_for_a_file_that_is_not_media_or_is_missing(string file)
     {
-        var result = NewProbe().Probe(Media(file), Limit);
+        var result = NewProbe().Probe(Media(file), Limit, TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeFalse();
         result.Error!.Code.ShouldBe("playback.file_unreadable");
@@ -90,7 +90,7 @@ public sealed class FfmpegPictureProbeTests
     {
         var clock = Stopwatch.StartNew();
 
-        var result = NewProbe().Probe(Media("long-gop-ramp.mkv"), TimeSpan.FromTicks(1));
+        var result = NewProbe().Probe(Media("long-gop-ramp.mkv"), TimeSpan.FromTicks(1), TestContext.Current.CancellationToken);
 
         clock.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(3));
         result.IsSuccess.ShouldBeFalse();
@@ -103,7 +103,7 @@ public sealed class FfmpegPictureProbeTests
         // The hook runs on the probe worker right after codec and profile are published, and holds it past the limit.
         var probe = new FfmpegPictureProbe { AfterFormatRead = () => Thread.Sleep(TimeSpan.FromSeconds(1)) };
 
-        var result = probe.Probe(Media("long-gop-ramp.mkv"), TimeSpan.FromMilliseconds(300));
+        var result = probe.Probe(Media("long-gop-ramp.mkv"), TimeSpan.FromMilliseconds(300), TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeFalse();
         result.Error!.Code.ShouldBe("video.not_hardware_decodable");
@@ -116,7 +116,7 @@ public sealed class FfmpegPictureProbeTests
     [Fact]
     public void Probe_reports_not_hardware_decodable_naming_codec_and_profile_for_a_picture_only_software_can_decode()
     {
-        var result = NewProbe().Probe(Media("video-ffv1.mkv"), Limit);
+        var result = NewProbe().Probe(Media("video-ffv1.mkv"), Limit, TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeFalse();
         result.Error!.Code.ShouldBe("video.not_hardware_decodable");
@@ -127,7 +127,7 @@ public sealed class FfmpegPictureProbeTests
     [Fact]
     public void A_picture_only_software_can_decode_carries_its_codec_and_profile_as_fields_for_the_skipped_line()
     {
-        var result = NewProbe().Probe(Media("video-ffv1.mkv"), Limit);
+        var result = NewProbe().Probe(Media("video-ffv1.mkv"), Limit, TestContext.Current.CancellationToken);
 
         result.Error!.Fields.ShouldNotBeNull();
         result.Error.Fields["codec"].ShouldBe("ffv1");
@@ -137,7 +137,7 @@ public sealed class FfmpegPictureProbeTests
     [HardwareFact(HardwareOs.MacOS)]
     public void Probe_decodes_the_first_h264_picture_in_hardware_and_names_codec_and_size_on_macOS()
     {
-        var result = NewProbe().Probe(Media("long-gop-ramp.mkv"), Limit);
+        var result = NewProbe().Probe(Media("long-gop-ramp.mkv"), Limit, TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue(result.Error?.Message);
         result.Value.Codec.ShouldBe("h264");

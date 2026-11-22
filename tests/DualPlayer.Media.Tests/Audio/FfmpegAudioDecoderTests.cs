@@ -77,7 +77,7 @@ public sealed class FfmpegAudioDecoderTests
     [Fact]
     public void ListTracks_numbers_audio_tracks_from_1_with_language_layout_and_rate()
     {
-        var result = NewDecoder().ListTracks(Media("two-tracks.mkv"));
+        var result = NewDecoder().ListTracks(Media("two-tracks.mkv"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue(result.Error?.Message);
         result.Value.Count.ShouldBe(2);
@@ -88,7 +88,7 @@ public sealed class FfmpegAudioDecoderTests
     [Fact]
     public void ListTracks_reports_a_mono_track_without_language_as_und()
     {
-        var result = NewDecoder().ListTracks(Media("mono.wav"));
+        var result = NewDecoder().ListTracks(Media("mono.wav"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue(result.Error?.Message);
         result.Value.Count.ShouldBe(1);
@@ -103,7 +103,7 @@ public sealed class FfmpegAudioDecoderTests
     [InlineData("tones-7.1.wav", ChannelLayout.Surround71)]
     public void ListTracks_labels_a_source_5_1_or_7_1_only_when_it_has_an_LFE(string file, ChannelLayout layout)
     {
-        var result = NewDecoder().ListTracks(Media(file));
+        var result = NewDecoder().ListTracks(Media(file), TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue(result.Error?.Message);
         result.Value[0].ChannelLayout.ShouldBe(layout);
@@ -117,7 +117,7 @@ public sealed class FfmpegAudioDecoderTests
     [InlineData("tones-7.1.wav", 8, true)]
     public void ListTracks_reports_the_channel_count_and_whether_the_source_has_an_LFE(string file, int channels, bool hasLfe)
     {
-        var result = NewDecoder().ListTracks(Media(file));
+        var result = NewDecoder().ListTracks(Media(file), TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue(result.Error?.Message);
         result.Value[0].Channels.ShouldBe(channels);
@@ -130,7 +130,7 @@ public sealed class FfmpegAudioDecoderTests
     [InlineData("does-not-exist.mkv")]
     public void ListTracks_of_a_file_that_is_not_media_fails_with_file_unreadable_and_a_reason(string name)
     {
-        var result = NewDecoder().ListTracks(Media(name));
+        var result = NewDecoder().ListTracks(Media(name), TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeFalse();
         result.Error.Code.ShouldBe("playback.file_unreadable");

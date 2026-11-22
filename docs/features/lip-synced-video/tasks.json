@@ -2198,7 +2198,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T94-make-the-picture-failure-tests-deterministic-and-scope-the-xunit1051-suppression.md",
       "origin": "review-2026-11-22b: S11, S12",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T95",

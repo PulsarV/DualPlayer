@@ -6,8 +6,8 @@ deps: ["T90"]
 blocks: []
 acs: ["AC-06b"]
 files_hint: ["tests/DualPlayer.Core.Tests/Playback/PlaybackSessionPictureFailureReloadTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionPictureHealthTests.cs", "tests/DualPlayer.Core.Tests/Fakes/", "tests/DualPlayer.Media.Tests/DualPlayer.Media.Tests.csproj", "tests/DualPlayer.Media.Tests/"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -33,7 +33,7 @@ See [spec.md](../spec.md) §5 AC-06b.
 
 ## Definition of Done
 
-- [ ] The picture-failure tests no longer depend on real-time waits racing the session thread: they advance fake time / the fake renderer until the summary appears (or wait on a signal), with no weakened assertion.
-- [ ] The full `dotnet test DualPlayer.slnx` passes 3 times in a row with the Core tests under parallel load (e.g. run alongside a second test process).
-- [ ] The project-wide `NoWarn` for xUnit1051 is gone; `TestContext.Current.CancellationToken` is passed where an overload exists, local `#pragma` elsewhere.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The picture-failure tests no longer depend on real-time waits racing the session thread: they advance fake time / the fake renderer until the summary appears (or wait on a signal), with no weakened assertion.
+- [x] The full `dotnet test DualPlayer.slnx` passes 3 times in a row with the Core tests under parallel load (e.g. run alongside a second test process).
+- [x] The project-wide `NoWarn` for xUnit1051 is gone; `TestContext.Current.CancellationToken` is passed where an overload exists, local `#pragma` elsewhere.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

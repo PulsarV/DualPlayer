@@ -27,7 +27,11 @@ public sealed class PlaybackSessionPictureFailureReloadTests
     private static void FailThePicture(SessionRig rig)
     {
         rig.Renderer.InjectDecodeFailure(DecodeError);
-        rig.Engine.WaitFor(() => rig.Engine.Summary is not null).ShouldBeTrue("the picture failure never stopped the engine");
+
+        // The failure is queued on the session's loop when it is injected; Flush returns once that loop has handled it (the
+        // engine stop, the events and the reload), so nothing here races a real-time wait against the session thread.
+        rig.Flush();
+        rig.Engine.Summary.ShouldNotBeNull("the picture failure never stopped the engine");
         rig.Session.State.ShouldBe(PlaybackState.Ended);
         rig.Events.OfType<PictureFailed>().ShouldHaveSingleItem();
         rig.Renderer.Notes.ShouldContain(n => n.Text == "The picture could not be decoded further - film ended");

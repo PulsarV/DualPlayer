@@ -58,7 +58,7 @@ public sealed class AbandonedWorkerTests
         var limit = TimeSpan.FromMilliseconds(500);
 
         var clock = Stopwatch.StartNew();
-        var result = new FfmpegPictureProbe().Probe(pipe.Path, limit);
+        var result = new FfmpegPictureProbe().Probe(pipe.Path, limit, TestContext.Current.CancellationToken);
         clock.Stop();
 
         result.IsSuccess.ShouldBeFalse();

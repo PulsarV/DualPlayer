@@ -21,7 +21,9 @@ public sealed class PlaybackSessionPictureHealthTests
 
     private static void ShouldHaveEndedOnPictureFailure(SessionRig rig)
     {
-        rig.Engine.WaitFor(() => rig.Engine.Summary is not null).ShouldBeTrue();
+        // The failure is queued on the session's loop; Flush returns once that loop has handled it (no real-time wait).
+        rig.Flush();
+        rig.Engine.Summary.ShouldNotBeNull("the picture failure never stopped the engine");
         rig.Session.State.ShouldBe(PlaybackState.Ended);
         var failed = rig.Events.OfType<PictureFailed>().ShouldHaveSingleItem();
         failed.Reason.ShouldNotBeNullOrWhiteSpace();
