@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-06b"]
 files_hint: ["tests/DualPlayer.Media.Tests/Video/MpvVideoRendererTests.cs", "tests/DualPlayer.Media.Tests/AbandonedWorkerTests.cs", "src/DualPlayer.Media/Video/MpvVideoRenderer.cs"]
-status: "todo"
-step: "—"
+status: "blocked"
+step: "RED — false_pass"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
