@@ -50,7 +50,7 @@ started   clock 00:00:00.000  first-frame 1.9 s  first-audio 1.9 s 1.9 s
 | `default` | Type default in use (spec §8) | AC-13 |
 | `offset` | Remembered offset for this device id, 0 on first use | AC-12, `data-model.md` DeviceOffset |
 | `assumed` | `reported + default − offset` | AC-10, AC-13, ADR-0004 |
-| `lag` | How far this output waits behind the master clock: picture delay − assumed | ADR-0005 |
+| `lag` | How far this output waits behind the master clock: picture delay − assumed. A `pause` record taken mid-ramp carries the lag the engine actually applies at that moment, so there lag ≠ picture delay − assumed; `assumed` is never rewritten | ADR-0005 |
 | `picture delay` | Largest `assumed` among the outputs still playing; may be negative | AC-10, CONTEXT Picture delay |
 | `lost` | An output lost before a file change keeps its number but is printed as `output N  lost`, with no `track`, `assumed` or `lag`: it is left out of the picture delay and the lag arithmetic above, which holds for the playing outputs only | AC-07, AC-12, AC-13 |
 | `first-frame`, `first-audio` | Start-command-to-picture and to each output's first heard sound (sound given + assumed latency) | spec §6 start budget |
@@ -101,7 +101,7 @@ Structured events in the rolling log (not printed unless stated above), from the
 | Event | Fields | When |
 |---|---|---|
 | `LatencyEstimated` | per output: device id, type, reported, default, offset, assumed, lag; picture delay. A lost output keeps its output number and is written with `Lost=true` and no type, reported, default, offset, assumed or lag (§1.1) | every start and file change (AC-13, AC-12) |
-| `PictureDelayChanged` | clock, cause (`offset`, `device-lost`, `seek`, `pause`, `resume`, `file-change`), old and new picture delay, per output assumed and lag (a lost output: `Lost=true` only, as in `LatencyEstimated`) | AC-17 |
+| `PictureDelayChanged` | clock, cause (`offset`, `device-lost`, `seek`, `pause`, `resume`, `file-change`), old and new picture delay, per output assumed (always `reported + default − offset`) and lag (picture delay − assumed, except a mid-ramp `pause` record, which carries the lag the engine applies) (a lost output: `Lost=true` only, as in `LatencyEstimated`) | AC-17 |
 | `PictureDelayMoved` | clock, cause (as `PictureDelayChanged`), from (the in-flight picture delay when a press retargets a running move) and to picture delay (ms), duration (ms, the stretched move duration), picture speed change (`PicturePpm`: the speed last set on the video renderer (mpv `speed`) once the move is applied, as (speed − 1) × 10⁶; signed: positive = the picture runs faster than real time, i.e. the delay shrinks), then one line per output with its device id and the speeds its drift controller applies once the move is applied, not clamped: lag ramp (`RampPpm`), drift correction (`CorrectionPpm`, as `correction=…ppm` in the sync records) and their sum (`TotalPpm`), each signed: positive = the output's audio runs slower than real time, i.e. its lag grows; written for each picture-delay move that ramps (offset change, device lost) | AC-14, AC-17 |
 | `OffsetChanged` | output, device id, old and new offset, saved-at | AC-10, AC-11 |
 | `PictureTiming` | clock, frame due time, presented time, error ms | every event above and once per second (AC-17) |

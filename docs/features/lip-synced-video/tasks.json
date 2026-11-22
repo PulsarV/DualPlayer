@@ -2462,7 +2462,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T104-keep-the-true-assumed-latency-in-a-pause-s-picture-delay-record-and-log-the-applied-lag-beside-it.md",
       "origin": "review-2026-11-22d: V6",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T105",

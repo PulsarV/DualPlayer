@@ -6,8 +6,8 @@ deps: ["T103"]
 blocks: []
 acs: ["AC-17"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.Core/Playback/SessionEvent.cs", "src/DualPlayer.App/Startup/SessionEventLogWriter.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionOffsetTests.cs", "tests/DualPlayer.App.Tests/Startup/SessionEventLogWriterTests.cs", "docs/features/lip-synced-video/contracts/cli.md"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,7 +31,7 @@ See [spec.md](../spec.md) §5 AC-17.
 
 ## Definition of Done
 
-- [ ] Every `PictureDelayChanged` record (every cause, including `pause` mid-ramp) carries `AssumedMs == ReportedMs + TypeDefaultMs − OffsetMs`; the pause record still carries the lag the engine applies, so a mid-ramp pause logs the real applied lag without rewriting assumed.
-- [ ] cli.md §1.1 (:52-53) and §3 `PictureDelayChanged` (:104) say what a mid-ramp `pause` record carries (the applied lag, so lag ≠ delay − assumed there).
-- [ ] Tests: the T99 case asserts both the applied lag (vs `Engine.CurrentLag`) and `AssumedMs == ReportedMs + TypeDefaultMs − OffsetMs` on every record; fails on the current code.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Every `PictureDelayChanged` record (every cause, including `pause` mid-ramp) carries `AssumedMs == ReportedMs + TypeDefaultMs − OffsetMs`; the pause record still carries the lag the engine applies, so a mid-ramp pause logs the real applied lag without rewriting assumed.
+- [x] cli.md §1.1 (:52-53) and §3 `PictureDelayChanged` (:104) say what a mid-ramp `pause` record carries (the applied lag, so lag ≠ delay − assumed there).
+- [x] Tests: the T99 case asserts both the applied lag (vs `Engine.CurrentLag`) and `AssumedMs == ReportedMs + TypeDefaultMs − OffsetMs` on every record; fails on the current code.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

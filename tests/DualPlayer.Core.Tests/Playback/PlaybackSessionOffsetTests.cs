@@ -46,8 +46,33 @@ public sealed class PlaybackSessionOffsetTests
         {
             output.LagMs.ShouldBeGreaterThanOrEqualTo(0);
             ((double)output.LagMs).ShouldBe(LagMs(rig, output.DeviceId), 1, $"{output.DeviceId}: published lag must be the applied one");
-            ((double)(change.NewPictureDelayMs - output.AssumedMs)).ShouldBe(output.LagMs, 1, $"{output.DeviceId}: lag = picture delay - assumed");
+            output.AssumedMs.ShouldBe(output.ReportedMs + output.TypeDefaultMs - output.OffsetMs, $"{output.DeviceId}: assumed = reported + default - offset, even mid-ramp");
         }
+    }
+
+    [Fact]
+    public void Every_picture_delay_record_keeps_the_true_assumed_latency_while_a_pause_mid_ramp_carries_the_applied_lag_AC_17()
+    {
+        using var rig = PlayingRig();
+        rig.Engine.Call(() => rig.Session.ChangeOffset(1, 10)).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(100);
+        rig.Engine.Call(() => rig.Session.Pause()).IsSuccess.ShouldBeTrue();
+
+        var records = rig.Events.OfType<PictureDelayChanged>().ToList();
+        records.ShouldContain(e => e.Cause == PictureDelayCause.Pause);
+        foreach (var record in records)
+        {
+            foreach (var output in record.Outputs.Where(o => !o.IsLost))
+            {
+                output.AssumedMs.ShouldBe(output.ReportedMs + output.TypeDefaultMs - output.OffsetMs, $"{record.Cause} {output.DeviceId}: assumed");
+            }
+        }
+
+        var pause = records.Last(e => e.Cause == PictureDelayCause.Pause);
+        var slow = pause.Outputs.Single(o => o.DeviceId == "dev-2");
+        slow.AssumedMs.ShouldBe(0);
+        ((double)slow.LagMs).ShouldBe(LagMs(rig, "dev-2"), 1, "pause record carries the applied lag");
+        slow.LagMs.ShouldBeGreaterThan(pause.NewPictureDelayMs - 1);
     }
 
     [Fact]

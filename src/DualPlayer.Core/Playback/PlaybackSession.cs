@@ -1387,8 +1387,8 @@ public sealed partial class PlaybackSession : IDisposable
     {
         var ms = (int)Math.Round(delay.TotalMilliseconds);
         // The delay may be mid-ramp, so each playing output's lag is paired with it (lag = picture delay - assumed); a lost output carries no numbers.
-        // A pause freezes the delay mid-ramp while the engine applies each output's own lag, so it publishes that applied lag
-        // and the assumed latency that keeps lag = picture delay - assumed true.
+        // A pause freezes the delay mid-ramp while the engine applies each output's own lag, so it publishes that applied lag;
+        // the assumed latency stays reported + default - offset on every record, so mid-ramp lag differs from picture delay - assumed.
         var outputs = (_estimate?.Outputs ?? []).Select(o => o.IsLost ? o : cause == PictureDelayCause.Pause ? WithAppliedLag(o, ms) : o with { LagMs = ms - o.AssumedMs }).ToList();
         _events.Publish(new PictureDelayChanged(clock, cause, ms, ms, outputs));
     }
@@ -1400,8 +1400,7 @@ public sealed partial class PlaybackSession : IDisposable
             return output with { LagMs = pictureDelayMs - output.AssumedMs };
         }
 
-        var lag = (int)Math.Round(applied.TotalMilliseconds);
-        return output with { LagMs = lag, AssumedMs = pictureDelayMs - lag };
+        return output with { LagMs = (int)Math.Round(applied.TotalMilliseconds) };
     }
 
     private TimeSpan ProjectToNow(PresentedPicture presented)
