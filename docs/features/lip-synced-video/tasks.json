@@ -580,7 +580,14 @@
         "T111",
         "T112",
         "T113",
-        "T114"
+        "T114",
+        "T115",
+        "T116",
+        "T117",
+        "T118",
+        "T119",
+        "T120",
+        "T121"
       ],
       "acs": [
         "AC-16",
@@ -2704,6 +2711,163 @@
       "file": "docs/features/lip-synced-video/tasks/T114-redraw-sad-flow-1-after-the-checks-as-the-code-runs-it-list-every-start-error-code-in-cli-md-and-bring-test-plan-and-the.md",
       "origin": "review-2026-11-22e: W9, W10",
       "status": "done"
+    },
+    {
+      "id": "T115",
+      "title": "Stop the late-pool probe test from hanging the Core suite, and dispose the engine before the session in the rig",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-09b"
+      ],
+      "dod": "The late-pool test no longer fills the thread pool and no longer moves fake time from a free-running thread: fake time moves only under `Call` (e.g. from the fake's own hook), and any thread the test starts is joined before it asserts.; The test proves the probe wrapper runs off the pool by asserting `!Thread.CurrentThread.IsThreadPoolThread` inside the fake probe, and asserts that the new film actually started (`AudioStarted` or state Playing), not only `FileChanged`. It fails if the wrapper goes back to `Task.Run`.; `SessionRig.Dispose` disposes the engine before the session (or otherwise bounds the join), so a stalled command fails the test instead of hanging the run; a rig self-test pins that dispose returns within a bounded real time when a command is stuck.; The neighbour, rig and reload test classes (`dotnet test tests/DualPlayer.Core.Tests --filter \"FullyQualifiedName~Neighbour|FullyQualifiedName~RigLoops|FullyQualifiedName~PictureFailureReload|FullyQualifiedName~AbandonedWorker\"`) pass 10 runs in a row with parallel classes, none hanging (use `--blame-hang-timeout 120s`).; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/SessionRig.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/CountingTimeProvider.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T115-stop-the-late-pool-probe-test-from-hanging-the-core-suite-and-dispose-the-engine-before-the-session-in-the-rig.md",
+      "origin": "review-2026-11-22f: X9",
+      "status": "todo"
+    },
+    {
+      "id": "T116",
+      "title": "Count a neighbour whose check ran out its limit as not judged, and pin that the timed-out memory survives a failed file change and a return",
+      "layer": "app",
+      "deps": [
+        "T115"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-09b"
+      ],
+      "dod": "A skip counts as judged only when it reached or reused a verdict (`judgedAny |= !steppedPast && !timedOut`, with `timedOut` returned from the check). A press whose every skip was a step-past or a check that ran out its limit ends `NeighbourSearchTimedOut` (`checked N`, the timeout note), never `NoNeighbour`; the skipped files are still reported `skipped … unreadable`.; Test: the only neighbour's probe runs out its full limit on press 1 and again on press 2 (a fake that ends on cancel, `IsBusy` false) → both presses publish `NeighbourSearchTimedOut` and no `NoNeighbour`. Fails if the fix is reverted.; Tests: E2 remembered as timed out, then (a) a file change whose `Load` fails and (b) a ← return after every output was lost → the next press still checks E2 last. Fail if `_timedOut.Clear()` goes back into `StartCore`.; cli.md §2.2 (:85) and sad.md §7 (:542) say, like spec.md:249, that a press whose skips were remembered files or files whose worker is still running ends `next-file-timeout  checked N`.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourMemoryTests.cs",
+        "docs/features/lip-synced-video/sad.md",
+        "docs/features/lip-synced-video/contracts/cli.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T116-count-a-neighbour-whose-check-ran-out-its-limit-as-not-judged-and-pin-that-the-timed-out-memory-survives-a-failed-file-c.md",
+      "origin": "review-2026-11-22f: X1, X13",
+      "status": "todo"
+    },
+    {
+      "id": "T117",
+      "title": "Give a cancelled neighbour worker a short grace before keeping it, list tracks off the shared pool, and bound the wait before the probe worker starts",
+      "layer": "app",
+      "deps": [
+        "T116"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-09b"
+      ],
+      "dod": "After cancelling a listing or probe worker it gave up on, the session waits a short bounded grace (`ProbeTimingSlack`, fake-time-testable) for it to end before keeping it in `_workers`; a worker that ends inside the grace is not kept, so the next press checks that file normally. Test: a cut healthy neighbour whose fake honours cancellation, next press queued immediately → that press plays it, no `skipped` line. Fails if reverted.; The neighbour tests wait for `_workers` to drain between presses where a press relies on a worker having ended (no real-time sleeps); `A_healthy_neighbour_whose_check_the_press_budget_cut_is_checked_again_and_plays_on_the_next_press_AC_08` passes 20 runs in a row.; The track listing starts with `TaskCreationOptions.LongRunning` (off the shared pool), like the probe wrapper. Test: the listing fake asserts `!Thread.CurrentThread.IsThreadPoolThread`.; The probe wait also gives up when `elapsed(scanAt) >= NeighbourScanBudget + ProbeTimingSlack`, even if the wrapper has not entered yet, and `entered` is read once more after the loop when setting `probeStart`. Test: a wrapper whose start is held back past the budget → the press ends within budget + slack of fake time.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourMemoryTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourWorkerTimingTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T117-give-a-cancelled-neighbour-worker-a-short-grace-before-keeping-it-list-tracks-off-the-shared-pool-and-bound-the-wait-bef.md",
+      "origin": "review-2026-11-22f: X10, X11, X12",
+      "status": "todo"
+    },
+    {
+      "id": "T118",
+      "title": "Count the 3 s recovery after a file change from the moment the target is chosen, and say so in spec §6",
+      "layer": "app",
+      "deps": [
+        "T117"
+      ],
+      "acs": [
+        "AC-07",
+        "AC-09",
+        "AC-09b"
+      ],
+      "dod": "Owner decision: the file-change recovery is counted from the moment the target is chosen (`FileChanged`), not from the key. spec §6 (spec.md:235 row) says so, and notes that with no skips the two moments are the same.; `_resync` for a file change takes the time the target was chosen. Test: a press that spends 2 s of fake time skipping a slow neighbour, then a normal pre-roll → no `NotLipSynced` (file-change); a target chosen at once but a recovery longer than 3 s → still `NotLipSynced`. Fails if reverted.; sad.md (the recovery/quality row that names the 3 s file-change recovery) and the T23 run guide's file-change threshold say the same.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs",
+        "docs/features/lip-synced-video/spec.md",
+        "docs/features/lip-synced-video/sad.md",
+        "docs/features/lip-synced-video/tasks/T23-measure-lip-sync-on-the-target-pc.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T118-count-the-3-s-recovery-after-a-file-change-from-the-moment-the-target-is-chosen-and-say-so-in-spec-6.md",
+      "origin": "review-2026-11-22f: X5",
+      "status": "todo"
+    },
+    {
+      "id": "T119",
+      "title": "Check every output's track before resolving any device in the start checks",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-03b"
+      ],
+      "dod": "The validator checks every `--out` track before resolving any device (then presence, then used-once), as cli.md §1.1 says.; Tests: two outputs, output 1's device missing and output 2's track missing → the track code (Core validator test and an App `StartCommandTests` case). Fail if reverted.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Outputs/OutputAssignmentValidator.cs",
+        "tests/DualPlayer.Core.Tests/Outputs/OutputAssignmentValidatorTests.cs",
+        "tests/DualPlayer.App.Tests/Startup/StartCommandTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T119-check-every-output-s-track-before-resolving-any-device-in-the-start-checks.md",
+      "origin": "review-2026-11-22f: X4",
+      "status": "todo"
+    },
+    {
+      "id": "T120",
+      "title": "Drive the real session through the view model to the renderer's notes in an App end-to-end test",
+      "layer": "ui",
+      "deps": [],
+      "acs": [
+        "AC-08",
+        "AC-11"
+      ],
+      "dod": "One or more `PlayEndToEndTests` cases build the real session and the real `PlaybackViewModel` with a substitute renderer and fake audio, press the keys, and assert that the AC-11 limit note and the AC-08 \"No next file\" note reach `IVideoRenderer.ShowNote` with the spec's text. They fail if the view model stops forwarding notes.; Production code changes only if the test finds a real gap (then name it in the commit).; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.App.Tests/E2E/PlayEndToEndTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T120-drive-the-real-session-through-the-view-model-to-the-renderer-s-notes-in-an-app-end-to-end-test.md",
+      "origin": "review-2026-11-22f: X8",
+      "status": "todo"
+    },
+    {
+      "id": "T121",
+      "title": "Fix the start-failure branch in sad flow 1, list decoder_fault and no-upgrader in cli.md, correct the start-budget mitigation and the executable name, and bring test-plan and the tracker in step",
+      "layer": "docs",
+      "deps": [
+        "T115",
+        "T116",
+        "T117",
+        "T118",
+        "T119",
+        "T120"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-12"
+      ],
+      "dod": "sad flow 1 wraps the load, the pre-roll and the clock start in one `alt start succeeds / else start fails (mpv.load_timeout, mpv.load_failed, outputs.device_not_found, outputs.device_open_failed, playback.decoder_fault, playback.start_timeout)` block.; cli.md §5 has a `playback.decoder_fault` row (exit 2, when it is printed); the warning list has `state.no-upgrader`; the `mpv.load_failed` row's \"When\" covers mpv refusing the file or failing to initialise at the session start; sad.md's code list matches. `StartExitCodes.For(\"playback.decoder_fault\")` is 2, pinned in `Start_exit_code_for_a_refusal_before_or_during_start_is_2`.; sad §11's start-budget mitigation describes the sequential start (load, then pre-roll) and says the overlap is the fallback if T23 measures more than 3 s.; cli.md and screens.md SCR-01 write the command as `DualPlayer play …`.; test-plan.md has a row for every test T115–T120 added; every DoD box of T115–T120 that holds is ticked; the tracker's T23 row and T23's deps include T115–T121.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "docs/features/lip-synced-video/sad.md",
+        "docs/features/lip-synced-video/contracts/cli.md",
+        "docs/features/lip-synced-video/screens.md",
+        "docs/features/lip-synced-video/test-plan.md",
+        "docs/features/lip-synced-video/tasks/tracker.md",
+        "docs/features/lip-synced-video/tasks/T23-measure-lip-sync-on-the-target-pc.md",
+        "docs/features/lip-synced-video/tasks.json",
+        "tests/DualPlayer.App.Tests/Startup/StartCommandTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T121-fix-the-start-failure-branch-in-sad-flow-1-list-decoder-fault-and-no-upgrader-in-cli-md-correct-the-start-budget-mitigat.md",
+      "origin": "review-2026-11-22f: X2, X3, X6, X7",
+      "status": "todo"
     }
   ]
 }
