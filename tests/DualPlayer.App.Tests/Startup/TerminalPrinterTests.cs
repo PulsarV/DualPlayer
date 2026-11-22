@@ -201,6 +201,28 @@ public sealed partial class TerminalPrinterTests
     }
 
     [Fact]
+    public void A_run_summary_row_carries_the_start_commands_output_number_after_an_output_was_lost_and_the_file_changed()
+    {
+        var h = new Harness();
+        h.Session.Publish(new LatencyEstimated(new LatencyEstimate(
+            [OutB with { OutputNumber = 1, IsLost = true }, OutA with { OutputNumber = 2, AssumedMs = 0, LagMs = 0 }],
+            0)));
+        h.Session.Publish(new FileChanged("b.mkv", "a.mkv"));
+        h.Engine.Publish(new RunSummary(
+            RunEndReason.Stop,
+            TimeSpan.FromSeconds(20),
+            [new OutputSummary(DevA, TimeSpan.FromSeconds(20), 3.5, 1.2, 4, 0, [])],
+            File: "b.mkv"));
+
+        var lines = h.Finish().Out;
+
+        var header = lines.FindIndex(l => l == "run-summary file b.mkv reason exit");
+        header.ShouldBeGreaterThanOrEqualTo(0);
+        var row = lines.Skip(header).First(l => l.Contains(DevA, StringComparison.Ordinal));
+        row.ShouldStartWith($"2 {DevA} ");
+    }
+
+    [Fact]
     public void The_summary_of_the_run_a_file_change_stopped_names_the_file_it_played_not_the_new_one()
     {
         var h = new Harness();

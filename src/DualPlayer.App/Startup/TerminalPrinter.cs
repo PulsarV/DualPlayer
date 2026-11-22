@@ -73,7 +73,7 @@ internal sealed class TerminalPrinter : IDisposable
                 break;
             case RunSummary s:
                 FlushPendingStarted();
-                foreach (var line in RunSummaryLines.Lines(Path.GetFileName(s.File), s))
+                foreach (var line in RunSummaryLines.Lines(Path.GetFileName(s.File), s, OutputNumbers()))
                 {
                     Print(line);
                 }
@@ -131,6 +131,28 @@ internal sealed class TerminalPrinter : IDisposable
     // FFmpeg's profile names ("Main 10") in the contract's form ("main-10").
     private static string ProfileName(string? profile) =>
         string.IsNullOrWhiteSpace(profile) ? "unknown" : string.Join('-', profile.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
+    /// <summary>Each device's output number from the latest start command, so a row keeps its number after an output was lost.</summary>
+    private Dictionary<string, int> OutputNumbers()
+    {
+        LatencyEstimate? estimate;
+        lock (_gate)
+        {
+            estimate = _estimate;
+        }
+
+        var numbers = new Dictionary<string, int>(StringComparer.Ordinal);
+        if (estimate is not null)
+        {
+            for (var i = 0; i < estimate.Outputs.Count; i++)
+            {
+                var o = estimate.Outputs[i];
+                numbers.TryAdd(o.DeviceId, o.OutputNumber > 0 ? o.OutputNumber : i + 1);
+            }
+        }
+
+        return numbers;
+    }
 
     private void LatencyLines(LatencyEstimate estimate)
     {

@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-06", "AC-07"]
 files_hint: ["src/DualPlayer.App/Startup/RunSummaryLines.cs", "src/DualPlayer.App/Startup/TerminalPrinter.cs", "src/DualPlayer.Core/Diagnostics/EngineEvent.cs", "src/DualPlayer.Core/Diagnostics/RunSummaryBuilder.cs", "src/DualPlayer.Core/Playback/AudioEngine.cs", "tests/DualPlayer.App.Tests/Startup/", "tests/DualPlayer.Core.Tests/"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,6 +31,6 @@ See [spec.md](../spec.md) §5 AC-06, AC-07.
 
 ## Definition of Done
 
-- [ ] Run-summary rows show each output's start-command number, also after an output was lost and the file changed.
-- [ ] Test: lose output 1, Page Down, Esc → the new file's summary row reads `2  dev-2`; existing summary tests stay green.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Run-summary rows show each output's start-command number, also after an output was lost and the file changed.
+- [x] Test: lose output 1, Page Down, Esc → the new file's summary row reads `2  dev-2`; existing summary tests stay green.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

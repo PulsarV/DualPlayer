@@ -8,7 +8,10 @@ namespace DualPlayer.App.Startup;
 /// <summary>The run-summary lines of contracts/cli.md section 2.3: a <c>run-summary</c> header and one row per output (copied from the step-3 console formatting).</summary>
 internal static class RunSummaryLines
 {
-    public static IEnumerable<string> Lines(string file, RunSummary summary)
+    /// <param name="file">The file the run played.</param>
+    /// <param name="summary">The run's summary.</param>
+    /// <param name="numbers">Each device's output number from the start command; a device not in it is numbered by its position in the summary.</param>
+    public static IEnumerable<string> Lines(string file, RunSummary summary, IReadOnlyDictionary<string, int>? numbers = null)
     {
         ArgumentNullException.ThrowIfNull(summary);
 
@@ -18,11 +21,12 @@ internal static class RunSummaryLines
         var index = 1;
         foreach (var o in summary.Outputs)
         {
+            var position = index++;
             var lost = o.DeviceLostEvents.Count == 0
                 ? "-"
                 : string.Join(',', o.DeviceLostEvents.Select(e => Clock(e.ClockPosition)));
             yield return Row(
-                (index++).ToString(CultureInfo.InvariantCulture),
+                (numbers is not null && numbers.TryGetValue(o.DeviceId, out var number) ? number : position).ToString(CultureInfo.InvariantCulture),
                 o.DeviceId,
                 (o.Played < TimeSpan.Zero ? "-" : "") + o.Played.Duration().ToString(@"hh\:mm\:ss\.f", CultureInfo.InvariantCulture),
                 o.MaxDriftMs.ToString("0.0", CultureInfo.InvariantCulture),
