@@ -6,8 +6,8 @@ deps: ["T109"]
 blocks: []
 acs: ["AC-05", "AC-06b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionPictureFailureReloadTests.cs"]
-status: "blocked"
-step: "DEPS — dep T109 blocked"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,6 +31,6 @@ See [spec.md](../spec.md) §5 AC-05, AC-06b.
 
 ## Definition of Done
 
-- [ ] The return's `Load` passes `ReloadTimeout` (3 s); a `Load` that times out ends the return the way a failed return load already does.
-- [ ] Test: on the return after a picture failure the fake renderer's `LoadTimeouts.Last()` is 3 s; fails if the timeout is dropped.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The return's `Load` passes `ReloadTimeout` (3 s); a `Load` that times out ends the return the way a failed return load already does.
+- [x] Test: on the return after a picture failure the fake renderer's `LoadTimeouts.Last()` is 3 s; fails if the timeout is dropped.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

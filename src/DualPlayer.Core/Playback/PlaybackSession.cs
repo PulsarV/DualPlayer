@@ -362,7 +362,7 @@ public sealed partial class PlaybackSession : IDisposable
             // The old picture's events are stale from here. The file is always loaded paused before any audio starts: a
             // failure of the reloaded last frame may still be queued behind this command and would be dropped as stale.
             Interlocked.Increment(ref _filmToken);
-            var reloaded = _renderer.Load(request.File, nint.Zero, startPaused: true);
+            var reloaded = _renderer.Load(request.File, nint.Zero, startPaused: true, ReloadTimeout);
             if (!reloaded.IsSuccess)
             {
                 return reloaded;

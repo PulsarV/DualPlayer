@@ -2605,7 +2605,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T110-bound-the-reload-on-a-return-after-a-picture-failure-by-the-3-s-reload-timeout.md",
       "origin": "review-2026-11-22e: W4",
-      "status": "blocked"
+      "status": "done"
     },
     {
       "id": "T111",

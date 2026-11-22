@@ -123,6 +123,17 @@ public sealed class PlaybackSessionPictureFailureReloadTests
     }
 
     [Fact]
+    public void The_return_into_the_film_after_a_picture_failure_bounds_its_reload_by_the_three_second_timeout_AC_05_AC_06b()
+    {
+        using var rig = PlayingRig();
+        FailThePicture(rig);
+
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-3))).IsSuccess.ShouldBeTrue();
+
+        rig.Renderer.LoadTimeouts.Last().ShouldBe(TimeSpan.FromSeconds(3), "the return's Load was given no 3 s bound");
+    }
+
+    [Fact]
     public void A_return_into_the_film_after_a_failed_reload_loads_the_file_AC_05()
     {
         using var rig = PlayingRig();
