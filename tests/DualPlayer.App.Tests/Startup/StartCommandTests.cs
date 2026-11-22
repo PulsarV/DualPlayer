@@ -109,6 +109,17 @@ public sealed class StartCommandTests
     }
 
     [Theory]
+    [InlineData("ffmpeg.not_found")]
+    [InlineData("ffmpeg.load_failed")]
+    [InlineData("outputs.device_open_failed")]
+    [InlineData("playback.start_timeout")]
+    [InlineData("mpv.load_timeout")]
+    public void Start_exit_code_for_a_refusal_before_or_during_start_is_2(string code)
+    {
+        StartExitCodes.For(new Error(code, "x")).ShouldBe(2);
+    }
+
+    [Theory]
     [InlineData("")]
     [InlineData("   ")]
     public void Validate_with_the_real_probe_answers_an_empty_or_whitespace_file_as_unreadable_with_exit_2(string file)

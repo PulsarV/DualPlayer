@@ -119,7 +119,7 @@ Structured events in the rolling log (not printed unless stated above), from the
 |---|---|---|
 | `0` | The window was closed with Esc (or the window was closed) after a film played, whatever ended it | AC-06, AC-15b |
 | `1` | Unexpected failure (a bug); logged with its exception | `CLAUDE.md` Errors |
-| `2` | Refused before start: usage, unreadable file, no picture, not hardware-decodable, track, device, too many outputs, screen not found, video renderer missing, first picture or file open timed out | AC-02, AC-03b, step-3 §3 |
+| `2` | Refused before start: usage, unreadable file, no picture, not hardware-decodable, track, device, too many outputs, screen not found, video renderer or FFmpeg library missing, a device that cannot be opened, first picture, file open or output start timed out | AC-02, AC-03b, step-3 §3 |
 | `4` | Refused before start: the OS denied access to the file or a device | AC-03, step-3 AC-04 |
 
 ## 5. Error codes
@@ -139,6 +139,9 @@ Structured events in the rolling log (not printed unless stated above), from the
 | `outputs.device_access_denied` | The OS refused access to a device | 4 | exists |
 | `start.screen_not_found` | `--screen` names a screen that is not connected; the message lists the connected screens with their numbers and resolutions (AC-03b) | 2 | new |
 | `mpv.not_found` / `mpv.load_failed` | The video renderer library is missing or the wrong version | 2 | new |
+| `ffmpeg.not_found` / `ffmpeg.load_failed` | The FFmpeg libraries are missing or cannot be loaded; printed by the very first check (the picture probe), before any other check, so also for a file that would otherwise be refused | 2 | exists |
+| `outputs.device_open_failed` | A device that is present and not refused by the OS could not be opened: printed by the device check at start (opened and released), or by the session start when the output is opened for play | 2 | exists |
+| `playback.start_timeout` | The outputs did not start, or the decoder did not fill the output buffers, in time when the session started; printed with the window already open, which then closes | 2 | exists |
 | `mpv.load_timeout` | The renderer library loaded and every check passed, but mpv did not open the file within its wait (15 s by default) when the session started the film; distinct from `mpv.load_failed`, where mpv refused the file (AC-02, spec §6.1) | 2 | new |
 | `state.unreadable` / `state.invalid` / `state.too-new` | Remembered offsets could not be read — printed as a warning, the film starts with offsets 0 | — | exists (`state.too-new` is returned by `JsonFileStateStore`) |
 | `offsets.clamped` | A remembered offset was out of range or off the 10 ms grid and was corrected — warning | — | new |

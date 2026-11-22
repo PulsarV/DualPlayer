@@ -235,13 +235,17 @@ sequenceDiagram
         alt a track, device, screen or the renderer library is refused
             Cli-->>Developer: plain-language error (list of screens when the screen is missing), exit code
         else checks pass
-            Cli->>Core: start the session
+            Cli->>Window: create and show the window fullscreen on the chosen screen
+            Window-->>Cli: video window handle created
+            Cli->>Core: start the session (on a worker thread, off the UI thread)
+            Core->>Offsets: load remembered offsets (a state.* warning is printed here, window already open)
             Core->>Platform: probe reported latency, connection kind and form factor per device
-            Core->>Offsets: load remembered offsets
             Core->>Core: assumed latency per output, picture delay, lag per output, logged
-            Core-->>Window: open fullscreen on the chosen screen
-            Window->>Media: hand over the video window handle
             Core->>Media: load the file paused at the start position
+            alt the session start fails (for example mpv.load_timeout, playback.start_timeout, outputs.device_open_failed)
+                Cli-->>Developer: plain-language error naming the cause, exit code
+                Cli->>Window: close the window
+            end
             Core->>Platform: silent pre-roll on every output, then release with each output's lag
             Platform-->>Core: slowest output hears the first frame
             Core->>Core: master clock starts
@@ -544,7 +548,7 @@ One process on one PC: `DualPlayer.App` is built as a console-subsystem executab
 |---|---|---|
 | Logging | `ILogger<T>` everywhere; Serilog rolling file under app-data `logs/`. New structured events from the `SessionEvent` stream: latency estimated (per output: device, type taken, reported part, type default, offset, assumed latency, lag), picture delay changed, picture timing (presented vs due), per-minute frame counters (late, dropped, skipped damaged). The App host writes engine and session events to the log and prints the run summary to the terminal | `CLAUDE.md` Logging; here (event set); step-3 ADR-0007 (stream model) |
 | Authentication / authorization | N/A — local single-user program. The only access checks are the OS's own file and device access (AC-03, step-3 AC-04) | spec §6.1 |
-| Error handling | Expected failures are `Result` / `Result<T>` with dotted lowercase codes, e.g. `playback.file_access_denied`, `start.screen_not_found`, `video.no_picture`, `video.not_hardware_decodable`, `video.probe_timeout`, `video.decode_failed`, `mpv.not_found`, `mpv.load_failed`, `mpv.load_timeout`; device loss and picture decode failure during play are session events. Exceptions are bugs, logged at the top of each loop. Exit codes and the exact message text are fixed by `contracts/cli.md` (api stage) | `CLAUDE.md` Errors; `src/DualPlayer.Core/Result.cs` |
+| Error handling | Expected failures are `Result` / `Result<T>` with dotted lowercase codes, e.g. `playback.file_access_denied`, `start.screen_not_found`, `video.no_picture`, `video.not_hardware_decodable`, `video.probe_timeout`, `video.decode_failed`, `mpv.not_found`, `mpv.load_failed`, `mpv.load_timeout`, `ffmpeg.not_found`, `ffmpeg.load_failed`, `outputs.device_open_failed`, `playback.start_timeout`; device loss and picture decode failure during play are session events. Exceptions are bugs, logged at the top of each loop. Exit codes and the exact message text are fixed by `contracts/cli.md` (api stage) | `CLAUDE.md` Errors; `src/DualPlayer.Core/Result.cs` |
 | Time and clocks | All lip-sync arithmetic is in Core on the master clock and `TimeProvider`; no `DateTime.Now` / `Stopwatch` in Core. The mpv adapter converts mpv's timestamps to the same monotonic time base the step-3 backend uses (QPC on Windows) before handing them to Core | `CLAUDE.md` Time and clocks; ADR-0002 |
 | Threading | The playback session runs on its own control thread (a second `EngineControlLoop` instance): every command, timer callback, engine event and renderer event is handled there one at a time in posting order. It is not the engine control loop itself because the session's commands block on engine commands (pre-roll, seek confirmation) that run on that loop; events and timers only post, so nothing waits in a cycle (T24, review-2026-11-20 F7). The App queues each key's command on a third thread, so the UI never waits. Lag ramps run on the step-3 engine control loop. mpv property and end events arrive on mpv's event thread; the adapter publishes immutable snapshots without locks the control loop could wait on. Render threads are never blocked. UI updates marshal through `Dispatcher.UIThread`. The picture probe runs off the UI thread with a time limit | `CLAUDE.md` Threading; step-3 ADR-0007 |
 | Persistence | `device-offsets.json` through `IStateStore`, atomic temp + rename, `schemaVersion` 1, source-generated context; saved ≤ 1 s after the last offset press; values clamped to ±500 ms and rounded to 10 ms on load, each clamp logged | ADR-0006; project ADR-0004 |

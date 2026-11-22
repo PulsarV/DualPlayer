@@ -6,8 +6,8 @@ deps: ["T108", "T109", "T110", "T111", "T112", "T113"]
 blocks: []
 acs: ["AC-01", "AC-02", "AC-12", "AC-13"]
 files_hint: ["docs/features/lip-synced-video/sad.md", "docs/features/lip-synced-video/contracts/cli.md", "docs/features/lip-synced-video/test-plan.md", "docs/features/lip-synced-video/tasks/tracker.md", "docs/features/lip-synced-video/tasks/T23-measure-lip-sync-on-the-target-pc.md", "docs/features/lip-synced-video/tasks.json"]
-status: "blocked"
-step: "start — dep T109 blocked"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -32,7 +32,7 @@ See [spec.md](../spec.md) §5 AC-01, AC-02, AC-12, AC-13.
 
 ## Definition of Done
 
-- [ ] sad flow 1, after "checks pass": Cli→Window open on the screen, Window→Cli handle, Cli→Core start session (offsets, latency probe + log, load, pre-roll), with a failure branch that closes the window and exits with the code.
-- [ ] cli.md §5 has rows (exit 2, with when each is printed) for `ffmpeg.not_found`, `ffmpeg.load_failed`, `outputs.device_open_failed` and `playback.start_timeout`; §4's exit-2 meaning mentions a missing FFmpeg and a device that cannot be opened; the code list in sad.md (:547) includes them; `StartExitCodes.For` maps each to 2 (add a test case if one is missing).
-- [ ] test-plan.md has a row for every test T108–T113 added, and the T107 start-order row (:170) matches what T113 pins; every DoD box of T108–T113 that holds is ticked; the tracker's T23 row and T23's deps include T108–T114.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] sad flow 1, after "checks pass": Cli→Window open on the screen, Window→Cli handle, Cli→Core start session (offsets, latency probe + log, load, pre-roll), with a failure branch that closes the window and exits with the code.
+- [x] cli.md §5 has rows (exit 2, with when each is printed) for `ffmpeg.not_found`, `ffmpeg.load_failed`, `outputs.device_open_failed` and `playback.start_timeout`; §4's exit-2 meaning mentions a missing FFmpeg and a device that cannot be opened; the code list in sad.md (:547) includes them; `StartExitCodes.For` maps each to 2 (add a test case if one is missing).
+- [x] test-plan.md has a row for every test T108–T113 added, and the T107 start-order row (:170) matches what T113 pins; every DoD box of T108–T113 that holds is ticked; the tracker's T23 row and T23's deps include T108–T114.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
