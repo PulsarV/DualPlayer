@@ -206,7 +206,7 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
                 fake.Advance(gaveUp ? timeout!.Value : LoadTakes);
                 if (gaveUp)
                 {
-                    return Result.Failure("mpv.load_failed", "mpv did not open the file in time.");
+                    return Result.Failure("mpv.load_timeout", "mpv did not open the file in time.");
                 }
             }
 

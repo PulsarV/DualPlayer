@@ -37,7 +37,8 @@ public interface IVideoRenderer : IDisposable
     /// Opens <paramref name="file"/> into the window <paramref name="nativeWindowHandle"/>, optionally held paused on the
     /// first frame. Once the first frame is up, <see cref="Presented"/> is position zero stamped with that moment; a playing
     /// load may hold it briefly and start from it as a scheduled start. The wait for the file to open is bounded by
-    /// <paramref name="timeout"/>, or by the renderer's own default (15 s) when it is <c>null</c>.
+    /// <paramref name="timeout"/>, or by the renderer's own default (15 s) when it is <c>null</c>. When the wait runs out the
+    /// failure code is <c>mpv.load_timeout</c>, distinct from <c>mpv.load_failed</c> (the file was refused).
     /// </summary>
     Result Load(string file, nint nativeWindowHandle, bool startPaused, TimeSpan? timeout = null);
 

@@ -89,7 +89,7 @@ public sealed class PlaybackSessionPictureFailureReloadTests
     }
 
     [Fact]
-    public void A_return_into_the_film_after_a_successful_reload_does_not_load_the_file_again_AC_05()
+    public void A_return_into_the_film_after_a_successful_reload_loads_the_file_once_more_paused_AC_05()
     {
         using var rig = PlayingRig();
         FailThePicture(rig);
@@ -97,7 +97,7 @@ public sealed class PlaybackSessionPictureFailureReloadTests
 
         rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-3))).IsSuccess.ShouldBeTrue();
 
-        rig.Renderer.LoadCount.ShouldBe(loads, "the reloaded last frame is kept; a second load would show frame 0 through the pre-roll");
+        rig.Renderer.LoadCount.ShouldBe(loads + 1, "a failure of the reloaded frame may still be queued behind this command, so the return always loads");
         rig.Session.State.ShouldBe(PlaybackState.Playing);
     }
 
@@ -198,5 +198,41 @@ public sealed class PlaybackSessionPictureFailureReloadTests
         FailThePicture(rig);
 
         rig.Events.OfType<PictureReloadFinished>().ShouldHaveSingleItem().Outcome.ShouldBe(PictureReloadOutcome.TimedOut);
+    }
+
+    [Fact]
+    public void A_reload_that_failed_with_a_load_error_after_the_whole_bound_is_published_as_failed_not_timed_out_AC_06b()
+    {
+        using var rig = PlayingRig();
+        rig.Renderer.LoadTakes = TimeSpan.FromSeconds(3);
+        rig.Renderer.LoadError = new Error("mpv.load_failed", "The file cannot be opened.");
+
+        FailThePicture(rig);
+
+        rig.Events.OfType<PictureReloadFinished>().ShouldHaveSingleItem().Outcome.ShouldBe(PictureReloadOutcome.Failed);
+    }
+
+    [Fact]
+    public void A_reload_the_renderer_reports_as_load_timeout_is_published_as_timed_out_even_when_no_time_passed_AC_06b()
+    {
+        using var rig = PlayingRig();
+        rig.Renderer.LoadError = new Error("mpv.load_timeout", "mpv did not open the file in time.");
+
+        FailThePicture(rig);
+
+        rig.Events.OfType<PictureReloadFinished>().ShouldHaveSingleItem().Outcome.ShouldBe(PictureReloadOutcome.TimedOut);
+    }
+
+    [Fact]
+    public void A_decode_failure_of_the_reloaded_frame_is_published_as_a_reload_that_failed_again_AC_06b()
+    {
+        using var rig = PlayingRig();
+        FailThePicture(rig);
+
+        rig.Renderer.InjectDecodeFailure(DecodeError);
+        rig.Flush();
+
+        var outcomes = rig.Events.OfType<PictureReloadFinished>().Select(r => r.Outcome).ToList();
+        outcomes.ShouldBe([PictureReloadOutcome.Reloaded, PictureReloadOutcome.FailedAgain]);
     }
 }

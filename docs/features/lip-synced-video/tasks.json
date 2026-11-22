@@ -2313,7 +2313,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T98-always-reload-on-return-after-a-picture-failure-and-log-a-reload-timeout-and-a-frame-that-fails-again.md",
       "origin": "review-2026-11-22c: U6, U8, U9",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T99",

@@ -128,6 +128,9 @@ public enum PictureReloadOutcome
 
     /// <summary>The load used the whole reload bound.</summary>
     TimedOut,
+
+    /// <summary>The reloaded frame failed to decode again: the window is empty.</summary>
+    FailedAgain,
 }
 
 /// <summary>The reload of the last frame after a picture failure finished; <paramref name="Position"/> is where it was loaded.</summary>

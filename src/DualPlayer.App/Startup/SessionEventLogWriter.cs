@@ -107,6 +107,7 @@ internal sealed class SessionEventLogWriter : IDisposable
                     {
                         PictureReloadOutcome.Reloaded => "reloaded",
                         PictureReloadOutcome.TimedOut => "timed-out",
+                        PictureReloadOutcome.FailedAgain => "failed-again",
                         _ => "failed",
                     });
                 break;

@@ -185,6 +185,7 @@ public sealed class SessionEventLogWriterTests
     [InlineData(PictureReloadOutcome.Reloaded, "reloaded")]
     [InlineData(PictureReloadOutcome.Failed, "failed")]
     [InlineData(PictureReloadOutcome.TimedOut, "timed-out")]
+    [InlineData(PictureReloadOutcome.FailedAgain, "failed-again")]
     public void The_reload_of_the_last_frame_is_logged_with_its_outcome_and_position_AC_06b(PictureReloadOutcome outcome, string logged)
     {
         var h = new Harness();

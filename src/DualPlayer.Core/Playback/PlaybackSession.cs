@@ -335,10 +335,9 @@ public sealed partial class PlaybackSession : IDisposable
         LatencyEstimate? estimate;
         HashSet<string> lost;
         bool pictureFailed;
-        bool lastFrameReloaded;
         lock (_gate)
         {
-            (request, estimate, pictureFailed, lastFrameReloaded) = (_request, _estimate, _pictureFailed, _lastFrameReloaded);
+            (request, estimate, pictureFailed) = (_request, _estimate, _pictureFailed);
             lost = new HashSet<string>(_lost, StringComparer.Ordinal);
         }
 
@@ -349,16 +348,13 @@ public sealed partial class PlaybackSession : IDisposable
 
         if (pictureFailed)
         {
-            // The old picture's events are stale from here. When the last frame was reloaded at the failure, mpv already
-            // holds it; otherwise mpv holds no file and it is loaded paused before any audio starts.
+            // The old picture's events are stale from here. The file is always loaded paused before any audio starts: a
+            // failure of the reloaded last frame may still be queued behind this command and would be dropped as stale.
             Interlocked.Increment(ref _filmToken);
-            if (!lastFrameReloaded)
+            var reloaded = _renderer.Load(request.File, nint.Zero, startPaused: true);
+            if (!reloaded.IsSuccess)
             {
-                var reloaded = _renderer.Load(request.File, nint.Zero, startPaused: true);
-                if (!reloaded.IsSuccess)
-                {
-                    return reloaded;
-                }
+                return reloaded;
             }
         }
 
@@ -1624,24 +1620,38 @@ public sealed partial class PlaybackSession : IDisposable
 
     private void OnPictureFailed(string reason, string? code, bool reloadLastFrame = false)
     {
+        var failedAgain = false;
+        TimeSpan again = default;
         lock (_gate)
         {
             if (_pictureFailed)
             {
-                // The reloaded last frame failed again: mpv holds no file, so the return must load it (AC-06b).
-                if (reloadLastFrame)
+                // The reloaded last frame failed again: mpv holds no file (AC-06b).
+                if (reloadLastFrame && _lastFrameReloaded)
                 {
                     _lastFrameReloaded = false;
+                    failedAgain = true;
+                    again = _endPosition;
                 }
-
-                return;
             }
-
-            if (_state == PlaybackState.Ended)
+            else if (_state == PlaybackState.Ended)
             {
                 return;
             }
+            else
+            {
+                goto first;
+            }
         }
+
+        if (failedAgain)
+        {
+            _events.Publish(new PictureReloadFinished(_renderer.Presented?.Position ?? again, PictureReloadOutcome.FailedAgain));
+        }
+
+        return;
+
+    first:
 
         EndOnPictureFailure(reason, code, reloadLastFrame);
     }
@@ -1707,11 +1717,10 @@ public sealed partial class PlaybackSession : IDisposable
             return (PictureReloadOutcome.Failed, position);
         }
 
-        var began = _time.GetTimestamp();
-        if (!_renderer.Load(file, nint.Zero, startPaused: true, ReloadTimeout).IsSuccess)
+        var loaded = _renderer.Load(file, nint.Zero, startPaused: true, ReloadTimeout);
+        if (!loaded.IsSuccess)
         {
-            var took = _time.GetElapsedTime(began);
-            return (took >= ReloadTimeout ? PictureReloadOutcome.TimedOut : PictureReloadOutcome.Failed, position);
+            return (loaded.Error?.Code == "mpv.load_timeout" ? PictureReloadOutcome.TimedOut : PictureReloadOutcome.Failed, position);
         }
 
         _renderer.Seek(position);
