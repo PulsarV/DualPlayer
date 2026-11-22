@@ -1,8 +1,11 @@
 using System.Text.RegularExpressions;
+using Avalonia.Input;
 using DualPlayer.App.Startup;
 using DualPlayer.App.ViewModels;
+using DualPlayer.Core.Playback;
 using DualPlayer.Core.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 
 namespace DualPlayer.App.Tests.E2E;
 
@@ -195,6 +198,46 @@ public sealed partial class PlayEndToEndTests : IDisposable
             rig.Engine.AdvanceUntil(() => false, maxSteps: 50);
             rig.Session.State.ShouldBe(DualPlayer.Core.Playback.PlaybackState.Ended, "Space after the natural end changed the state");
         }
+    }
+
+    [Fact]
+    public void Pressing_the_offset_key_past_the_limit_reaches_the_renderer_as_the_limit_note_AC_11()
+    {
+        var (rig, _, controls) = Play(File("Film.mkv"));
+        var window = Substitute.For<IVideoRenderer>();
+        var vm = new PlaybackViewModel(controls, window);
+        using (rig)
+        using (controls)
+        {
+            // From 0 to +500 ms is fifty presses; the fifty-first cannot go further.
+            for (var i = 0; i < 51; i++)
+            {
+                vm.HandleKey(Key.D1).ShouldBeTrue();
+            }
+
+            rig.Engine.AdvanceUntil(() => window.ReceivedCalls().Any(c => c.GetArguments().Any(a => a is string t && t.Contains("beyond", StringComparison.Ordinal))), maxSteps: 2000)
+                .ShouldBeTrue("the offset limit note never reached the renderer");
+        }
+
+        window.Received().ShowNote("Output 1: offset cannot go beyond \u00b1500 ms", NoteStyle.Warning);
+    }
+
+    [Fact]
+    public void Pressing_Page_Down_on_the_last_file_reaches_the_renderer_as_the_No_next_file_note_AC_08()
+    {
+        var (rig, _, controls) = Play(File("Film.mkv"));
+        var window = Substitute.For<IVideoRenderer>();
+        var vm = new PlaybackViewModel(controls, window);
+        using (rig)
+        using (controls)
+        {
+            vm.HandleKey(Key.PageDown).ShouldBeTrue();
+
+            rig.Engine.AdvanceUntil(() => window.ReceivedCalls().Any(c => c.GetArguments().Any(a => a is string t && t.StartsWith("No next", StringComparison.Ordinal))), maxSteps: 2000)
+                .ShouldBeTrue("the no-next-file note never reached the renderer");
+        }
+
+        window.Received().ShowNote("No next file", NoteStyle.Info);
     }
 
     // The "played" column of the output rows under a run-summary header: index, device, played, ...

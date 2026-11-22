@@ -2835,7 +2835,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T120-drive-the-real-session-through-the-view-model-to-the-renderer-s-notes-in-an-app-end-to-end-test.md",
       "origin": "review-2026-11-22f: X8",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T121",

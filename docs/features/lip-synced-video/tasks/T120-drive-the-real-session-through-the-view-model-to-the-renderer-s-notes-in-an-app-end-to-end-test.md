@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-08", "AC-11"]
 files_hint: ["tests/DualPlayer.App.Tests/E2E/PlayEndToEndTests.cs"]
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,6 +31,6 @@ See [spec.md](../spec.md) §5 AC-08, AC-11.
 
 ## Definition of Done
 
-- [ ] One or more `PlayEndToEndTests` cases build the real session and the real `PlaybackViewModel` with a substitute renderer and fake audio, press the keys, and assert that the AC-11 limit note and the AC-08 "No next file" note reach `IVideoRenderer.ShowNote` with the spec's text. They fail if the view model stops forwarding notes.
-- [ ] Production code changes only if the test finds a real gap (then name it in the commit).
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] One or more `PlayEndToEndTests` cases build the real session and the real `PlaybackViewModel` with a substitute renderer and fake audio, press the keys, and assert that the AC-11 limit note and the AC-08 "No next file" note reach `IVideoRenderer.ShowNote` with the spec's text. They fail if the view model stops forwarding notes.
+- [x] Production code changes only if the test finds a real gap (then name it in the commit).
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
