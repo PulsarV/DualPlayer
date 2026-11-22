@@ -7,7 +7,7 @@ blocks: []
 acs: ["AC-02"]
 files_hint: ["src/DualPlayer.Media/Video/FfmpegPictureProbe.cs", "tests/DualPlayer.Media.Tests/Video/FfmpegPictureProbeTests.cs", "tests/DualPlayer.App.Tests/Startup/StartCommandTests.cs"]
 status: "todo"
-step: "—"
+step: "DEPS — dep T109 blocked"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
