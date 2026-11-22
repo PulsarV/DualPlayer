@@ -100,7 +100,7 @@
 | T90 | [Load the file again on return when the reloaded last frame failed again](./T90-load-the-file-again-on-return-when-the-reloaded-last-frame-failed-again.md) | app | Volodymyr Kravchuk | S | T89 | todo | — |
 | T91 | [Number run-summary rows by the start command's output number](./T91-number-run-summary-rows-by-the-start-command-s-output-number.md) | app | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T92 | [Log the picture failure, the reload outcome and start timings in milliseconds](./T92-log-the-picture-failure-the-reload-outcome-and-start-timings-in-milliseconds.md) | app | Volodymyr Kravchuk | S | T90 | todo | — |
-| T93 | [Say when FFmpeg cancellation takes effect and run the interrupt test on Windows](./T93-say-when-ffmpeg-cancellation-takes-effect-and-run-the-interrupt-test-on-windows.md) | integration | Volodymyr Kravchuk | M | T88 | todo | — |
+| T93 | [Say when FFmpeg cancellation takes effect and run the interrupt test on Windows](./T93-say-when-ffmpeg-cancellation-takes-effect-and-run-the-interrupt-test-on-windows.md) | integration | Volodymyr Kravchuk | M | T88 | done | COMMIT |
 | T94 | [Make the picture-failure tests deterministic and scope the xUnit1051 suppression](./T94-make-the-picture-failure-tests-deterministic-and-scope-the-xunit1051-suppression.md) | test | Volodymyr Kravchuk | S | T90 | todo | — |
 | T95 | [Bring AC-06, screens, ux-flows, test-plan, sad, cli.md and the tracker in step with the code](./T95-bring-ac-06-screens-ux-flows-test-plan-sad-cli-md-and-the-tracker-in-step-with-the-code.md) | docs | Volodymyr Kravchuk | S | T88, T89, T90, T91, T92, T93, T94 | todo | — |
 

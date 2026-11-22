@@ -2176,7 +2176,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T93-say-when-ffmpeg-cancellation-takes-effect-and-run-the-interrupt-test-on-windows.md",
       "origin": "review-2026-11-22b: S10",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T94",

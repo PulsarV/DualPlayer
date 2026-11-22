@@ -6,8 +6,8 @@ deps: ["T88"]
 blocks: []
 acs: ["AC-09b"]
 files_hint: ["src/DualPlayer.Media/FfmpegInterrupt.cs", "src/DualPlayer.Media/", "tests/DualPlayer.Media.Tests/", "docs/features/lip-synced-video/spec.md", "docs/features/lip-synced-video/sad.md"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -31,6 +31,6 @@ See [spec.md](../spec.md) §5 AC-09b.
 
 ## Definition of Done
 
-- [ ] spec §6.1 and sad.md §7 say cancellation takes effect at the next I/O boundary, that a read blocked inside the OS holds its thread until the OS gives up, and that the step-past memory bounds how many such threads can pile up.
-- [ ] A Media test that runs on Windows (and macOS) proves an interrupted open/probe returns promptly: e.g. a custom `AVIOContext` whose `read_packet` trickles or blocks between calls, or a Windows named-pipe writer; it is not skipped on windows-latest CI.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] spec §6.1 and sad.md §7 say cancellation takes effect at the next I/O boundary, that a read blocked inside the OS holds its thread until the OS gives up, and that the step-past memory bounds how many such threads can pile up.
+- [x] A Media test that runs on Windows (and macOS) proves an interrupted open/probe returns promptly: e.g. a custom `AVIOContext` whose `read_packet` trickles or blocks between calls, or a Windows named-pipe writer; it is not skipped on windows-latest CI.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
