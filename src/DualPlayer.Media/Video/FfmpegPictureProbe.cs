@@ -16,6 +16,7 @@ public sealed unsafe class FfmpegPictureProbe : IPictureProbe
     private const string Unreadable = "playback.file_unreadable";
     private const string NoPicture = "video.no_picture";
     private const string NotHardwareDecodable = "video.not_hardware_decodable";
+    private const string ProbeTimeout = "video.probe_timeout";
 
     // Test seam: runs on the worker right after codec and profile are published.
     internal Action? AfterFormatRead { get; init; }
@@ -60,11 +61,11 @@ public sealed unsafe class FfmpegPictureProbe : IPictureProbe
         var format = known.Value;
         if (format is null)
         {
-            return Result<PictureInfo>.Failure(NotHardwareDecodable, message);
+            return Result<PictureInfo>.Failure(ProbeTimeout, message);
         }
 
         return Result<PictureInfo>.Failure(
-            new Error(NotHardwareDecodable, $"{message} The picture format is {format.Codec} (profile {format.Profile}).")
+            new Error(ProbeTimeout, $"{message} The picture format is {format.Codec} (profile {format.Profile}).")
             {
                 Fields = new Dictionary<string, string>(StringComparer.Ordinal) { ["codec"] = format.Codec, ["profile"] = format.Profile },
             });

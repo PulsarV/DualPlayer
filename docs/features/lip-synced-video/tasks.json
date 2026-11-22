@@ -2262,7 +2262,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T96-return-video-probe-timeout-from-the-ffmpeg-picture-probe-when-its-own-limit-runs-out.md",
       "origin": "review-2026-11-22c: U1",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T97",

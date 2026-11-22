@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-07", "AC-08", "AC-09b", "AC-02"]
 files_hint: ["src/DualPlayer.Media/Video/FfmpegPictureProbe.cs", "src/DualPlayer.Core/Playback/IPictureProbe.cs", "src/DualPlayer.App/Startup/StartCommand.cs", "tests/DualPlayer.Media.Tests/", "tests/DualPlayer.App.Tests/Startup/"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"

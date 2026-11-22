@@ -86,7 +86,7 @@ public sealed class FfmpegPictureProbeTests
     }
 
     [Fact]
-    public void Probe_returns_within_the_time_limit_with_not_hardware_decodable_when_the_first_picture_is_not_in_time()
+    public void Probe_returns_within_the_time_limit_with_probe_timeout_when_the_first_picture_is_not_in_time()
     {
         var clock = Stopwatch.StartNew();
 
@@ -94,7 +94,7 @@ public sealed class FfmpegPictureProbeTests
 
         clock.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(3));
         result.IsSuccess.ShouldBeFalse();
-        result.Error!.Code.ShouldBe("video.not_hardware_decodable");
+        result.Error!.Code.ShouldBe("video.probe_timeout");
     }
 
     [Fact]
@@ -106,7 +106,7 @@ public sealed class FfmpegPictureProbeTests
         var result = probe.Probe(Media("long-gop-ramp.mkv"), TimeSpan.FromMilliseconds(300), TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeFalse();
-        result.Error!.Code.ShouldBe("video.not_hardware_decodable");
+        result.Error!.Code.ShouldBe("video.probe_timeout");
         result.Error.Message.ShouldContain("h264");
         result.Error.Fields.ShouldNotBeNull();
         result.Error.Fields["codec"].ShouldBe("h264");

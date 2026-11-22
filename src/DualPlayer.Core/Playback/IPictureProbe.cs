@@ -8,7 +8,8 @@ public interface IPictureProbe
 {
     /// <summary>
     /// Error codes: <c>playback.file_access_denied</c>, <c>playback.file_unreadable</c>, <c>video.no_picture</c>,
-    /// <c>video.not_hardware_decodable</c> (also when the first picture is not decoded within <paramref name="timeLimit"/>).
+    /// <c>video.not_hardware_decodable</c> (a picture was found or decoded, but not in hardware), <c>video.probe_timeout</c>
+    /// (the first picture was not decoded within <paramref name="timeLimit"/>; <c>codec</c>/<c>profile</c> in the fields when known).
     /// </summary>
     Result<PictureInfo> Probe(string path, TimeSpan timeLimit);
 

@@ -96,6 +96,19 @@ public sealed class StartCommandTests
     }
 
     [Fact]
+    public void Validate_picture_probe_that_ran_out_of_time_is_refused_like_an_undecodable_picture_with_exit_2_AC_02()
+    {
+        var rig = new Rig();
+        rig.Probe.Fail(File, "video.probe_timeout", "the first picture was not decoded within the time limit");
+
+        var r = Validate(Request(), rig);
+
+        r.IsSuccess.ShouldBeFalse();
+        r.Error!.Code.ShouldBe("video.probe_timeout");
+        StartExitCodes.For(r.Error).ShouldBe(2);
+    }
+
+    [Fact]
     public void Validate_file_the_os_denies_is_reported_with_exit_4()
     {
         var rig = new Rig();
