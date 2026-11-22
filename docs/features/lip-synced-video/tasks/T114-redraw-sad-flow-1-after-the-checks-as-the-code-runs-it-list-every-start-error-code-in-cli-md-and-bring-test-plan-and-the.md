@@ -6,8 +6,8 @@ deps: ["T108", "T109", "T110", "T111", "T112", "T113"]
 blocks: []
 acs: ["AC-01", "AC-02", "AC-12", "AC-13"]
 files_hint: ["docs/features/lip-synced-video/sad.md", "docs/features/lip-synced-video/contracts/cli.md", "docs/features/lip-synced-video/test-plan.md", "docs/features/lip-synced-video/tasks/tracker.md", "docs/features/lip-synced-video/tasks/T23-measure-lip-sync-on-the-target-pc.md", "docs/features/lip-synced-video/tasks.json"]
-status: "todo"
-step: "—"
+status: "blocked"
+step: "start — dep T108 blocked"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"

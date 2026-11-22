@@ -2703,7 +2703,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T114-redraw-sad-flow-1-after-the-checks-as-the-code-runs-it-list-every-start-error-code-in-cli-md-and-bring-test-plan-and-the.md",
       "origin": "review-2026-11-22e: W9, W10",
-      "status": "todo"
+      "status": "blocked"
     }
   ]
 }
