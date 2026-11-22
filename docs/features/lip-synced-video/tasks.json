@@ -2061,7 +2061,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T88-count-the-neighbour-scan-from-the-command-s-start-and-remember-only-neighbours-that-timed-out-on-their-own.md",
       "origin": "review-2026-11-22b: S1, S8, S9",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T89",

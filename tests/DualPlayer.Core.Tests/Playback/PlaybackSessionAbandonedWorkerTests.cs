@@ -41,7 +41,8 @@ public sealed class PlaybackSessionAbandonedWorkerTests : IDisposable
 
         rig.Events.OfType<NeighbourSearchTimedOut>().ShouldHaveSingleItem("the second press timed out again instead of stepping past");
         rig.Events.OfType<FileChanged>().ShouldHaveSingleItem().File.ShouldBe(third);
-        probe.Probed.Select(Path.GetFileName).ShouldBe(["Episode-04.mkv"], "the second press rescanned a file that timed out on the first");
+        // E2 ran its full limit and is remembered, so it is not scanned again; E3 was only cut by the first press's budget (T88), so it is checked again.
+        probe.Probed.Select(Path.GetFileName).ShouldBe(["Episode-03.mkv", "Episode-04.mkv"], "the second press rescanned a file that timed out on its own on the first");
     }
 
     [Fact]

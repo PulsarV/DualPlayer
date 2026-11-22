@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-07", "AC-08", "AC-09b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.Core/Playback/", "src/DualPlayer.App/ViewModels/PlaybackControls.cs", "tests/DualPlayer.Core.Tests/Playback/", "tests/DualPlayer.App.Tests/ViewModels/", "docs/features/lip-synced-video/spec.md", "docs/features/lip-synced-video/contracts/cli.md"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -35,10 +35,10 @@ See [spec.md](../spec.md) §5 AC-07, AC-08, AC-09b.
 
 ## Definition of Done
 
-- [ ] A file enters the timed-out memory only when its own listing or probe ran its full, uncut `PictureProbeLimit`; a file whose check the press budget cut is neither remembered nor reported as skipped (the worker is still cancelled on every give-up).
-- [ ] Files already judged for the current film keep their verdict and original reason on later presses (a `not-hardware-decodable` file stays so; nothing is reported `unreadable` unless that was its verdict) and spend no budget again.
-- [ ] The timed-out memory is keyed by (normalized path, size, mtime); remembered files are checked last when the press still has budget (or forgotten after one step-past), so a file that recovers plays on a later press; a press that only stepped past remembered files never reports a file nobody judged as the reason for `no-next-file`.
-- [ ] The neighbour-scan budget counts from when the session starts the command; the key-arrival stamp is still used for `_resync.At` (T85 recovery timing unchanged).
-- [ ] Tests: hanging E2 + slow but healthy E3 → press 2 plays E3; a press queued behind a slow file change still checks files; a remembered file that recovers (new mtime or answers in time) plays; a skipped file keeps its original reason on the next press.
-- [ ] spec §6.1 and cli.md §2.2 state the rule (what is remembered, the key, when it is retried, and that the scan budget counts from the command's start).
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] A file enters the timed-out memory only when its own listing or probe ran its full, uncut `PictureProbeLimit`; a file whose check the press budget cut is neither remembered nor reported as skipped (the worker is still cancelled on every give-up).
+- [x] Files already judged for the current film keep their verdict and original reason on later presses (a `not-hardware-decodable` file stays so; nothing is reported `unreadable` unless that was its verdict) and spend no budget again.
+- [x] The timed-out memory is keyed by (normalized path, size, mtime); remembered files are checked last when the press still has budget (or forgotten after one step-past), so a file that recovers plays on a later press; a press that only stepped past remembered files never reports a file nobody judged as the reason for `no-next-file`.
+- [x] The neighbour-scan budget counts from when the session starts the command; the key-arrival stamp is still used for `_resync.At` (T85 recovery timing unchanged).
+- [x] Tests: hanging E2 + slow but healthy E3 → press 2 plays E3; a press queued behind a slow file change still checks files; a remembered file that recovers (new mtime or answers in time) plays; a skipped file keeps its original reason on the next press.
+- [x] spec §6.1 and cli.md §2.2 state the rule (what is remembered, the key, when it is retried, and that the scan budget counts from the command's start).
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
