@@ -7,7 +7,7 @@ blocks: []
 acs: ["AC-09b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.Core/Playback/IPictureProbe.cs", "src/DualPlayer.Media/Video/FfmpegPictureProbe.cs", "tests/DualPlayer.Core.Tests/Fakes/", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs", "tests/DualPlayer.Media.Tests/Video/FfmpegPictureProbeTests.cs", "docs/features/lip-synced-video/spec.md", "docs/features/lip-synced-video/sad.md"]
 status: "blocked"
-step: "implement — dep T108 blocked"
+step: "implement — pool test flaky by harness design, needs test-author fix"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
