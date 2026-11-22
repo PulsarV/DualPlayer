@@ -2332,7 +2332,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T99-log-the-applied-lag-not-a-mid-ramp-mix-in-picture-delay-records.md",
       "origin": "review-2026-11-22c: U7",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T100",

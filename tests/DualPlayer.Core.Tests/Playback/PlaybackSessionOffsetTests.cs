@@ -32,6 +32,25 @@ public sealed class PlaybackSessionOffsetTests
     private static double LagMs(SessionRig rig, string device) => rig.Engine.Engine.CurrentLag(device)!.Value.TotalMilliseconds;
 
     [Fact]
+    public void Pause_during_an_offset_ramp_publishes_each_output_lag_the_engine_applies_and_never_a_negative_one_AC_17()
+    {
+        using var rig = PlayingRig();
+        rig.Engine.Call(() => rig.Session.ChangeOffset(1, 10)).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(100);
+        LagMs(rig, "dev-2").ShouldBeGreaterThan(237.9);
+
+        rig.Engine.Call(() => rig.Session.Pause()).IsSuccess.ShouldBeTrue();
+
+        var change = rig.Events.OfType<PictureDelayChanged>().Last(e => e.Cause == PictureDelayCause.Pause);
+        foreach (var output in change.Outputs.Where(o => !o.IsLost))
+        {
+            output.LagMs.ShouldBeGreaterThanOrEqualTo(0);
+            ((double)output.LagMs).ShouldBe(LagMs(rig, output.DeviceId), 1, $"{output.DeviceId}: published lag must be the applied one");
+            ((double)(change.NewPictureDelayMs - output.AssumedMs)).ShouldBe(output.LagMs, 1, $"{output.DeviceId}: lag = picture delay - assumed");
+        }
+    }
+
+    [Fact]
     public void A_later_press_on_the_slowest_output_lowers_the_picture_delay_and_the_other_output_follows_gradually_AC_10_AC_14()
     {
         using var rig = PlayingRig();
