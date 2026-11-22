@@ -553,7 +553,15 @@
         "T84",
         "T85",
         "T86",
-        "T87"
+        "T87",
+        "T88",
+        "T89",
+        "T90",
+        "T91",
+        "T92",
+        "T93",
+        "T94",
+        "T95"
       ],
       "acs": [
         "AC-16",
@@ -2030,6 +2038,202 @@
       "file": "docs/features/lip-synced-video/tasks/T87-bring-sad-the-t23-guide-cli-md-test-plan-screens-and-dod-boxes-in-step-with-the-code.md",
       "origin": "review-2026-11-22: P11",
       "status": "done"
+    },
+    {
+      "id": "T88",
+      "title": "Count the neighbour scan from the command's start and remember only neighbours that timed out on their own",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-07",
+        "AC-08",
+        "AC-09b"
+      ],
+      "dod": "A file enters the timed-out memory only when its own listing or probe ran its full, uncut `PictureProbeLimit`; a file whose check the press budget cut is neither remembered nor reported as skipped (the worker is still cancelled on every give-up).; Files already judged for the current film keep their verdict and original reason on later presses (a `not-hardware-decodable` file stays so; nothing is reported `unreadable` unless that was its verdict) and spend no budget again.; The timed-out memory is keyed by (normalized path, size, mtime); remembered files are checked last when the press still has budget (or forgotten after one step-past), so a file that recovers plays on a later press; a press that only stepped past remembered files never reports a file nobody judged as the reason for `no-next-file`.; The neighbour-scan budget counts from when the session starts the command; the key-arrival stamp is still used for `_resync.At` (T85 recovery timing unchanged).; Tests: hanging E2 + slow but healthy E3 → press 2 plays E3; a press queued behind a slow file change still checks files; a remembered file that recovers (new mtime or answers in time) plays; a skipped file keeps its original reason on the next press.; spec §6.1 and cli.md §2.2 state the rule (what is remembered, the key, when it is retried, and that the scan budget counts from the command's start).; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Playback/",
+        "src/DualPlayer.App/ViewModels/PlaybackControls.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.App.Tests/ViewModels/",
+        "docs/features/lip-synced-video/spec.md",
+        "docs/features/lip-synced-video/contracts/cli.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T88-count-the-neighbour-scan-from-the-command-s-start-and-remember-only-neighbours-that-timed-out-on-their-own.md",
+      "origin": "review-2026-11-22b: S1, S8, S9",
+      "status": "todo"
+    },
+    {
+      "id": "T89",
+      "title": "Mark outputs lost mid-film as lost in every picture-delay record",
+      "layer": "app",
+      "deps": [
+        "T88"
+      ],
+      "acs": [
+        "AC-17",
+        "AC-15"
+      ],
+      "dod": "`Merge` (or `OnDeviceLost`) marks every output in `_lost` `IsLost = true`, so every `PictureDelayChanged` after a mid-film loss carries it as lost and the log writes `Lost=true` with no `AssumedMs`/`LagMs`.; Test: lose output 1 mid-film, press Space (and a seek), assert `PictureDelayChanged(...).Outputs[0].IsLost` and the log line `Lost=true`; the playing output's lag equals picture delay − assumed.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.App/Startup/SessionEventLogWriter.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.App.Tests/Startup/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T89-mark-outputs-lost-mid-film-as-lost-in-every-picture-delay-record.md",
+      "origin": "review-2026-11-22b: S2",
+      "status": "todo"
+    },
+    {
+      "id": "T90",
+      "title": "Load the file again on return when the reloaded last frame failed again",
+      "layer": "app",
+      "deps": [
+        "T89"
+      ],
+      "acs": [
+        "AC-06b",
+        "AC-05"
+      ],
+      "dod": "A renderer `DecodeFailed` for the current film that arrives after the failure (while `_pictureFailed` is set) clears `_lastFrameReloaded`, so the return into the film loads the file again (or refuses without starting audio if that load fails).; Fake-renderer test: `DecodeFailed` raised after the reload's `Load` returned → the next backward seek calls `Load` again and no engine run starts before it succeeds.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.Core.Tests/Fakes/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T90-load-the-file-again-on-return-when-the-reloaded-last-frame-failed-again.md",
+      "origin": "review-2026-11-22b: S3",
+      "status": "todo"
+    },
+    {
+      "id": "T91",
+      "title": "Number run-summary rows by the start command's output number",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-06",
+        "AC-07"
+      ],
+      "dod": "Run-summary rows show each output's start-command number, also after an output was lost and the file changed.; Test: lose output 1, Page Down, Esc → the new file's summary row reads `2  dev-2`; existing summary tests stay green.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.App/Startup/RunSummaryLines.cs",
+        "src/DualPlayer.App/Startup/TerminalPrinter.cs",
+        "src/DualPlayer.Core/Diagnostics/EngineEvent.cs",
+        "src/DualPlayer.Core/Diagnostics/RunSummaryBuilder.cs",
+        "src/DualPlayer.Core/Playback/AudioEngine.cs",
+        "tests/DualPlayer.App.Tests/Startup/",
+        "tests/DualPlayer.Core.Tests/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T91-number-run-summary-rows-by-the-start-command-s-output-number.md",
+      "origin": "review-2026-11-22b: S4",
+      "status": "todo"
+    },
+    {
+      "id": "T92",
+      "title": "Log the picture failure, the reload outcome and start timings in milliseconds",
+      "layer": "app",
+      "deps": [
+        "T90"
+      ],
+      "acs": [
+        "AC-06b",
+        "AC-01",
+        "AC-07",
+        "AC-17"
+      ],
+      "dod": "The session log writes a `PictureFailed` record with the error code and reason, and the reload outcome (reloaded at position / failed / timed out).; `StartTimings` logs elapsed milliseconds from the command to the first frame and to the first sound; cli.md §3 states the fields and the unit.; The T23 guide items (:62, :65, :80, :90) name the exact record and fields to read.; Tests for both log lines.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.App/Startup/SessionEventLogWriter.cs",
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Playback/",
+        "tests/DualPlayer.App.Tests/Startup/",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "docs/features/lip-synced-video/contracts/cli.md",
+        "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T92-log-the-picture-failure-the-reload-outcome-and-start-timings-in-milliseconds.md",
+      "origin": "review-2026-11-22b: S6, S7",
+      "status": "todo"
+    },
+    {
+      "id": "T93",
+      "title": "Say when FFmpeg cancellation takes effect and run the interrupt test on Windows",
+      "layer": "integration",
+      "deps": [
+        "T88"
+      ],
+      "acs": [
+        "AC-09b"
+      ],
+      "dod": "spec §6.1 and sad.md §7 say cancellation takes effect at the next I/O boundary, that a read blocked inside the OS holds its thread until the OS gives up, and that the step-past memory bounds how many such threads can pile up.; A Media test that runs on Windows (and macOS) proves an interrupted open/probe returns promptly: e.g. a custom `AVIOContext` whose `read_packet` trickles or blocks between calls, or a Windows named-pipe writer; it is not skipped on windows-latest CI.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Media/FfmpegInterrupt.cs",
+        "src/DualPlayer.Media/",
+        "tests/DualPlayer.Media.Tests/",
+        "docs/features/lip-synced-video/spec.md",
+        "docs/features/lip-synced-video/sad.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T93-say-when-ffmpeg-cancellation-takes-effect-and-run-the-interrupt-test-on-windows.md",
+      "origin": "review-2026-11-22b: S10",
+      "status": "todo"
+    },
+    {
+      "id": "T94",
+      "title": "Make the picture-failure tests deterministic and scope the xUnit1051 suppression",
+      "layer": "test",
+      "deps": [
+        "T90"
+      ],
+      "acs": [
+        "AC-06b"
+      ],
+      "dod": "The picture-failure tests no longer depend on real-time waits racing the session thread: they advance fake time / the fake renderer until the summary appears (or wait on a signal), with no weakened assertion.; The full `dotnet test DualPlayer.slnx` passes 3 times in a row with the Core tests under parallel load (e.g. run alongside a second test process).; The project-wide `NoWarn` for xUnit1051 is gone; `TestContext.Current.CancellationToken` is passed where an overload exists, local `#pragma` elsewhere.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionPictureFailureReloadTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionPictureHealthTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/",
+        "tests/DualPlayer.Media.Tests/DualPlayer.Media.Tests.csproj",
+        "tests/DualPlayer.Media.Tests/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T94-make-the-picture-failure-tests-deterministic-and-scope-the-xunit1051-suppression.md",
+      "origin": "review-2026-11-22b: S11, S12",
+      "status": "todo"
+    },
+    {
+      "id": "T95",
+      "title": "Bring AC-06, screens, ux-flows, test-plan, sad, cli.md and the tracker in step with the code",
+      "layer": "docs",
+      "deps": [
+        "T88",
+        "T89",
+        "T90",
+        "T91",
+        "T92",
+        "T93",
+        "T94"
+      ],
+      "acs": [
+        "AC-06",
+        "AC-04",
+        "AC-06b",
+        "AC-07",
+        "AC-09b",
+        "AC-17"
+      ],
+      "dod": "AC-06, screens.md SCR-02 \"closed\" and the ux-flows Ended → Esc edge say Esc after the end adds nothing (the end's summary already covers the file); a Core test pins that Esc after Ended publishes no second run summary.; test-plan.md has rows for every T80–T94 test, row :136 counts the queue wait, and the Levels table describes the e2e-through-UI substitute truthfully; every test name in test-plan.md exists.; sad.md §5 describes the session's own control loop; sad.md §2 and §11 list `Error.Fields`, the `JsonFileStateStore` flush/test seam and the new Core registrations, plus any Core change T88–T94 made.; cli.md states fields are separated by two spaces and the examples' alignment is illustrative.; Every DoD box of T88–T94 that holds is ticked.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "docs/features/lip-synced-video/spec.md",
+        "docs/features/lip-synced-video/screens.md",
+        "docs/features/lip-synced-video/ux-flows.md",
+        "docs/features/lip-synced-video/test-plan.md",
+        "docs/features/lip-synced-video/sad.md",
+        "docs/features/lip-synced-video/contracts/cli.md",
+        "tests/DualPlayer.Core.Tests/Playback/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T95-bring-ac-06-screens-ux-flows-test-plan-sad-cli-md-and-the-tracker-in-step-with-the-code.md",
+      "origin": "review-2026-11-22b: S5, S13",
+      "status": "todo"
     }
   ]
 }
