@@ -2729,7 +2729,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T115-stop-the-late-pool-probe-test-from-hanging-the-core-suite-and-dispose-the-engine-before-the-session-in-the-rig.md",
       "origin": "review-2026-11-22f: X9",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T116",

@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-09b"]
 files_hint: ["tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs", "tests/DualPlayer.Core.Tests/Fakes/SessionRig.cs", "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs", "tests/DualPlayer.Core.Tests/Fakes/CountingTimeProvider.cs"]
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,8 +31,8 @@ See [spec.md](../spec.md) §5 AC-09b.
 
 ## Definition of Done
 
-- [ ] The late-pool test no longer fills the thread pool and no longer moves fake time from a free-running thread: fake time moves only under `Call` (e.g. from the fake's own hook), and any thread the test starts is joined before it asserts.
-- [ ] The test proves the probe wrapper runs off the pool by asserting `!Thread.CurrentThread.IsThreadPoolThread` inside the fake probe, and asserts that the new film actually started (`AudioStarted` or state Playing), not only `FileChanged`. It fails if the wrapper goes back to `Task.Run`.
-- [ ] `SessionRig.Dispose` disposes the engine before the session (or otherwise bounds the join), so a stalled command fails the test instead of hanging the run; a rig self-test pins that dispose returns within a bounded real time when a command is stuck.
-- [ ] The neighbour, rig and reload test classes (`dotnet test tests/DualPlayer.Core.Tests --filter "FullyQualifiedName~Neighbour|FullyQualifiedName~RigLoops|FullyQualifiedName~PictureFailureReload|FullyQualifiedName~AbandonedWorker"`) pass 10 runs in a row with parallel classes, none hanging (use `--blame-hang-timeout 120s`).
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The late-pool test no longer fills the thread pool and no longer moves fake time from a free-running thread: fake time moves only under `Call` (e.g. from the fake's own hook), and any thread the test starts is joined before it asserts.
+- [x] The test proves the probe wrapper runs off the pool by asserting `!Thread.CurrentThread.IsThreadPoolThread` inside the fake probe, and asserts that the new film actually started (`AudioStarted` or state Playing), not only `FileChanged`. It fails if the wrapper goes back to `Task.Run`.
+- [x] `SessionRig.Dispose` disposes the engine before the session (or otherwise bounds the join), so a stalled command fails the test instead of hanging the run; a rig self-test pins that dispose returns within a bounded real time when a command is stuck.
+- [x] The neighbour, rig and reload test classes (`dotnet test tests/DualPlayer.Core.Tests --filter "FullyQualifiedName~Neighbour|FullyQualifiedName~RigLoops|FullyQualifiedName~PictureFailureReload|FullyQualifiedName~AbandonedWorker"`) pass 10 runs in a row with parallel classes, none hanging (use `--blame-hang-timeout 120s`).
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

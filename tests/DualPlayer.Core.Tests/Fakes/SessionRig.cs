@@ -189,9 +189,11 @@ internal sealed class SessionRig : IDisposable
 
     public void Dispose()
     {
+        // The engine first: a session command stuck on the engine's fake time is released when the engine stops,
+        // so the session's thread can end instead of the join below waiting for it forever.
+        Engine.Dispose();
         Session.Dispose();
         _offsets.Dispose();
-        Engine.Dispose();
     }
 
     /// <summary>The engine as the session sees it; every transport command also tells the rig where the master clock stands.</summary>

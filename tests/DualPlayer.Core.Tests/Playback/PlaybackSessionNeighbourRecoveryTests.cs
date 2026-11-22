@@ -1,3 +1,4 @@
+using DualPlayer.Core.Diagnostics;
 using DualPlayer.Core.Outputs;
 using DualPlayer.Core.Playback;
 using DualPlayer.Core.Tests.Fakes;
@@ -254,49 +255,16 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
         using var probe = new ScriptedProbe();
         var second = File("Episode-02.mkv");
         using var rig = Playing(decoder, probe);
-        using var fillers = new PoolFillers(rig.Engine.Time);
-        decoder.AfterListing = fillers.Saturate; // the pool is held by other blocked workers right after E2's listing returns
+        bool? onPool = null;
+        probe.OnProbe = () => onPool = Thread.CurrentThread.IsThreadPoolThread;
 
         Press(rig);
 
-        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("the session invented a probe timeout because the pool started its wrapper late, though the adapter had its whole limit").File.ShouldBe(second);
-    }
-
-    private sealed class PoolFillers(FakeTimeProvider time) : IDisposable
-    {
-        private readonly ManualResetEventSlim _release = new();
-        private int _started;
-
-        public void Saturate()
-        {
-            ThreadPool.GetMinThreads(out var min, out _);
-            for (var i = 0; i < (min * 8) + 64; i++)
-            {
-                _ = Task.Run(() =>
-                {
-                    // The fillers block on a real event, not on fake time: they hold pool threads without moving the session's clock.
-                    Interlocked.Increment(ref _started);
-                    _release.Wait(TimeSpan.FromSeconds(30));
-                });
-            }
-
-            // Every pool thread is held and work is still queued before the session queues its probe wrapper, so the wrapper waits
-            // behind the queue (the pool may hold more threads than its minimum after earlier tests).
-            SpinWait.SpinUntil(() => Volatile.Read(ref _started) >= min - 1 && ThreadPool.PendingWorkItemCount > 0, TimeSpan.FromSeconds(10)).ShouldBeTrue("the pool was never saturated");
-
-            // While the pool is held, a thread of its own moves the session's clock past the probe limit plus slack, then frees the
-            // pool: a wrapper that waits for a pool thread would be given up on before it ever reached the adapter.
-            var late = new Thread(() =>
-            {
-                Thread.Sleep(100);
-                time.Advance(TimeSpan.FromMilliseconds(2100));
-                _release.Set();
-            })
-            { IsBackground = true };
-            late.Start();
-        }
-
-        public void Dispose() => _release.Set();
+        onPool.ShouldBe(false, "the probe wrapper ran on a thread-pool thread: a busy pool would delay it past its limit");
+        probe.Probed.ShouldContain("Episode-02.mkv");
+        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem().File.ShouldBe(second);
+        rig.EngineRunFiles.ShouldContain(second, "the new film never started");
+        rig.Engine.Events.OfType<AudioStarted>().Count().ShouldBeGreaterThan(1, "the new film never reached audio");
     }
 
     private sealed class Defer(Action action) : IDisposable
@@ -417,6 +385,8 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
 
         public TimeProvider? Time { get; set; }
 
+        public Action? OnProbe { get; set; }
+
         /// <summary>After a probe of the file returns <c>video.probe_timeout</c>, the adapter's worker is still running: <see cref="IsBusy"/> says so.</summary>
         public void StayBusyAfterTimeout(string name)
         {
@@ -474,6 +444,7 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
 
         public Result<PictureInfo> Probe(string path, TimeSpan timeLimit, CancellationToken cancel)
         {
+            OnProbe?.Invoke();
             var name = Path.GetFileName(path);
             TimeSpan cost;
             bool never;

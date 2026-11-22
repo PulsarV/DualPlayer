@@ -132,4 +132,20 @@ public sealed class RigLoopsTests
 
         moved.ShouldBe(0L, "an abandoned waiter of an earlier call kept moving fake time");
     }
+
+    [Fact]
+    public void Disposing_a_session_rig_with_a_stuck_command_returns_within_a_bounded_time()
+    {
+        var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600);
+
+        // A start nobody drives: the engine waits on fake time that never moves, so the session thread is stuck in the command.
+        var stuck = new Thread(() => rig.Session.Start(rig.Request(2))) { IsBackground = true };
+        stuck.Start();
+        Thread.Sleep(500);
+
+        var dispose = new Thread(rig.Dispose) { IsBackground = true };
+        dispose.Start();
+
+        dispose.Join(TimeSpan.FromSeconds(15)).ShouldBeTrue("SessionRig.Dispose hung on a stuck command: the engine must be disposed before the session");
+    }
 }
