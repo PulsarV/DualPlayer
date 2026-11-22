@@ -111,4 +111,39 @@ public sealed class PlaybackSessionPictureFailureReloadTests
         rig.Renderer.LoadCount.ShouldBe(loads + 1, "mpv holds no file after a failed reload, so the return loads it");
         rig.Session.State.ShouldBe(PlaybackState.Playing);
     }
+
+    [Fact]
+    public void A_decode_failure_after_the_reload_returned_makes_the_next_return_load_the_file_again_AC_06b_AC_05()
+    {
+        using var rig = PlayingRig();
+        FailThePicture(rig);
+        var loads = rig.Renderer.LoadCount;
+        var runs = rig.EngineRunFiles.Count;
+
+        // mpv reports the reload as loaded on FILE_LOADED; the picture then fails to decode again.
+        rig.Renderer.InjectDecodeFailure(DecodeError);
+        rig.Flush();
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-3))).IsSuccess.ShouldBeTrue();
+
+        rig.Renderer.LoadCount.ShouldBe(loads + 1, "the reloaded frame failed again, so mpv holds no file and the return loads it");
+        rig.Session.State.ShouldBe(PlaybackState.Playing);
+        rig.EngineRunFiles.Count.ShouldBe(runs + 1);
+    }
+
+    [Fact]
+    public void A_return_after_a_second_decode_failure_whose_load_fails_is_refused_and_starts_no_engine_run_AC_06b_AC_05()
+    {
+        using var rig = PlayingRig();
+        FailThePicture(rig);
+        var runs = rig.EngineRunFiles.Count;
+        rig.Renderer.InjectDecodeFailure(DecodeError);
+        rig.Flush();
+        rig.Renderer.LoadError = new Error("mpv.load_failed", "The file cannot be opened.");
+
+        var result = rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-3)));
+
+        result.IsSuccess.ShouldBeFalse("the file could not be loaded, so the return must not start sound against an idle mpv");
+        rig.EngineRunFiles.Count.ShouldBe(runs, "no engine run may start before the load succeeds");
+        rig.Session.State.ShouldBe(PlaybackState.Ended);
+    }
 }

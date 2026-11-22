@@ -1584,7 +1584,18 @@ public sealed partial class PlaybackSession : IDisposable
     {
         lock (_gate)
         {
-            if (_pictureFailed || _state == PlaybackState.Ended)
+            if (_pictureFailed)
+            {
+                // The reloaded last frame failed again: mpv holds no file, so the return must load it (AC-06b).
+                if (reloadLastFrame)
+                {
+                    _lastFrameReloaded = false;
+                }
+
+                return;
+            }
+
+            if (_state == PlaybackState.Ended)
             {
                 return;
             }

@@ -6,8 +6,8 @@ deps: ["T89"]
 blocks: []
 acs: ["AC-06b", "AC-05"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/", "tests/DualPlayer.Core.Tests/Fakes/"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,6 +31,6 @@ See [spec.md](../spec.md) §5 AC-06b, AC-05.
 
 ## Definition of Done
 
-- [ ] A renderer `DecodeFailed` for the current film that arrives after the failure (while `_pictureFailed` is set) clears `_lastFrameReloaded`, so the return into the film loads the file again (or refuses without starting audio if that load fails).
-- [ ] Fake-renderer test: `DecodeFailed` raised after the reload's `Load` returned → the next backward seek calls `Load` again and no engine run starts before it succeeds.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] A renderer `DecodeFailed` for the current film that arrives after the failure (while `_pictureFailed` is set) clears `_lastFrameReloaded`, so the return into the film loads the file again (or refuses without starting audio if that load fails).
+- [x] Fake-renderer test: `DecodeFailed` raised after the reload's `Load` returned → the next backward seek calls `Load` again and no engine run starts before it succeeds.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

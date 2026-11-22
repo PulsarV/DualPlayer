@@ -2104,7 +2104,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T90-load-the-file-again-on-return-when-the-reloaded-last-frame-failed-again.md",
       "origin": "review-2026-11-22b: S3",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T91",
