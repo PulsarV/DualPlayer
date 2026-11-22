@@ -63,6 +63,8 @@ public sealed partial class PlaybackSession : IDisposable
     // Files whose own listing or probe ran its full, uncut limit without an answer since the film started (AC-09b); a press
     // checks them last, so a file that recovers plays. Keyed by path + size + mtime. Touched only on the session's control thread.
     private readonly HashSet<NeighbourKey> _timedOut = [];
+    // The abandoned listing worker of a file the scan gave up on: while it runs, no press starts another for that file.
+    private readonly Dictionary<NeighbourKey, Task> _workers = [];
 
     // Files already judged unplayable for the film, with the verdict: later presses step past them with the same reason and
     // spend no budget on them again (AC-08).
@@ -532,10 +534,12 @@ public sealed partial class PlaybackSession : IDisposable
         string? lastSkipped = null;
         FileSkipped? lastSkip = null;
         var skipped = 0;
+        List<string> order = [];
         var outOfTime = false;
         try
         {
-            foreach (var candidate in ScanOrder(request.File, direction))
+            order = FolderNeighbours.Candidates(request.File, direction).ToList();
+            foreach (var candidate in ScanOrder(order))
             {
                 var key = KeyOf(candidate);
                 var (skip, expired) = _judged.TryGetValue(key, out var verdict)
@@ -563,6 +567,26 @@ public sealed partial class PlaybackSession : IDisposable
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // An unreadable folder has no neighbours.
+        }
+
+        if (target is not null)
+        {
+            // Remembered files that come before the target in folder order were deferred, which still passes them over.
+            var targetIndex = order.IndexOf(target);
+            foreach (var passed in order.Take(targetIndex))
+            {
+                if (!_timedOut.Contains(KeyOf(passed)))
+                {
+                    continue;
+                }
+
+                var skip = new FileSkipped(Path.GetFileName(passed), "unreadable", null, null);
+                skipped++;
+                lastSkipped = skip.File;
+                lastSkip = skip;
+                _events.Publish(skip);
+                LogSkipped(lastSkipped, skip.Reason, skip.OutputNumber, skip.Track);
+            }
         }
 
         var isNext = direction == NeighbourDirection.Next;
@@ -660,10 +684,10 @@ public sealed partial class PlaybackSession : IDisposable
 
     // The folder's neighbours in scan order: files that timed out on their own earlier come last, so one that recovered
     // still plays on a later press without holding up the healthy files before it.
-    private IEnumerable<string> ScanOrder(string current, NeighbourDirection direction)
+    private IEnumerable<string> ScanOrder(IEnumerable<string> candidates)
     {
         List<string>? remembered = null;
-        foreach (var candidate in FolderNeighbours.Candidates(current, direction))
+        foreach (var candidate in candidates)
         {
             if (_timedOut.Contains(KeyOf(candidate)))
             {
@@ -698,7 +722,7 @@ public sealed partial class PlaybackSession : IDisposable
         var gaveUp = false;
         try
         {
-            var outcome = CheckPlayable(path, request, scanAt, cancel.Token, out gaveUp, out var timedOut);
+            var outcome = CheckPlayable(path, key, request, scanAt, cancel.Token, out gaveUp, out var timedOut);
             if (timedOut)
             {
                 _timedOut.Add(key);
@@ -725,16 +749,31 @@ public sealed partial class PlaybackSession : IDisposable
         }
     }
 
-    private (FileSkipped? Skip, bool Expired) CheckPlayable(string path, StartRequest request, long scanAt, CancellationToken cancel, out bool gaveUp, out bool timedOut)
+    private (FileSkipped? Skip, bool Expired) CheckPlayable(string path, NeighbourKey key, StartRequest request, long scanAt, CancellationToken cancel, out bool gaveUp, out bool timedOut)
     {
         gaveUp = false;
         timedOut = false;
         var name = Path.GetFileName(path);
-        var remaining = NeighbourScanBudget - _time.GetElapsedTime(scanAt);
+        if (_workers.TryGetValue(key, out var live))
+        {
+            if (!live.IsCompleted)
+            {
+                // Never a second worker on a file whose first one is still blocked: step past it.
+                return (new FileSkipped(name, "unreadable", null, null), false);
+            }
+
+            _workers.Remove(key);
+        }
+
+        var elapsed = _time.GetElapsedTime(scanAt);
+        var remaining = NeighbourScanBudget - elapsed;
         if (remaining < MinProbeTime)
         {
             return (null, true);
         }
+
+        // No earlier file in this press spent any of the budget: this file had all of it.
+        var wholeBudget = elapsed <= ProbeTimingSlack;
 
         // The track listing runs on a worker under the same deadline as the probe; it counts as having had its own full limit
         // only when the press started it with at least that much left.
@@ -746,6 +785,7 @@ public sealed partial class PlaybackSession : IDisposable
             {
                 gaveUp = true;
                 timedOut = listingUncut;
+                _workers[key] = listing;
                 return (null, true);
             }
 
@@ -791,6 +831,8 @@ public sealed partial class PlaybackSession : IDisposable
         // A probe that used up a limit the budget had cut proves nothing about the file: not remembered, not reported.
         if (cut && usedUp)
         {
+            // Unless this file had the press's whole budget: then it is the file that is slow, and it is remembered.
+            timedOut = wholeBudget && picture.Error.Code == "video.probe_timeout";
             return (null, true);
         }
 
