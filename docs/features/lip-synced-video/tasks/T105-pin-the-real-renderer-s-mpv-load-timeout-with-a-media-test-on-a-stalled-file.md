@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-06b"]
 files_hint: ["tests/DualPlayer.Media.Tests/Video/MpvVideoRendererTests.cs", "tests/DualPlayer.Media.Tests/AbandonedWorkerTests.cs", "src/DualPlayer.Media/Video/MpvVideoRenderer.cs"]
-status: "blocked"
-step: "RED — false_pass"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,6 +31,6 @@ See [spec.md](../spec.md) §5 AC-06b.
 
 ## Definition of Done
 
-- [ ] A Media test loads a stalled source (FIFO on macOS / named pipe on Windows, reusing the `AbandonedWorkerTests` helper) through `MpvVideoRenderer.Load(..., timeout: short)` and asserts `mpv.load_timeout`; it fails if `:321` returns `mpv.load_failed`. It skips like the other mpv tests when libmpv is absent.
-- [ ] The test does not depend on wall-clock slack beyond the timeout it passes (no flaky comparisons).
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] A Media test loads a stalled source (FIFO on macOS / named pipe on Windows, reusing the `AbandonedWorkerTests` helper) through `MpvVideoRenderer.Load(..., timeout: short)` and asserts `mpv.load_timeout`; it fails if `:321` returns `mpv.load_failed`. It skips like the other mpv tests when libmpv is absent.
+- [x] The test does not depend on wall-clock slack beyond the timeout it passes (no flaky comparisons).
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

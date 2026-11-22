@@ -183,6 +183,21 @@ public sealed class MpvVideoRendererTests
         result.Error.Code.ShouldBe("mpv.load_failed");
     }
 
+    [Fact]
+    public void Load_of_a_stalled_file_returns_mpv_load_timeout_once_the_given_timeout_runs_out_AC_06b()
+    {
+        RequireLibmpv();
+        using var pipe = StalledPipe.CreateOrSkip();
+        using var renderer = NewRenderer();
+
+        var result = renderer.Load(pipe.Path, 0, startPaused: true, timeout: TimeSpan.FromMilliseconds(500));
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Error.ShouldNotBeNull();
+        result.Error.Code.ShouldBe("mpv.load_timeout", "a load that ran out of time is a timeout, not a rejected file");
+        renderer.Presented.ShouldBeNull();
+    }
+
     // ---- presented position (AC-01, AC-17) ----
 
     [Fact]

@@ -2480,7 +2480,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T105-pin-the-real-renderer-s-mpv-load-timeout-with-a-media-test-on-a-stalled-file.md",
       "origin": "review-2026-11-22d: V8",
-      "status": "blocked"
+      "status": "done"
     },
     {
       "id": "T106",
