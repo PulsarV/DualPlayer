@@ -58,7 +58,7 @@ internal sealed class EngineRig : IDisposable
         _specs = devices;
         _observe = observe;
         _barrierEvery = barrierEvery;
-        Time = new FakeTimeProvider();
+        Time = new CountingTimeProvider();
         var backend = new FakeAudioBackend(Time, new MixFormat(48_000, 2, ChannelLayout.Stereo)) { KeepRendered = keepRendered };
         for (var i = 0; i < devices.Length; i++)
         {
@@ -77,7 +77,7 @@ internal sealed class EngineRig : IDisposable
         _origin = Time.GetUtcNow();
     }
 
-    public FakeTimeProvider Time { get; }
+    public CountingTimeProvider Time { get; }
 
     public IAudioBackend Backend { get; }
 
@@ -171,7 +171,16 @@ internal sealed class EngineRig : IDisposable
             TaskCreationOptions.LongRunning,
             TaskScheduler.Default);
         started.Wait(TimeSpan.FromSeconds(10)).ShouldBeTrue("the command thread never started");
-        task.Wait(200);
+
+        // Fake time stands still until the command waits on it (asks for a timer) or finishes: a worker the pool starts late
+        // must see the time the command began at. The real-time cap covers a command that never waits on fake time.
+        var timers = Time.TimersCreated;
+        var gate = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+        while (!task.IsCompleted && Time.TimersCreated == timers && DateTime.UtcNow < gate)
+        {
+            task.Wait(5);
+        }
+
         for (var i = 0; i < 3_000 && !task.IsCompleted; i++)
         {
             Advance(barrier: false);

@@ -63,7 +63,8 @@ public sealed class AbandonedWorkerTests
 
         result.IsSuccess.ShouldBeFalse();
         result.Error.Code.ShouldBe("video.probe_timeout", "a probe whose own limit ran out before the first picture is a timeout, not an undecodable picture (AC-07, AC-08)");
-        clock.Elapsed.ShouldBeGreaterThanOrEqualTo(limit, "the stalled file ended the probe by itself, so the test would not see the interrupt");
+        // The limit is counted on the tick clock, which can end a few ms before the Stopwatch agrees: allow slack.
+        clock.Elapsed.ShouldBeGreaterThanOrEqualTo(limit - TimeSpan.FromMilliseconds(50), "the stalled file ended the probe by itself, so the test would not see the interrupt");
         pipe.ReaderClosed.Wait(Prompt, TestContext.Current.CancellationToken).ShouldBeTrue("the abandoned probe worker kept the stalled file open");
     }
 

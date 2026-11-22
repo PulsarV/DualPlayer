@@ -2355,7 +2355,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T100-make-the-interrupt-and-neighbour-memory-tests-independent-of-wall-clock-and-thread-pool-timing.md",
       "origin": "review-2026-11-22c: U10, U11",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T101",

@@ -6,8 +6,8 @@ deps: ["T96", "T97"]
 blocks: []
 acs: ["AC-07", "AC-08", "AC-09b"]
 files_hint: ["tests/DualPlayer.Media.Tests/AbandonedWorkerTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourMemoryTests.cs", "tests/DualPlayer.Core.Tests/Fakes/"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
