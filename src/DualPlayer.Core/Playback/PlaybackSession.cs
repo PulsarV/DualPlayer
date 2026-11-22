@@ -793,6 +793,13 @@ public sealed partial class PlaybackSession : IDisposable
             _workers.Remove(key);
         }
 
+        if (_pictureProbe.IsBusy(path))
+        {
+            // The adapter's probe worker for this file is still blocked: a listing would block a second thread on it.
+            steppedPast = true;
+            return (new FileSkipped(name, "unreadable", null, null), false);
+        }
+
         var elapsed = _time.GetElapsedTime(scanAt);
         var remaining = NeighbourScanBudget - elapsed;
         if (remaining < MinProbeTime)
@@ -848,11 +855,31 @@ public sealed partial class PlaybackSession : IDisposable
         var cut = remaining < PictureProbeLimit;
         var probeLimit = cut ? remaining : PictureProbeLimit;
         var probeStart = _time.GetTimestamp();
+        var entered = 0L;
 
-        // The probe runs on a worker too, so a probe that never returns cannot hold the press; the worker is kept per file.
-        var probe = Task.Run(() => _pictureProbe.Probe(path, probeLimit, cancel));
-        while (!probe.IsCompleted && _time.GetElapsedTime(probeStart) < probeLimit + ProbeTimingSlack)
+        // The probe runs on its own thread, so a probe that never returns cannot hold the press and the pool cannot delay it;
+        // its limit is counted from when the wrapper enters the probe. The worker is kept per file.
+        var probe = Task.Factory.StartNew(
+            () =>
+            {
+                Volatile.Write(ref entered, _time.GetTimestamp());
+                return _pictureProbe.Probe(path, probeLimit, cancel);
+            },
+            CancellationToken.None,
+            TaskCreationOptions.LongRunning,
+            TaskScheduler.Default);
+        while (!probe.IsCompleted)
         {
+            var start = Volatile.Read(ref entered);
+            if (start != 0)
+            {
+                probeStart = start;
+                if (_time.GetElapsedTime(start) >= probeLimit + ProbeTimingSlack)
+                {
+                    break;
+                }
+            }
+
             probe.Wait(1);
         }
 

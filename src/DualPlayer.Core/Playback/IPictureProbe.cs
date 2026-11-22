@@ -20,4 +20,10 @@ public interface IPictureProbe
     /// the file; the caller has given up on it. A probe that cannot be interrupted keeps the default, which ignores the token.
     /// </summary>
     Result<PictureInfo> Probe(string path, TimeSpan timeLimit, CancellationToken cancel) => Probe(path, timeLimit);
+
+    /// <summary>
+    /// True while an earlier probe worker of <paramref name="path"/> is still running (blocked in a read the token cannot break),
+    /// so a caller steps past the file instead of blocking a second thread on it.
+    /// </summary>
+    bool IsBusy(string path) => false;
 }

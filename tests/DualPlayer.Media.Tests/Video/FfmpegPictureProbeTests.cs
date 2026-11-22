@@ -138,6 +138,21 @@ public sealed class FfmpegPictureProbeTests
     }
 
     [Fact]
+    public void A_file_is_busy_exactly_while_its_probe_worker_is_still_running_AC_09b()
+    {
+        using var release = new ManualResetEventSlim();
+        var probe = new FfmpegPictureProbe { AfterFormatRead = () => release.Wait(TimeSpan.FromSeconds(30)) };
+        var path = Media("long-gop-ramp.mkv");
+
+        probe.IsBusy(path).ShouldBeFalse("a file never probed was reported busy");
+        probe.Probe(path, TimeSpan.FromMilliseconds(300), TestContext.Current.CancellationToken).Error!.Code.ShouldBe("video.probe_timeout");
+
+        probe.IsBusy(path).ShouldBeTrue("a file whose worker is blocked was not reported busy");
+        release.Set();
+        SpinWait.SpinUntil(() => !probe.IsBusy(path), TimeSpan.FromSeconds(10)).ShouldBeTrue("the busy flag never cleared after the worker ended");
+    }
+
+    [Fact]
     public void Probe_reports_not_hardware_decodable_naming_codec_and_profile_for_a_picture_only_software_can_decode()
     {
         var result = NewProbe().Probe(Media("video-ffv1.mkv"), Limit, TestContext.Current.CancellationToken);

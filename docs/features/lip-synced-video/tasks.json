@@ -2585,7 +2585,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T109-step-past-a-file-whose-probe-worker-is-still-running-before-its-listing-starts-and-time-the-probe-from-when-its-worker-e.md",
       "origin": "review-2026-11-22e: W3, W7",
-      "status": "blocked"
+      "status": "done"
     },
     {
       "id": "T110",

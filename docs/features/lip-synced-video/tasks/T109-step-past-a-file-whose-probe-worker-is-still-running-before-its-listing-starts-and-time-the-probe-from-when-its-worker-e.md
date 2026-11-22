@@ -6,8 +6,8 @@ deps: ["T108"]
 blocks: []
 acs: ["AC-09b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.Core/Playback/IPictureProbe.cs", "src/DualPlayer.Media/Video/FfmpegPictureProbe.cs", "tests/DualPlayer.Core.Tests/Fakes/", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs", "tests/DualPlayer.Media.Tests/Video/FfmpegPictureProbeTests.cs", "docs/features/lip-synced-video/spec.md", "docs/features/lip-synced-video/sad.md"]
-status: "blocked"
-step: "implement — pool test flaky by harness design, needs test-author fix"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -32,8 +32,8 @@ See [spec.md](../spec.md) §5 AC-09b.
 
 ## Definition of Done
 
-- [ ] Before it starts a listing, the session knows whether the probe adapter still has a live worker on that file (e.g. `IPictureProbe.IsBusy(path)`, or the adapter hands its live worker back and the session keeps it in `_workers`); such a file is stepped past without a listing, as a live listing worker is. At most one blocked thread per file, listing or probe.
-- [ ] The probe wrapper does not depend on thread-pool scheduling for its time limit: it runs with `TaskCreationOptions.LongRunning` and/or the session counts the limit + slack from a signal raised once the wrapper has entered `Probe`; when the adapter's own result arrives it is used with its codec/profile.
-- [ ] Tests: (1) press 1 E2's listing returns and its probe blocks (adapter returns `probe_timeout`); press 2 E2's listing would block → zero `ListTracks` calls on E2 in press 2, E2 stepped past; (2) a probe wrapper whose start is delayed by more than the slack (fake scheduler / gated start) → the adapter's own result (success, or `probe_timeout` with codec/profile) is used, not an invented timeout; (3) a Media test for the busy query on `FfmpegPictureProbe`. Each fails if its fix is reverted.
-- [ ] spec.md:249 and sad.md:538 still state "at most one blocked thread per file, listing or probe" and now hold; reword only if the mechanism they name changed.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Before it starts a listing, the session knows whether the probe adapter still has a live worker on that file (e.g. `IPictureProbe.IsBusy(path)`, or the adapter hands its live worker back and the session keeps it in `_workers`); such a file is stepped past without a listing, as a live listing worker is. At most one blocked thread per file, listing or probe.
+- [x] The probe wrapper does not depend on thread-pool scheduling for its time limit: it runs with `TaskCreationOptions.LongRunning` and/or the session counts the limit + slack from a signal raised once the wrapper has entered `Probe`; when the adapter's own result arrives it is used with its codec/profile.
+- [x] Tests: (1) press 1 E2's listing returns and its probe blocks (adapter returns `probe_timeout`); press 2 E2's listing would block → zero `ListTracks` calls on E2 in press 2, E2 stepped past; (2) a probe wrapper whose start is delayed by more than the slack (fake scheduler / gated start) → the adapter's own result (success, or `probe_timeout` with codec/profile) is used, not an invented timeout; (3) a Media test for the busy query on `FfmpegPictureProbe`. Each fails if its fix is reverted.
+- [x] spec.md:249 and sad.md:538 still state "at most one blocked thread per file, listing or probe" and now hold; reword only if the mechanism they name changed.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

@@ -27,6 +27,8 @@ public sealed unsafe class FfmpegPictureProbe : IPictureProbe
     // Test seam: runs on the worker right after codec and profile are published.
     internal Action? AfterFormatRead { get; init; }
 
+    public bool IsBusy(string path) => _running.TryGetValue(Path.GetFullPath(path), out var worker) && !worker.IsCompleted;
+
     public Result<PictureInfo> Probe(string path, TimeSpan timeLimit) => Probe(path, timeLimit, CancellationToken.None);
 
     public Result<PictureInfo> Probe(string path, TimeSpan timeLimit, CancellationToken cancel)

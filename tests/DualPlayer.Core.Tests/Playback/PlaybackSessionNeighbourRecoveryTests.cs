@@ -1,6 +1,7 @@
 using DualPlayer.Core.Outputs;
 using DualPlayer.Core.Playback;
 using DualPlayer.Core.Tests.Fakes;
+using Microsoft.Extensions.Time.Testing;
 
 namespace DualPlayer.Core.Tests.Playback;
 
@@ -225,6 +226,79 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
         rig.Events.OfType<FileChanged>().ShouldHaveSingleItem().File.ShouldBe(second);
     }
 
+    [Fact]
+    public void A_file_whose_probe_worker_is_still_running_is_stepped_past_before_a_second_listing_blocks_on_it_AC_09b()
+    {
+        using var decoder = new ScriptedDecoder();
+        using var probe = new ScriptedProbe();
+        File("Episode-02.mkv");
+        using var rig = Playing(decoder, probe);
+        probe.Hang("Episode-02.mkv");
+        probe.StayBusyAfterTimeout("Episode-02.mkv"); // the adapter returns probe_timeout and keeps its worker blocked in ReadFile
+
+        Press(rig); // E2's listing returns, its probe runs out of time: the adapter's worker stays
+        decoder.Listed("Episode-02.mkv").ShouldBe(1);
+        decoder.Block("Episode-02.mkv"); // the share is now fully down: a new listing would block on open
+
+        Press(rig);
+
+        decoder.Listed("Episode-02.mkv").ShouldBe(1, "a second thread was blocked on a file whose probe worker was still running");
+        rig.Events.OfType<FileSkipped>().ShouldContain(e => e.File == "Episode-02.mkv" && e.Reason == "unreadable", "the file with a live probe worker was not stepped past");
+        rig.Events.OfType<FileChanged>().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void A_probe_wrapper_the_thread_pool_starts_late_is_not_given_up_on_before_the_adapter_answers_AC_09b()
+    {
+        using var decoder = new ScriptedDecoder();
+        using var probe = new ScriptedProbe();
+        var second = File("Episode-02.mkv");
+        using var rig = Playing(decoder, probe);
+        using var fillers = new PoolFillers(rig.Engine.Time);
+        decoder.AfterListing = fillers.Saturate; // the pool is held by other blocked workers right after E2's listing returns
+
+        Press(rig);
+
+        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("the session invented a probe timeout because the pool started its wrapper late, though the adapter had its whole limit").File.ShouldBe(second);
+    }
+
+    private sealed class PoolFillers(FakeTimeProvider time) : IDisposable
+    {
+        private readonly ManualResetEventSlim _release = new();
+        private int _started;
+
+        public void Saturate()
+        {
+            ThreadPool.GetMinThreads(out var min, out _);
+            for (var i = 0; i < (min * 8) + 64; i++)
+            {
+                _ = Task.Run(() =>
+                {
+                    // The fillers block on a real event, not on fake time: they hold pool threads without moving the session's clock.
+                    Interlocked.Increment(ref _started);
+                    _release.Wait(TimeSpan.FromSeconds(30));
+                });
+            }
+
+            // Every pool thread is held and work is still queued before the session queues its probe wrapper, so the wrapper waits
+            // behind the queue (the pool may hold more threads than its minimum after earlier tests).
+            SpinWait.SpinUntil(() => Volatile.Read(ref _started) >= min - 1 && ThreadPool.PendingWorkItemCount > 0, TimeSpan.FromSeconds(10)).ShouldBeTrue("the pool was never saturated");
+
+            // While the pool is held, a thread of its own moves the session's clock past the probe limit plus slack, then frees the
+            // pool: a wrapper that waits for a pool thread would be given up on before it ever reached the adapter.
+            var late = new Thread(() =>
+            {
+                Thread.Sleep(100);
+                time.Advance(TimeSpan.FromMilliseconds(2100));
+                _release.Set();
+            })
+            { IsBackground = true };
+            late.Start();
+        }
+
+        public void Dispose() => _release.Set();
+    }
+
     private sealed class Defer(Action action) : IDisposable
     {
         public void Dispose() => action();
@@ -237,8 +311,19 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
         private readonly Dictionary<string, TimeSpan> _costs = new(StringComparer.Ordinal);
         private readonly Dictionary<string, ManualResetEventSlim> _blocks = new(StringComparer.Ordinal);
         private readonly HashSet<string> _returned = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _listed = new(StringComparer.Ordinal);
 
         public TimeProvider? Time { get; set; }
+
+        public Action? AfterListing { get; set; }
+
+        public int Listed(string name)
+        {
+            lock (_gate)
+            {
+                return _listed.GetValueOrDefault(name);
+            }
+        }
 
         public void Cost(string name, TimeSpan cost)
         {
@@ -292,6 +377,7 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
             {
                 _blocks.TryGetValue(name, out block);
                 cost = _costs.GetValueOrDefault(name);
+                _listed[name] = _listed.GetValueOrDefault(name) + 1;
             }
 
             if (block is not null)
@@ -310,6 +396,7 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
                 _returned.Add(name);
             }
 
+            AfterListing?.Invoke();
             return Result<IReadOnlyList<AudioTrackInfo>>.Success([.. new[] { 1, 2 }.Select(n => new AudioTrackInfo(n, "und", ChannelLayout.Stereo, 48_000))]);
         }
 
@@ -325,8 +412,27 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
         private readonly ManualResetEventSlim _release = new();
         private readonly HashSet<string> _never = new(StringComparer.Ordinal);
         private readonly HashSet<string> _busy = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _stayBusy = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _stuck = new(StringComparer.Ordinal);
 
         public TimeProvider? Time { get; set; }
+
+        /// <summary>After a probe of the file returns <c>video.probe_timeout</c>, the adapter's worker is still running: <see cref="IsBusy"/> says so.</summary>
+        public void StayBusyAfterTimeout(string name)
+        {
+            lock (_gate)
+            {
+                _stayBusy.Add(name);
+            }
+        }
+
+        public bool IsBusy(string path)
+        {
+            lock (_gate)
+            {
+                return _stuck.Contains(Path.GetFileName(path));
+            }
+        }
 
         public List<string> Probed { get; } = [];
 
@@ -395,6 +501,17 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
             var spent = cost < timeLimit ? cost : timeLimit;
             var end = Time!.GetTimestamp() + (long)(spent.TotalSeconds * Time.TimestampFrequency);
             Time.SpinUntil(end, cancel);
+
+            if (cost > timeLimit)
+            {
+                lock (_gate)
+                {
+                    if (_stayBusy.Contains(name))
+                    {
+                        _stuck.Add(name);
+                    }
+                }
+            }
 
             return cost > timeLimit
                 ? Result<PictureInfo>.Failure("video.probe_timeout", "The probe gave up.")
