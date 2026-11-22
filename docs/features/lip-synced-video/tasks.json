@@ -561,7 +561,13 @@
         "T92",
         "T93",
         "T94",
-        "T95"
+        "T95",
+        "T96",
+        "T97",
+        "T98",
+        "T99",
+        "T100",
+        "T101"
       ],
       "acs": [
         "AC-16",
@@ -2234,6 +2240,153 @@
       "file": "docs/features/lip-synced-video/tasks/T95-bring-ac-06-screens-ux-flows-test-plan-sad-cli-md-and-the-tracker-in-step-with-the-code.md",
       "origin": "review-2026-11-22b: S5, S13",
       "status": "done"
+    },
+    {
+      "id": "T96",
+      "title": "Return video.probe_timeout from the FFmpeg picture probe when its own limit runs out",
+      "layer": "integration",
+      "deps": [],
+      "acs": [
+        "AC-07",
+        "AC-08",
+        "AC-09b",
+        "AC-02"
+      ],
+      "dod": "When the probe's own limit runs out before the first picture is decoded (`worker.Wait` false), `FfmpegPictureProbe` returns `video.probe_timeout`, with `codec`/`profile` in `Error.Fields` when already known; a picture that decoded but not in hardware still returns `video.not_hardware_decodable`.; `IPictureProbe`'s doc comment lists `video.probe_timeout` and when it is returned.; At start (`StartCommand.Validate`), `video.probe_timeout` is refused exactly as cli.md §5 refuses `video.not_hardware_decodable` (same exit code and message class), so the AC-02 start refusal is unchanged; the session's `ReasonOf` maps `video.probe_timeout` to `unreadable`.; Media test on the stalled pipe asserts the returned code is `video.probe_timeout`; App test asserts the start refusal for a probe returning `video.probe_timeout`.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Media/Video/FfmpegPictureProbe.cs",
+        "src/DualPlayer.Core/Playback/IPictureProbe.cs",
+        "src/DualPlayer.App/Startup/StartCommand.cs",
+        "tests/DualPlayer.Media.Tests/",
+        "tests/DualPlayer.App.Tests/Startup/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T96-return-video-probe-timeout-from-the-ffmpeg-picture-probe-when-its-own-limit-runs-out.md",
+      "origin": "review-2026-11-22c: U1",
+      "status": "todo"
+    },
+    {
+      "id": "T97",
+      "title": "Remember a neighbour that had the whole press budget, report deferred remembered files as skipped, and never restart a live worker",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-07",
+        "AC-08",
+        "AC-09b"
+      ],
+      "dod": "A file whose check started with the press's whole budget (no earlier file in this press spent any) and still could not be judged is remembered as timed out (same `NeighbourKey`), whether the listing or the probe ran out; only a file cut short because earlier files spent the budget stays unremembered and unreported.; When the target is chosen after remembered files that come before it in scan order were deferred, each such file is published as `FileSkipped(name, \"unreadable\")`, logged and counted in `checked N`; the terminal and the note show it as for any skip.; The abandoned worker `Task` (listing or probe) is kept per `NeighbourKey`; while it has not completed, a later press steps past that file (counted as checked, reason `unreadable`) without starting a new worker, and retries only once the task completed or the key changed.; Tests: listing 1.2 s + probe 1.9 s on E2 → press 2 reaches E3 (and reports E2 skipped); a remembered E2 deferred before E3 → press 2 publishes `FileSkipped(E2, unreadable)` and `checked` counts it; a listing that never returns + three presses → exactly one `ListTracks` call for E2.; spec §6.1 (:247 and :249), sad.md §7 (:526) and cli.md §2.2 (:85) state the final rule: what is remembered, that the 3 s budget counts from the start of the command plus any queue wait, that remembered files are reported as skipped, and that a live worker is not restarted (so at most one blocked thread per file).; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.Core.Tests/Fakes/",
+        "docs/features/lip-synced-video/spec.md",
+        "docs/features/lip-synced-video/sad.md",
+        "docs/features/lip-synced-video/contracts/cli.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T97-remember-a-neighbour-that-had-the-whole-press-budget-report-deferred-remembered-files-as-skipped-and-never-restart-a-live-worker.md",
+      "origin": "review-2026-11-22c: U2, U3, U4, U5",
+      "status": "todo"
+    },
+    {
+      "id": "T98",
+      "title": "Always reload on return after a picture failure, and log a reload timeout and a frame that fails again",
+      "layer": "app",
+      "deps": [
+        "T97"
+      ],
+      "acs": [
+        "AC-06b",
+        "AC-05"
+      ],
+      "dod": "After a picture failure, `ReturnIntoFilm` always calls `Load` (one paused load) before starting the engine, whatever `_lastFrameReloaded` says; test: a `DecodeFailed` for the reloaded frame queued behind a ← → the return loads again and no engine run starts on an idle renderer.; `MpvVideoRenderer.Load` returns a distinct `mpv.load_timeout` when its wait runs out (documented on `IVideoRenderer`); the session maps the reload outcome from the code (`mpv.load_timeout` → `timed-out`, other failures → `failed`), not from elapsed time; tests for both.; A `DecodeFailed` for the reloaded frame publishes `PictureReloadFinished` with a new outcome `failed-again`, which the log writer prints as `PictureReload Outcome=failed-again`; test on the Core and log-writer sides.; cli.md §3 lists the `failed-again` outcome; the T23 guide (:80) explains it.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "src/DualPlayer.Core/Playback/IVideoRenderer.cs",
+        "src/DualPlayer.Media/Video/MpvVideoRenderer.cs",
+        "src/DualPlayer.App/Startup/SessionEventLogWriter.cs",
+        "tests/DualPlayer.Core.Tests/Playback/",
+        "tests/DualPlayer.Core.Tests/Fakes/",
+        "tests/DualPlayer.App.Tests/Startup/",
+        "tests/DualPlayer.Media.Tests/Video/",
+        "docs/features/lip-synced-video/contracts/cli.md",
+        "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T98-always-reload-on-return-after-a-picture-failure-and-log-a-reload-timeout-and-a-frame-that-fails-again.md",
+      "origin": "review-2026-11-22c: U6, U8, U9",
+      "status": "todo"
+    },
+    {
+      "id": "T99",
+      "title": "Log the applied lag, not a mid-ramp mix, in picture-delay records",
+      "layer": "app",
+      "deps": [
+        "T98"
+      ],
+      "acs": [
+        "AC-17"
+      ],
+      "dod": "Every `PictureDelayChanged` publishes, for each playing output, a lag equal to the lag the engine actually applies at that moment (e.g. `_lags.CurrentLag(deviceId)`), and `AssumedMs` consistent with the published picture delay and that lag; or Pause publishes the target delay and target lags as Resume and Seek do — whichever keeps cli.md §1.1 (lag = picture delay − assumed) true.; Test: change an offset, press Space mid-ramp, and assert each published lag equals the engine's applied lag (read from the fake engine/rig, not recomputed by the test's own formula) and is never negative.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T99-log-the-applied-lag-not-a-mid-ramp-mix-in-picture-delay-records.md",
+      "origin": "review-2026-11-22c: U7",
+      "status": "todo"
+    },
+    {
+      "id": "T100",
+      "title": "Make the interrupt and neighbour-memory tests independent of wall-clock and thread-pool timing",
+      "layer": "test",
+      "deps": [
+        "T96",
+        "T97"
+      ],
+      "acs": [
+        "AC-07",
+        "AC-08",
+        "AC-09b"
+      ],
+      "dod": "`AbandonedWorkerTests` no longer compares Stopwatch time against a TickCount-based wait without slack: it allows a slack (e.g. `limit - 50 ms`) or proves \"still reading\" another way (e.g. `ReaderClosed` not set just before the limit).; The neighbour-memory tests (including any T97 added) do not depend on when the thread pool starts the listing worker: the scripted decoder and probe advance the fake clock themselves, and the command runs without free-running time (or time advance is gated until the worker has run).; The Core and Media test projects pass 10 runs in a row under load (e.g. three full-solution runs in parallel) with no failure in these tests.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Media.Tests/AbandonedWorkerTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourMemoryTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T100-make-the-interrupt-and-neighbour-memory-tests-independent-of-wall-clock-and-thread-pool-timing.md",
+      "origin": "review-2026-11-22c: U10, U11",
+      "status": "todo"
+    },
+    {
+      "id": "T101",
+      "title": "Bring cli.md, ux-flows, sad flow 3, SCR-02 and test-plan in step with the code, and test Esc after every end cause",
+      "layer": "docs",
+      "deps": [
+        "T96",
+        "T97",
+        "T98",
+        "T99",
+        "T100"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-05",
+        "AC-06",
+        "AC-07",
+        "AC-08"
+      ],
+      "dod": "cli.md:17 lists the fixed-width labels (`next`/`previous`, `picture`, `started`) and the padded run-summary rows; the rest of the rule matches `TerminalPrinter`/`RunSummaryLines`.; ux-flows US-03 and sad flow 3 have a budget-ran-out branch (`next-file-timeout`); US-03 has a new-file-fails-to-start → SCR-03 \"Could not play\" → SCR-02 ended edge; US-02 has a return-fails → SCR-03 \"Could not go back\" edge; the AC-08 coverage rows in both files are updated.; cli.md §2.1 and SCR-02 `ended` include the failed file change (reason `file-change`).; The Esc-after-end test is a theory over the five end causes (natural end, seek past end, last output lost, picture failure, failed file change), each asserting exactly one run summary before and after Esc; test-plan.md:146 matches it, and rows exist for every test T96–T100 added.; Every DoD box of T96–T100 that holds is ticked; the tracker's T23 row is blocked by T22, T24–T101.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "docs/features/lip-synced-video/contracts/cli.md",
+        "docs/features/lip-synced-video/ux-flows.md",
+        "docs/features/lip-synced-video/sad.md",
+        "docs/features/lip-synced-video/screens.md",
+        "docs/features/lip-synced-video/test-plan.md",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionExitTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T101-bring-cli-md-ux-flows-sad-flow-3-scr-02-and-test-plan-in-step-with-the-code-and-test-esc-after-every-end-cause.md",
+      "origin": "review-2026-11-22c: U12, U13, U14, U15",
+      "status": "todo"
     }
   ]
 }
