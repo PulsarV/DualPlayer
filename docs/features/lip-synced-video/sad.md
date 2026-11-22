@@ -223,15 +223,18 @@ sequenceDiagram
     participant Offsets as device-offsets.json
     participant Window as Playback window
     Developer->>Cli: start command with file, outputs and screen
-    Cli->>Cli: check file access and that the named screen is connected
-    alt access denied or screen not connected
-        Cli-->>Developer: plain-language error, list of screens, exit code
-    else checks pass
-        Cli->>Media: probe the picture in hardware
-        alt no picture or not hardware-decodable
-            Media-->>Cli: refused with codec and profile
-            Cli-->>Developer: plain-language error naming the format, exit code
-        else picture ok
+    Cli->>Media: probe the file: readable, has a picture, decodes in hardware within the start budget
+    alt access denied, unreadable, no picture, not hardware-decodable or probe timed out
+        Media-->>Cli: refused with its code, codec and profile when known
+        Cli-->>Developer: plain-language error naming the cause, exit code
+    else picture ok
+        Cli->>Media: list the audio tracks
+        Cli->>Platform: check the devices: connected, used once, opened and released
+        Cli->>Cli: check that the named screen is connected
+        Cli->>Media: check the video renderer library
+        alt a track, device, screen or the renderer library is refused
+            Cli-->>Developer: plain-language error (list of screens when the screen is missing), exit code
+        else checks pass
             Cli->>Core: start the session
             Core->>Platform: probe reported latency, connection kind and form factor per device
             Core->>Offsets: load remembered offsets
@@ -252,6 +255,8 @@ sequenceDiagram
         end
     end
 ```
+
+The checks run in the order of `contracts/cli.md` §1.1 (probe, tracks, devices, screen, renderer library), so a file with no picture and a missing `--screen` gets `video.no_picture`. A file that passes them but that mpv does not open in time ends the start with `mpv.load_timeout` when the session loads it.
 
 **Critical flow 2: the picture delay changes during playback (US-04, US-06 — AC-10, AC-14, AC-15)**
 
@@ -539,7 +544,7 @@ One process on one PC: `DualPlayer.App` is built as a console-subsystem executab
 |---|---|---|
 | Logging | `ILogger<T>` everywhere; Serilog rolling file under app-data `logs/`. New structured events from the `SessionEvent` stream: latency estimated (per output: device, type taken, reported part, type default, offset, assumed latency, lag), picture delay changed, picture timing (presented vs due), per-minute frame counters (late, dropped, skipped damaged). The App host writes engine and session events to the log and prints the run summary to the terminal | `CLAUDE.md` Logging; here (event set); step-3 ADR-0007 (stream model) |
 | Authentication / authorization | N/A — local single-user program. The only access checks are the OS's own file and device access (AC-03, step-3 AC-04) | spec §6.1 |
-| Error handling | Expected failures are `Result` / `Result<T>` with dotted lowercase codes, e.g. `playback.file_access_denied`, `start.screen_not_found`, `video.no_picture`, `video.not_hardware_decodable`, `video.decode_failed`, `mpv.not_found`, `mpv.load_failed`; device loss and picture decode failure during play are session events. Exceptions are bugs, logged at the top of each loop. Exit codes and the exact message text are fixed by `contracts/cli.md` (api stage) | `CLAUDE.md` Errors; `src/DualPlayer.Core/Result.cs` |
+| Error handling | Expected failures are `Result` / `Result<T>` with dotted lowercase codes, e.g. `playback.file_access_denied`, `start.screen_not_found`, `video.no_picture`, `video.not_hardware_decodable`, `video.probe_timeout`, `video.decode_failed`, `mpv.not_found`, `mpv.load_failed`, `mpv.load_timeout`; device loss and picture decode failure during play are session events. Exceptions are bugs, logged at the top of each loop. Exit codes and the exact message text are fixed by `contracts/cli.md` (api stage) | `CLAUDE.md` Errors; `src/DualPlayer.Core/Result.cs` |
 | Time and clocks | All lip-sync arithmetic is in Core on the master clock and `TimeProvider`; no `DateTime.Now` / `Stopwatch` in Core. The mpv adapter converts mpv's timestamps to the same monotonic time base the step-3 backend uses (QPC on Windows) before handing them to Core | `CLAUDE.md` Time and clocks; ADR-0002 |
 | Threading | The playback session runs on its own control thread (a second `EngineControlLoop` instance): every command, timer callback, engine event and renderer event is handled there one at a time in posting order. It is not the engine control loop itself because the session's commands block on engine commands (pre-roll, seek confirmation) that run on that loop; events and timers only post, so nothing waits in a cycle (T24, review-2026-11-20 F7). The App queues each key's command on a third thread, so the UI never waits. Lag ramps run on the step-3 engine control loop. mpv property and end events arrive on mpv's event thread; the adapter publishes immutable snapshots without locks the control loop could wait on. Render threads are never blocked. UI updates marshal through `Dispatcher.UIThread`. The picture probe runs off the UI thread with a time limit | `CLAUDE.md` Threading; step-3 ADR-0007 |
 | Persistence | `device-offsets.json` through `IStateStore`, atomic temp + rename, `schemaVersion` 1, source-generated context; saved ≤ 1 s after the last offset press; values clamped to ±500 ms and rounded to 10 ms on load, each clamp logged | ADR-0006; project ADR-0004 |

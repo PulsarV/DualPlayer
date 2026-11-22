@@ -6,8 +6,8 @@ deps: ["T102", "T103", "T104", "T105", "T106"]
 blocks: []
 acs: ["AC-02", "AC-03b", "AC-09b"]
 files_hint: ["docs/features/lip-synced-video/contracts/cli.md", "docs/features/lip-synced-video/sad.md", "docs/features/lip-synced-video/test-plan.md", "docs/features/lip-synced-video/tasks/tracker.md", "docs/features/lip-synced-video/tasks/T23-measure-lip-sync-on-the-target-pc.md", "docs/features/lip-synced-video/tasks.json"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -32,8 +32,8 @@ See [spec.md](../spec.md) §5 AC-02, AC-03b, AC-09b.
 
 ## Definition of Done
 
-- [ ] cli.md §5 has rows for `video.probe_timeout` and `mpv.load_timeout` (both exit 2, with when each is printed); row :133 no longer claims the start-budget case; the code list in sad.md (:542) includes both.
-- [ ] cli.md §2.2 documents that an `unreadable` skip from a timed-out probe may carry `codec`/`profile` when they are known.
-- [ ] sad flow 1 runs the checks in the code's order (probe → tracks → devices → screen → renderer library), matching cli.md §1.1.
-- [ ] test-plan.md has a row for every test T102–T106 added; every DoD box of T102–T106 that holds is ticked; the tracker's T23 row and T23's deps include T102–T107.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] cli.md §5 has rows for `video.probe_timeout` and `mpv.load_timeout` (both exit 2, with when each is printed); row :133 no longer claims the start-budget case; the code list in sad.md (:542) includes both.
+- [x] cli.md §2.2 documents that an `unreadable` skip from a timed-out probe may carry `codec`/`profile` when they are known.
+- [x] sad flow 1 runs the checks in the code's order (probe → tracks → devices → screen → renderer library), matching cli.md §1.1.
+- [x] test-plan.md has a row for every test T102–T106 added; every DoD box of T102–T106 that holds is ticked; the tracker's T23 row and T23's deps include T102–T107.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
