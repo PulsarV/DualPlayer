@@ -55,6 +55,22 @@ internal sealed class CountingTimeProvider : FakeTimeProvider
     /// <summary>How many fakes are spending or blocked on fake time right now: while any is, fake time moves on; when none is, it stands still.</summary>
     public int Waiters => Volatile.Read(ref _waiters);
 
+    private int _generation;
+
+    /// <summary>A new command starts: a waiter that entered in an earlier call and never left its scope no longer counts, so it cannot move fake time now.</summary>
+    public void BeginCall()
+    {
+        lock (_waitersLock)
+        {
+            _generation++;
+            Volatile.Write(ref _waiters, 0);
+        }
+
+        Pulse();
+    }
+
+    private readonly object _waitersLock = new();
+
     /// <summary>A fake tells the rig that its command now waits on fake time for good (an engine command), so fake time may move.</summary>
     public void SignalWait()
     {
@@ -65,9 +81,15 @@ internal sealed class CountingTimeProvider : FakeTimeProvider
     /// <summary>A fake is blocked in real time until the session gives up on it by fake time: fake time moves on until the scope ends.</summary>
     public IDisposable Waiting()
     {
-        Interlocked.Increment(ref _waiters);
+        int generation;
+        lock (_waitersLock)
+        {
+            generation = _generation;
+            Interlocked.Increment(ref _waiters);
+        }
+
         Pulse();
-        return new Scope(this);
+        return new Scope(this, generation);
     }
 
     /// <summary>Called by a fake spending fake time: signals the rig that fake time may move, then spins until it has reached <paramref name="end"/>.</summary>
@@ -85,7 +107,7 @@ internal sealed class CountingTimeProvider : FakeTimeProvider
         }
     }
 
-    private sealed class Scope(CountingTimeProvider owner) : IDisposable
+    private sealed class Scope(CountingTimeProvider owner, int generation) : IDisposable
     {
         private int _done;
 
@@ -93,7 +115,13 @@ internal sealed class CountingTimeProvider : FakeTimeProvider
         {
             if (Interlocked.Exchange(ref _done, 1) == 0)
             {
-                Interlocked.Decrement(ref owner._waiters);
+                lock (owner._waitersLock)
+                {
+                    if (owner._generation == generation)
+                    {
+                        Interlocked.Decrement(ref owner._waiters);
+                    }
+                }
             }
         }
     }

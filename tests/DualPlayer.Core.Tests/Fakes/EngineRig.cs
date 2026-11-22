@@ -168,6 +168,7 @@ internal sealed class EngineRig : IDisposable
     {
         using var started = new ManualResetEventSlim();
         var signals = Time.Signals;
+        Time.BeginCall();
         var task = Task.Factory.StartNew(
             () =>
             {

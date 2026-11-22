@@ -6,8 +6,8 @@ deps: ["T109"]
 blocks: []
 acs: ["AC-08", "AC-09b"]
 files_hint: ["tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs", "tests/DualPlayer.Core.Tests/Fakes/CountingTimeProvider.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRememberedFilesTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourWorkerTimingTests.cs"]
-status: "blocked"
-step: "DEPS — dep T109 blocked"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,7 +31,7 @@ See [spec.md](../spec.md) §5 AC-08, AC-09b.
 
 ## Definition of Done
 
-- [ ] The gate moves fake time only for waiters that entered during the current `Call` (a generation captured at `Call` start), or the Block/Never fakes leave their `Waiting()` scope once the session cancels their token; an abandoned waiter from press N never moves time in press N+1. No real-time cap.
-- [ ] A rig self-test pins that: an abandoned waiter from press N, then press N+1 with no fake waiting → fake time does not move during the folder work of press N+1. Fails if the generation check is removed.
-- [ ] The neighbour test classes pass 10 runs in a row (`--no-build`), and each still takes well under 1 s.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The gate moves fake time only for waiters that entered during the current `Call` (a generation captured at `Call` start), or the Block/Never fakes leave their `Waiting()` scope once the session cancels their token; an abandoned waiter from press N never moves time in press N+1. No real-time cap.
+- [x] A rig self-test pins that: an abandoned waiter from press N, then press N+1 with no fake waiting → fake time does not move during the folder work of press N+1. Fails if the generation check is removed.
+- [x] The neighbour test classes pass 10 runs in a row (`--no-build`), and each still takes well under 1 s.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

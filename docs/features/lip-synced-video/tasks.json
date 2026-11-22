@@ -2648,7 +2648,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T112-count-only-the-current-press-s-waiters-in-the-fake-time-gate-of-the-neighbour-tests.md",
       "origin": "review-2026-11-22e: W8",
-      "status": "blocked"
+      "status": "done"
     },
     {
       "id": "T113",

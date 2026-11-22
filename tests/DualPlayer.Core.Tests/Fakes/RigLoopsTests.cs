@@ -109,4 +109,27 @@ public sealed class RigLoopsTests
 
         rig.Engine.Engine.StartRun("film.mkv", rig.Request(2).Outputs, new EngineOptions()).Error?.Code.ShouldNotBe("playback.run_active", "a barrier left a phantom run behind");
     }
+
+    [Fact]
+    public void A_waiter_abandoned_in_an_earlier_call_does_not_move_fake_time_in_the_next_call()
+    {
+        using var rig = new EngineRig([new RigDevice(48_000)], totalSeconds: 1) { StrictGate = true };
+
+        // Press 1: a fake enters its Waiting() scope and never leaves it (a Block/Never fake the session has given up on).
+        rig.Call(() =>
+        {
+            rig.Time.Waiting();
+            return 0;
+        });
+
+        // Press 2: no fake waits; the folder work takes real time only, so fake time must stand still.
+        var moved = rig.Call(() =>
+        {
+            var before = rig.Time.GetTimestamp();
+            Thread.Sleep(300);
+            return rig.Time.GetTimestamp() - before;
+        });
+
+        moved.ShouldBe(0L, "an abandoned waiter of an earlier call kept moving fake time");
+    }
 }
