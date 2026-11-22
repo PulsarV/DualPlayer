@@ -6,8 +6,8 @@ deps: ["T108"]
 blocks: []
 acs: ["AC-09b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.Core/Playback/IPictureProbe.cs", "src/DualPlayer.Media/Video/FfmpegPictureProbe.cs", "tests/DualPlayer.Core.Tests/Fakes/", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs", "tests/DualPlayer.Media.Tests/Video/FfmpegPictureProbeTests.cs", "docs/features/lip-synced-video/spec.md", "docs/features/lip-synced-video/sad.md"]
-status: "todo"
-step: "—"
+status: "blocked"
+step: "implement — dep T108 blocked"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
