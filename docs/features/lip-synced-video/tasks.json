@@ -2752,7 +2752,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T116-count-a-neighbour-whose-check-ran-out-its-limit-as-not-judged-and-pin-that-the-timed-out-memory-survives-a-failed-file-c.md",
       "origin": "review-2026-11-22f: X1, X13",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T117",

@@ -6,8 +6,8 @@ deps: ["T115"]
 blocks: []
 acs: ["AC-08", "AC-09b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourMemoryTests.cs", "docs/features/lip-synced-video/sad.md", "docs/features/lip-synced-video/contracts/cli.md"]
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -32,8 +32,8 @@ See [spec.md](../spec.md) §5 AC-08, AC-09b.
 
 ## Definition of Done
 
-- [ ] A skip counts as judged only when it reached or reused a verdict (`judgedAny |= !steppedPast && !timedOut`, with `timedOut` returned from the check). A press whose every skip was a step-past or a check that ran out its limit ends `NeighbourSearchTimedOut` (`checked N`, the timeout note), never `NoNeighbour`; the skipped files are still reported `skipped … unreadable`.
-- [ ] Test: the only neighbour's probe runs out its full limit on press 1 and again on press 2 (a fake that ends on cancel, `IsBusy` false) → both presses publish `NeighbourSearchTimedOut` and no `NoNeighbour`. Fails if the fix is reverted.
-- [ ] Tests: E2 remembered as timed out, then (a) a file change whose `Load` fails and (b) a ← return after every output was lost → the next press still checks E2 last. Fail if `_timedOut.Clear()` goes back into `StartCore`.
-- [ ] cli.md §2.2 (:85) and sad.md §7 (:542) say, like spec.md:249, that a press whose skips were remembered files or files whose worker is still running ends `next-file-timeout  checked N`.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] A skip counts as judged only when it reached or reused a verdict (`judgedAny |= !steppedPast && !timedOut`, with `timedOut` returned from the check). A press whose every skip was a step-past or a check that ran out its limit ends `NeighbourSearchTimedOut` (`checked N`, the timeout note), never `NoNeighbour`; the skipped files are still reported `skipped … unreadable`.
+- [x] Test: the only neighbour's probe runs out its full limit on press 1 and again on press 2 (a fake that ends on cancel, `IsBusy` false) → both presses publish `NeighbourSearchTimedOut` and no `NoNeighbour`. Fails if the fix is reverted.
+- [x] Tests: E2 remembered as timed out, then (a) a file change whose `Load` fails and (b) a ← return after every output was lost → the next press still checks E2 last. Fail if `_timedOut.Clear()` goes back into `StartCore`.
+- [x] cli.md §2.2 (:85) and sad.md §7 (:542) say, like spec.md:249, that a press whose skips were remembered files or files whose worker is still running ends `next-file-timeout  checked N`.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

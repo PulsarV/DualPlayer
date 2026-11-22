@@ -182,6 +182,64 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         probe.Probed.Select(Path.GetFileName).ShouldNotContain("Episode-02.mkv", "a failed file change forgot the verdict and spent budget on the file again");
     }
 
+    [Fact]
+    public void A_only_neighbour_whose_check_runs_out_its_limit_on_every_press_ends_the_search_timed_out_not_with_no_neighbour_AC_08()
+    {
+        var (rig, probe) = PlayingRig();
+        using var _ = rig;
+        File("Episode-02.mkv");
+        probe.Hang("Episode-02.mkv"); // runs its full 2 s limit and ends on cancel, every time
+
+        rig.Engine.Call(() => rig.Session.NextFile());
+        rig.Engine.Call(() => rig.Session.NextFile());
+
+        rig.Events.OfType<NeighbourSearchTimedOut>().Count().ShouldBe(2, "a check that ran out its limit was counted as judged");
+        rig.Events.OfType<NoNeighbour>().ShouldBeEmpty("a file that was never judged was reported as no neighbour");
+    }
+
+    [Fact]
+    public void A_file_remembered_as_timed_out_is_still_checked_last_after_a_file_change_whose_load_fails_AC_09b()
+    {
+        var (rig, probe) = PlayingRig();
+        using var _ = rig;
+        File("Episode-02.mkv");
+        File("Episode-03.mkv");
+        probe.Hang("Episode-02.mkv");
+        probe.Hang("Episode-03.mkv");
+        rig.Engine.Call(() => rig.Session.NextFile()); // E2 runs out its limit: remembered; E3 is cut
+        rig.Events.OfType<FileChanged>().ShouldBeEmpty();
+        probe.Ok("Episode-03.mkv");
+        rig.Renderer.LoadError = new Error("video.load_failed", "mpv could not open the file.");
+        rig.Engine.Call(() => rig.Session.NextFile()).IsSuccess.ShouldBeFalse(); // plays E3, which does not load
+        rig.Renderer.LoadError = null;
+        probe.Probed.Clear();
+
+        rig.Engine.Call(() => rig.Session.PreviousFile()); // from E3: E1 first, E2 last
+
+        probe.Probed.Select(Path.GetFileName).ShouldNotContain("Episode-02.mkv", "a failed file change forgot the timed-out memory");
+    }
+
+    [Fact]
+    public void A_file_remembered_as_timed_out_is_still_checked_last_after_every_output_was_lost_and_the_return_AC_09b()
+    {
+        var (rig, probe) = PlayingRig();
+        using var _ = rig;
+        File("Episode-02.mkv");
+        File("Episode-03.mkv");
+        probe.Hang("Episode-02.mkv");
+        probe.Hang("Episode-03.mkv");
+        rig.Engine.Call(() => rig.Session.NextFile()); // E2 runs out its limit: remembered; E3 is cut
+        rig.Events.OfType<FileChanged>().ShouldBeEmpty();
+        probe.Ok("Episode-03.mkv");
+        LoseEveryOutput(rig);
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-10))).IsSuccess.ShouldBeTrue();
+        probe.Probed.Clear();
+
+        rig.Engine.Call(() => rig.Session.NextFile());
+
+        probe.Probed.Select(Path.GetFileName).ShouldNotContain("Episode-02.mkv", "a return into the same film forgot the timed-out memory");
+    }
+
     /// <summary>Per-file behaviour on the session's fake time; a file with none probes fine at once.</summary>
     private sealed class ScriptedProbe : IPictureProbe
     {

@@ -557,9 +557,10 @@ public sealed partial class PlaybackSession : IDisposable
                 visited.Add(candidate);
                 var key = KeyOf(candidate);
                 var steppedPast = false;
+                var ranOut = false;
                 var (skip, expired) = _judged.TryGetValue(key, out var verdict)
                     ? (verdict, false)
-                    : CheckPlayable(candidate, key, request, scanAt, ref checkStarted, out steppedPast);
+                    : CheckPlayable(candidate, key, request, scanAt, ref checkStarted, out steppedPast, out ranOut);
                 if (expired)
                 {
                     outOfTime = true;
@@ -573,7 +574,7 @@ public sealed partial class PlaybackSession : IDisposable
                 }
 
                 skipped++;
-                judgedAny |= !steppedPast;
+                judgedAny |= !steppedPast && !ranOut;
                 lastSkipped = Path.GetFileName(candidate);
                 lastSkip = skip;
                 _events.Publish(skip);
@@ -736,9 +737,10 @@ public sealed partial class PlaybackSession : IDisposable
     // probe ran its full, uncut limit; a file judged unplayable keeps that verdict for the film (AC-08, AC-09b).
     // A file stepped past because its worker is still running is reported skipped for this press only: it is not judged, so
     // it is checked again once the worker has completed.
-    private (FileSkipped? Skip, bool Expired) CheckPlayable(string path, NeighbourKey key, StartRequest request, long scanAt, ref bool checkStarted, out bool steppedPast)
+    private (FileSkipped? Skip, bool Expired) CheckPlayable(string path, NeighbourKey key, StartRequest request, long scanAt, ref bool checkStarted, out bool steppedPast, out bool ranOut)
     {
         steppedPast = false;
+        ranOut = false;
         var cancel = new CancellationTokenSource();
         var gaveUp = false;
         try
@@ -751,6 +753,7 @@ public sealed partial class PlaybackSession : IDisposable
 
             if (timedOut)
             {
+                ranOut = true;
                 _timedOut.Add(key);
             }
             else if (outcome is { Skip: not null, Expired: false })
