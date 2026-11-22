@@ -41,6 +41,29 @@ public sealed class PlaybackSessionDeviceLossTests
     }
 
     [Fact]
+    public void Every_picture_delay_record_after_a_loss_mid_film_marks_the_lost_output_lost_and_keeps_the_playing_lag_consistent_AC_15_AC_17()
+    {
+        using var rig = PlayingRig();
+        rig.Engine.Devices[0].SimulateLoss();
+        rig.Engine.Barrier();
+
+        rig.Engine.Call(() => rig.Session.Pause()).IsSuccess.ShouldBeTrue();
+        rig.Engine.Call(() => rig.Session.Resume()).IsSuccess.ShouldBeTrue();
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-1))).IsSuccess.ShouldBeTrue();
+        rig.Engine.Call(() => rig.Session.ChangeOffset(2, 10)).IsSuccess.ShouldBeTrue();
+
+        var causes = new[] { PictureDelayCause.DeviceLost, PictureDelayCause.Pause, PictureDelayCause.Resume, PictureDelayCause.Seek, PictureDelayCause.Offset };
+        foreach (var cause in causes)
+        {
+            var change = rig.Events.OfType<PictureDelayChanged>().Last(e => e.Cause == cause);
+            change.Outputs[0].OutputNumber.ShouldBe(1);
+            change.Outputs[0].IsLost.ShouldBeTrue($"output 1 was lost: its old assumed 240 / lag 0 must not be shown next to picture delay {change.NewPictureDelayMs} ({cause})");
+            change.Outputs[1].IsLost.ShouldBeFalse();
+            change.Outputs[1].LagMs.ShouldBe(change.NewPictureDelayMs - change.Outputs[1].AssumedMs);
+        }
+    }
+
+    [Fact]
     public void Losing_an_output_that_is_not_the_slowest_leaves_the_picture_delay_and_shows_a_note_AC_15()
     {
         using var rig = PlayingRig();

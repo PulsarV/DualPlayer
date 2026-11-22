@@ -6,8 +6,8 @@ deps: ["T88"]
 blocks: []
 acs: ["AC-17", "AC-15"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.App/Startup/SessionEventLogWriter.cs", "tests/DualPlayer.Core.Tests/Playback/", "tests/DualPlayer.App.Tests/Startup/"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,6 +31,6 @@ See [spec.md](../spec.md) §5 AC-17, AC-15.
 
 ## Definition of Done
 
-- [ ] `Merge` (or `OnDeviceLost`) marks every output in `_lost` `IsLost = true`, so every `PictureDelayChanged` after a mid-film loss carries it as lost and the log writes `Lost=true` with no `AssumedMs`/`LagMs`.
-- [ ] Test: lose output 1 mid-film, press Space (and a seek), assert `PictureDelayChanged(...).Outputs[0].IsLost` and the log line `Lost=true`; the playing output's lag equals picture delay − assumed.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `Merge` (or `OnDeviceLost`) marks every output in `_lost` `IsLost = true`, so every `PictureDelayChanged` after a mid-film loss carries it as lost and the log writes `Lost=true` with no `AssumedMs`/`LagMs`.
+- [x] Test: lose output 1 mid-film, press Space (and a seek), assert `PictureDelayChanged(...).Outputs[0].IsLost` and the log line `Lost=true`; the playing output's lag equals picture delay − assumed.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

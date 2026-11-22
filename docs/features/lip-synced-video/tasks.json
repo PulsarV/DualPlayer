@@ -2083,7 +2083,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T89-mark-outputs-lost-mid-film-as-lost-in-every-picture-delay-record.md",
       "origin": "review-2026-11-22b: S2",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T90",

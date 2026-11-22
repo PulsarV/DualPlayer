@@ -866,10 +866,12 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         LatencyEstimate updated;
+        LatencyEstimate merged;
         lock (_gate)
         {
             updated = Reestimate(estimate, deviceId, step.OffsetMs);
-            _estimate = Merge(estimate, updated);
+            merged = Merge(estimate, updated);
+            _estimate = merged;
         }
 
         var changed = new OffsetChanged(outputNumber, deviceId, oldOffset, step.OffsetMs, null);
@@ -885,7 +887,7 @@ public sealed partial class PlaybackSession : IDisposable
         LogLatency(output.DeviceId, DeviceTypeNames.Of(output.Type), output.ReportedMs, output.Source, output.TypeDefaultMs, output.OffsetMs, output.AssumedMs, output.LagMs, updated.PictureDelayMs);
 
         var clockPosition = clock.PositionAt(_time.GetTimestamp());
-        _events.Publish(new PictureDelayChanged(clockPosition, PictureDelayCause.Offset, estimate.PictureDelayMs, updated.PictureDelayMs, updated.Outputs));
+        _events.Publish(new PictureDelayChanged(clockPosition, PictureDelayCause.Offset, estimate.PictureDelayMs, updated.PictureDelayMs, merged.Outputs));
 
         if (state != PlaybackState.Playing)
         {
@@ -980,9 +982,9 @@ public sealed partial class PlaybackSession : IDisposable
         return new LatencyEstimate([.. fresh.Outputs.Select(u => u with { Source = playing.First(o => o.DeviceId == u.DeviceId).Source, OutputNumber = playing.First(o => o.DeviceId == u.DeviceId).OutputNumber })], fresh.PictureDelayMs);
     }
 
-    // Every output keeps its place: the playing ones from the new estimate, the lost ones as they were.
+    // Every output keeps its place: the playing ones from the new estimate, the lost ones marked lost.
     private static LatencyEstimate Merge(LatencyEstimate all, LatencyEstimate playing) =>
-        new([.. all.Outputs.Select(o => playing.Outputs.FirstOrDefault(u => u.DeviceId == o.DeviceId) ?? o)], playing.PictureDelayMs);
+        new([.. all.Outputs.Select(o => playing.Outputs.FirstOrDefault(u => u.DeviceId == o.DeviceId) ?? o with { IsLost = true })], playing.PictureDelayMs);
 
     /// <summary>Applies offsets pressed while paused or ended at once; called on resume and seek.</summary>
     private void ApplyPendingTargets(PictureSync sync)
@@ -1302,7 +1304,9 @@ public sealed partial class PlaybackSession : IDisposable
     private void PublishDelay(TimeSpan clock, PictureDelayCause cause, TimeSpan delay)
     {
         var ms = (int)Math.Round(delay.TotalMilliseconds);
-        _events.Publish(new PictureDelayChanged(clock, cause, ms, ms, _estimate?.Outputs ?? []));
+        // The delay may be mid-ramp, so each playing output's lag is paired with it (lag = picture delay - assumed); a lost output carries no numbers.
+        var outputs = (_estimate?.Outputs ?? []).Select(o => o.IsLost ? o : o with { LagMs = ms - o.AssumedMs }).ToList();
+        _events.Publish(new PictureDelayChanged(clock, cause, ms, ms, outputs));
     }
 
     private TimeSpan ProjectToNow(PresentedPicture presented)
@@ -1800,13 +1804,15 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         LatencyEstimate? updated = null;
+        LatencyEstimate? merged = null;
         PlaybackState state;
         lock (_gate)
         {
             if (lost.OthersContinue && estimate is not null)
             {
                 updated = Reestimate(estimate, deviceId: null, offsetMs: 0);
-                _estimate = Merge(estimate, updated);
+                merged = Merge(estimate, updated);
+                _estimate = merged;
             }
 
             state = _state;
@@ -1831,7 +1837,7 @@ public sealed partial class PlaybackSession : IDisposable
         }
 
         _events.Publish(new NoteShown($"Output {number} lost", NoteStyle.Warning));
-        if (estimate is null || updated is null || sync is null || clock is null)
+        if (estimate is null || updated is null || merged is null || sync is null || clock is null)
         {
             return;
         }
@@ -1841,7 +1847,7 @@ public sealed partial class PlaybackSession : IDisposable
             return;
         }
 
-        _events.Publish(new PictureDelayChanged(lost.ClockPosition, PictureDelayCause.DeviceLost, estimate.PictureDelayMs, updated.PictureDelayMs, updated.Outputs));
+        _events.Publish(new PictureDelayChanged(lost.ClockPosition, PictureDelayCause.DeviceLost, estimate.PictureDelayMs, updated.PictureDelayMs, merged.Outputs));
         if (state != PlaybackState.Playing)
         {
             lock (_gate)

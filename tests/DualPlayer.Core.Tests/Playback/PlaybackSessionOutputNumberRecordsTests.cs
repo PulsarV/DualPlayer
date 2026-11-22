@@ -23,8 +23,9 @@ public sealed class PlaybackSessionOutputNumberRecordsTests
         rig.Engine.Render(300);
 
         var change = rig.Events.OfType<PictureDelayChanged>().Last(e => e.Cause == PictureDelayCause.Offset);
-        change.Outputs.Select(o => o.OutputNumber).ShouldBe([2, 3]);
-        change.Outputs.Select(o => o.DeviceId).ShouldBe(["dev-2", "dev-3"]);
+        change.Outputs.Select(o => o.OutputNumber).ShouldBe([1, 2, 3]);
+        change.Outputs.Select(o => o.DeviceId).ShouldBe(["dev-1", "dev-2", "dev-3"]);
+        change.Outputs.Select(o => o.IsLost).ShouldBe([true, false, false]);
         foreach (var moved in rig.Events.OfType<PictureDelayMoved>().Where(m => m.Cause == PictureDelayCause.Offset))
         {
             moved.Ramps.Select(r => r.OutputNumber).ShouldBe([2, 3]);
