@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-07", "AC-08", "AC-09b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourMemoryTests.cs", "docs/features/lip-synced-video/spec.md", "docs/features/lip-synced-video/sad.md", "docs/features/lip-synced-video/contracts/cli.md"]
-status: "todo"
-step: "—"
+status: "blocked"
+step: "verify — gate not green (test/format unconfirmed)"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"

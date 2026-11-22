@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-01", "AC-02", "AC-03b", "AC-06", "AC-07", "AC-09", "AC-13"]
 files_hint: ["tests/DualPlayer.App.Tests/Startup/TerminalPrinterTests.cs", "tests/DualPlayer.App.Tests/E2E/PlayEndToEndTests.cs", "tests/DualPlayer.App.Tests/Startup/StartCommandTests.cs"]
-status: "todo"
-step: "—"
+status: "blocked"
+step: "verify — RED false_pass (tests pass on current code)"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
