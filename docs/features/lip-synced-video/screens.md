@@ -38,7 +38,7 @@ Text only; every line's exact format is in `contracts/cli.md` (section in bracke
 
 ```text
 SCR-01 default — started
-$ DualPlayer.App play Episode-01.mkv --out 1=1 --out 2=2
+$ DualPlayer play Episode-01.mkv --out 1=1 --out 2=2
 output 1  track 1  device Test Headset A  type bluetooth-headphones  reported 0  default 200  offset +40  assumed 160  lag 40
 output 2  track 2  device Test Headset B  type bluetooth-headphones  reported 0  default 200  offset 0    assumed 200  lag 0
 picture   delay 200  screen 1  1920x1080
@@ -47,7 +47,7 @@ started   clock 00:00:00.000  first-frame 1.9 s  first-audio 1.9 s 1.9 s
 
 ```text
 SCR-01 error — screen not found (AC-03b)
-$ DualPlayer.App play Episode-01.mkv --out 1=1 --out 2=2 --screen 3
+$ DualPlayer play Episode-01.mkv --out 1=1 --out 2=2 --screen 3
 error start.screen_not_found: screen 3 was not found. Connected screens: 1 (1920x1080, main), 2 (3840x2160)
 $ echo $?   -> 2
 ```

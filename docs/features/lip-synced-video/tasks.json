@@ -2867,7 +2867,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T121-fix-the-start-failure-branch-in-sad-flow-1-list-decoder-fault-and-no-upgrader-in-cli-md-correct-the-start-budget-mitigat.md",
       "origin": "review-2026-11-22f: X2, X3, X6, X7",
-      "status": "todo"
+      "status": "done"
     }
   ]
 }

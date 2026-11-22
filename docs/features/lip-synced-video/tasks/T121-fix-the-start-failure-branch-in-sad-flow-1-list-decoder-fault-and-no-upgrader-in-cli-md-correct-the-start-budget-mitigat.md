@@ -6,8 +6,8 @@ deps: ["T115", "T116", "T117", "T118", "T119", "T120"]
 blocks: []
 acs: ["AC-01", "AC-02", "AC-12"]
 files_hint: ["docs/features/lip-synced-video/sad.md", "docs/features/lip-synced-video/contracts/cli.md", "docs/features/lip-synced-video/screens.md", "docs/features/lip-synced-video/test-plan.md", "docs/features/lip-synced-video/tasks/tracker.md", "docs/features/lip-synced-video/tasks/T23-measure-lip-sync-on-the-target-pc.md", "docs/features/lip-synced-video/tasks.json", "tests/DualPlayer.App.Tests/Startup/StartCommandTests.cs"]
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -34,9 +34,9 @@ See [spec.md](../spec.md) §5 AC-01, AC-02, AC-12.
 
 ## Definition of Done
 
-- [ ] sad flow 1 wraps the load, the pre-roll and the clock start in one `alt start succeeds / else start fails (mpv.load_timeout, mpv.load_failed, outputs.device_not_found, outputs.device_open_failed, playback.decoder_fault, playback.start_timeout)` block.
-- [ ] cli.md §5 has a `playback.decoder_fault` row (exit 2, when it is printed); the warning list has `state.no-upgrader`; the `mpv.load_failed` row's "When" covers mpv refusing the file or failing to initialise at the session start; sad.md's code list matches. `StartExitCodes.For("playback.decoder_fault")` is 2, pinned in `Start_exit_code_for_a_refusal_before_or_during_start_is_2`.
-- [ ] sad §11's start-budget mitigation describes the sequential start (load, then pre-roll) and says the overlap is the fallback if T23 measures more than 3 s.
-- [ ] cli.md and screens.md SCR-01 write the command as `DualPlayer play …`.
-- [ ] test-plan.md has a row for every test T115–T120 added; every DoD box of T115–T120 that holds is ticked; the tracker's T23 row and T23's deps include T115–T121.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] sad flow 1 wraps the load, the pre-roll and the clock start in one `alt start succeeds / else start fails (mpv.load_timeout, mpv.load_failed, outputs.device_not_found, outputs.device_open_failed, playback.decoder_fault, playback.start_timeout)` block.
+- [x] cli.md §5 has a `playback.decoder_fault` row (exit 2, when it is printed); the warning list has `state.no-upgrader`; the `mpv.load_failed` row's "When" covers mpv refusing the file or failing to initialise at the session start; sad.md's code list matches. `StartExitCodes.For("playback.decoder_fault")` is 2, pinned in `Start_exit_code_for_a_refusal_before_or_during_start_is_2`.
+- [x] sad §11's start-budget mitigation describes the sequential start (load, then pre-roll) and says the overlap is the fallback if T23 measures more than 3 s.
+- [x] cli.md and screens.md SCR-01 write the command as `DualPlayer play …`.
+- [x] test-plan.md has a row for every test T115–T120 added; every DoD box of T115–T120 that holds is ticked; the tracker's T23 row and T23's deps include T115–T121.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

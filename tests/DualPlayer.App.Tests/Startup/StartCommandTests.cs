@@ -114,6 +114,7 @@ public sealed class StartCommandTests
     [InlineData("outputs.device_open_failed")]
     [InlineData("playback.start_timeout")]
     [InlineData("mpv.load_timeout")]
+    [InlineData("playback.decoder_fault")]
     public void Start_exit_code_for_a_refusal_before_or_during_start_is_2(string code)
     {
         StartExitCodes.For(new Error(code, "x")).ShouldBe(2);

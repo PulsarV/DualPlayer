@@ -10,7 +10,7 @@ feature_size: "L"
 `sad.md` declares `target_surfaces: [desktop-app, cli]`. The `desktop-app` surface (the playback window, its fixed keys and brief notes) consumes no contract and is specified by `spec.md` §5 and `screens`. This document is the `cli` surface: the start command the Developer gives in a terminal, what it prints, and how it exits (ADR-0001). Derived from `spec.md` §4/§5/§6/§6.1, `sad.md` §6 flows 1–9 and §8, `data-model.md` (`device-offsets.json`), and the step-3 contract `docs/features/two-outputs-one-clock/contracts/cli.md`, whose conventions it reuses.
 
 Conventions:
-- Executable: `DualPlayer.App` (`dotnet run --project src/DualPlayer.App -- play …` during development). It is a console-subsystem executable in this step, so everything below prints to the terminal that started it (ADR-0001).
+- Executable: `DualPlayer` (`dotnet run --project src/DualPlayer.App -- play …` during development). It is a console-subsystem executable in this step, so everything below prints to the terminal that started it (ADR-0001).
 - Normal output goes to standard output; errors go to standard error as `error <code>: <plain-language message>`, with the same `code` as the Core `Error(Code, Message)` record (`src/DualPlayer.Core/Result.cs`). Every printed line is also written to the log.
 - Times are master-clock positions formatted `hh:mm:ss.fff`; latency, offset and picture delay are integer milliseconds with a sign; a positive offset makes that output's sound heard later (`CONTEXT.md` Offset).
 - Device and track arguments follow the step-3 console: a device is a number from `DualPlayer.Console devices` or a full OS endpoint id; a track is a number among the file's audio tracks, from 1 (`DualPlayer.Console tracks <file>`). This step adds no listing command.
@@ -22,8 +22,8 @@ Conventions:
 ### 1.1 `play <file> --out <track>=<device> [--out …] [--screen <n>]` — start a film (US-01, US-05, AC-01, AC-02, AC-03, AC-03b, AC-12, AC-13)
 
 ```
-DualPlayer.App play <file> --out 1=1 --out 2=2
-DualPlayer.App play <file> --out 1=1 --out 2=2 --out 1=3 --screen 2
+DualPlayer play <file> --out 1=1 --out 2=2
+DualPlayer play <file> --out 1=1 --out 2=2 --out 1=3 --screen 2
 ```
 
 | Argument / option | Meaning | Constraint | Source |
@@ -55,7 +55,7 @@ started   clock 00:00:00.000  first-frame 1.9 s  first-audio 1.9 s 1.9 s
 | `lost` | An output lost before a file change keeps its number but is printed as `output N  lost`, with no `track`, `assumed` or `lag`: it is left out of the picture delay and the lag arithmetic above, which holds for the playing outputs only | AC-07, AC-12, AC-13 |
 | `first-frame`, `first-audio` | Start-command-to-picture and to each output's first heard sound (sound given + assumed latency) | spec §6 start budget |
 
-If the remembered-offsets file cannot be read, the App prints `warning state.unreadable: remembered offsets could not be read, every output starts at offset 0` (or `state.invalid` / `state.too-new`) and continues (spec §6.1). Out-of-range or off-grid values print `warning offsets.clamped: device {…} offset 900 -> 500` per value.
+If the remembered-offsets file cannot be read, the App prints `warning state.unreadable: remembered offsets could not be read, every output starts at offset 0` (or `state.invalid` / `state.too-new` / `state.no-upgrader`) and continues (spec §6.1). Out-of-range or off-grid values print `warning offsets.clamped: device {…} offset 900 -> 500` per value.
 
 The process then stays in the run, controlled from the window (§2), until the window closes.
 
@@ -138,12 +138,14 @@ Structured events in the rolling log (not printed unless stated above), from the
 | `outputs.too_many` | More than three `--out` options (the window has keys for three outputs) | 2 | new |
 | `outputs.device_access_denied` | The OS refused access to a device | 4 | exists |
 | `start.screen_not_found` | `--screen` names a screen that is not connected; the message lists the connected screens with their numbers and resolutions (AC-03b) | 2 | new |
-| `mpv.not_found` / `mpv.load_failed` | The video renderer library is missing or the wrong version | 2 | new |
+| `mpv.not_found` / `mpv.load_failed` | The video renderer library is missing or the wrong version; `mpv.load_failed` is also returned by the session start when mpv refuses the file or fails to initialise | 2 | new |
 | `ffmpeg.not_found` / `ffmpeg.load_failed` | The FFmpeg libraries are missing or cannot be loaded; printed by the very first check (the picture probe), before any other check, so also for a file that would otherwise be refused | 2 | exists |
 | `outputs.device_open_failed` | A device that is present and not refused by the OS could not be opened: printed by the device check at start (opened and released), or by the session start when the output is opened for play | 2 | exists |
 | `playback.start_timeout` | The outputs did not start, or the decoder did not fill the output buffers, in time when the session started; printed with the window already open, which then closes | 2 | exists |
+| `playback.decoder_fault` | The audio decoder raised an exception while filling the output buffers before the start; printed by the session start with the window already open, which then closes | 2 | exists |
 | `mpv.load_timeout` | The renderer library loaded and every check passed, but mpv did not open the file within its wait (15 s by default) when the session started the film; distinct from `mpv.load_failed`, where mpv refused the file (AC-02, spec §6.1) | 2 | new |
 | `state.unreadable` / `state.invalid` / `state.too-new` | Remembered offsets could not be read — printed as a warning, the film starts with offsets 0 | — | exists (`state.too-new` is returned by `JsonFileStateStore`) |
+| `state.no-upgrader` | The remembered-offsets file has no `schemaVersion`, so no upgrader applies — printed as a warning, the film starts with offsets 0 | — | exists |
 | `offsets.clamped` | A remembered offset was out of range or off the 10 ms grid and was corrected — warning | — | new |
 
 Example (AC-03b):
