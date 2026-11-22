@@ -6,7 +6,7 @@ deps: ["T109"]
 blocks: []
 acs: ["AC-08", "AC-09b"]
 files_hint: ["tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs", "tests/DualPlayer.Core.Tests/Fakes/CountingTimeProvider.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRememberedFilesTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourWorkerTimingTests.cs"]
-status: "todo"
+status: "blocked"
 step: "DEPS — dep T109 blocked"
 owner: "Volodymyr Kravchuk"
 estimate: "S"

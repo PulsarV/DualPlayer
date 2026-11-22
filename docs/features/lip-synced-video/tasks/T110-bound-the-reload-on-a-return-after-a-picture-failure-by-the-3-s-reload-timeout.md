@@ -6,7 +6,7 @@ deps: ["T109"]
 blocks: []
 acs: ["AC-05", "AC-06b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionPictureFailureReloadTests.cs"]
-status: "todo"
+status: "blocked"
 step: "DEPS — dep T109 blocked"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
