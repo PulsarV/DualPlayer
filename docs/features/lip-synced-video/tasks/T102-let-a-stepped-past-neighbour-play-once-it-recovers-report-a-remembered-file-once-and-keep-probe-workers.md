@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-07", "AC-08", "AC-09", "AC-09b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "src/DualPlayer.Core/Playback/IPictureProbe.cs", "src/DualPlayer.Media/Video/FfmpegPictureProbe.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRememberedFilesTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourMemoryTests.cs", "tests/DualPlayer.Media.Tests/", "docs/features/lip-synced-video/spec.md", "docs/features/lip-synced-video/sad.md", "docs/features/lip-synced-video/contracts/cli.md"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -35,10 +35,10 @@ See [spec.md](../spec.md) §5 AC-07, AC-08, AC-09, AC-09b.
 
 ## Definition of Done
 
-- [ ] A file stepped past because its worker (listing or probe) is still running is reported skipped (reason `unreadable`, counted in `checked N`) for that press only: it is written neither to `_judged` nor removed from `_timedOut`, and once its worker has completed the next press checks it again (completed `_workers` entries are pruned). This also holds for a healthy file whose cut listing is still running.
-- [ ] "Whole budget" is decided by a per-press flag (no earlier file in this press started a check), not by elapsed time since `scanAt`, so the folder enumeration, sort and stats never count against it; the post-listing exit (too little left for the probe) sets `timedOut = wholeBudget`.
-- [ ] A remembered file is reported skipped at most once per press: the block after the target reports only remembered files that were deferred and not visited in this press.
-- [ ] The abandoned probe worker is kept per `NeighbourKey` (or per path inside `FfmpegPictureProbe`) like the listing worker: while it runs, no press starts another probe on that file; the file is stepped past as in the first box. At most one blocked thread per file, listing or probe.
-- [ ] Tests: (1) E2 only neighbour, listing blocked through press 2, released, press 3 plays E2; (2) a healthy E3 whose cut listing is still running at press 2 plays on press 3; (3) a folder listing that costs 200 ms of fake time, then E2 listing 1.2 s + probe 1.9 s → E2 remembered, press 2 reaches E3; (4) E2 listing 2.95 s → remembered; (5) the three-press sequence where E2 hangs again on press 3 and E3 plays → exactly one `FileSkipped(E2)` and `skipped 1`; (6) a probe that never returns + three presses → exactly one `Probe` call on E2. Each fails if its fix is reverted.
-- [ ] spec §6.1 (:249), sad §7 (:533) and cli.md §2.2 (:85) state the final rule: what is remembered, that the 3 s budget counts from when the session starts the command (a queue wait is not part of it), that remembered files are checked last and reported as skipped once, and that a live listing or probe worker is not restarted and its file plays once it recovers.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] A file stepped past because its worker (listing or probe) is still running is reported skipped (reason `unreadable`, counted in `checked N`) for that press only: it is written neither to `_judged` nor removed from `_timedOut`, and once its worker has completed the next press checks it again (completed `_workers` entries are pruned). This also holds for a healthy file whose cut listing is still running.
+- [x] "Whole budget" is decided by a per-press flag (no earlier file in this press started a check), not by elapsed time since `scanAt`, so the folder enumeration, sort and stats never count against it; the post-listing exit (too little left for the probe) sets `timedOut = wholeBudget`.
+- [x] A remembered file is reported skipped at most once per press: the block after the target reports only remembered files that were deferred and not visited in this press.
+- [x] The abandoned probe worker is kept per `NeighbourKey` (or per path inside `FfmpegPictureProbe`) like the listing worker: while it runs, no press starts another probe on that file; the file is stepped past as in the first box. At most one blocked thread per file, listing or probe.
+- [x] Tests: (1) E2 only neighbour, listing blocked through press 2, released, press 3 plays E2; (2) a healthy E3 whose cut listing is still running at press 2 plays on press 3; (3) a folder listing that costs 200 ms of fake time, then E2 listing 1.2 s + probe 1.9 s → E2 remembered, press 2 reaches E3; (4) E2 listing 2.95 s → remembered; (5) the three-press sequence where E2 hangs again on press 3 and E3 plays → exactly one `FileSkipped(E2)` and `skipped 1`; (6) a probe that never returns + three presses → exactly one `Probe` call on E2. Each fails if its fix is reverted.
+- [x] spec §6.1 (:249), sad §7 (:533) and cli.md §2.2 (:85) state the final rule: what is remembered, that the 3 s budget counts from when the session starts the command (a queue wait is not part of it), that remembered files are checked last and reported as skipped once, and that a live listing or probe worker is not restarted and its file plays once it recovers.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

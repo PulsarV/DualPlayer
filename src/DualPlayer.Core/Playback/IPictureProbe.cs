@@ -10,6 +10,8 @@ public interface IPictureProbe
     /// Error codes: <c>playback.file_access_denied</c>, <c>playback.file_unreadable</c>, <c>video.no_picture</c>,
     /// <c>video.not_hardware_decodable</c> (a picture was found or decoded, but not in hardware), <c>video.probe_timeout</c>
     /// (the first picture was not decoded within <paramref name="timeLimit"/>; <c>codec</c>/<c>profile</c> in the fields when known).
+    /// A probe that finds the file's earlier probe worker still running (blocked in a read the token cannot break) starts no other
+    /// and returns <c>video.probe_busy</c> at once; the caller steps past the file for that call and asks again later.
     /// </summary>
     Result<PictureInfo> Probe(string path, TimeSpan timeLimit);
 

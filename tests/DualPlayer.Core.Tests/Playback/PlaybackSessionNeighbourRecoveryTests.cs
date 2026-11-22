@@ -1,0 +1,387 @@
+using DualPlayer.Core.Outputs;
+using DualPlayer.Core.Playback;
+using DualPlayer.Core.Tests.Fakes;
+
+namespace DualPlayer.Core.Tests.Playback;
+
+/// <summary>
+/// T102 (review-2026-11-22d V1-V4): a neighbour stepped past because its worker is still running is not judged for good, so it
+/// plays once the worker recovers; the press's whole budget is the press's own, not what the folder work left of it; a
+/// remembered file is reported skipped once per press; a probe worker still running is never started twice (AC-07, AC-08, AC-09, AC-09b).
+/// </summary>
+public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
+{
+    private readonly string _folder = Directory.CreateTempSubdirectory("dualplayer-recovery-").FullName;
+
+    public void Dispose() => Directory.Delete(_folder, recursive: true);
+
+    private string File(string name)
+    {
+        var path = Path.Combine(_folder, name);
+        System.IO.File.WriteAllBytes(path, []);
+        return path;
+    }
+
+    private SessionRig Playing(ScriptedDecoder decoder, ScriptedProbe probe)
+    {
+        var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourDecoder: decoder, neighbourPictureProbe: probe);
+        decoder.Time = rig.Engine.Time;
+        probe.Time = rig.Engine.Time;
+        rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = File("Episode-01.mkv") })).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(300);
+        return rig;
+    }
+
+    private static void Press(SessionRig rig) => rig.Engine.Call(() => rig.Session.NextFile());
+
+    // A press whose scan spends fake time on the folder work before it checks the first file.
+    private static void PressOnSlowFolder(SessionRig rig, TimeSpan folderCost)
+    {
+        rig.Engine.Time.SlowNextFolderScan(folderCost);
+        rig.Engine.Call(() => rig.Session.NextFile(rig.Engine.Time.GetTimestamp()));
+    }
+
+    private static IEnumerable<string> Notes(SessionRig rig) => rig.Events.OfType<NoteShown>().Select(e => e.Text);
+
+    // The worker's task completes a moment after the fake call returns.
+    private static void LetWorkerFinish(ScriptedDecoder decoder, string name)
+    {
+        RigLoops.WaitOrFail(() => decoder.Returned(name), TimeSpan.FromSeconds(10), $"the listing of {name} to return");
+        Thread.Sleep(100);
+    }
+
+    [Fact]
+    public void The_only_neighbour_whose_listing_stayed_blocked_through_a_press_plays_on_the_press_after_it_recovered_AC_09b()
+    {
+        using var decoder = new ScriptedDecoder();
+        using var probe = new ScriptedProbe();
+        var second = File("Episode-02.mkv");
+        using var rig = Playing(decoder, probe);
+        decoder.Block("Episode-02.mkv");
+
+        Press(rig); // the listing hangs its full limit: E2 is remembered
+        Press(rig); // its worker is still blocked: stepped past, counted, reported for this press only
+        Notes(rig).ShouldContain(t => t.StartsWith("No next file (skipped 1; last: Episode-02.mkv", StringComparison.Ordinal), "the live worker's file was not reported as skipped");
+        rig.Events.OfType<FileChanged>().ShouldBeEmpty();
+        decoder.Release("Episode-02.mkv"); // the NAS is back
+        LetWorkerFinish(decoder, "Episode-02.mkv");
+
+        Press(rig);
+
+        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("a file stepped past for a still-running worker was judged for good and never played").File.ShouldBe(second);
+    }
+
+    [Fact]
+    public void A_healthy_neighbour_whose_cut_listing_was_still_running_at_the_next_press_plays_on_the_press_after_AC_08()
+    {
+        using var decoder = new ScriptedDecoder();
+        using var probe = new ScriptedProbe();
+        File("Episode-02.mkv");
+        var third = File("Episode-03.mkv");
+        using var rig = Playing(decoder, probe);
+        probe.Hang("Episode-02.mkv"); // takes its whole 2 s: E3 is left 1 s of the first press
+        decoder.Block("Episode-03.mkv"); // its listing is cut by the budget and keeps running
+
+        Press(rig);
+        Press(rig); // E3's worker is still blocked: E3 is stepped past, E2 hangs again
+        rig.Events.OfType<FileChanged>().ShouldBeEmpty();
+        rig.Events.OfType<FileSkipped>().Select(e => e.File).ShouldContain("Episode-03.mkv", "the file with a live worker was not stepped past");
+        decoder.Release("Episode-03.mkv");
+        LetWorkerFinish(decoder, "Episode-03.mkv");
+
+        Press(rig);
+
+        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("a healthy file stepped past for a still-running listing was judged unreadable for good").File.ShouldBe(third);
+    }
+
+    [Fact]
+    public void A_slow_first_file_is_remembered_however_long_the_folder_work_took_and_the_next_press_reaches_the_file_after_it_AC_09b()
+    {
+        using var decoder = new ScriptedDecoder();
+        using var probe = new ScriptedProbe();
+        File("Episode-02.mkv");
+        var third = File("Episode-03.mkv");
+        using var rig = Playing(decoder, probe);
+        decoder.Cost("Episode-02.mkv", TimeSpan.FromMilliseconds(1200));
+        probe.Cost("Episode-02.mkv", TimeSpan.FromMilliseconds(1900));
+
+        PressOnSlowFolder(rig, TimeSpan.FromMilliseconds(200)); // E2 has the whole budget: the folder work is not E2's doing
+        rig.Events.OfType<FileChanged>().ShouldBeEmpty("the first press cannot judge E2 within its budget");
+
+        PressOnSlowFolder(rig, TimeSpan.FromMilliseconds(200));
+
+        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("the folder work counted against E2's whole budget, so it was not remembered and held up every press").File.ShouldBe(third);
+    }
+
+    [Fact]
+    public void A_listing_that_leaves_too_little_of_the_budget_for_the_probe_is_remembered_and_the_next_press_reaches_the_file_after_it_AC_09b()
+    {
+        using var decoder = new ScriptedDecoder();
+        using var probe = new ScriptedProbe();
+        File("Episode-02.mkv");
+        var third = File("Episode-03.mkv");
+        using var rig = Playing(decoder, probe);
+        decoder.Cost("Episode-02.mkv", TimeSpan.FromMilliseconds(2950));
+
+        Press(rig);
+        rig.Events.OfType<FileChanged>().ShouldBeEmpty("the first press cannot probe E2 in the 50 ms its listing left");
+
+        Press(rig);
+
+        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("a file whose listing took almost the whole budget was not remembered").File.ShouldBe(third);
+    }
+
+    [Fact]
+    public void A_remembered_file_that_hangs_again_while_the_file_after_it_recovers_is_reported_skipped_once_AC_09b()
+    {
+        using var decoder = new ScriptedDecoder();
+        using var probe = new ScriptedProbe();
+        File("Episode-02.mkv");
+        var third = File("Episode-03.mkv");
+        using var rig = Playing(decoder, probe);
+        probe.Hang("Episode-02.mkv");
+        probe.Hang("Episode-03.mkv");
+
+        Press(rig); // E2 hangs its full limit: remembered; E3 is cut by the budget
+        Press(rig); // E3 hangs its full limit: remembered; E2 is cut by the budget
+        rig.Events.OfType<FileChanged>().ShouldBeEmpty();
+        probe.Ok("Episode-03.mkv"); // E3 recovers; E2 hangs again
+        var skipsBefore = rig.Events.OfType<FileSkipped>().Count();
+        var notesBefore = Notes(rig).Count();
+
+        Press(rig);
+
+        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem().File.ShouldBe(third);
+        rig.Events.OfType<FileSkipped>().Skip(skipsBefore).Select(e => e.File).ShouldBe(["Episode-02.mkv"], "the remembered file was reported once when it was checked and again after the target");
+        var notes = Notes(rig).Skip(notesBefore).ToList();
+        notes.ShouldContain(t => t.StartsWith("Skipped Episode-02.mkv", StringComparison.Ordinal));
+        notes.ShouldNotContain(t => t.StartsWith("Skipped 2 files", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_probe_that_never_returns_is_started_once_however_many_presses_find_nothing_else_AC_09b()
+    {
+        using var decoder = new ScriptedDecoder();
+        using var probe = new ScriptedProbe();
+        File("Episode-02.mkv");
+        using var rig = Playing(decoder, probe);
+        using var releaseProbe = new Defer(probe.ReleaseAll); // disposed before the rig: a blocked probe must not hold its loop
+        probe.Never("Episode-02.mkv");
+
+        Press(rig);
+        Press(rig);
+        Press(rig);
+
+        probe.Probed.Count(n => n == "Episode-02.mkv").ShouldBe(1, "a press started another probe on a file whose probe was still blocked");
+        rig.Events.OfType<FileChanged>().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void A_neighbour_whose_probe_adapter_reports_its_worker_busy_is_stepped_past_not_judged_and_plays_once_it_recovers_AC_09b()
+    {
+        using var decoder = new ScriptedDecoder();
+        using var probe = new ScriptedProbe();
+        var second = File("Episode-02.mkv");
+        using var rig = Playing(decoder, probe);
+        probe.Busy("Episode-02.mkv");
+
+        Press(rig);
+        Press(rig);
+        rig.Events.OfType<FileChanged>().ShouldBeEmpty();
+        rig.Events.OfType<FileSkipped>().ShouldAllBe(e => e.File == "Episode-02.mkv" && e.Reason == "unreadable");
+        probe.Ok("Episode-02.mkv"); // the blocked read ended: the adapter probes the file again
+
+        Press(rig);
+
+        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem().File.ShouldBe(second);
+    }
+
+    private sealed class Defer(Action action) : IDisposable
+    {
+        public void Dispose() => action();
+    }
+
+    /// <summary>Listings per file on the session's fake time: instant, costing fake time, or blocked until released.</summary>
+    private sealed class ScriptedDecoder : IAudioDecoder, IDisposable
+    {
+        private readonly Lock _gate = new();
+        private readonly Dictionary<string, TimeSpan> _costs = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, ManualResetEventSlim> _blocks = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _returned = new(StringComparer.Ordinal);
+
+        public TimeProvider? Time { get; set; }
+
+        public void Cost(string name, TimeSpan cost)
+        {
+            lock (_gate)
+            {
+                _costs[name] = cost;
+            }
+        }
+
+        public void Block(string name)
+        {
+            lock (_gate)
+            {
+                _blocks[name] = new ManualResetEventSlim();
+            }
+        }
+
+        public void Release(string name)
+        {
+            lock (_gate)
+            {
+                _blocks[name].Set();
+            }
+        }
+
+        public bool Returned(string name)
+        {
+            lock (_gate)
+            {
+                return _returned.Contains(name);
+            }
+        }
+
+        public void Dispose()
+        {
+            lock (_gate)
+            {
+                foreach (var block in _blocks.Values)
+                {
+                    block.Set();
+                }
+            }
+        }
+
+        public Result<IReadOnlyList<AudioTrackInfo>> ListTracks(string path)
+        {
+            var name = Path.GetFileName(path);
+            ManualResetEventSlim? block;
+            TimeSpan cost;
+            lock (_gate)
+            {
+                _blocks.TryGetValue(name, out block);
+                cost = _costs.GetValueOrDefault(name);
+            }
+
+            if (block is not null)
+            {
+                block.Wait(TimeSpan.FromSeconds(30)); // ignores the token: an uninterruptible native call
+            }
+            else if (cost > TimeSpan.Zero)
+            {
+                var end = Time!.GetTimestamp() + (long)(cost.TotalSeconds * Time.TimestampFrequency);
+                while (Time.GetTimestamp() < end)
+                {
+                    Thread.Sleep(1);
+                }
+            }
+
+            lock (_gate)
+            {
+                _returned.Add(name);
+            }
+
+            return Result<IReadOnlyList<AudioTrackInfo>>.Success([.. new[] { 1, 2 }.Select(n => new AudioTrackInfo(n, "und", ChannelLayout.Stereo, 48_000))]);
+        }
+
+        public Result<IDecodeSession> Open(string path, IReadOnlyList<DecodeRequest> outputs) =>
+            Result<IDecodeSession>.Failure("test.not_decoding", "The listing decoder does not decode.");
+    }
+
+    /// <summary>Probes per file on the session's fake time: instant, costing fake time, hanging its whole limit, or never returning.</summary>
+    private sealed class ScriptedProbe : IPictureProbe, IDisposable
+    {
+        private readonly Lock _gate = new();
+        private readonly Dictionary<string, TimeSpan> _costs = new(StringComparer.Ordinal);
+        private readonly ManualResetEventSlim _release = new();
+        private readonly HashSet<string> _never = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _busy = new(StringComparer.Ordinal);
+
+        public TimeProvider? Time { get; set; }
+
+        public List<string> Probed { get; } = [];
+
+        public void Hang(string name) => SetCost(name, TimeSpan.MaxValue);
+
+        public void Cost(string name, TimeSpan cost) => SetCost(name, cost);
+
+        public void Ok(string name)
+        {
+            lock (_gate)
+            {
+                _busy.Remove(name);
+            }
+
+            SetCost(name, TimeSpan.Zero);
+        }
+
+        public void Busy(string name)
+        {
+            lock (_gate)
+            {
+                _busy.Add(name);
+            }
+        }
+
+        public void Never(string name)
+        {
+            lock (_gate)
+            {
+                _never.Add(name);
+            }
+        }
+
+        public void ReleaseAll() => _release.Set();
+
+        public void Dispose() => _release.Set();
+
+        public Result<PictureInfo> Probe(string path, TimeSpan timeLimit) => Probe(path, timeLimit, CancellationToken.None);
+
+        public Result<PictureInfo> Probe(string path, TimeSpan timeLimit, CancellationToken cancel)
+        {
+            var name = Path.GetFileName(path);
+            TimeSpan cost;
+            bool never;
+            bool busy;
+            lock (_gate)
+            {
+                Probed.Add(name);
+                cost = _costs.GetValueOrDefault(name);
+                never = _never.Contains(name);
+                busy = _busy.Contains(name);
+            }
+
+            if (busy)
+            {
+                return Result<PictureInfo>.Failure("video.probe_busy", "An earlier probe of the file is still running.");
+            }
+
+            if (never)
+            {
+                _release.Wait(TimeSpan.FromSeconds(30)); // ignores the limit and the token: a read stuck on a bad sector
+                return Result<PictureInfo>.Failure("video.probe_timeout", "The probe gave up.");
+            }
+
+            var spent = cost < timeLimit ? cost : timeLimit;
+            var end = Time!.GetTimestamp() + (long)(spent.TotalSeconds * Time.TimestampFrequency);
+            while (Time.GetTimestamp() < end && !cancel.IsCancellationRequested)
+            {
+                Thread.Sleep(1);
+            }
+
+            return cost > timeLimit
+                ? Result<PictureInfo>.Failure("video.probe_timeout", "The probe gave up.")
+                : Result<PictureInfo>.Success(new PictureInfo("h264", "High", 1920, 1080));
+        }
+
+        private void SetCost(string name, TimeSpan cost)
+        {
+            lock (_gate)
+            {
+                _costs[name] = cost;
+            }
+        }
+    }
+}

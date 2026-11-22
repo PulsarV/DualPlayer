@@ -63,7 +63,8 @@ public sealed partial class PlaybackSession : IDisposable
     // Files whose own listing or probe ran its full, uncut limit without an answer since the film started (AC-09b); a press
     // checks them last, so a file that recovers plays. Keyed by path + size + mtime. Touched only on the session's control thread.
     private readonly HashSet<NeighbourKey> _timedOut = [];
-    // The abandoned listing worker of a file the scan gave up on: while it runs, no press starts another for that file.
+    // The abandoned listing or probe worker of a file the scan gave up on: while it runs, no press starts another for that file,
+    // so a file holds at most one blocked thread.
     private readonly Dictionary<NeighbourKey, Task> _workers = [];
 
     // Files already judged unplayable for the film, with the verdict: later presses step past them with the same reason and
@@ -532,15 +533,18 @@ public sealed partial class PlaybackSession : IDisposable
         var skipped = 0;
         List<string> order = [];
         var outOfTime = false;
+        var checkStarted = false; // set once a file of this press starts a check: only the first has the press's whole budget
+        HashSet<string> visited = [];
         try
         {
             order = FolderNeighbours.Candidates(request.File, direction).ToList();
             foreach (var candidate in ScanOrder(order))
             {
+                visited.Add(candidate);
                 var key = KeyOf(candidate);
                 var (skip, expired) = _judged.TryGetValue(key, out var verdict)
                     ? (verdict, false)
-                    : CheckPlayable(candidate, key, request, scanAt);
+                    : CheckPlayable(candidate, key, request, scanAt, ref checkStarted);
                 if (expired)
                 {
                     outOfTime = true;
@@ -567,11 +571,12 @@ public sealed partial class PlaybackSession : IDisposable
 
         if (target is not null)
         {
-            // Remembered files that come before the target in folder order were deferred, which still passes them over.
+            // Remembered files that come before the target in folder order were deferred, which still passes them over; one
+            // this press already checked and reported is not reported again.
             var targetIndex = order.IndexOf(target);
             foreach (var passed in order.Take(targetIndex))
             {
-                if (!_timedOut.Contains(KeyOf(passed)))
+                if (visited.Contains(passed) || !_timedOut.Contains(KeyOf(passed)))
                 {
                     continue;
                 }
@@ -712,13 +717,20 @@ public sealed partial class PlaybackSession : IDisposable
     // Skip = null and Expired = false: playable. Expired: the press budget ran out before this file could be judged.
     // A file the session gives up on has its worker cancelled. It is remembered as timed out only when its own listing or
     // probe ran its full, uncut limit; a file judged unplayable keeps that verdict for the film (AC-08, AC-09b).
-    private (FileSkipped? Skip, bool Expired) CheckPlayable(string path, NeighbourKey key, StartRequest request, long scanAt)
+    // A file stepped past because its worker is still running is reported skipped for this press only: it is not judged, so
+    // it is checked again once the worker has completed.
+    private (FileSkipped? Skip, bool Expired) CheckPlayable(string path, NeighbourKey key, StartRequest request, long scanAt, ref bool checkStarted)
     {
         var cancel = new CancellationTokenSource();
         var gaveUp = false;
         try
         {
-            var outcome = CheckPlayable(path, key, request, scanAt, cancel.Token, out gaveUp, out var timedOut);
+            var outcome = CheckPlayable(path, key, request, scanAt, ref checkStarted, cancel.Token, out gaveUp, out var timedOut, out var steppedPast);
+            if (steppedPast)
+            {
+                return outcome;
+            }
+
             if (timedOut)
             {
                 _timedOut.Add(key);
@@ -745,16 +757,18 @@ public sealed partial class PlaybackSession : IDisposable
         }
     }
 
-    private (FileSkipped? Skip, bool Expired) CheckPlayable(string path, NeighbourKey key, StartRequest request, long scanAt, CancellationToken cancel, out bool gaveUp, out bool timedOut)
+    private (FileSkipped? Skip, bool Expired) CheckPlayable(string path, NeighbourKey key, StartRequest request, long scanAt, ref bool checkStarted, CancellationToken cancel, out bool gaveUp, out bool timedOut, out bool steppedPast)
     {
         gaveUp = false;
         timedOut = false;
+        steppedPast = false;
         var name = Path.GetFileName(path);
         if (_workers.TryGetValue(key, out var live))
         {
             if (!live.IsCompleted)
             {
-                // Never a second worker on a file whose first one is still blocked: step past it.
+                // Never a second worker on a file whose first one is still blocked: step past it for this press.
+                steppedPast = true;
                 return (new FileSkipped(name, "unreadable", null, null), false);
             }
 
@@ -768,8 +782,9 @@ public sealed partial class PlaybackSession : IDisposable
             return (null, true);
         }
 
-        // No earlier file in this press spent any of the budget: this file had all of it.
-        var wholeBudget = elapsed <= ProbeTimingSlack;
+        // No earlier file in this press started a check: this file has all of the budget (the folder work before it does not count).
+        var wholeBudget = !checkStarted;
+        checkStarted = true;
 
         // The track listing runs on a worker under the same deadline as the probe; it counts as having had its own full limit
         // only when the press started it with at least that much left.
@@ -807,16 +822,43 @@ public sealed partial class PlaybackSession : IDisposable
         remaining = NeighbourScanBudget - _time.GetElapsedTime(scanAt);
         if (remaining < MinProbeTime)
         {
+            // A listing that used up the budget it alone had is the slow part of this file.
+            timedOut = wholeBudget;
             return (null, true);
         }
 
         var cut = remaining < PictureProbeLimit;
         var probeLimit = cut ? remaining : PictureProbeLimit;
         var probeStart = _time.GetTimestamp();
-        var picture = _pictureProbe.Probe(path, probeLimit, cancel);
+
+        // The probe runs on a worker too, so a probe that never returns cannot hold the press; the worker is kept per file.
+        var probe = Task.Run(() => _pictureProbe.Probe(path, probeLimit, cancel));
+        while (!probe.IsCompleted && _time.GetElapsedTime(probeStart) < probeLimit + ProbeTimingSlack)
+        {
+            probe.Wait(1);
+        }
+
+        Result<PictureInfo> picture;
+        if (probe.IsCompleted)
+        {
+            picture = probe.GetAwaiter().GetResult();
+        }
+        else
+        {
+            _workers[key] = probe;
+            picture = Result<PictureInfo>.Failure("video.probe_timeout", $"The probe of '{path}' did not return within its limit.");
+        }
+
         if (picture.IsSuccess)
         {
             return (null, false);
+        }
+
+        if (picture.Error.Code == "video.probe_busy")
+        {
+            // The adapter's earlier worker for this file is still blocked and it started no other: step past for this press.
+            steppedPast = true;
+            return (new FileSkipped(name, "unreadable", null, null), false);
         }
 
         // A probe that used up its limit: its worker is cancelled, whatever the limit was.

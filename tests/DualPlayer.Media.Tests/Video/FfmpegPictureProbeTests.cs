@@ -114,6 +114,30 @@ public sealed class FfmpegPictureProbeTests
     }
 
     [Fact]
+    public void A_file_whose_probe_worker_is_still_blocked_is_not_given_a_second_worker_however_often_it_is_probed_AC_09b()
+    {
+        using var release = new ManualResetEventSlim();
+        var workers = 0;
+        var probe = new FfmpegPictureProbe
+        {
+            AfterFormatRead = () =>
+            {
+                Interlocked.Increment(ref workers);
+                release.Wait(TimeSpan.FromSeconds(30)); // a read stuck on a bad sector: ignores the token
+            },
+        };
+        var path = Media("long-gop-ramp.mkv");
+        var limit = TimeSpan.FromMilliseconds(300);
+
+        var results = Enumerable.Range(0, 3).Select(_ => probe.Probe(path, limit, TestContext.Current.CancellationToken)).ToList();
+        release.Set();
+
+        results[0].Error!.Code.ShouldBe("video.probe_timeout");
+        results.Skip(1).ShouldAllBe(r => !r.IsSuccess && r.Error!.Code == "video.probe_busy", "a later probe of a file whose worker is blocked must say so at once");
+        workers.ShouldBe(1, "a press started another probe worker on a file whose first one was still blocked");
+    }
+
+    [Fact]
     public void Probe_reports_not_hardware_decodable_naming_codec_and_profile_for_a_picture_only_software_can_decode()
     {
         var result = NewProbe().Probe(Media("video-ffv1.mkv"), Limit, TestContext.Current.CancellationToken);

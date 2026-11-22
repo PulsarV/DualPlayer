@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using DualPlayer.Core;
 using DualPlayer.Core.Playback;
@@ -17,6 +18,11 @@ public sealed unsafe class FfmpegPictureProbe : IPictureProbe
     private const string NoPicture = "video.no_picture";
     private const string NotHardwareDecodable = "video.not_hardware_decodable";
     private const string ProbeTimeout = "video.probe_timeout";
+    private const string Busy = "video.probe_busy";
+
+    // The worker of each file whose probe gave up on it, by full path: while it runs, no probe starts a second one on that file,
+    // so a file that blocks its reader (a bad sector in its first GOP) holds at most one thread however often it is probed.
+    private readonly ConcurrentDictionary<string, Task> _running = new(StringComparer.Ordinal);
 
     // Test seam: runs on the worker right after codec and profile are published.
     internal Action? AfterFormatRead { get; init; }
@@ -31,11 +37,21 @@ public sealed unsafe class FfmpegPictureProbe : IPictureProbe
             return Result<PictureInfo>.Failure(loaded.Error);
         }
 
+        var key = Path.GetFullPath(path);
+        if (_running.TryGetValue(key, out var earlier) && !earlier.IsCompleted)
+        {
+            // The earlier probe's worker is still blocked on this file: start no other and say so at once, so the caller steps
+            // past the file instead of waiting on it.
+            return Result<PictureInfo>.Failure(Busy, $"An earlier probe of '{path}' is still running.");
+        }
+
+        var known = new KnownFormat();
         // The worker's own token: tripped when the caller gives up or the limit runs out, so the worker's open or read is
         // interrupted and its file closed instead of the worker being left running.
         var stop = CancellationTokenSource.CreateLinkedTokenSource(cancel);
-        var known = new KnownFormat();
         var worker = Task.Factory.StartNew(() => ProbeCore(path, known, stop.Token), CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        _running[key] = worker;
+        _ = worker.ContinueWith(t => _running.TryRemove(new KeyValuePair<string, Task>(key, t)), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         try
         {
             if (worker.Wait(timeLimit, cancel))
@@ -57,6 +73,11 @@ public sealed unsafe class FfmpegPictureProbe : IPictureProbe
 
         stop.Cancel();
 
+        return TimedOut(path, timeLimit, known);
+    }
+
+    private static Result<PictureInfo> TimedOut(string path, TimeSpan timeLimit, KnownFormat known)
+    {
         var message = $"The first picture of '{path}' was not decoded in hardware within {timeLimit.TotalSeconds:0.##} s.";
         var format = known.Value;
         if (format is null)
