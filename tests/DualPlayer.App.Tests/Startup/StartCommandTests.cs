@@ -176,6 +176,14 @@ public sealed class StartCommandTests
     }
 
     [Fact]
+    public void Validate_track_error_on_a_later_output_comes_before_device_error_on_an_earlier_one()
+    {
+        var request = new StartRequest(File, [new OutputAssignment(1, DeviceRef.ByNumber(99)), new OutputAssignment(5, DeviceRef.ByNumber(1))], null);
+
+        Validate(request, new Rig()).Error!.Code.ShouldBe("playback.track_not_found");
+    }
+
+    [Fact]
     public void Validate_device_error_comes_before_screen_error()
     {
         var request = new StartRequest(File, [new OutputAssignment(1, DeviceRef.ByNumber(9))], 7);

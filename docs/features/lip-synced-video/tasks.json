@@ -2818,7 +2818,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T119-check-every-output-s-track-before-resolving-any-device-in-the-start-checks.md",
       "origin": "review-2026-11-22f: X4",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T120",

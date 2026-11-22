@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-01", "AC-03b"]
 files_hint: ["src/DualPlayer.Core/Outputs/OutputAssignmentValidator.cs", "tests/DualPlayer.Core.Tests/Outputs/OutputAssignmentValidatorTests.cs", "tests/DualPlayer.App.Tests/Startup/StartCommandTests.cs"]
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,6 +31,6 @@ See [spec.md](../spec.md) §5 AC-01, AC-03b.
 
 ## Definition of Done
 
-- [ ] The validator checks every `--out` track before resolving any device (then presence, then used-once), as cli.md §1.1 says.
-- [ ] Tests: two outputs, output 1's device missing and output 2's track missing → the track code (Core validator test and an App `StartCommandTests` case). Fail if reverted.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The validator checks every `--out` track before resolving any device (then presence, then used-once), as cli.md §1.1 says.
+- [x] Tests: two outputs, output 1's device missing and output 2's track missing → the track code (Core validator test and an App `StartCommandTests` case). Fail if reverted.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
