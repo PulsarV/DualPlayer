@@ -664,6 +664,8 @@ public sealed partial class PlaybackSession : IDisposable
 
         // Said as soon as the target is chosen, ahead of the new file's output and picture delay lines, which the start
         // publishes; a start that then fails still ends with its note and log line.
+        // The 3 s recovery counts from here, the moment the target is chosen (spec 6), not from the key.
+        var chosenAt = _time.GetTimestamp();
         _events.Publish(new FileChanged(target, request.File) { ToPrevious = direction == NeighbourDirection.Previous });
 
         // Timed from the key, not from the command line the first file was started with.
@@ -689,8 +691,8 @@ public sealed partial class PlaybackSession : IDisposable
         lock (_gate)
         {
             now = _estimate;
-            _resync = ("file-change", commandAt);
-            _readingsAfter = commandAt;
+            _resync = ("file-change", chosenAt);
+            _readingsAfter = chosenAt;
         }
 
         if (now is not null)

@@ -6,8 +6,8 @@ deps: ["T117"]
 blocks: []
 acs: ["AC-07", "AC-09", "AC-09b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs", "docs/features/lip-synced-video/spec.md", "docs/features/lip-synced-video/sad.md", "docs/features/lip-synced-video/tasks/T23-measure-lip-sync-on-the-target-pc.md"]
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,7 +31,7 @@ See [spec.md](../spec.md) §5 AC-07, AC-09, AC-09b.
 
 ## Definition of Done
 
-- [ ] Owner decision: the file-change recovery is counted from the moment the target is chosen (`FileChanged`), not from the key. spec §6 (spec.md:235 row) says so, and notes that with no skips the two moments are the same.
-- [ ] `_resync` for a file change takes the time the target was chosen. Test: a press that spends 2 s of fake time skipping a slow neighbour, then a normal pre-roll → no `NotLipSynced` (file-change); a target chosen at once but a recovery longer than 3 s → still `NotLipSynced`. Fails if reverted.
-- [ ] sad.md (the recovery/quality row that names the 3 s file-change recovery) and the T23 run guide's file-change threshold say the same.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Owner decision: the file-change recovery is counted from the moment the target is chosen (`FileChanged`), not from the key. spec §6 (spec.md:235 row) says so, and notes that with no skips the two moments are the same.
+- [x] `_resync` for a file change takes the time the target was chosen. Test: a press that spends 2 s of fake time skipping a slow neighbour, then a normal pre-roll → no `NotLipSynced` (file-change); a target chosen at once but a recovery longer than 3 s → still `NotLipSynced`. Fails if reverted.
+- [x] sad.md (the recovery/quality row that names the 3 s file-change recovery) and the T23 run guide's file-change threshold say the same.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

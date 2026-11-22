@@ -2799,7 +2799,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T118-count-the-3-s-recovery-after-a-file-change-from-the-moment-the-target-is-chosen-and-say-so-in-spec-6.md",
       "origin": "review-2026-11-22f: X5",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T119",

@@ -20,7 +20,7 @@ target_surfaces: [desktop-app, cli]  # subset of: backend-service | web-frontend
 **Top-3 quality goals (1-liners; full scenarios in §10):**
 
 1. **Lip-sync per output.** After the Viewers' offsets are set, sound is no more than 45 ms ahead of and no more than 125 ms behind its picture, measured with a phone (spec §6, AC-16).
-2. **Seamless changes and fast recovery.** The picture delay changes at ≤ 0.2 % speed change with the picture and every unchanged output within the lip-sync budget throughout. Picture and every output are lip-synced again ≤ 1 s after pause, resume or seek (3 s after a file change or a `return` into the film), counted from the key press, and the start takes ≤ 3 s (spec §6).
+2. **Seamless changes and fast recovery.** The picture delay changes at ≤ 0.2 % speed change with the picture and every unchanged output within the lip-sync budget throughout. Picture and every output are lip-synced again ≤ 1 s after pause, resume or seek (3 s after a file change or a `return` into the film), counted from the key press (for a file change, from the moment the target is chosen, after the neighbour scan), and the start takes ≤ 3 s (spec §6).
 3. **Smooth picture at low cost.** ≤ 1 frame presented late or dropped per minute over a 2 h film (1080p H.264 and HEVC, hardware decoding), at ≤ 15 % of total CPU with two outputs (spec §6).
 
 **Stakeholders.**

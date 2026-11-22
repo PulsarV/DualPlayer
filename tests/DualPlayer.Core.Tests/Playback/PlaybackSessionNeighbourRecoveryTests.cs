@@ -54,6 +54,38 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
     }
 
     [Fact]
+    public void A_file_change_whose_scan_spent_2900_ms_before_the_target_was_chosen_counts_its_3_s_recovery_from_the_choice_AC_07()
+    {
+        using var decoder = new ScriptedDecoder();
+        using var probe = new ScriptedProbe();
+        File("Episode-02.mkv");
+        using var rig = Playing(decoder, probe);
+
+        PressOnSlowFolder(rig, TimeSpan.FromMilliseconds(2900)); // the scan alone spends 2.9 s; the target is then chosen at once
+        rig.Engine.Render(300);
+
+        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("the target was not chosen");
+        rig.Events.OfType<NotLipSynced>().Where(e => e.Command == "file-change").ShouldBeEmpty("the 3 s recovery was counted from the key, so the time spent scanning was held against the new file");
+        rig.Events.OfType<LipSyncedAgain>().Where(e => e.Command == "file-change").ShouldHaveSingleItem("the new file never reported lip-synced again");
+    }
+
+    [Fact]
+    public void A_file_change_chosen_at_once_whose_recovery_runs_past_3_s_is_still_given_up_on_AC_07()
+    {
+        using var decoder = new ScriptedDecoder();
+        using var probe = new ScriptedProbe();
+        File("Episode-02.mkv");
+        using var rig = Playing(decoder, probe);
+
+        rig.Renderer.AfterLoad = () => rig.Renderer.Frozen = true; // the new file's picture never becomes measurable
+        Press(rig);
+        rig.Engine.Render(300);
+        rig.Engine.Render(100);
+
+        rig.Events.OfType<NotLipSynced>().Where(e => e.Command == "file-change").ShouldHaveSingleItem("a recovery that ran past 3 s from the choice was not given up on");
+    }
+
+    [Fact]
     public void The_only_neighbour_whose_listing_stayed_blocked_through_a_press_plays_on_the_press_after_it_recovered_AC_09b()
     {
         using var decoder = new ScriptedDecoder();
