@@ -232,6 +232,35 @@ public sealed class StartCommandTests
         access.Received(1).CheckAccess("id-b");
     }
 
+    [Fact]
+    public void Validate_screen_error_comes_before_a_failing_renderer_library()
+    {
+        var rig = new Rig();
+
+        var r = StartCommand.Validate(
+            Request(screen: 9),
+            rig.Probe,
+            rig.Decoder,
+            new DeviceCatalog([DevA, DevB]),
+            rig.Screens,
+            () => Result.Failure("mpv.not_found", "libmpv-2.dll was not found beside the executable."));
+
+        r.Error!.Code.ShouldBe("start.screen_not_found");
+    }
+
+    [Fact]
+    public void Validate_device_access_refusal_comes_before_a_missing_screen()
+    {
+        var rig = new Rig();
+        var access = Substitute.For<IDeviceAccessProbe>();
+        access.CheckAccess(Arg.Any<string>()).Returns(Result.Failure("outputs.device_access_denied", "Windows refused access to device Headset."));
+
+        var r = StartCommand.Validate(Request(screen: 9), rig.Probe, rig.Decoder, new DeviceCatalog([DevA, DevB]), rig.Screens, null, access);
+
+        r.Error!.Code.ShouldBe("outputs.device_access_denied");
+        StartExitCodes.For(r.Error).ShouldBe(4);
+    }
+
     private static Result<ValidatedStart> Validate(StartRequest request, Rig rig) =>
         StartCommand.Validate(request, rig.Probe, rig.Decoder, new DeviceCatalog([DevA, DevB]), rig.Screens);
 

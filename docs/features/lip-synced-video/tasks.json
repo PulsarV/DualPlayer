@@ -2672,7 +2672,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T113-pin-cli-md-s-exact-terminal-line-shapes-and-the-full-start-check-order-with-tests.md",
       "origin": "review-2026-11-22e: W11, W12",
-      "status": "blocked"
+      "status": "done"
     },
     {
       "id": "T114",

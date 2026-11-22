@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-01", "AC-02", "AC-03b", "AC-06", "AC-07", "AC-09", "AC-13"]
 files_hint: ["tests/DualPlayer.App.Tests/Startup/TerminalPrinterTests.cs", "tests/DualPlayer.App.Tests/E2E/PlayEndToEndTests.cs", "tests/DualPlayer.App.Tests/Startup/StartCommandTests.cs"]
-status: "blocked"
-step: "verify — RED false_pass (tests pass on current code)"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -32,7 +32,7 @@ See [spec.md](../spec.md) §5 AC-01, AC-02, AC-03b, AC-06, AC-07, AC-09, AC-13.
 
 ## Definition of Done
 
-- [ ] Raw-writer assertions (exact text, no whitespace squashing) for each line shape of cli.md §1.1, §2.2 and §2.3 that `TerminalPrinter` writes; each fails if a label's padding or a two-space separator changes.
-- [ ] Two start-order cases: missing screen + failing renderer library → `start.screen_not_found`; refusing device + missing screen → `outputs.device_access_denied`. Each fails if the two checks are swapped in `StartCommand`.
-- [ ] Test-only: no production change, unless a raw assertion exposes a real mismatch with cli.md (then fix the printer, not the test).
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Raw-writer assertions (exact text, no whitespace squashing) for each line shape of cli.md §1.1, §2.2 and §2.3 that `TerminalPrinter` writes; each fails if a label's padding or a two-space separator changes.
+- [x] Two start-order cases: missing screen + failing renderer library → `start.screen_not_found`; refusing device + missing screen → `outputs.device_access_denied`. Each fails if the two checks are swapped in `StartCommand`.
+- [x] Test-only: no production change, unless a raw assertion exposes a real mismatch with cli.md (then fix the printer, not the test).
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
