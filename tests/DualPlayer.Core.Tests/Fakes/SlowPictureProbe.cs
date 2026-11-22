@@ -18,10 +18,7 @@ internal sealed class SlowPictureProbe(TimeSpan cost) : IPictureProbe
         var spent = cost < timeLimit ? cost : timeLimit;
         var start = Time!.GetTimestamp();
         var end = start + (long)(spent.TotalSeconds * Time.TimestampFrequency);
-        while (Time.GetTimestamp() < end)
-        {
-            Thread.Sleep(1);
-        }
+        Time.SpinUntil(end);
 
         return Result<PictureInfo>.Failure("video.probe_timeout", "The picture probe ran out of time.");
     }

@@ -33,9 +33,10 @@ internal sealed class SessionRig : IDisposable
         Func<IOutputLagControl, IOutputLagControl>? wrapLags = null,
         IAudioDecoder? neighbourDecoder = null,
         IPictureProbe? neighbourPictureProbe = null,
-        ILogger<PlaybackSession>? log = null)
+        ILogger<PlaybackSession>? log = null,
+        int barrierEvery = 1)
     {
-        Engine = new EngineRig(devices, totalSeconds) { EndsAllowed = true };
+        Engine = new EngineRig(devices, totalSeconds, barrierEvery: barrierEvery) { EndsAllowed = true, StrictGate = true };
         Renderer = new FakeVideoRenderer(Engine.Time) { Observer = Record };
         Probe = new FakeDeviceLatencyProbe();
         Pictures = new FakePictureProbe();
@@ -80,6 +81,7 @@ internal sealed class SessionRig : IDisposable
         }
 
         var until = Engine.Time.GetUtcNow() + EngineCommandTakes;
+        Engine.Time.SignalWait(); // the command now waits on fake time: it may move
         RigLoops.WaitOrFail(() => Engine.Time.GetUtcNow() >= until, TimeSpan.FromSeconds(10), $"the caller to render {EngineCommandTakes.TotalMilliseconds:F0} ms of the engine command");
     }
 
@@ -221,6 +223,7 @@ internal sealed class SessionRig : IDisposable
 
         public Result<TimeSpan> Pause()
         {
+            Rig.Time.SignalWait(); // an engine command waits on the fake devices, so fake time may move
             var result = Rig.Engine.Pause();
             if (result.IsSuccess)
             {
@@ -232,6 +235,7 @@ internal sealed class SessionRig : IDisposable
 
         public Result<TimeSpan> Resume()
         {
+            Rig.Time.SignalWait(); // an engine command waits on the fake devices, so fake time may move
             var result = Rig.Engine.Resume();
             if (result.IsSuccess)
             {
@@ -251,6 +255,7 @@ internal sealed class SessionRig : IDisposable
             }
 
             Rig.CommandStarting(target < TimeSpan.Zero ? TimeSpan.Zero : target);
+            Rig.Time.SignalWait(); // an engine command waits on the fake devices, so fake time may move
             var result = Rig.Engine.Seek(target);
             if (result.IsSuccess)
             {
@@ -265,6 +270,7 @@ internal sealed class SessionRig : IDisposable
         public void Stop(RunEndReason reason)
         {
             owner.Record($"engine.Stop({reason})");
+            Rig.Time.SignalWait();
             Rig.Engine.Stop(reason);
         }
     }
@@ -342,4 +348,13 @@ internal sealed class TrackListingDecoder : IAudioDecoder
 
     public Result<IDecodeSession> Open(string path, IReadOnlyList<DecodeRequest> outputs) =>
         Result<IDecodeSession>.Failure("test.not_decoding", "The listing decoder does not decode.");
+}
+
+/// <summary>
+/// What the neighbour-scan tests share about their rig. They assert on scan outcomes and fake time, not on the 100 ms sync samples,
+/// so the engine's control loop (which polls in real time while a run starts) is waited for only every tenth rendered step.
+/// </summary>
+internal static class NeighbourRig
+{
+    public const int BarrierEvery = 10;
 }

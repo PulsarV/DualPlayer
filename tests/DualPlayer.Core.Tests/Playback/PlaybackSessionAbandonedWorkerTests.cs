@@ -25,7 +25,7 @@ public sealed class PlaybackSessionAbandonedWorkerTests : IDisposable
     public void A_second_page_down_steps_past_two_hanging_neighbours_and_reaches_the_third_file_AC_09b()
     {
         var probe = new HangingPictureProbe("Episode-02.mkv", "Episode-03.mkv");
-        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourPictureProbe: probe);
+        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourPictureProbe: probe, barrierEvery: NeighbourRig.BarrierEvery);
         probe.Time = rig.Engine.Time;
         File("Episode-02.mkv");
         File("Episode-03.mkv");
@@ -49,7 +49,8 @@ public sealed class PlaybackSessionAbandonedWorkerTests : IDisposable
     public void A_track_listing_that_hangs_is_cancelled_when_the_session_gives_up_on_the_file_AC_09b()
     {
         var decoder = new HangingListingDecoder();
-        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourDecoder: decoder);
+        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourDecoder: decoder, barrierEvery: NeighbourRig.BarrierEvery);
+        decoder.Time = rig.Engine.Time;
         File("Episode-02.mkv");
         rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = File("Episode-01.mkv") })).IsSuccess.ShouldBeTrue();
         rig.Engine.Render(300);
@@ -65,7 +66,8 @@ public sealed class PlaybackSessionAbandonedWorkerTests : IDisposable
     public void A_file_whose_track_listing_hung_is_stepped_past_on_the_next_press_AC_09b()
     {
         var decoder = new HangingListingDecoder();
-        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourDecoder: decoder);
+        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourDecoder: decoder, barrierEvery: NeighbourRig.BarrierEvery);
+        decoder.Time = rig.Engine.Time;
         File("Episode-02.mkv");
         var next = File("Episode-03.mkv");
         decoder.HangOn = "Episode-02.mkv";
@@ -86,7 +88,7 @@ public sealed class PlaybackSessionAbandonedWorkerTests : IDisposable
     public void A_picture_probe_that_timed_out_is_handed_a_token_the_session_cancels_when_it_gives_up_AC_09b()
     {
         var probe = new HangingPictureProbe("Episode-02.mkv");
-        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourPictureProbe: probe);
+        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourPictureProbe: probe, barrierEvery: NeighbourRig.BarrierEvery);
         probe.Time = rig.Engine.Time;
         File("Episode-02.mkv");
         File("Episode-03.mkv");
@@ -104,7 +106,7 @@ public sealed class PlaybackSessionAbandonedWorkerTests : IDisposable
     public void Files_that_timed_out_are_tried_again_after_a_successful_file_change_AC_09b()
     {
         var probe = new HangingPictureProbe("Episode-03.mkv");
-        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourPictureProbe: probe);
+        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourPictureProbe: probe, barrierEvery: NeighbourRig.BarrierEvery);
         probe.Time = rig.Engine.Time;
         var second = File("Episode-02.mkv");
         File("Episode-03.mkv");
@@ -162,10 +164,7 @@ public sealed class PlaybackSessionAbandonedWorkerTests : IDisposable
             }
 
             var end = Time!.GetTimestamp() + (long)(timeLimit.TotalSeconds * Time.TimestampFrequency);
-            while (Time.GetTimestamp() < end && !cancel.IsCancellationRequested)
-            {
-                Thread.Sleep(1);
-            }
+            Time.SpinUntil(end, cancel);
 
             return Result<PictureInfo>.Failure("video.probe_timeout", "The picture probe ran out of time.");
         }
@@ -175,6 +174,8 @@ public sealed class PlaybackSessionAbandonedWorkerTests : IDisposable
     private sealed class HangingListingDecoder : IAudioDecoder
     {
         public ManualResetEventSlim Cancelled { get; } = new();
+
+        public TimeProvider? Time { get; set; }
 
         public string? HangOn { get; set; }
 
@@ -195,6 +196,7 @@ public sealed class PlaybackSessionAbandonedWorkerTests : IDisposable
                 return Result<IReadOnlyList<AudioTrackInfo>>.Success([.. new[] { 1, 2 }.Select(n => new AudioTrackInfo(n, "und", ChannelLayout.Stereo, 48_000))]);
             }
 
+            using var waiting = Time.Waiting();
             if (cancel.WaitHandle.WaitOne(TimeSpan.FromSeconds(10)))
             {
                 Cancelled.Set();

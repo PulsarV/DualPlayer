@@ -23,7 +23,7 @@ public sealed class PlaybackSessionNeighbourRememberedFilesTests : IDisposable
 
     private SessionRig Playing(IAudioDecoder? decoder, IPictureProbe? probe)
     {
-        var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourDecoder: decoder, neighbourPictureProbe: probe);
+        var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourDecoder: decoder, neighbourPictureProbe: probe, barrierEvery: NeighbourRig.BarrierEvery);
         (decoder as ITimed)?.Attach(rig.Engine.Time);
         (probe as ITimed)?.Attach(rig.Engine.Time);
         rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = File("Episode-01.mkv") })).IsSuccess.ShouldBeTrue();
@@ -114,10 +114,7 @@ public sealed class PlaybackSessionNeighbourRememberedFilesTests : IDisposable
             var cost = hang ? TimeSpan.MaxValue : OnlyFor is null || OnlyFor == name ? ProbeCost : TimeSpan.Zero;
             var spent = cost < timeLimit ? cost : timeLimit;
             var end = _time!.GetTimestamp() + (long)(spent.TotalSeconds * _time.TimestampFrequency);
-            while (_time.GetTimestamp() < end && !cancel.IsCancellationRequested)
-            {
-                Thread.Sleep(1);
-            }
+            _time.SpinUntil(end, cancel);
 
             return hang || cost > timeLimit
                 ? Result<PictureInfo>.Failure("video.probe_timeout", "The probe gave up.")
@@ -152,15 +149,13 @@ public sealed class PlaybackSessionNeighbourRememberedFilesTests : IDisposable
 
             if (NeverReturnsOn == name)
             {
+                using var waiting = _time.Waiting();
                 _release.Wait(TimeSpan.FromSeconds(30)); // ignores the token: an uninterruptible native call
             }
             else if (_time is not null && ListingCost > TimeSpan.Zero && (OnlyFor is null || OnlyFor == name))
             {
                 var end = _time.GetTimestamp() + (long)(ListingCost.TotalSeconds * _time.TimestampFrequency);
-                while (_time.GetTimestamp() < end)
-                {
-                    Thread.Sleep(1);
-                }
+                _time.SpinUntil(end);
             }
 
             return Result<IReadOnlyList<AudioTrackInfo>>.Success([.. new[] { 1, 2 }.Select(n => new AudioTrackInfo(n, "und", ChannelLayout.Stereo, 48_000))]);

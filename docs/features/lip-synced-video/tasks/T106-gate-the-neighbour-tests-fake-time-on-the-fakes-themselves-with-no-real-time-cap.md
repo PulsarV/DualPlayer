@@ -6,8 +6,8 @@ deps: ["T102"]
 blocks: []
 acs: ["AC-08", "AC-09b"]
 files_hint: ["tests/DualPlayer.Core.Tests/Fakes/", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourMemoryTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourWorkerTimingTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,7 +31,7 @@ See [spec.md](../spec.md) §5 AC-08, AC-09b.
 
 ## Definition of Done
 
-- [ ] Fake time in the neighbour tests moves only on an explicit signal from the fakes (e.g. the scripted decoder/probe advance `FakeTimeProvider` by their scripted cost when entered), never on an unrelated timer and never on a real-time cap.
-- [ ] No neighbour test waits on real time: the neighbour and remembered-file test classes run in well under 2 s each, and `PlaybackSessionNeighbourWorkerTimingTests` no longer relies on `Thread.Sleep`.
-- [ ] A rig self-test proves that a DecodePump timer does not move fake time during a neighbour scan.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Fake time in the neighbour tests moves only on an explicit signal from the fakes (e.g. the scripted decoder/probe advance `FakeTimeProvider` by their scripted cost when entered), never on an unrelated timer and never on a real-time cap.
+- [x] No neighbour test waits on real time: the neighbour and remembered-file test classes run in well under 2 s each, and `PlaybackSessionNeighbourWorkerTimingTests` no longer relies on `Thread.Sleep`.
+- [x] A rig self-test proves that a DecodePump timer does not move fake time during a neighbour scan.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

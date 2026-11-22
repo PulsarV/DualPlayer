@@ -24,7 +24,7 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
 
     private SessionRig Playing(ScriptedDecoder decoder, ScriptedProbe probe)
     {
-        var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourDecoder: decoder, neighbourPictureProbe: probe);
+        var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourDecoder: decoder, neighbourPictureProbe: probe, barrierEvery: NeighbourRig.BarrierEvery);
         decoder.Time = rig.Engine.Time;
         probe.Time = rig.Engine.Time;
         rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = File("Episode-01.mkv") })).IsSuccess.ShouldBeTrue();
@@ -43,12 +43,18 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
 
     private static IEnumerable<string> Notes(SessionRig rig) => rig.Events.OfType<NoteShown>().Select(e => e.Text);
 
-    // The worker's task completes a moment after the fake call returns.
-    private static void LetWorkerFinish(ScriptedDecoder decoder, string name)
+    // The worker's task completes a moment after the fake call returns: wait until the session holds no live worker. Read
+    // between commands, when the session's control thread does not touch its worker map.
+    private static void LetWorkerFinish(SessionRig rig, ScriptedDecoder decoder, string name)
     {
         RigLoops.WaitOrFail(() => decoder.Returned(name), TimeSpan.FromSeconds(10), $"the listing of {name} to return");
-        Thread.Sleep(100);
+        var workers = WorkersOf(rig.Session);
+        RigLoops.WaitOrFail(() => workers.Values.Cast<Task>().All(t => t.IsCompleted), TimeSpan.FromSeconds(10), $"the session's worker for {name} to complete");
     }
+
+    private static System.Collections.IDictionary WorkersOf(PlaybackSession session) =>
+        typeof(PlaybackSession).GetField("_workers", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(session) as System.Collections.IDictionary
+        ?? throw new InvalidOperationException("PlaybackSession no longer keeps its neighbour workers in _workers.");
 
     [Fact]
     public void The_only_neighbour_whose_listing_stayed_blocked_through_a_press_plays_on_the_press_after_it_recovered_AC_09b()
@@ -64,7 +70,7 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
         Notes(rig).ShouldContain(t => t.StartsWith("No next file (skipped 1; last: Episode-02.mkv", StringComparison.Ordinal), "the live worker's file was not reported as skipped");
         rig.Events.OfType<FileChanged>().ShouldBeEmpty();
         decoder.Release("Episode-02.mkv"); // the NAS is back
-        LetWorkerFinish(decoder, "Episode-02.mkv");
+        LetWorkerFinish(rig, decoder, "Episode-02.mkv");
 
         Press(rig);
 
@@ -87,7 +93,7 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
         rig.Events.OfType<FileChanged>().ShouldBeEmpty();
         rig.Events.OfType<FileSkipped>().Select(e => e.File).ShouldContain("Episode-03.mkv", "the file with a live worker was not stepped past");
         decoder.Release("Episode-03.mkv");
-        LetWorkerFinish(decoder, "Episode-03.mkv");
+        LetWorkerFinish(rig, decoder, "Episode-03.mkv");
 
         Press(rig);
 
@@ -267,15 +273,13 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
 
             if (block is not null)
             {
+                using var waiting = Time.Waiting();
                 block.Wait(TimeSpan.FromSeconds(30)); // ignores the token: an uninterruptible native call
             }
             else if (cost > TimeSpan.Zero)
             {
                 var end = Time!.GetTimestamp() + (long)(cost.TotalSeconds * Time.TimestampFrequency);
-                while (Time.GetTimestamp() < end)
-                {
-                    Thread.Sleep(1);
-                }
+                Time.SpinUntil(end);
             }
 
             lock (_gate)
@@ -360,16 +364,14 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
 
             if (never)
             {
+                using var waiting = Time.Waiting();
                 _release.Wait(TimeSpan.FromSeconds(30)); // ignores the limit and the token: a read stuck on a bad sector
                 return Result<PictureInfo>.Failure("video.probe_timeout", "The probe gave up.");
             }
 
             var spent = cost < timeLimit ? cost : timeLimit;
             var end = Time!.GetTimestamp() + (long)(spent.TotalSeconds * Time.TimestampFrequency);
-            while (Time.GetTimestamp() < end && !cancel.IsCancellationRequested)
-            {
-                Thread.Sleep(1);
-            }
+            Time.SpinUntil(end, cancel);
 
             return cost > timeLimit
                 ? Result<PictureInfo>.Failure("video.probe_timeout", "The probe gave up.")

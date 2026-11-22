@@ -23,7 +23,7 @@ public sealed class PlaybackSessionNeighbourBudgetTests : IDisposable
     public void One_page_down_over_slow_neighbours_answers_within_the_three_second_budget_AC_09b()
     {
         var probe = new SlowPictureProbe(TimeSpan.FromSeconds(2));
-        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourPictureProbe: probe);
+        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourPictureProbe: probe, barrierEvery: NeighbourRig.BarrierEvery);
         probe.Time = rig.Engine.Time;
         foreach (var name in new[] { "Episode-02.mkv", "Episode-03.mkv", "Episode-04.mkv", "Episode-05.mkv" })
         {
@@ -54,7 +54,7 @@ public sealed class PlaybackSessionNeighbourBudgetTests : IDisposable
     public void One_page_up_over_slow_neighbours_publishes_one_previous_direction_timeout_with_the_checked_count_AC_09b()
     {
         var probe = new SlowPictureProbe(TimeSpan.FromSeconds(2));
-        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourPictureProbe: probe);
+        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourPictureProbe: probe, barrierEvery: NeighbourRig.BarrierEvery);
         probe.Time = rig.Engine.Time;
         foreach (var name in new[] { "Episode-01.mkv", "Episode-02.mkv", "Episode-03.mkv", "Episode-04.mkv" })
         {
@@ -81,7 +81,7 @@ public sealed class PlaybackSessionNeighbourBudgetTests : IDisposable
     public void A_probe_whose_limit_was_cut_by_the_budget_and_timed_out_is_not_reported_as_a_skipped_file_AC_09b()
     {
         var probe = new SlowPictureProbe(TimeSpan.FromSeconds(5));
-        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourPictureProbe: probe);
+        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourPictureProbe: probe, barrierEvery: NeighbourRig.BarrierEvery);
         probe.Time = rig.Engine.Time;
         File("Episode-02.mkv");
         File("Episode-03.mkv");
@@ -101,7 +101,7 @@ public sealed class PlaybackSessionNeighbourBudgetTests : IDisposable
     public void A_slow_track_listing_keeps_one_press_within_the_budget_AC_09b()
     {
         var probe = new SlowPictureProbe(TimeSpan.FromSeconds(2));
-        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourPictureProbe: probe);
+        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourPictureProbe: probe, barrierEvery: NeighbourRig.BarrierEvery);
         probe.Time = rig.Engine.Time;
         File("Episode-02.mkv");
         File("Episode-03.mkv");
@@ -112,10 +112,7 @@ public sealed class PlaybackSessionNeighbourBudgetTests : IDisposable
         rig.Decoder.BeforeList = () =>
         {
             var end = rig.Engine.Time.GetTimestamp() + (long)(2.5 * rig.Engine.Time.TimestampFrequency);
-            while (rig.Engine.Time.GetTimestamp() < end)
-            {
-                Thread.Sleep(1);
-            }
+            rig.Engine.Time.SpinUntil(end);
         };
 
         var key = rig.Engine.Time.GetUtcNow();
@@ -130,7 +127,7 @@ public sealed class PlaybackSessionNeighbourBudgetTests : IDisposable
     [Fact]
     public void A_track_listing_that_blocks_past_the_budget_is_cut_off_at_the_budget_and_reports_zero_checked_AC_09b()
     {
-        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600);
+        using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, barrierEvery: NeighbourRig.BarrierEvery);
         File("Episode-02.mkv");
         File("Episode-03.mkv");
 
@@ -140,10 +137,7 @@ public sealed class PlaybackSessionNeighbourBudgetTests : IDisposable
         rig.Decoder.BeforeList = () =>
         {
             var end = rig.Engine.Time.GetTimestamp() + (long)(10 * rig.Engine.Time.TimestampFrequency);
-            while (rig.Engine.Time.GetTimestamp() < end)
-            {
-                Thread.Sleep(1);
-            }
+            rig.Engine.Time.SpinUntil(end);
         };
 
         var key = rig.Engine.Time.GetUtcNow();

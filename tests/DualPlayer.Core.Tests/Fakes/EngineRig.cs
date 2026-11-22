@@ -79,6 +79,12 @@ internal sealed class EngineRig : IDisposable
 
     public CountingTimeProvider Time { get; }
 
+    /// <summary>
+    /// When set (a session rig), fake time stands still during a command until a fake signals that it waits on it, with no real-time
+    /// cap. When clear (a bare engine rig), the engine's own gate applies: any new timer, or 2 s of real time.
+    /// </summary>
+    public bool StrictGate { get; set; }
+
     public IAudioBackend Backend { get; }
 
     /// <summary>Device <paramref name="number"/> (dev-n) is lost the moment the engine starts it: in the pre-roll, before its first audio.</summary>
@@ -161,30 +167,61 @@ internal sealed class EngineRig : IDisposable
     public T Call<T>(Func<T> command)
     {
         using var started = new ManualResetEventSlim();
+        var signals = Time.Signals;
         var task = Task.Factory.StartNew(
             () =>
             {
+                Time.WatchCommandThread(Environment.CurrentManagedThreadId);
                 started.Set();
-                return command();
+                try
+                {
+                    return command();
+                }
+                finally
+                {
+                    Time.WatchCommandThread(0);
+                }
             },
             CancellationToken.None,
             TaskCreationOptions.LongRunning,
             TaskScheduler.Default);
         started.Wait(TimeSpan.FromSeconds(10)).ShouldBeTrue("the command thread never started");
 
-        // Fake time stands still until the command waits on it (asks for a timer) or finishes: a worker the pool starts late
-        // must see the time the command began at. The real-time cap covers a command that never waits on fake time.
-        var timers = Time.TimersCreated;
-        var gate = DateTime.UtcNow + TimeSpan.FromSeconds(2);
-        while (!task.IsCompleted && Time.TimersCreated == timers && DateTime.UtcNow < gate)
+        // Fake time stands still until the command waits on it, or finishes: a worker the pool starts late must see the time the
+        // command began at. A session rig waits for an explicit signal from a fake (a scripted decoder or probe spending fake time,
+        // an engine command) or a timer the command waits on; real time and an unrelated timer never open the gate. It sleeps until
+        // something it looks at changes; a command that neither finishes nor waits fails the test after 60 s, it never moves time.
+        // A bare engine rig keeps the engine's own gate: any new timer, or 2 s.
+        if (StrictGate)
         {
-            task.Wait(5);
+            _ = task.ContinueWith(_ => Time.Pulse(), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            while (!task.IsCompleted && Time.Signals == signals)
+            {
+                if (Time.Waiters > 0)
+                {
+                    Advance(barrier: false); // a fake is spending fake time: it moves only while one is
+                    PaceToDecoder();
+                }
+                else
+                {
+                    Time.WaitForPulse(TimeSpan.FromSeconds(60)).ShouldBeTrue("the command neither finished nor waited on fake time within 60 s");
+                }
+            }
+        }
+        else
+        {
+            var timers = Time.TimersCreated;
+            var gate = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+            while (!task.IsCompleted && Time.TimersCreated == timers && DateTime.UtcNow < gate)
+            {
+                task.Wait(5);
+            }
         }
 
         for (var i = 0; i < 3_000 && !task.IsCompleted; i++)
         {
+            Thread.Sleep(1); // the command, woken by its own signal, reaches its read of the time before the clock moves
             Advance(barrier: false);
-            Thread.Sleep(1);
         }
 
         task.IsCompleted.ShouldBeTrue("the command never completed");
@@ -390,6 +427,27 @@ internal sealed class EngineRig : IDisposable
             var chunk = device.MixFormat.SampleRate / 100;
             RigLoops.FillQueue(device, 2 * chunk, chunk);
         }
+    }
+
+    /// <summary>
+    /// Gives the playing film's decoder the real time it needs to stay ahead of fake time, as <see cref="WaitForDecoder"/> does between
+    /// rendered steps, but never fails and never waits longer than a few ms (a stopped or seeking run has no decoder to wait for).
+    /// </summary>
+    private void PaceToDecoder()
+    {
+        var wanted = Math.Min(Position.TotalSeconds + 1.0, _decoder.TotalSeconds);
+        for (var i = 0; i < _devices.Count; i++)
+        {
+            if (_devices[i].IsClosed || _devices[i].IsLost || _devices[i].IsHung)
+            {
+                continue;
+            }
+
+            var index = i;
+            SpinWait.SpinUntil(() => _decoder.DecodedSeconds(index) >= wanted, TimeSpan.FromMilliseconds(5));
+        }
+
+        Thread.Yield();
     }
 
     private void WaitForDecoder()

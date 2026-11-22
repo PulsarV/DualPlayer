@@ -24,7 +24,7 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
     private (SessionRig Rig, ScriptedProbe Probe) PlayingRig(string first = "Episode-01.mkv")
     {
         var probe = new ScriptedProbe();
-        var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourPictureProbe: probe);
+        var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourPictureProbe: probe, barrierEvery: NeighbourRig.BarrierEvery);
         probe.Time = rig.Engine.Time;
         rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = File(first) })).IsSuccess.ShouldBeTrue();
         rig.Engine.Render(300);
@@ -164,10 +164,7 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
 
             var spent = behaviour.Cost < timeLimit ? behaviour.Cost : timeLimit;
             var end = Time!.GetTimestamp() + (long)(spent.TotalSeconds * Time.TimestampFrequency);
-            while (Time.GetTimestamp() < end && !cancel.IsCancellationRequested)
-            {
-                Thread.Sleep(1);
-            }
+            Time.SpinUntil(end, cancel);
 
             if (behaviour.Cost <= timeLimit && behaviour.Code is null)
             {

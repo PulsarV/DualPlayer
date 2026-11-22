@@ -10,11 +10,93 @@ internal sealed class CountingTimeProvider : FakeTimeProvider
     private static bool _firing;
 
     private int _timers;
+    private int _fakeWaits;
+    private int _waiters;
+    private int _commandThread;
     private TimeSpan _folderWork;
     private int _scanThread;
     private int _armed;
 
     public int TimersCreated => Volatile.Read(ref _timers);
+
+    /// <summary>
+    /// How many times a fake (a scripted decoder or probe) has begun spending fake time, plus the timers the command waits on: those
+    /// it creates itself and the periodic ticks of the engine and session it starts. Only these move fake time on during a command;
+    /// a one-shot timer another thread creates (the DecodePump re-arming its 10 ms wait) and the real-time clock do not.
+    /// </summary>
+    public int Signals => Volatile.Read(ref _fakeWaits) + Volatile.Read(ref _commandTimers);
+
+    private int _commandTimers;
+    private int _declined;
+    private readonly AutoResetEvent _pulse = new(false);
+
+    /// <summary>
+    /// How many times the rig's gate has looked at the running command and kept fake time still: it wakes on every timer, signal and
+    /// waiter, and on the command finishing, so a test that waits for this to grow has seen the gate refuse, with no real-time wait.
+    /// </summary>
+    public int GateDeclined => Volatile.Read(ref _declined);
+
+    /// <summary>Something the gate looks at has changed (a timer, a signal, a waiter, the command finishing): wakes the gate.</summary>
+    public void Pulse() => _pulse.Set();
+
+    /// <summary>The gate has judged the command and keeps fake time still; it sleeps until the next <see cref="Pulse"/>. False after <paramref name="failAfter"/>.</summary>
+    public bool WaitForPulse(TimeSpan failAfter)
+    {
+        Interlocked.Increment(ref _declined);
+        return _pulse.WaitOne(failAfter);
+    }
+
+    /// <summary>Waits (a failure bound, not a pass condition) until the gate has declined at least <paramref name="count"/> times.</summary>
+    public bool WaitForGateDeclined(int count, TimeSpan failAfter) => SpinWait.SpinUntil(() => GateDeclined >= count, failAfter);
+
+    /// <summary>Names the thread whose own timers count as a wait on fake time (0 for none).</summary>
+    public void WatchCommandThread(int threadId) => Volatile.Write(ref _commandThread, threadId);
+
+    /// <summary>How many fakes are spending or blocked on fake time right now: while any is, fake time moves on; when none is, it stands still.</summary>
+    public int Waiters => Volatile.Read(ref _waiters);
+
+    /// <summary>A fake tells the rig that its command now waits on fake time for good (an engine command), so fake time may move.</summary>
+    public void SignalWait()
+    {
+        Interlocked.Increment(ref _fakeWaits);
+        Pulse();
+    }
+
+    /// <summary>A fake is blocked in real time until the session gives up on it by fake time: fake time moves on until the scope ends.</summary>
+    public IDisposable Waiting()
+    {
+        Interlocked.Increment(ref _waiters);
+        Pulse();
+        return new Scope(this);
+    }
+
+    /// <summary>Called by a fake spending fake time: signals the rig that fake time may move, then spins until it has reached <paramref name="end"/>.</summary>
+    public void SpinUntil(long end, CancellationToken cancel)
+    {
+        if (GetTimestamp() >= end)
+        {
+            return;
+        }
+
+        using var _ = Waiting();
+        while (GetTimestamp() < end && !cancel.IsCancellationRequested)
+        {
+            Thread.Yield(); // reads fake time often, so a fast-moving clock overshoots its scripted cost by a step at most
+        }
+    }
+
+    private sealed class Scope(CountingTimeProvider owner) : IDisposable
+    {
+        private int _done;
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _done, 1) == 0)
+            {
+                Interlocked.Decrement(ref owner._waiters);
+            }
+        }
+    }
 
     /// <summary>
     /// Makes the next neighbour scan (<c>ChangeFile</c>) spend <paramref name="cost"/> of fake time on the folder work it does
@@ -41,7 +123,14 @@ internal sealed class CountingTimeProvider : FakeTimeProvider
     public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
     {
         Interlocked.Increment(ref _timers);
-        return base.CreateTimer(callback, state, dueTime, period);
+        if (period != Timeout.InfiniteTimeSpan || Environment.CurrentManagedThreadId == Volatile.Read(ref _commandThread))
+        {
+            Interlocked.Increment(ref _commandTimers);
+        }
+
+        var timer = base.CreateTimer(callback, state, dueTime, period);
+        Pulse();
+        return timer;
     }
 
     private void ScanReadsTime()
@@ -70,6 +159,34 @@ internal sealed class CountingTimeProvider : FakeTimeProvider
             {
                 _firing = false;
             }
+        }
+    }
+}
+
+internal static class FakeTimeSpin
+{
+    /// <summary>A fake blocks in real time until the session gives up on it by fake time: on a rig clock fake time moves while the scope lasts.</summary>
+    public static IDisposable Waiting(this TimeProvider? time) => (time as CountingTimeProvider)?.Waiting() ?? new NoScope();
+
+    private sealed class NoScope : IDisposable
+    {
+        public void Dispose()
+        {
+        }
+    }
+
+    /// <summary>A scripted fake spends fake time up to <paramref name="end"/>; on a rig clock this is the signal that lets fake time move.</summary>
+    public static void SpinUntil(this TimeProvider time, long end, CancellationToken cancel = default)
+    {
+        if (time is CountingTimeProvider counting)
+        {
+            counting.SpinUntil(end, cancel);
+            return;
+        }
+
+        while (time.GetTimestamp() < end && !cancel.IsCancellationRequested)
+        {
+            Thread.Sleep(1);
         }
     }
 }

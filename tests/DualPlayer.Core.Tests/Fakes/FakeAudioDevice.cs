@@ -74,6 +74,7 @@ internal sealed class FakeAudioDevice(TimeProvider time, MixFormat format, TimeS
     {
         _startTimestamp = time.GetTimestamp();
         _started = true;
+        (time as CountingTimeProvider)?.SignalWait(); // the engine now waits for this device to play: fake time may move
         if (LoseOnStart)
         {
             SimulateLoss();
