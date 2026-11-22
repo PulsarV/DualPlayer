@@ -6,8 +6,8 @@ deps: ["T116"]
 blocks: []
 acs: ["AC-08", "AC-09b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourMemoryTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourWorkerTimingTests.cs", "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs"]
-status: "todo"
-step: ""
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -33,8 +33,8 @@ See [spec.md](../spec.md) §5 AC-08, AC-09b.
 
 ## Definition of Done
 
-- [ ] After cancelling a listing or probe worker it gave up on, the session waits a short bounded grace (`ProbeTimingSlack`, fake-time-testable) for it to end before keeping it in `_workers`; a worker that ends inside the grace is not kept, so the next press checks that file normally. Test: a cut healthy neighbour whose fake honours cancellation, next press queued immediately → that press plays it, no `skipped` line. Fails if reverted.
-- [ ] The neighbour tests wait for `_workers` to drain between presses where a press relies on a worker having ended (no real-time sleeps); `A_healthy_neighbour_whose_check_the_press_budget_cut_is_checked_again_and_plays_on_the_next_press_AC_08` passes 20 runs in a row.
-- [ ] The track listing starts with `TaskCreationOptions.LongRunning` (off the shared pool), like the probe wrapper. Test: the listing fake asserts `!Thread.CurrentThread.IsThreadPoolThread`.
-- [ ] The probe wait also gives up when `elapsed(scanAt) >= NeighbourScanBudget + ProbeTimingSlack`, even if the wrapper has not entered yet, and `entered` is read once more after the loop when setting `probeStart`. Test: a wrapper whose start is held back past the budget → the press ends within budget + slack of fake time.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] After cancelling a listing or probe worker it gave up on, the session waits a short bounded grace (`ProbeTimingSlack`, fake-time-testable) for it to end before keeping it in `_workers`; a worker that ends inside the grace is not kept, so the next press checks that file normally. Test: a cut healthy neighbour whose fake honours cancellation, next press queued immediately → that press plays it, no `skipped` line. Fails if reverted.
+- [x] The neighbour tests wait for `_workers` to drain between presses where a press relies on a worker having ended (no real-time sleeps); `A_healthy_neighbour_whose_check_the_press_budget_cut_is_checked_again_and_plays_on_the_next_press_AC_08` passes 20 runs in a row.
+- [x] The track listing starts with `TaskCreationOptions.LongRunning` (off the shared pool), like the probe wrapper. Test: the listing fake asserts `!Thread.CurrentThread.IsThreadPoolThread`.
+- [x] The probe wait also gives up when `elapsed(scanAt) >= NeighbourScanBudget + ProbeTimingSlack`, even if the wrapper has not entered yet, and `entered` is read once more after the loop when setting `probeStart`. Test: a wrapper whose start is held back past the budget → the press ends within budget + slack of fake time.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

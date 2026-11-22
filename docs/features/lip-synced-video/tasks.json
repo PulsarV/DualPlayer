@@ -2775,7 +2775,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T117-give-a-cancelled-neighbour-worker-a-short-grace-before-keeping-it-list-tracks-off-the-shared-pool-and-bound-the-wait-bef.md",
       "origin": "review-2026-11-22f: X10, X11, X12",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T118",

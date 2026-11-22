@@ -537,6 +537,17 @@ internal static class RigLoops
         condition().ShouldBeTrue($"timed out after {timeout.TotalSeconds:F0} s waiting for {what}");
     }
 
+    /// <summary>
+    /// Waits until every neighbour worker the session keeps (a listing or probe it gave up on) has ended: for a press that relies
+    /// on an earlier worker having ended. Read between commands, when the session's control thread does not touch its worker map.
+    /// </summary>
+    public static void WaitForNeighbourWorkers(PlaybackSession session)
+    {
+        var workers = typeof(PlaybackSession).GetField("_workers", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(session) as System.Collections.IDictionary
+            ?? throw new InvalidOperationException("PlaybackSession no longer keeps its neighbour workers in _workers.");
+        WaitOrFail(() => workers.Values.Cast<Task>().All(t => t.IsCompleted), TimeSpan.FromSeconds(10), "the session's neighbour workers to end");
+    }
+
     /// <summary>True when <paramref name="task"/> finished within <paramref name="timeout"/>; never blocks the calling thread.</summary>
     public static async Task<bool> CompletesWithin(Task task, TimeSpan timeout) =>
         await Task.WhenAny(task, Task.Delay(timeout, TestContext.Current.CancellationToken)) == task;

@@ -117,4 +117,100 @@ public sealed class PlaybackSessionNeighbourWorkerTimingTests
             Directory.Delete(folder, recursive: true);
         }
     }
+
+    [Fact]
+    public void A_neighbour_track_listing_runs_off_the_shared_thread_pool_AC_08()
+    {
+        var folder = Directory.CreateTempSubdirectory("dualplayer-listpool-").FullName;
+        try
+        {
+            var first = Path.Combine(folder, "Episode-01.mkv");
+            File.WriteAllBytes(first, []);
+            File.WriteAllBytes(Path.Combine(folder, "Episode-02.mkv"), []);
+            var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, barrierEvery: NeighbourRig.BarrierEvery);
+            using var _ = rig;
+            rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = first })).IsSuccess.ShouldBeTrue();
+            rig.Engine.Render(300);
+
+            var listed = 0;
+            var onPool = 0;
+            rig.Decoder.BeforeList = () =>
+            {
+                Interlocked.Increment(ref listed);
+                if (Thread.CurrentThread.IsThreadPoolThread)
+                {
+                    Interlocked.Increment(ref onPool);
+                }
+            };
+
+            rig.Engine.Call(() => rig.Session.NextFile());
+
+            listed.ShouldBeGreaterThan(0, "the scan never listed a neighbour");
+            onPool.ShouldBe(0, "the track listing ran on the shared thread pool");
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void A_probe_wrapper_whose_thread_starts_after_the_budget_does_not_hold_the_press_past_budget_and_slack_AC_09b()
+    {
+        var folder = Directory.CreateTempSubdirectory("dualplayer-latewrapper-").FullName;
+        using var release = new CancellationTokenSource();
+        try
+        {
+            var first = Path.Combine(folder, "Episode-01.mkv");
+            File.WriteAllBytes(first, []);
+            File.WriteAllBytes(Path.Combine(folder, "Episode-02.mkv"), []);
+            var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, barrierEvery: NeighbourRig.BarrierEvery);
+            using var _ = rig;
+            var time = rig.Engine.Time;
+            rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = first })).IsSuccess.ShouldBeTrue();
+            rig.Engine.Render(300);
+
+            // The OS starts the probe wrapper's thread late: its first line (the read of the time it enters at) is held while fake
+            // time runs well past the press budget, until the test lets it go.
+            var held = 0;
+            time.BeforeRead = () =>
+            {
+                if (!IsProbeWrapper() || Interlocked.Exchange(ref held, 1) == 1)
+                {
+                    return;
+                }
+
+                time.SpinUntil(time.GetTimestamp() + (long)(5 * time.TimestampFrequency), release.Token);
+            };
+
+            var key = time.GetUtcNow();
+            rig.Engine.Call(() => rig.Session.NextFile());
+            var elapsed = time.GetUtcNow() - key;
+
+            held.ShouldBe(1, "the probe wrapper was never held back");
+            elapsed.ShouldBeLessThanOrEqualTo(Budget + Slack + Tolerance, "the press waited for a probe wrapper that had not started yet");
+        }
+        finally
+        {
+            release.Cancel();
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    private static readonly TimeSpan Budget = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan Slack = TimeSpan.FromMilliseconds(50);
+
+    // How far past a give-up the rig's racing fake time may run before the session's next look at the clock.
+    private static readonly TimeSpan Tolerance = TimeSpan.FromMilliseconds(250);
+
+    // The probe wrapper reads the time first thing, directly from its lambda inside CheckPlayable: the first frame below the
+    // clock and this test is that lambda (the session's own reads come from CheckPlayable itself, not a lambda).
+    private static bool IsProbeWrapper() =>
+        new System.Diagnostics.StackTrace().GetFrames()
+            .Select(f => f.GetMethod())
+            .FirstOrDefault(m => m?.DeclaringType is { } t
+                && !typeof(TimeProvider).IsAssignableFrom(t)
+                && t != typeof(PlaybackSessionNeighbourWorkerTimingTests)
+                && t.DeclaringType != typeof(PlaybackSessionNeighbourWorkerTimingTests))
+            ?.Name.StartsWith("<CheckPlayable>", StringComparison.Ordinal) == true;
 }

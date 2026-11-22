@@ -743,9 +743,10 @@ public sealed partial class PlaybackSession : IDisposable
         ranOut = false;
         var cancel = new CancellationTokenSource();
         var gaveUp = false;
+        var graceEnd = 0L;
         try
         {
-            var outcome = CheckPlayable(path, key, request, scanAt, ref checkStarted, cancel.Token, out gaveUp, out var timedOut, out steppedPast);
+            var outcome = CheckPlayable(path, key, request, scanAt, ref checkStarted, cancel.Token, out gaveUp, out graceEnd, out var timedOut, out steppedPast);
             if (steppedPast)
             {
                 return outcome;
@@ -770,6 +771,7 @@ public sealed partial class PlaybackSession : IDisposable
             {
                 // Left undisposed: the abandoned worker may still be waiting on the token's handle.
                 cancel.Cancel();
+                AwaitGrace(key, graceEnd);
             }
             else
             {
@@ -778,9 +780,32 @@ public sealed partial class PlaybackSession : IDisposable
         }
     }
 
-    private (FileSkipped? Skip, bool Expired) CheckPlayable(string path, NeighbourKey key, StartRequest request, long scanAt, ref bool checkStarted, CancellationToken cancel, out bool gaveUp, out bool timedOut, out bool steppedPast)
+    // A worker the session gave up on and cancelled gets a short bounded grace, until graceEnd, to end: one that ends inside it
+    // is not kept, so the next press (even one already queued) checks its file normally instead of stepping past it. The grace is
+    // short and rare (only after a give-up), so it spins on the session's clock rather than sleeping past its end.
+    private void AwaitGrace(NeighbourKey key, long graceEnd)
+    {
+        if (!_workers.TryGetValue(key, out var worker))
+        {
+            return;
+        }
+
+        var spinner = default(SpinWait);
+        while (!worker.IsCompleted && _time.GetTimestamp() < graceEnd)
+        {
+            spinner.SpinOnce(sleep1Threshold: -1);
+        }
+
+        if (worker.IsCompleted)
+        {
+            _workers.Remove(key);
+        }
+    }
+
+    private (FileSkipped? Skip, bool Expired) CheckPlayable(string path, NeighbourKey key, StartRequest request, long scanAt, ref bool checkStarted, CancellationToken cancel, out bool gaveUp, out long graceEnd, out bool timedOut, out bool steppedPast)
     {
         gaveUp = false;
+        graceEnd = 0;
         timedOut = false;
         steppedPast = false;
         var name = Path.GetFileName(path);
@@ -817,12 +842,18 @@ public sealed partial class PlaybackSession : IDisposable
         // The track listing runs on a worker under the same deadline as the probe; it counts as having had its own full limit
         // only when the press started it with at least that much left.
         var listingUncut = remaining >= PictureProbeLimit;
-        var listing = Task.Run(() => _decoder.ListTracks(path, cancel));
+        var listing = Task.Factory.StartNew(
+            () => _decoder.ListTracks(path, cancel),
+            CancellationToken.None,
+            TaskCreationOptions.LongRunning,
+            TaskScheduler.Default);
         while (!listing.IsCompleted)
         {
             if (NeighbourScanBudget - _time.GetElapsedTime(scanAt) <= TimeSpan.Zero)
             {
+                // Cancelled at the budget, the listing has until the press's hard bound (budget + slack) to end before it is kept.
                 gaveUp = true;
+                graceEnd = PressBound(scanAt);
                 timedOut = listingUncut || wholeBudget;
                 _workers[key] = listing;
                 return (null, true);
@@ -871,19 +902,31 @@ public sealed partial class PlaybackSession : IDisposable
             CancellationToken.None,
             TaskCreationOptions.LongRunning,
             TaskScheduler.Default);
+        var pastPressBound = false;
         while (!probe.IsCompleted)
         {
             var start = Volatile.Read(ref entered);
-            if (start != 0)
+            if (start != 0 && _time.GetElapsedTime(start) >= probeLimit + ProbeTimingSlack)
             {
-                probeStart = start;
-                if (_time.GetElapsedTime(start) >= probeLimit + ProbeTimingSlack)
-                {
-                    break;
-                }
+                break;
+            }
+
+            // The backstop: a wrapper thread that has not started yet cannot hold the press (or the keys queued behind it) past
+            // the press's hard bound.
+            if (_time.GetElapsedTime(scanAt) >= NeighbourScanBudget + ProbeTimingSlack)
+            {
+                pastPressBound = true;
+                break;
             }
 
             probe.Wait(1);
+        }
+
+        // The wrapper may have entered between the last look and the break.
+        var enteredAt = Volatile.Read(ref entered);
+        if (enteredAt != 0)
+        {
+            probeStart = enteredAt;
         }
 
         Result<PictureInfo> picture;
@@ -909,10 +952,12 @@ public sealed partial class PlaybackSession : IDisposable
             return (new FileSkipped(name, "unreadable", null, null), false);
         }
 
-        // A probe that used up its limit: its worker is cancelled, whatever the limit was.
+        // A probe that used up its limit: its worker is cancelled, whatever the limit was. It gets the slack to end, but never
+        // past the press's hard bound once the backstop has already reached it.
         var usedUp = _time.GetElapsedTime(probeStart) + ProbeTimingSlack >= probeLimit
             && picture.Error.Code is "video.not_hardware_decodable" or "video.probe_timeout";
         gaveUp = usedUp;
+        graceEnd = pastPressBound ? PressBound(scanAt) : _time.GetTimestamp() + ToTimestamp(ProbeTimingSlack);
 
         // A probe that used up a limit the budget had cut proves nothing about the file: not remembered, not reported.
         if (cut && usedUp)
@@ -931,6 +976,10 @@ public sealed partial class PlaybackSession : IDisposable
             Profile = fields?.GetValueOrDefault("profile"),
         }, false);
     }
+
+    // The scan budget plus the slack a worker has to answer: the latest a press waits on a listing or a probe wrapper that has
+    // not entered yet, grace included, however late the worker thread started.
+    private long PressBound(long scanAt) => scanAt + ToTimestamp(NeighbourScanBudget + ProbeTimingSlack);
 
     // A media file as the neighbour memory knows it: a file that changed on disk is a different file (CLAUDE.md IDs).
     private readonly record struct NeighbourKey(string Path, long Size, long ModifiedTicks);

@@ -50,13 +50,8 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
     private static void LetWorkerFinish(SessionRig rig, ScriptedDecoder decoder, string name)
     {
         RigLoops.WaitOrFail(() => decoder.Returned(name), TimeSpan.FromSeconds(10), $"the listing of {name} to return");
-        var workers = WorkersOf(rig.Session);
-        RigLoops.WaitOrFail(() => workers.Values.Cast<Task>().All(t => t.IsCompleted), TimeSpan.FromSeconds(10), $"the session's worker for {name} to complete");
+        RigLoops.WaitForNeighbourWorkers(rig.Session);
     }
-
-    private static System.Collections.IDictionary WorkersOf(PlaybackSession session) =>
-        typeof(PlaybackSession).GetField("_workers", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(session) as System.Collections.IDictionary
-        ?? throw new InvalidOperationException("PlaybackSession no longer keeps its neighbour workers in _workers.");
 
     [Fact]
     public void The_only_neighbour_whose_listing_stayed_blocked_through_a_press_plays_on_the_press_after_it_recovered_AC_09b()
@@ -118,6 +113,7 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
 
         PressOnSlowFolder(rig, TimeSpan.FromMilliseconds(200)); // E2 has the whole budget: the folder work is not E2's doing
         rig.Events.OfType<FileChanged>().ShouldBeEmpty("the first press cannot judge E2 within its budget");
+        RigLoops.WaitForNeighbourWorkers(rig.Session);
 
         PressOnSlowFolder(rig, TimeSpan.FromMilliseconds(200));
 
@@ -156,6 +152,7 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
 
         Press(rig);
         rig.Events.OfType<FileChanged>().ShouldBeEmpty("the first press cannot probe E2 in the 50 ms its listing left");
+        RigLoops.WaitForNeighbourWorkers(rig.Session);
 
         Press(rig);
 
@@ -174,8 +171,10 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
         probe.Hang("Episode-03.mkv");
 
         Press(rig); // E2 hangs its full limit: remembered; E3 is cut by the budget
+        RigLoops.WaitForNeighbourWorkers(rig.Session);
         Press(rig); // E3 hangs its full limit: remembered; E2 is cut by the budget
         rig.Events.OfType<FileChanged>().ShouldBeEmpty();
+        RigLoops.WaitForNeighbourWorkers(rig.Session);
         probe.Ok("Episode-03.mkv"); // E3 recovers; E2 hangs again
         var skipsBefore = rig.Events.OfType<FileSkipped>().Count();
         var notesBefore = Notes(rig).Count();

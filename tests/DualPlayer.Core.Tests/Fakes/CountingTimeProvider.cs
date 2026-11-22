@@ -9,6 +9,9 @@ internal sealed class CountingTimeProvider : FakeTimeProvider
     [ThreadStatic]
     private static bool _firing;
 
+    [ThreadStatic]
+    private static bool _inReadHook;
+
     private int _timers;
     private int _fakeWaits;
     private int _waiters;
@@ -138,11 +141,31 @@ internal sealed class CountingTimeProvider : FakeTimeProvider
         Volatile.Write(ref _armed, 1);
     }
 
+    /// <summary>
+    /// When set, runs before a read of the time (a test can hold the thread that reads it there, as an OS that starts a thread
+    /// late would); it is not run again for the reads it makes itself.
+    /// </summary>
+    public Action? BeforeRead { get; set; }
+
     public override long GetTimestamp()
     {
         if (Volatile.Read(ref _armed) == 1 && !_firing)
         {
             ScanReadsTime();
+        }
+
+        var hook = BeforeRead;
+        if (hook is not null && !_inReadHook)
+        {
+            _inReadHook = true;
+            try
+            {
+                hook();
+            }
+            finally
+            {
+                _inReadHook = false;
+            }
         }
 
         return base.GetTimestamp();

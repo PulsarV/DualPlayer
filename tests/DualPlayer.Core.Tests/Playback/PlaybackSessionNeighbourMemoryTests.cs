@@ -31,6 +31,14 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         return (rig, probe);
     }
 
+    // A press that relies on the workers of the one before it having ended (a cut check is checked again only once its worker
+    // has ended) waits for them first, by the session's worker map, not by a real-time sleep.
+    private static void Press(SessionRig rig)
+    {
+        rig.Engine.Call(() => rig.Session.NextFile());
+        RigLoops.WaitForNeighbourWorkers(rig.Session);
+    }
+
     [Fact]
     public void A_healthy_neighbour_whose_check_the_press_budget_cut_is_checked_again_and_plays_on_the_next_press_AC_08()
     {
@@ -42,7 +50,7 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         probe.Hang("Episode-02.mkv"); // E2 hangs its full 2 s; E3 is left 1 s of the press, but needs 1.5 s
         probe.Slow("Episode-03.mkv", TimeSpan.FromMilliseconds(1500));
 
-        rig.Engine.Call(() => rig.Session.NextFile());
+        Press(rig);
         rig.Events.OfType<FileChanged>().ShouldBeEmpty("the first press cannot judge E3 in the budget it had left");
         rig.Events.OfType<FileSkipped>().Select(e => e.File).ShouldNotContain("Episode-03.mkv", "a healthy file cut by the budget was reported as skipped");
 
@@ -76,7 +84,7 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         var only = File("Episode-02.mkv");
         probe.Hang("Episode-02.mkv"); // its own full limit runs out: remembered
 
-        rig.Engine.Call(() => rig.Session.NextFile());
+        Press(rig);
         rig.Events.OfType<FileChanged>().ShouldBeEmpty();
         probe.Ok("Episode-02.mkv"); // the disk woke up
 
@@ -95,7 +103,7 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         probe.Hang("Episode-02.mkv");
         probe.Hang("Episode-03.mkv");
 
-        rig.Engine.Call(() => rig.Session.NextFile()); // E2 times out on its own, E3 is cut by the budget
+        Press(rig); // E2 times out on its own, E3 is cut by the budget
         rig.Events.OfType<FileChanged>().ShouldBeEmpty();
 
         System.IO.File.SetLastWriteTimeUtc(second, DateTime.UtcNow.AddHours(1)); // the copy finished: a different file now
@@ -118,7 +126,7 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         probe.NotHardwareDecodableAfterLimit("Episode-02.mkv"); // ran its whole 2 s limit, then judged: not decodable
         probe.Hang("Episode-03.mkv"); // cut by the 1 s left of the press
 
-        rig.Engine.Call(() => rig.Session.NextFile());
+        Press(rig);
         rig.Events.OfType<FileChanged>().ShouldBeEmpty();
         probe.Probed.Clear();
 
@@ -149,7 +157,7 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         File("Episode-03.mkv");
         probe.NotHardwareDecodableAfterLimit("Episode-02.mkv");
         probe.Hang("Episode-03.mkv");
-        rig.Engine.Call(() => rig.Session.NextFile());
+        Press(rig);
         rig.Events.OfType<FileChanged>().ShouldBeEmpty();
         LoseEveryOutput(rig);
         rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-10))).IsSuccess.ShouldBeTrue();
@@ -169,7 +177,7 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         File("Episode-03.mkv");
         probe.NotHardwareDecodableAfterLimit("Episode-02.mkv");
         probe.Hang("Episode-03.mkv");
-        rig.Engine.Call(() => rig.Session.NextFile());
+        Press(rig);
         rig.Events.OfType<FileChanged>().ShouldBeEmpty();
         probe.Ok("Episode-03.mkv");
         rig.Renderer.LoadError = new Error("video.load_failed", "mpv could not open the file.");
@@ -190,8 +198,8 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         File("Episode-02.mkv");
         probe.Hang("Episode-02.mkv"); // runs its full 2 s limit and ends on cancel, every time
 
-        rig.Engine.Call(() => rig.Session.NextFile());
-        rig.Engine.Call(() => rig.Session.NextFile());
+        Press(rig);
+        Press(rig);
 
         rig.Events.OfType<NeighbourSearchTimedOut>().Count().ShouldBe(2, "a check that ran out its limit was counted as judged");
         rig.Events.OfType<NoNeighbour>().ShouldBeEmpty("a file that was never judged was reported as no neighbour");
@@ -206,7 +214,7 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         File("Episode-03.mkv");
         probe.Hang("Episode-02.mkv");
         probe.Hang("Episode-03.mkv");
-        rig.Engine.Call(() => rig.Session.NextFile()); // E2 runs out its limit: remembered; E3 is cut
+        Press(rig); // E2 runs out its limit: remembered; E3 is cut
         rig.Events.OfType<FileChanged>().ShouldBeEmpty();
         probe.Ok("Episode-03.mkv");
         rig.Renderer.LoadError = new Error("video.load_failed", "mpv could not open the file.");
@@ -228,7 +236,7 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         File("Episode-03.mkv");
         probe.Hang("Episode-02.mkv");
         probe.Hang("Episode-03.mkv");
-        rig.Engine.Call(() => rig.Session.NextFile()); // E2 runs out its limit: remembered; E3 is cut
+        Press(rig); // E2 runs out its limit: remembered; E3 is cut
         rig.Events.OfType<FileChanged>().ShouldBeEmpty();
         probe.Ok("Episode-03.mkv");
         LoseEveryOutput(rig);
@@ -240,11 +248,30 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         probe.Probed.Select(Path.GetFileName).ShouldNotContain("Episode-02.mkv", "a return into the same film forgot the timed-out memory");
     }
 
+    [Fact]
+    public void A_cut_healthy_neighbour_whose_probe_ends_on_cancel_plays_on_a_press_queued_right_after_AC_08()
+    {
+        var (rig, probe) = PlayingRig();
+        using var _ = rig;
+        File("Episode-02.mkv");
+        var healthy = File("Episode-03.mkv");
+        File("Episode-04.mkv");
+        probe.Hang("Episode-02.mkv"); // E2 hangs its full 2 s; E3 is left 1 s of the press
+        probe.SlowPastItsLimit("Episode-03.mkv", TimeSpan.FromMilliseconds(1500)); // needs 1.5 s, ends only once cancelled
+
+        rig.Engine.Call(() => rig.Session.NextFile());
+        rig.Engine.Call(() => rig.Session.NextFile()); // queued at once: no wait for the first press's workers
+
+        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("the second press did not play the next file").File.ShouldBe(healthy, "a cut worker that ended on cancel was kept, so the next press stepped past its healthy file");
+        rig.Events.OfType<FileSkipped>().Select(e => e.File).ShouldNotContain("Episode-03.mkv", "a healthy file cut by the budget was reported as skipped");
+    }
+
     /// <summary>Per-file behaviour on the session's fake time; a file with none probes fine at once.</summary>
     private sealed class ScriptedProbe : IPictureProbe
     {
         private readonly Lock _gate = new();
         private readonly Dictionary<string, (TimeSpan Cost, string? Code)> _behaviours = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _pastLimit = new(StringComparer.Ordinal);
 
         public TimeProvider? Time { get; set; }
 
@@ -261,15 +288,43 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
 
         public void Ok(string name) => Set(name, TimeSpan.Zero, null);
 
+        /// <summary>
+        /// Succeeds after <paramref name="cost"/> whatever its limit; a cancel stops it, and it then takes a moment to close the file
+        /// (real time, while fake time stands still), so it is still running when the session gives up on it.
+        /// </summary>
+        public void SlowPastItsLimit(string name, TimeSpan cost)
+        {
+            Set(name, cost, null);
+            lock (_gate)
+            {
+                _pastLimit.Add(name);
+            }
+        }
+
         public Result<PictureInfo> Probe(string path, TimeSpan timeLimit) => Probe(path, timeLimit, CancellationToken.None);
 
         public Result<PictureInfo> Probe(string path, TimeSpan timeLimit, CancellationToken cancel)
         {
             (TimeSpan Cost, string? Code) behaviour;
+            bool pastLimit;
             lock (_gate)
             {
                 Probed.Add(path);
                 behaviour = _behaviours.GetValueOrDefault(Path.GetFileName(path), (TimeSpan.Zero, null));
+                pastLimit = _pastLimit.Contains(Path.GetFileName(path));
+            }
+
+            if (pastLimit)
+            {
+                var time = Time!;
+                time.SpinUntil(time.GetTimestamp() + (long)(behaviour.Cost.TotalSeconds * time.TimestampFrequency), cancel);
+                if (cancel.IsCancellationRequested)
+                {
+                    Thread.Sleep(200); // closes the file after the cancel
+                    return Result<PictureInfo>.Failure("video.probe_timeout", "The probe was cancelled.");
+                }
+
+                return Result<PictureInfo>.Success(new PictureInfo("h264", "High", 1920, 1080));
             }
 
             var spent = behaviour.Cost < timeLimit ? behaviour.Cost : timeLimit;
