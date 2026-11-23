@@ -6,8 +6,8 @@ deps: ["T132"]
 blocks: ["T134", "T135", "T23"]
 acs: ["AC-08"]
 files_hint: ["tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourWorkerTimingTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,6 +31,6 @@ See [spec.md](../spec.md) §5 AC-08.
 
 ## Definition of Done
 
-- [ ] The test adds a healthy Episode-03 and a second press after `WaitForNeighbourWorkers`; it asserts E2 is checked last and printed `skipped … unreadable` (remembered) and E3 plays.
-- [ ] The test fails with `&& (!cut || wholeBudget)` changed to `&& !cut`, and passes as is.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The test adds a healthy Episode-03 and a second press after `WaitForNeighbourWorkers`; it asserts E2 is checked last and printed `skipped … unreadable` (remembered) and E3 plays.
+- [x] The test fails with `&& (!cut || wholeBudget)` changed to `&& !cut`, and passes as is.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

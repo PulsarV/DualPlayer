@@ -378,6 +378,48 @@ public sealed class PlaybackSessionNeighbourWorkerTimingTests
     }
 
     [Fact]
+    public void A_cut_first_file_whose_wrapper_never_answers_is_remembered_only_under_the_whole_budget_rule_AC_08()
+    {
+        var folder = Directory.CreateTempSubdirectory("dualplayer-cutfirstmemory-").FullName;
+        using var release = new CancellationTokenSource();
+        try
+        {
+            var first = Path.Combine(folder, "Episode-01.mkv");
+            File.WriteAllBytes(first, []);
+            File.WriteAllBytes(Path.Combine(folder, "Episode-02.mkv"), []);
+            var third = Path.Combine(folder, "Episode-03.mkv");
+            File.WriteAllBytes(third, []);
+            var decoder = new SlowListingDecoder(TimeSpan.FromMilliseconds(1200));
+            var probe = new NeverAnsweringProbe(release.Token) { Healthy = { "Episode-03.mkv" } };
+            using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourDecoder: decoder, neighbourPictureProbe: probe, barrierEvery: NeighbourRig.BarrierEvery);
+            using var releaseFirst = new Defer(release.Cancel);
+            decoder.Time = rig.Engine.Time;
+            probe.Time = rig.Engine.Time;
+            rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = first })).IsSuccess.ShouldBeTrue();
+            rig.Engine.Render(300);
+
+            // E2 is the first file of the press and has the whole budget, so a wrapper that never answers on its cut limit is
+            // remembered as timed out (though not reported skipped, as its limit was cut).
+            rig.Engine.Call(() => rig.Session.NextFile());
+            RigLoops.WaitForNeighbourWorkers(rig.Session);
+            probe.Probed.ShouldBe(["Episode-02.mkv"]);
+            rig.Events.OfType<FileSkipped>().ShouldBeEmpty("a file whose probe was cut short by the budget was reported skipped");
+
+            rig.Engine.Call(() => rig.Session.NextFile());
+
+            probe.Probed.ShouldBe(["Episode-02.mkv", "Episode-03.mkv"], "the remembered file was checked again in its own place instead of last");
+            rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("the second press did not play the healthy Episode-03").File.ShouldBe(third);
+            rig.Events.OfType<FileSkipped>().ShouldHaveSingleItem("the remembered file was not reported skipped on the second press").ShouldSatisfyAllConditions(
+                e => e.File.ShouldBe("Episode-02.mkv"),
+                e => e.Reason.ShouldBe("unreadable"));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
     public void A_probe_wrapper_whose_thread_starts_after_the_press_gave_up_never_calls_the_adapter_AC_09b()
     {
         var folder = Directory.CreateTempSubdirectory("dualplayer-lateadapter-").FullName;
@@ -472,6 +514,9 @@ public sealed class PlaybackSessionNeighbourWorkerTimingTests
 
         public TimeProvider? Time { get; set; }
 
+        /// <summary>Files whose probe answers at once; every other file's probe never answers.</summary>
+        public HashSet<string> Healthy { get; } = new(StringComparer.Ordinal);
+
         public List<string> Probed
         {
             get
@@ -499,6 +544,11 @@ public sealed class PlaybackSessionNeighbourWorkerTimingTests
             {
                 _probed.Add(Path.GetFileName(path));
                 _tokens[Path.GetFileName(path)] = cancel;
+            }
+
+            if (Healthy.Contains(Path.GetFileName(path)))
+            {
+                return Result<PictureInfo>.Success(new PictureInfo("h264", "High", 1920, 1080));
             }
 
             using var either = CancellationTokenSource.CreateLinkedTokenSource(cancel, release);
