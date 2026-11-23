@@ -629,7 +629,14 @@
         "T158",
         "T159",
         "T160",
-        "T161"
+        "T161",
+        "T162",
+        "T163",
+        "T164",
+        "T165",
+        "T166",
+        "T167",
+        "T168"
       ],
       "acs": [
         "AC-16",
@@ -3746,6 +3753,142 @@
       "file": "docs/features/lip-synced-video/tasks/T161-cite-the-t153-t159-tests-in-test-plan-and-narrow-the-headless-screen-rows.md",
       "origin": "review-2026-11-23i: AA1–AA6, AA8",
       "status": "done"
+    },
+    {
+      "id": "T162",
+      "title": "Run the start command through a testable Program.Run and pin the start clock and the refusal exit code",
+      "layer": "wiring",
+      "deps": [],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "`Program.Main` delegates to `internal static int Run(string[] args, TimeProvider time, TextWriter stderr, Func<ILoggerFactory> createLogging, Func<StartRequest, ILoggerFactory, int> startApp)`; `Run` sets `App.CommandTimestamp` from `time` before it creates logging or parses; behaviour of the real start is unchanged.; New `ProgramRunTests`: `[\"play\"]` → exit 2, stderr `error cli.usage: …`, `startApp` not called; four `--out` → exit 2, stderr `error outputs.too_many: …`; a valid request → `startApp` sees `App.CommandTimestamp` equal to the first timestamp `time` gave, taken before `createLogging` ran; an exception from `startApp` → exit 1. Tests run in the `ConsoleCollection` and restore `App.CommandTimestamp`.; Mutants on a scratch copy, each failing at least one new test: `App.CommandTimestamp = null`; `return 0` on a parse failure; the timestamp taken after logging is created.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.App/Program.cs",
+        "tests/DualPlayer.App.Tests/Startup/ProgramRunTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T162-run-the-start-command-through-a-testable-program-run-and-pin-the-start-clock-and-the-refusal-exit-code.md",
+      "origin": "review-2026-11-23j: AB1",
+      "status": "todo"
+    },
+    {
+      "id": "T163",
+      "title": "Build the mpv note commands in a pure helper and pin the 2 s hold and the warning colour",
+      "layer": "adapter",
+      "deps": [],
+      "acs": [
+        "AC-06b",
+        "AC-08",
+        "AC-09",
+        "AC-09b",
+        "AC-10",
+        "AC-11",
+        "AC-15",
+        "AC-15b"
+      ],
+      "dod": "A pure `MpvVideoRenderer.NoteCommands(OsdNoteStyle style, string text, NoteStyle note, bool layoutApplied, NoteStyle? appliedStyle)` returns the mpv command argument lists in order; `ShowNote` runs exactly those and then records layout and style as applied.; New tests: the first note sends every `NoteOptions` `set`, then `set osd-color <NoteColor>`, then `show-text <text> 2000`; a warning after an info note sends `set osd-color #FFFFD400`; a second note in the same style sends only `show-text`; `$` in the text is doubled.; Mutants on a scratch copy, each failing at least one new test: duration `\"1000\"`; the `osd-color` command dropped; layout `set`s repeated on every note.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Media/Video/MpvVideoRenderer.cs",
+        "tests/DualPlayer.Media.Tests/Video/MpvVideoRendererTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T163-build-the-mpv-note-commands-in-a-pure-helper-and-pin-the-2-s-hold-and-the-warning-colour.md",
+      "origin": "review-2026-11-23j: AB2",
+      "status": "todo"
+    },
+    {
+      "id": "T164",
+      "title": "Pin that natural name order ignores letter case",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-07",
+        "AC-08"
+      ],
+      "dod": "New `FolderNeighboursTests` case: a folder with `A.mkv`, `b.mkv`, `episode 3.mkv`, `Episode 10.mkv`; Next from `episode 3.mkv` lists `Episode 10.mkv`; Next from `A.mkv` lists `b.mkv`, `episode 3.mkv`, `Episode 10.mkv`.; Mutant on a scratch copy fails the new test: `char.ToUpperInvariant(x[i]).CompareTo(char.ToUpperInvariant(y[j]))` → `x[i].CompareTo(y[j])`.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/FolderNeighboursTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T164-pin-that-natural-name-order-ignores-letter-case.md",
+      "origin": "review-2026-11-23j: AB3",
+      "status": "todo"
+    },
+    {
+      "id": "T165",
+      "title": "Pin the Avalonia screen adapter and the window position with two screens",
+      "layer": "ui",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-03b"
+      ],
+      "dod": "The window's target point is computed by an internal static helper over Avalonia screens (`PlaybackWindow.PlacementFor(IReadOnlyList<Screen>, int?)` → `PixelPoint?`) that `PlaceOnScreen` uses; no position is copied by hand outside it.; New tests with two built `Avalonia.Platform.Screen` objects, the primary listed second, both at non-zero, unequal X/Y: `ToBounds` keeps each screen's X, Y, width, height and only the second is primary; `PlacementFor(null)` and `PlacementFor(9)` give the primary's top-left; `PlacementFor(1)` the first's; `PlacementFor(2)` the second's.; Mutants on a scratch copy, each failing at least one new test: `ToBounds` `IsPrimary` → `true`; X↔Y in `ToBounds`; X↔Y in the placement point; placement point `(0, 0)`.; Existing headless and `ScreenChoiceTests` stay green.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.App/Views/PlaybackWindow.axaml.cs",
+        "src/DualPlayer.App/Startup/AvaloniaScreenCatalog.cs",
+        "tests/DualPlayer.App.Tests/Startup/ScreenChoiceTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T165-pin-the-avalonia-screen-adapter-and-the-window-position-with-two-screens.md",
+      "origin": "review-2026-11-23j: AB5",
+      "status": "todo"
+    },
+    {
+      "id": "T166",
+      "title": "Tighten the recovery-budget edge case to 1.0 s",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-17"
+      ],
+      "dod": "The case clears the output error at 1.0 s (`Render(100)`) and is renamed to say what it checks; it still expects `NotLipSynced` for `seek` and no `LipSyncedAgain`.; Mutant on a scratch copy fails the case: `RecoveryBudget = 1.2 s`. (1.1 s stays indistinguishable at the 100 ms read step; say so in a comment.); `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionBoundEdgeTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T166-tighten-the-recovery-budget-edge-case-to-1-0-s.md",
+      "origin": "review-2026-11-23j: AB6",
+      "status": "todo"
+    },
+    {
+      "id": "T167",
+      "title": "Read the captured stdout under the writer's lock in AppEntryTests",
+      "layer": "test",
+      "deps": [],
+      "acs": [],
+      "dod": "`CaptureConsole` keeps the synchronised writer it installs; `PrintedSoFar` takes its snapshot under `lock` on that writer (the lock `TextWriter.Synchronized` itself uses).; No RED is possible for a rare race: the change is test hardening, verified by reading and by the App suite staying green.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.App.Tests/Startup/AppEntryTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T167-read-the-captured-stdout-under-the-writer-s-lock-in-appentrytests.md",
+      "origin": "review-2026-11-23j: AB7",
+      "status": "todo"
+    },
+    {
+      "id": "T168",
+      "title": "Name the screens in T153, cite the T162–T167 tests in test-plan and extend the T23 checklist",
+      "layer": "docs",
+      "deps": [
+        "T162",
+        "T163",
+        "T164",
+        "T165",
+        "T166"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-03b",
+        "AC-07",
+        "AC-08",
+        "AC-10",
+        "AC-17"
+      ],
+      "dod": "T153's task file has a `## Trace` naming SCR-02 (opening on the chosen screen) and SCR-01 (error — screen not found, numbered list).; test-plan.md cites the T162–T166 tests in the AC-01, AC-03b, AC-07/AC-08, AC-10 (note hold and colour, row :87 corrected to what is tested) and AC-17 rows; every cited `Class.Method` resolves (scripted check).; The T23 guide §6 adds: `play` with no file → `error cli.usage: …`, exit 2, no window; four `--out` → `error outputs.too_many: …`, exit 2; notes held about 2 s and warning notes yellow.; No code or test changes.",
+      "files_hint": [
+        "docs/features/lip-synced-video/tasks/T153-move-the-screen-mapping-and-the-number-to-screen-choice-into-pure-helpers-and-pin-them-with-two-screens.md",
+        "docs/features/lip-synced-video/test-plan.md",
+        "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T168-name-the-screens-in-t153-cite-the-t162-t167-tests-in-test-plan-and-extend-the-t23-checklist.md",
+      "origin": "review-2026-11-23j: AB1, AB2, AB4",
+      "status": "todo"
     }
   ]
 }
