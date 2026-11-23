@@ -6,8 +6,8 @@ deps: []
 blocks: ["T23"]
 acs: ["AC-08", "AC-09b", "AC-11"]
 files_hint: ["docs/features/lip-synced-video/sad.md", "docs/features/lip-synced-video/tasks/T120-drive-the-real-session-through-the-view-model-to-the-renderers-notes-in-an-app-end-to-end-test.md"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "XS"
 context_budget: "S"
@@ -32,6 +32,6 @@ See [spec.md](../spec.md) §5 AC-08, AC-09b, AC-11.
 
 ## Definition of Done
 
-- [ ] sad.md:543 adds the clause: a file whose track listing runs out the budget ends the press, stays remembered, and is neither reported as skipped nor counted in that press, including a remembered file checked last whose new listing hangs. Wording agrees with spec.md:249 and cli.md:85 (read check).
-- [ ] T120's task file names SCR-03 (states: no next file; offset limit) in its trace.
-- [ ] No code or test changes.
+- [x] sad.md:543 adds the clause: a file whose track listing runs out the budget ends the press, stays remembered, and is neither reported as skipped nor counted in that press, including a remembered file checked last whose new listing hangs. Wording agrees with spec.md:249 and cli.md:85 (read check). *(sad.md §7 scaling line: added the clause after 'reporting each as skipped once per press;' (run-out listing ends the press at once, stays remembered as timed out, not reported as skipped nor counted); matches spec.md:249 and cli.md:85)
+- [x] T120's task file names SCR-03 (states: no next file; offset limit) in its trace. *(T120 task file: added a '## Trace' section naming SCR-03 (states: no next file, AC-08; offset limit, AC-11))
+- [x] No code or test changes. *(Only the two docs files changed; no code or test changes)

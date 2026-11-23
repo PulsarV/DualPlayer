@@ -29,6 +29,10 @@ Owner decision: fix now.
 
 See [spec.md](../spec.md) §5 AC-08, AC-11.
 
+## Trace
+
+- Screen: SCR-03 — Brief note ([screens.md](../screens.md)); states: no next file (`no next / previous`, AC-08) and offset limit (AC-11).
+
 ## Definition of Done
 
 - [x] One or more `PlayEndToEndTests` cases build the real session and the real `PlaybackViewModel` with a substitute renderer and fake audio, press the keys, and assert that the AC-11 limit note and the AC-08 "No next file" note reach `IVideoRenderer.ShowNote` with the spec's text. They fail if the view model stops forwarding notes.
