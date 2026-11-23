@@ -2,7 +2,7 @@
 id: T126
 title: "Bring spec, sad, ux-flows, screens, cli.md, the T23 guide and test-plan in step with the timeout rule, the recovery clock and the start failures with the window open"
 layer: "docs"
-deps: ["T122", "T123", "T124", "T125"]
+deps: ["T122", "T123", "T124", "T125", "T127"]
 blocks: []
 acs: ["AC-01", "AC-02", "AC-06", "AC-07", "AC-08", "AC-09b", "AC-17"]
 files_hint: ["docs/features/lip-synced-video/spec.md", "docs/features/lip-synced-video/sad.md", "docs/features/lip-synced-video/ux-flows.md", "docs/features/lip-synced-video/screens.md", "docs/features/lip-synced-video/contracts/cli.md", "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md", "docs/features/lip-synced-video/test-plan.md", "docs/features/lip-synced-video/tasks/tracker.md", "docs/features/lip-synced-video/tasks/T23-measure-lip-sync-on-the-target-pc.md", "docs/features/lip-synced-video/tasks.json"]
