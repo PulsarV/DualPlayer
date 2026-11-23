@@ -606,7 +606,10 @@
         "T135",
         "T136",
         "T137",
-        "T138"
+        "T138",
+        "T139",
+        "T140",
+        "T141"
       ],
       "acs": [
         "AC-16",
@@ -3277,6 +3280,67 @@
       "file": "docs/features/lip-synced-video/tasks/T138-bring-test-plan-in-step-with-the-t132-t137-test-names-and-the-start-path-tests.md",
       "origin": "review-2026-11-23d: V4",
       "status": "done"
+    },
+    {
+      "id": "T139",
+      "title": "Pin the exact text of the Could-not-go-back and Could-not-play notes, and fix the rig barrier comment",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-05",
+        "AC-06b",
+        "AC-07",
+        "AC-15b"
+      ],
+      "dod": "`PlaybackSessionEndedRecoveryTests` at :116, :185 and :242 assert the new note starts with `\"Could not go back: \"` and has the warning style; with the text at `PlaybackSession.cs:1407` changed to `\"Output 9 lost\"` (scratch copy) they fail.; `PlaybackSessionFileChangeTests` at :264 asserts the exact note `\"Could not play Episode 2.mkv: mpv could not open the file.\"`; with the text at `PlaybackSession.cs:682` changed to `$\"Skipped {file}\"` (scratch copy) it fails.; The `Barrier()` doc comment at `EngineRig.cs:313` describes the strict check as a round trip through the engine's loop that requires the run to still be active, with no mention of a probe start.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionEndedRecoveryTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionFileChangeTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T139-pin-the-exact-text-of-the-could-not-go-back-and-could-not-play-notes-and-fix-the-rig-barrier-comment.md",
+      "origin": "review-2026-11-23e: U1, U4",
+      "status": "todo"
+    },
+    {
+      "id": "T140",
+      "title": "Pin exit while paused end to end, and order the OS close before the start through Exited instead of a sleep",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-06"
+      ],
+      "dod": "New `PlayEndToEndTests` case: Space, wait for Paused, Esc through the real `PlaybackControls` → exactly one `run-summary file Film.mkv reason exit` and exit 0; it fails with the paused branch of the exit path broken (scratch copy).; `A_window_closed_by_the_OS_during_a_start_that_fails…` (AppEntryTests.cs:330) releases the hold at once, passes `afterStart` that waits (bounded, 10 s) for `controls.Exited`, and has no `Thread.Sleep`; it passes with a 400 ms stall before `window.Close()` (scratch copy) and still fails with `closing` ignored in `AfterSessionStart`.; AppEntryTests and PlayEndToEndTests pass 10 runs with 3 processes in parallel.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.App.Tests/E2E/PlayEndToEndTests.cs",
+        "tests/DualPlayer.App.Tests/Startup/AppEntryTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T140-pin-exit-while-paused-end-to-end-and-order-the-os-close-before-the-start-through-exited-instead-of-a-sleep.md",
+      "origin": "review-2026-11-23e: U2, U3",
+      "status": "todo"
+    },
+    {
+      "id": "T141",
+      "title": "Cite the T139 and T140 tests in test-plan",
+      "layer": "docs",
+      "deps": [
+        "T139",
+        "T140"
+      ],
+      "acs": [
+        "AC-05",
+        "AC-06",
+        "AC-06b",
+        "AC-07",
+        "AC-15b"
+      ],
+      "dod": "test-plan.md row 58 (AC-06) cites the T140 exit-while-paused e2e test; a T139/T140 row cites the note-text asserts and the reworked OS-close test by their final names.; Every test name cited in test-plan.md exists under the cited class (grep check)",
+      "files_hint": [
+        "docs/features/lip-synced-video/test-plan.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T141-cite-the-t139-and-t140-tests-in-test-plan.md",
+      "origin": "review-2026-11-23e: U2",
+      "status": "todo"
     }
   ]
 }
