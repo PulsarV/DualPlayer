@@ -127,4 +127,4 @@ Zones are module paths from [`architecture-map.md`](architecture-map.md) §Modul
 |---|---|---|
 | 2 — scaffold | 2026-11-11 | `6cb3a7b` (committed straight to `master`, no PR) |
 | 3 — Two outputs, one clock (console) | 2026-11-19 | [PR #1](https://github.com/PulsarV/DualPlayer/pull/1), [PR #3](https://github.com/PulsarV/DualPlayer/pull/3), [PR #4](https://github.com/PulsarV/DualPlayer/pull/4) |
-| 4 — Watch a file lip-synced | 2026-11-24 | [changelog](features/lip-synced-video/CHANGELOG.md); PR pending; target-PC acceptance (T23) follows |
+| 4 — Watch a file lip-synced | 2026-11-24 | [PR #6](https://github.com/PulsarV/DualPlayer/pull/6), [changelog](features/lip-synced-video/CHANGELOG.md); target-PC acceptance (T23) follows |
