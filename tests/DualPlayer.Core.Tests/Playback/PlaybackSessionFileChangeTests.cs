@@ -297,6 +297,52 @@ public sealed class PlaybackSessionFileChangeTests : IDisposable
     }
 
     [Fact]
+    public void A_file_change_that_fails_before_the_new_picture_loads_stops_the_old_picture_AC_07()
+    {
+        using var rig = PlayingRig("Episode 1.mkv", "Episode 2.mkv");
+        rig.Renderer.IsPlaying.ShouldBeTrue();
+        rig.Engine.Unlist(2);
+
+        rig.Engine.Call(() => rig.Session.NextFile()).Error!.Code.ShouldBe("outputs.device_not_found");
+
+        rig.Session.State.ShouldBe(PlaybackState.Ended);
+        rig.Renderer.IsPlaying.ShouldBeFalse("the old film's picture must not keep running under the 'Could not play' note");
+    }
+
+    [Fact]
+    public void An_output_lost_after_a_file_change_keeps_the_number_it_had_in_the_start_command_AC_15()
+    {
+        var devices = new[] { new RigDevice(48_000), new RigDevice(48_000), new RigDevice(48_000) };
+        using var rig = new SessionRig(devices, null, 600);
+        File("Episode 2.mkv");
+        rig.Engine.Call(() => rig.Session.Start(rig.Request(3) with { File = File("Episode 1.mkv") })).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(300);
+        rig.Engine.Devices[0].SimulateLoss();
+        Backend(rig).RemoveDevice("dev-1");
+        rig.Engine.Barrier();
+        rig.Engine.Call(() => rig.Session.NextFile()).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(100);
+
+        rig.Engine.Devices[^1].SimulateLoss(); // output 3, now the second engine output of the new run
+        rig.Engine.Barrier();
+
+        rig.Events.OfType<OutputLost>().Last().OutputNumber.ShouldBe(3);
+        rig.Events.OfType<NoteShown>().ShouldContain(e => e.Text == "Output 3 lost");
+    }
+
+    [Fact]
+    public void An_offset_pressed_just_before_a_file_change_is_kept_for_the_new_file_AC_07()
+    {
+        using var rig = PlayingRig("Episode 1.mkv", "Episode 2.mkv");
+        rig.Engine.Call(() => rig.Session.ChangeOffset(2, 10)).IsSuccess.ShouldBeTrue();
+
+        rig.Engine.Call(() => rig.Session.NextFile()).IsSuccess.ShouldBeTrue();
+
+        var estimate = rig.Events.OfType<LatencyEstimated>().Last().Estimate;
+        estimate.Outputs.Single(o => o.DeviceId == "dev-2").OffsetMs.ShouldBe(10);
+    }
+
+    [Fact]
     public void A_move_to_the_previous_file_says_so_and_a_skip_for_the_picture_names_codec_and_profile_AC_08_AC_09b()
     {
         using var rig = PlayingRig("Episode 3.mkv", "Episode 1.mkv", "Episode 2.mkv");

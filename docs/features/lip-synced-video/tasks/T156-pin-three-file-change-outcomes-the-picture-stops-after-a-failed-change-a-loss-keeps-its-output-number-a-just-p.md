@@ -6,8 +6,8 @@ deps: []
 blocks: ["T23", "T161"]
 acs: ["AC-07", "AC-15", "AC-15b"]
 files_hint: ["tests/DualPlayer.Core.Tests/Playback/PlaybackSessionFileChangeTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,8 +31,8 @@ See [spec.md](../spec.md) §5 AC-07, AC-15, AC-15b.
 
 ## Definition of Done
 
-- [ ] (a) After a file change that fails with `outputs.device_not_found`, the renderer is not playing.
-- [ ] (b) Three outputs: lose output 1, press Page Down, lose output 3 → `OutputLost.OutputNumber == 3` and the note "Output 3 lost".
-- [ ] (c) An offset press followed at once by Page Down → the new file's `LatencyEstimated` carries the pressed offset.
-- [ ] Mutants on a scratch copy, each failing at least one new test: `_renderer.Pause()` at :689 removed; `number = lost.OutputIndex + 1`; offsets re-read at every start.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] (a) After a file change that fails with `outputs.device_not_found`, the renderer is not playing. *(Picture-stops-after-failed-change test is green. Mutant A (renderer Pause removed) fails it, from the RED run.)
+- [x] (b) Three outputs: lose output 1, press Page Down, lose output 3 → `OutputLost.OutputNumber == 3` and the note "Output 3 lost". *(Loss-keeps-output-number test is green. Mutant B (lost.OutputIndex + 1) fails it, from the RED run.)
+- [x] (c) An offset press followed at once by Page Down → the new file's `LatencyEstimated` carries the pressed offset. *(Just-pressed-offset test is green. Mutant C (offsets re-read at every start) fails it, from the RED run.)
+- [x] Mutants on a scratch copy, each failing at least one new test: `_renderer.Pause()` at :689 removed; `number = lost.OutputIndex + 1`; offsets re-read at every start. *(Mutants A, B and C each made exactly one new test fail in the RED step; none remains)
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean *(Full gate: build has 0 warnings, tests pass, format is clean. A Media seek test flaked once under full load and passed on rerun.)
