@@ -6,8 +6,8 @@ deps: ["T169", "T170", "T171", "T172"]
 blocks: ["T23"]
 acs: ["AC-02", "AC-03", "AC-03b", "AC-09", "AC-10", "AC-16"]
 files_hint: ["docs/features/lip-synced-video/test-plan.md", "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md"]
-status: "todo"
-step: "SELECT"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "XS"
 context_budget: "XS"
@@ -31,6 +31,6 @@ See [spec.md](../spec.md) §5 AC-02, AC-03, AC-03b, AC-09, AC-10, AC-16.
 
 ## Definition of Done
 
-- [ ] test-plan.md cites the T169–T172 tests in the AC-09, AC-16, note (SCR-03) and App-entry / exit-code rows; :105 says the test reads the generator script and covers H.264 and HEVC; every cited `Class.Method` resolves (scripted check).
-- [ ] The T23 guide §6 notes item adds: an info note right after a warning is in the normal colour, not yellow.
-- [ ] No code or test changes.
+- [x] test-plan.md cites the T169–T172 tests in the AC-09, AC-16, note (SCR-03) and App-entry / exit-code rows; :105 says the test reads the generator script and covers H.264 and HEVC; every cited `Class.Method` resolves (scripted check). *(test-plan.md cites the T169–T172 tests in four places: the AC-09 rows (the output number and the track number told apart; a two-track neighbour skipped), the AC-16 row, the note row (the AC-10 e2e-through-UI row and the T163 row) and the App-entry rows (the T162 row and the App entry bullet). The AC-16 row now says the test reads the generator script and runs for H.264 and HEVC. The citation script resolved 178 `Class.Method` citations to test methods under tests/ and found 0 bad.)*
+- [x] The T23 guide §6 notes item adds: an info note right after a warning is in the normal colour, not yellow. *(T23 guide §6 notes item now ends: an info note right after a warning is in the normal colour, not yellow (T171). The guide is written in Ukrainian, so I wrote the item in Ukrainian to match it.)*
+- [x] No code or test changes. *(`git diff --stat` shows only test-plan.md and the T23 guide changed. No code or tests were touched.)*
