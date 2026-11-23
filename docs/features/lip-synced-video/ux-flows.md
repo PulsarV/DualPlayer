@@ -156,9 +156,9 @@ When one output's device is lost while others remain, a brief note names the los
 | AC-03b | Flow US-01 → E3 | |
 | AC-04 | Flow US-02 → PL → PA → R | |
 | AC-05 | Flow US-02 → T, PS, EN → R; EN → GB → EN | playing, paused and ended branches; return fails: "Could not go back" |
-| AC-06 | Flow US-01 → END, X, E5; Flow US-02 → X, XE | run summary on end and on exit while playing or paused; Esc after the end adds none; Esc during the start closes with no error line (E5) |
+| AC-06 | Flow US-01 → END, X, E5; Flow US-02 → X, XE | run summary on end and on exit while playing or paused; Esc after the end adds none; the OS closing the window during the start exits 0 with no error line (E5); Esc during the start acts once the start returns (a failed start still reports its error) |
 | AC-06b | Flow US-01 → D → N1 → END | |
-| AC-07 | Flow US-03 → C yes → RS → NEW; RS → F → END3 | new file fails to start: "Could not play", ended |
+| AC-07 | Flow US-03 → C yes → AN → RS → NEW; RS → F → END3 | new file fails to start: "Could not play", ended |
 | AC-08 | Flow US-03 → N no → NO → SAME; N budget → TO → SAME | also when every remaining file is skipped, and when the 3 s budget runs out or the press judged no file (`next-file-timeout`) |
 | AC-09 | Flow US-03 → K1 → N | |
 | AC-09b | Flow US-03 → K2 → N | |

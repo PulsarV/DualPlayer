@@ -136,6 +136,9 @@ public sealed partial class PlayEndToEndTests : IDisposable
         next.ShouldBeLessThan(outputs[1], "the new file's output lines were printed before the next-file line:" + Environment.NewLine + text);
         next.ShouldBeLessThan(delays[1], "the new file's picture delay line was printed before the next-file line:" + Environment.NewLine + text);
         next.ShouldBeGreaterThan(outputs[0], text);
+        var oldSummary = lines.FindIndex(l => l == "run-summary file Episode 1.mkv reason file-change");
+        oldSummary.ShouldBeGreaterThan(-1, text);
+        next.ShouldBeLessThan(oldSummary, "the old file's run-summary was printed before the next-file line:" + Environment.NewLine + text);
     }
 
     [Fact]

@@ -246,17 +246,17 @@ sequenceDiagram
                 Core->>Platform: silent pre-roll on every output, then release with each output's lag
                 Platform-->>Core: slowest output hears the first frame
                 Core->>Core: master clock starts
+                alt picture delay zero or positive
+                    Core->>Media: play from the start at clock time 0 plus picture delay
+                else picture delay negative
+                    Core->>Media: play from the start the size of the picture delay before the slowest output hears frame 0, timed from the pre-roll measurement
+                end
+                Media-->>Core: presented position
+                Core->>Core: picture timing against due time, logged
             else any session-start failure (for example mpv.load_timeout, mpv.load_failed, outputs.device_not_found, outputs.device_access_denied, outputs.device_open_failed, playback.decoder_fault, playback.start_timeout)
                 Cli-->>Developer: plain-language error naming the cause, exit code
                 Cli->>Window: close the window
             end
-            alt picture delay zero or positive
-                Core->>Media: play from the start at clock time 0 plus picture delay
-            else picture delay negative
-                Core->>Media: play from the start the size of the picture delay before the slowest output hears frame 0, timed from the pre-roll measurement
-            end
-            Media-->>Core: presented position
-            Core->>Core: picture timing against due time, logged
         end
     end
 ```

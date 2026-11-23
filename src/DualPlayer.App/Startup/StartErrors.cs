@@ -16,7 +16,7 @@ internal static partial class StartErrors
 
     /// <summary>
     /// The exit code after the session's start returned <paramref name="started"/>: null when it started; 0 without an
-    /// error line when the window was already closing (Esc during the start); otherwise the error's code, reported.
+    /// error line when the window was already closing (the OS closed it during the start; Esc during the start acts once the start returns, so a failed start still reports its error); otherwise the error's code, reported.
     /// </summary>
     public static int? AfterSessionStart(Result started, bool closing, TextWriter stderr, ILogger log)
     {

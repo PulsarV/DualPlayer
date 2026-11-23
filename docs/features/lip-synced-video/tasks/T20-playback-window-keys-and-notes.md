@@ -4,7 +4,7 @@ title: "Build the fullscreen playback window hosting mpv's video, mapping the fi
 layer: "ui"
 deps: ["T4", "T15", "T17"]
 blocks: ["T22"]
-acs: ["AC-01", "AC-04", "AC-05", "AC-06", "AC-07", "AC-10", "AC-11"]
+acs: ["AC-01", "AC-02", "AC-04", "AC-05", "AC-06", "AC-07", "AC-10", "AC-11"]
 files_hint: ["src/DualPlayer.App/Views/PlaybackWindow.axaml", "src/DualPlayer.App/Views/PlaybackWindow.axaml.cs", "src/DualPlayer.App/ViewModels/PlaybackViewModel.cs", "src/DualPlayer.App/Controls/VideoHost.cs", "src/DualPlayer.App/Themes/Tokens.axaml", "tests/DualPlayer.App.Tests/ViewModels/PlaybackViewModelTests.cs"]
 owner: "Volodymyr Kravchuk"
 estimate: "M"

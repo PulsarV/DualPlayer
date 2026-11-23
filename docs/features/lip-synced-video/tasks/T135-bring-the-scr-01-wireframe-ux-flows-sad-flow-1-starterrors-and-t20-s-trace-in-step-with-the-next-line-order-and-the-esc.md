@@ -6,8 +6,8 @@ deps: ["T132", "T133", "T134"]
 blocks: ["T23"]
 acs: ["AC-01", "AC-02", "AC-06", "AC-07"]
 files_hint: ["docs/features/lip-synced-video/screens.md", "docs/features/lip-synced-video/ux-flows.md", "docs/features/lip-synced-video/sad.md", "docs/features/lip-synced-video/test-plan.md", "docs/features/lip-synced-video/tasks.json", "docs/features/lip-synced-video/tasks/T20-playback-window-keys-and-notes.md", "docs/features/lip-synced-video/tasks/tracker.md", "src/DualPlayer.App/Startup/StartErrors.cs", "tests/DualPlayer.App.Tests/E2E/PlayEndToEndTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -35,10 +35,10 @@ See [spec.md](../spec.md) §5 AC-01, AC-02, AC-06, AC-07.
 
 ## Definition of Done
 
-- [ ] SCR-01's wireframe shows `next     Episode-04.mkv` above `run-summary  file Episode-01.mkv  reason file-change`.
-- [ ] `PlayEndToEndTests` asserts the `next` line comes before the old file's `run-summary … reason file-change` line; test-plan.md cites it for AC-07's order.
-- [ ] ux-flows.md:159 and the `StartErrors.AfterSessionStart` summary say: the OS closing the window during the start exits 0 with no error line; Esc during the start acts once the start returns (a failed start still reports its error).
-- [ ] sad flow 1's picture-delay block and the presented-position / picture-timing steps sit inside the `start succeeds` branch.
-- [ ] AC-02 is in T20's `acs` in tasks.json and in its task file.
-- [ ] The ux-flows AC-07 row reads "C yes → AN → RS → NEW; RS → F → END3" (or matches the flow's node names exactly).
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] SCR-01's wireframe shows `next     Episode-04.mkv` above `run-summary  file Episode-01.mkv  reason file-change`.
+- [x] `PlayEndToEndTests` asserts the `next` line comes before the old file's `run-summary … reason file-change` line; test-plan.md cites it for AC-07's order.
+- [x] ux-flows.md:159 and the `StartErrors.AfterSessionStart` summary say: the OS closing the window during the start exits 0 with no error line; Esc during the start acts once the start returns (a failed start still reports its error).
+- [x] sad flow 1's picture-delay block and the presented-position / picture-timing steps sit inside the `start succeeds` branch.
+- [x] AC-02 is in T20's `acs` in tasks.json and in its task file.
+- [x] The ux-flows AC-07 row reads "C yes → AN → RS → NEW; RS → F → END3" (or matches the flow's node names exactly).
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

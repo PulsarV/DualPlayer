@@ -196,6 +196,8 @@ The picture is shown fullscreen against the audio master clock, held back by the
 | AC-09b | T129: a probe wrapper whose thread starts after the press gave up never calls the adapter | unit | (`PlaybackSessionNeighbourWorkerTimingTests.A_probe_wrapper_whose_thread_starts_after_the_press_gave_up_never_calls_the_adapter_AC_09b`) |
 | AC-07 / AC-08 | T130: the `next` / `previous` line (the file-change announcement) comes when the target is chosen, before the old run stops, not after a 1 s stop | unit | (`PlaybackSessionNeighbourRecoveryTests.A_file_change_is_announced_when_the_target_is_chosen_not_after_the_old_run_stop_that_took_1_s_AC_07`) |
 | AC-01 / AC-02 / AC-06 / AC-07 / AC-08 / AC-09b | T131 (documentation): any session-start failure with the window open closes it with exit 2 or 4; Esc during the start acts once the start returns (a failed start still reports its error), the OS closing the window exits 0 with no error line; a cut probe is never reported skipped; the `next` line comes before the old film's run summary | unit | (`StartErrorsTests`, `PlaybackSessionNeighbourWorkerTimingTests`, `PlaybackSessionNeighbourRecoveryTests` above) |
+| AC-07 | T135: the `next` line comes before the old file's `run-summary … reason file-change` line, and before the new file's output and picture delay lines | e2e | (`PlayEndToEndTests.Page_Down_prints_the_next_file_line_before_the_new_files_output_and_picture_delay_lines_AC_07`) |
+| AC-02 / AC-06 | T135: Esc pressed during a start that then fails still prints the error and exits 2 | unit | (`AppEntryTests.Esc_pressed_during_a_start_that_fails_still_prints_the_error_and_exits_2_AC_02_AC_06`) |
 
 ### Where the e2e and e2e-through-UI rows run (T38, review-2026-11-20 F19)
 
