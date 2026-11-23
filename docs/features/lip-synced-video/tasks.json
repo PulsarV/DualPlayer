@@ -636,7 +636,12 @@
         "T165",
         "T166",
         "T167",
-        "T168"
+        "T168",
+        "T169",
+        "T170",
+        "T171",
+        "T172",
+        "T173"
       ],
       "acs": [
         "AC-16",
@@ -3889,6 +3894,110 @@
       "file": "docs/features/lip-synced-video/tasks/T168-name-the-screens-in-t153-cite-the-t162-t167-tests-in-test-plan-and-extend-the-t23-checklist.md",
       "origin": "review-2026-11-23j: AB1, AB2, AB4",
       "status": "done"
+    },
+    {
+      "id": "T169",
+      "title": "Pin the output and the track number apart in a missing-track skip",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-09"
+      ],
+      "dod": "A `PlaybackSessionFileChangeTests` case where output 1 plays track 3 and the neighbour has two tracks: `FileSkipped(…, \"track-missing\", 1, 3)` and the note `Skipped <name>: no track 3 for output 1`.; A `TerminalPrinterRawLineTests` case: `FileSkipped(\"b.mkv\", \"track-missing\", 1, 3)` prints `skipped  b.mkv  reason track-missing  output 1  track 3`.; A `NeighbourSkipIntegrationTests` case on real generated media where output 1 plays track 3 of a three-track film and the neighbour has two tracks: the skip event carries output 1, track 3.; Mutants on a scratch copy, each failing at least one new test: note text with `OutputNumber` and `Track` swapped (PlaybackSession.cs:1040); `new FileSkipped(name, \"track-missing\", track, i + 1)` (:903); `output {t2}  track {o}` (TerminalPrinter.cs:105).; No production code changes.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionFileChangeTests.cs",
+        "tests/DualPlayer.App.Tests/Startup/TerminalPrinterRawLineTests.cs",
+        "tests/DualPlayer.Media.Tests/Video/NeighbourSkipIntegrationTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T169-pin-the-output-and-the-track-number-apart-in-a-missing-track-skip.md",
+      "origin": "review-2026-11-24: AD1",
+      "status": "todo"
+    },
+    {
+      "id": "T170",
+      "title": "Make the click-and-flash test read the generator script and check both encodings",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-16"
+      ],
+      "dod": "The test reads the `$video` and `$click` assignments and each encoding's codec arguments (`$encodings`) from `build/make-click-flash-video.ps1` (found from the repo root), unescaping PowerShell's double-quoted string as needed; no copy of the graphs is left in the test.; The check runs for both encodings (H.264 and HEVC) — a theory over the script's encodings; an encoding the local FFmpeg cannot write is skipped with a reason, never silently passed.; Mutants on a scratch copy, each failing the test: the script's click period `1001/1000` → `1000/1000`; the flash period `mod(n\\,24)` → `mod(n\\,25)`.; The script's behaviour is unchanged (a refactor that makes it easier to read is allowed only if the generated files stay the same).; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Media.Tests/Video/ClickAndFlashVideoTests.cs",
+        "build/make-click-flash-video.ps1"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T170-make-the-click-and-flash-test-read-the-generator-script-and-check-both-encodings.md",
+      "origin": "review-2026-11-24: AD2",
+      "status": "todo"
+    },
+    {
+      "id": "T171",
+      "title": "Move the note-style state ShowNote keeps between notes into the pure helper and pin it",
+      "layer": "adapter",
+      "deps": [],
+      "acs": [
+        "AC-06b",
+        "AC-08",
+        "AC-09",
+        "AC-09b",
+        "AC-10",
+        "AC-11",
+        "AC-15",
+        "AC-15b"
+      ],
+      "dod": "The state transition lives in a pure helper: given the current `(layoutApplied, appliedStyle)`, the style options, the text and the note style, it returns the commands **and** the next state; `ShowNote` only runs the returned commands and stores the returned state.; New tests over a sequence Warning → Info → Info: the warning sends `set osd-color #FFFFD400`, the following info note sends `set osd-color <foreground>`, the third sends only `show-text`; layout `set`s only on the first note.; Mutants on a scratch copy, each failing at least one new test: the next applied style always `Info`; the next applied style never updated; layout never marked applied.; `ShowNote` keeps the `_handle == 0` guard and the lock; no other behaviour change.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Media/Video/MpvVideoRenderer.cs",
+        "tests/DualPlayer.Media.Tests/Video/MpvVideoRendererTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T171-move-the-note-style-state-shownote-keeps-between-notes-into-the-pure-helper-and-pin-it.md",
+      "origin": "review-2026-11-24: AD3",
+      "status": "todo"
+    },
+    {
+      "id": "T172",
+      "title": "Pin that Program.Run returns the app's exit code",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-02",
+        "AC-03",
+        "AC-03b"
+      ],
+      "dod": "A `ProgramRunTests` theory over exit codes 2 and 4: a valid command whose `startApp` returns the code makes `Run` return the same code.; Mutant on a scratch copy fails the new test: `_ = startApp(parsed.Value, loggerFactory); return 0;`.; No production code changes.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.App.Tests/Startup/ProgramRunTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T172-pin-that-program-run-returns-the-app-s-exit-code.md",
+      "origin": "review-2026-11-24: AD4",
+      "status": "todo"
+    },
+    {
+      "id": "T173",
+      "title": "Cite the T169–T172 tests in test-plan and extend the T23 note checklist",
+      "layer": "docs",
+      "deps": [
+        "T169",
+        "T170",
+        "T171",
+        "T172"
+      ],
+      "acs": [
+        "AC-02",
+        "AC-03",
+        "AC-03b",
+        "AC-09",
+        "AC-10",
+        "AC-16"
+      ],
+      "dod": "test-plan.md cites the T169–T172 tests in the AC-09, AC-16, note (SCR-03) and App-entry / exit-code rows; :105 says the test reads the generator script and covers H.264 and HEVC; every cited `Class.Method` resolves (scripted check).; The T23 guide §6 notes item adds: an info note right after a warning is in the normal colour, not yellow.; No code or test changes.",
+      "files_hint": [
+        "docs/features/lip-synced-video/test-plan.md",
+        "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T173-cite-the-t169-t172-tests-in-test-plan-and-extend-the-t23-note-checklist.md",
+      "origin": "review-2026-11-24: AD1, AD2, AD3, AD4",
+      "status": "todo"
     }
   ]
 }
