@@ -6,8 +6,8 @@ deps: []
 blocks: ["T144", "T23"]
 acs: ["AC-09b"]
 files_hint: ["tests/DualPlayer.Core.Tests/Playback/PlaybackSessionFileChangeTests.cs", "tests/DualPlayer.App.Tests/Startup/TerminalPrinterRawLineTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,7 +31,7 @@ See [spec.md](../spec.md) §5 AC-09b.
 
 ## Definition of Done
 
-- [ ] New theory in `PlaybackSessionFileChangeTests` with `rig.Pictures.Fail(<Episode-02>, code, …)`: `video.no_picture` → reason `no-picture` and note `"Skipped Episode-02.mkv: no picture"`; `playback.file_access_denied` → `access-denied` and `"Skipped Episode-02.mkv: access denied"`; `playback.file_unreadable` → `unreadable` and `"Skipped Episode-02.mkv: file cannot be read"`; each asserts `FileSkipped.Reason` and the exact `NoteShown` text with `NoteStyle.Warning`.
-- [ ] With `SkipText` "no picture"/"access denied" changed, or `ReasonOf` mapping `playback.file_access_denied` to `unreadable` (scratch copy), the theory fails.
-- [ ] `TerminalPrinterRawLineTests` pins `skipped  X.mkv  reason access-denied`.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] New theory in `PlaybackSessionFileChangeTests` with `rig.Pictures.Fail(<Episode-02>, code, …)`: `video.no_picture` → reason `no-picture` and note `"Skipped Episode-02.mkv: no picture"`; `playback.file_access_denied` → `access-denied` and `"Skipped Episode-02.mkv: access denied"`; `playback.file_unreadable` → `unreadable` and `"Skipped Episode-02.mkv: file cannot be read"`; each asserts `FileSkipped.Reason` and the exact `NoteShown` text with `NoteStyle.Warning`. *(`A_skipped_file_gets_its_reason_and_a_warning_note_saying_why_in_plain_words_AC_09b`.)*
+- [x] With `SkipText` "no picture"/"access denied" changed, or `ReasonOf` mapping `playback.file_access_denied` to `unreadable` (scratch copy), the theory fails. *(Texts mutant: 2 of 3 cases fail; reason mutant: the access-denied case fails.)*
+- [x] `TerminalPrinterRawLineTests` pins `skipped  X.mkv  reason access-denied`. *(`The_skipped_lines_keep_two_spaces_between_every_field`.)*
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean *(Build 0 warnings; tests Core 624, Media 174, Console 151, App 166, Windows 41, MacOS 12 passed; format clean.)*

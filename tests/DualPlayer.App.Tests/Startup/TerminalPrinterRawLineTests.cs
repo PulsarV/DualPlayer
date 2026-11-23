@@ -71,6 +71,7 @@ public sealed class TerminalPrinterRawLineTests
                 s.Publish(new FileSkipped("b.mkv", "track-missing", 2, 2));
                 s.Publish(new FileSkipped("c.mkv", "not-hardware-decodable", null, null) { Codec = "hevc", Profile = "Main 10" });
                 s.Publish(new FileSkipped("d.mkv", "unreadable", null, null));
+                s.Publish(new FileSkipped("e.mkv", "access-denied", null, null));
             },
             null);
 
@@ -79,6 +80,7 @@ public sealed class TerminalPrinterRawLineTests
             "skipped  b.mkv  reason track-missing  output 2  track 2",
             "skipped  c.mkv  reason not-hardware-decodable  codec hevc  profile main-10",
             "skipped  d.mkv  reason unreadable",
+            "skipped  e.mkv  reason access-denied",
         ]);
     }
 

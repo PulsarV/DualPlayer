@@ -149,7 +149,7 @@
 | T139 | [Pin the exact text of the Could-not-go-back and Could-not-play notes, and fix the rig barrier comment](./T139-pin-the-exact-text-of-the-could-not-go-back-and-could-not-play-notes-and-fix-the-rig-barrier-comment.md) | test | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T140 | [Pin exit while paused end to end, and order the OS close before the start through Exited instead of a sleep](./T140-pin-exit-while-paused-end-to-end-and-order-the-os-close-before-the-start-through-exited-instead-of-a-sleep.md) | test | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T141 | [Cite the T139 and T140 tests in test-plan](./T141-cite-the-t139-and-t140-tests-in-test-plan.md) | docs | Volodymyr Kravchuk | S | T139, T140 | done | COMMIT |
-| T142 | [Pin the AC-09b skip reasons and note texts for no picture, access denied and unreadable through the session](./T142-pin-the-ac-09b-skip-reasons-and-note-texts-through-the-session.md) | test | Volodymyr Kravchuk | S | — | todo | — |
+| T142 | [Pin the AC-09b skip reasons and note texts for no picture, access denied and unreadable through the session](./T142-pin-the-ac-09b-skip-reasons-and-note-texts-through-the-session.md) | test | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T143 | [Pin the plain-words no-picture message of the picture probe](./T143-pin-the-plain-words-no-picture-message-of-the-picture-probe.md) | test | Volodymyr Kravchuk | S | — | todo | — |
 | T144 | [Cite the T142 and T143 tests in test-plan](./T144-cite-the-t142-and-t143-tests-in-test-plan.md) | docs | Volodymyr Kravchuk | S | T142, T143 | todo | — |
 
