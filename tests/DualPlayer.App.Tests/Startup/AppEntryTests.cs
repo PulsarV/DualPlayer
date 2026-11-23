@@ -324,8 +324,8 @@ public sealed class AppEntryTests
     }
 
     // T136 (review-2026-11-23d V1): the OS closes the window while the start is running and the start then fails: exit 0, no
-    // error line, the abandoned start is logged (cli.md section 4). The close runs on the UI thread and waits behind the held
-    // start in the session's loop, so a worker task releases the hold.
+    // error line, the abandoned start is logged (cli.md section 4). T140 (review-2026-11-23e U3): the worker waits in `afterStart`
+    // for Exited, which the Closed handler raises only after it has marked the close under the lock, so the close always comes first.
     [Fact]
     public void A_window_closed_by_the_OS_during_a_start_that_fails_exits_0_without_an_error_line_and_logs_the_abandoned_start_AC_06()
     {
@@ -337,6 +337,7 @@ public sealed class AppEntryTests
         var log = new RecordingLogger<App>();
         using var startHeld = new ManualResetEventSlim();
         using var release = new ManualResetEventSlim();
+        using var exitedSeen = new ManualResetEventSlim();
         using var holdOnWarning = rig.Session.Events.Subscribe(new HoldingObserver(startHeld, release));
 
         var stderr = CaptureConsole(() =>
@@ -345,15 +346,12 @@ public sealed class AppEntryTests
             HeadlessApp.Run(() =>
             {
                 window = new PlaybackWindow { DataContext = services.GetRequiredService<PlaybackViewModel>() };
-                App.Play(desktop, services, new StartRequest(FilePath, [], null), validated, log, () => window);
+                App.Play(desktop, services, new StartRequest(FilePath, [], null), validated, log, () => window, afterStart: () => exitedSeen.Wait(TimeSpan.FromSeconds(10)));
+                controls.Exited += () => exitedSeen.Set();
                 window.RaiseVideoHandleCreated(1);
                 startHeld.Wait(TimeSpan.FromSeconds(10)).ShouldBeTrue("the start never reached the held point");
 
-                _ = Task.Run(() =>
-                {
-                    Thread.Sleep(300);
-                    release.Set();
-                });
+                release.Set();
                 window.Close(); // the OS closes the window: Closed marks the close, then waits for the session to end
                 PumpUntilShutdown(desktop).ShouldBeTrue("closing the window never shut the application down");
                 SpinWait.SpinUntil(() => log.Lines.Any(l => l.Contains("The window closed during the start", StringComparison.Ordinal)), TimeSpan.FromSeconds(5));

@@ -6,8 +6,8 @@ deps: []
 blocks: ["T141", "T23"]
 acs: ["AC-06"]
 files_hint: ["tests/DualPlayer.App.Tests/E2E/PlayEndToEndTests.cs", "tests/DualPlayer.App.Tests/Startup/AppEntryTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -32,7 +32,7 @@ See [spec.md](../spec.md) §5 AC-06.
 
 ## Definition of Done
 
-- [ ] New `PlayEndToEndTests` case: Space, wait for Paused, Esc through the real `PlaybackControls` → exactly one `run-summary file Film.mkv reason exit` and exit 0; it fails with the paused branch of the exit path broken (scratch copy).
-- [ ] `A_window_closed_by_the_OS_during_a_start_that_fails…` (AppEntryTests.cs:330) releases the hold at once, passes `afterStart` that waits (bounded, 10 s) for `controls.Exited`, and has no `Thread.Sleep`; it passes with a 400 ms stall before `window.Close()` (scratch copy) and still fails with `closing` ignored in `AfterSessionStart`.
-- [ ] AppEntryTests and PlayEndToEndTests pass 10 runs with 3 processes in parallel.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] New `PlayEndToEndTests` case: Space, wait for Paused, Esc through the real `PlaybackControls` → exactly one `run-summary file Film.mkv reason exit` and exit 0; it fails with the paused branch of the exit path broken (scratch copy). *(Mutant: no engine stop while paused → the test fails.)*
+- [x] `A_window_closed_by_the_OS_during_a_start_that_fails…` (AppEntryTests.cs:330) releases the hold at once, passes `afterStart` that waits (bounded, 10 s) for `controls.Exited`, and has no `Thread.Sleep`; it passes with a 400 ms stall before `window.Close()` (scratch copy) and still fails with `closing` ignored in `AfterSessionStart`. *(Passes with a 400 ms stall before window.Close(); fails with closing ignored (stderr has the error line).)*
+- [x] AppEntryTests and PlayEndToEndTests pass 10 runs with 3 processes in parallel. *(30 of 30.)*
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean *(Build 0 warnings; tests Core 621, Media 174, Console 151, App 166, Windows 41, MacOS 12 passed; format clean.)*

@@ -80,6 +80,31 @@ public sealed partial class PlayEndToEndTests : IDisposable
         rig.Renderer.IsDisposed.ShouldBeTrue();
     }
 
+    // T140 (review-2026-11-23e U2): AC-06 covers exit while the film is paused, not only while it plays.
+    [Fact]
+    public void Esc_while_the_film_is_paused_prints_one_run_summary_with_reason_exit_AC_06()
+    {
+        var (rig, printer, controls) = Play(File("Film.mkv"));
+        using (rig)
+        using (controls)
+        {
+            controls.TogglePause();
+            rig.Engine.AdvanceUntil(() => rig.Session.State == PlaybackState.Paused).ShouldBeTrue("Space never paused the film");
+
+            PressEscAndWait(rig, controls);
+            printer.Dispose();
+        }
+
+        var lines = Lines();
+        lines.Count(l => l.StartsWith("run-summary", StringComparison.Ordinal)).ShouldBe(1, string.Join(Environment.NewLine, lines));
+        var header = lines.FindIndex(l => l == "run-summary file Film.mkv reason exit");
+        header.ShouldBeGreaterThan(0, string.Join(Environment.NewLine, lines));
+        lines.Skip(header).ShouldContain(l => l.Contains("dev-1", StringComparison.Ordinal));
+        lines.Skip(header).ShouldContain(l => l.Contains("dev-2", StringComparison.Ordinal));
+        _err.ToString().ShouldBeEmpty();
+        rig.Renderer.IsDisposed.ShouldBeTrue();
+    }
+
     [Fact]
     public void After_the_last_output_is_lost_Page_Down_plays_the_next_file_on_the_devices_that_are_back_and_Esc_still_exits_AC_15b()
     {
