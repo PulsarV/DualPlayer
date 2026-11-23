@@ -71,6 +71,30 @@ public sealed class StartCommandTests
     }
 
     [Fact]
+    public void Validate_without_screen_picks_the_main_screen_even_when_it_is_listed_second_AC_01()
+    {
+        var rig = new Rig { Screens = new FakeScreens([new(1, 3840, 2160, false), new(2, 1920, 1080, true)]) };
+
+        var r = Validate(Request(), rig);
+
+        r.IsSuccess.ShouldBeTrue();
+        r.Value.Screen.Number.ShouldBe(2);
+        r.Value.Screen.IsMain.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Validate_with_screen_1_picks_the_first_listed_screen_even_when_the_main_one_is_second_AC_03b()
+    {
+        var rig = new Rig { Screens = new FakeScreens([new(1, 3840, 2160, false), new(2, 1920, 1080, true)]) };
+
+        var r = Validate(Request(screen: 1), rig);
+
+        r.IsSuccess.ShouldBeTrue();
+        r.Value.Screen.Number.ShouldBe(1);
+        r.Value.Screen.IsMain.ShouldBeFalse();
+    }
+
+    [Fact]
     public void Validate_file_without_picture_is_reported_with_exit_2()
     {
         var rig = new Rig();
@@ -306,7 +330,7 @@ public sealed class StartCommandTests
 
         public TrackDecoder Decoder { get; } = new();
 
-        public FakeScreens Screens { get; } = new();
+        public FakeScreens Screens { get; set; } = new();
     }
 
     private sealed class ScriptedProbe : IPictureProbe
@@ -331,8 +355,8 @@ public sealed class StartCommandTests
             throw new InvalidOperationException("validation must not open a decode session");
     }
 
-    private sealed class FakeScreens : IScreenCatalog
+    private sealed class FakeScreens(IReadOnlyList<ScreenInfo>? screens = null) : IScreenCatalog
     {
-        public IReadOnlyList<ScreenInfo> Screens { get; } = [new(1, 1920, 1080, true), new(2, 3840, 2160, false)];
+        public IReadOnlyList<ScreenInfo> Screens { get; } = screens ?? [new(1, 1920, 1080, true), new(2, 3840, 2160, false)];
     }
 }

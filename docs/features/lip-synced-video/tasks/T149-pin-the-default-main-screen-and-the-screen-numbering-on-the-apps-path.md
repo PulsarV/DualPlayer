@@ -6,8 +6,8 @@ deps: []
 blocks: ["T23", "T152"]
 acs: ["AC-01", "AC-03b"]
 files_hint: ["tests/DualPlayer.App.Tests/Startup/StartCommandTests.cs", "tests/DualPlayer.App.Tests/Views/PlaybackWindowHeadlessTests.cs", "tests/DualPlayer.App.Tests/Startup/AvaloniaScreenCatalogTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,7 +31,7 @@ See [spec.md](../spec.md) §5 AC-01, AC-03b.
 
 ## Definition of Done
 
-- [ ] A `StartCommandTests` case with the main screen listed second: an omitted `--screen` resolves to screen number 2 (the main one).
-- [ ] A headless test that `AvaloniaScreenCatalog.Screens` numbers from 1 in Avalonia's order and marks `Screens.Primary` as main, and that `PlaybackWindow.PlaceOnScreen(n)` places the window on the screen the catalog calls n.
-- [ ] Mutants on a scratch copy, each failing at least one new test: `StartCommand.cs:113` → `list.FirstOrDefault()`; catalog numbering `i + 1` → `i`.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] A `StartCommandTests` case with the main screen listed second: an omitted `--screen` resolves to screen number 2 (the main one). *(Validate_without_screen_picks_the_main_screen_even_when_it_is_listed_second_AC_01 plus the AC_03b companion)*
+- [x] A headless test that `AvaloniaScreenCatalog.Screens` numbers from 1 in Avalonia's order and marks `Screens.Primary` as main, and that `PlaybackWindow.PlaceOnScreen(n)` places the window on the screen the catalog calls n. *(catalog numbering test and two PlaceOnScreen tests in PlaybackWindowHeadlessTests; headless exposes one screen so order is not distinguishable)*
+- [x] Mutants on a scratch copy, each failing at least one new test: `StartCommand.cs:113` → `list.FirstOrDefault()`; catalog numbering `i + 1` → `i`. *(mutants StartCommand.cs:113 and catalog i+1 to i each fail a new test)*
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean *(build 0 warnings; App 171/171, all projects green; format clean; no production change)*

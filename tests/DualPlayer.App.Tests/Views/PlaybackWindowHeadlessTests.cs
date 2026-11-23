@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using DualPlayer.App.Startup;
 using DualPlayer.App.ViewModels;
 using DualPlayer.App.Views;
 using DualPlayer.Core.Playback;
@@ -113,6 +114,55 @@ public sealed class PlaybackWindowHeadlessTests
         window.Position = new Avalonia.PixelPoint(screens[0].Bounds.X + 300, screens[0].Bounds.Y + 200);
         window.PlaceOnScreen(null);
         window.WindowState.ShouldBe(WindowState.FullScreen);
+        window.Position.ShouldBe(window.Screens.Primary!.Bounds.Position);
+        window.Close();
+    });
+
+    [Fact]
+    public void The_screen_catalog_numbers_from_1_in_Avalonias_order_and_marks_the_primary_as_main_AC_01_AC_03b() => HeadlessApp.Run(() =>
+    {
+        var (window, _, _) = OpenWindow();
+        var avalonia = window.Screens.All;
+
+        var listed = new AvaloniaScreenCatalog().Screens;
+
+        listed.Select(s => s.Number).ShouldBe(Enumerable.Range(1, avalonia.Count));
+        listed.Select(s => (s.Width, s.Height)).ShouldBe(avalonia.Select(s => (s.Bounds.Width, s.Bounds.Height)));
+        listed.Select(s => s.IsMain).ShouldBe(avalonia.Select(s => s.IsPrimary));
+        listed.Count(s => s.IsMain).ShouldBe(1);
+        window.Close();
+    });
+
+    [Fact]
+    public void PlaceOnScreen_puts_the_window_on_the_screen_the_catalog_calls_that_number_AC_03b() => HeadlessApp.Run(() =>
+    {
+        var (window, _, _) = OpenWindow();
+        var avalonia = window.Screens.All;
+        var listed = new AvaloniaScreenCatalog().Screens;
+
+        foreach (var screen in listed)
+        {
+            window.WindowState = WindowState.Normal;
+            window.Position = new Avalonia.PixelPoint(avalonia[0].Bounds.X + 300, avalonia[0].Bounds.Y + 200);
+
+            window.PlaceOnScreen(screen.Number);
+
+            window.WindowState.ShouldBe(WindowState.FullScreen);
+            window.Position.ShouldBe(avalonia[screen.Number - 1].Bounds.Position);
+        }
+
+        window.Close();
+    });
+
+    [Fact]
+    public void PlaceOnScreen_with_the_main_screens_catalog_number_lands_on_the_primary_screen_AC_01() => HeadlessApp.Run(() =>
+    {
+        var (window, _, _) = OpenWindow();
+        var main = new AvaloniaScreenCatalog().Screens.Single(s => s.IsMain);
+        window.WindowState = WindowState.Normal;
+
+        window.PlaceOnScreen(main.Number);
+
         window.Position.ShouldBe(window.Screens.Primary!.Bounds.Position);
         window.Close();
     });
