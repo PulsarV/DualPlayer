@@ -159,11 +159,14 @@ public sealed class PlaybackWindowHeadlessTests
     {
         var (window, _, _) = OpenWindow();
         var main = new AvaloniaScreenCatalog().Screens.Single(s => s.IsMain);
+        var primary = window.Screens.Primary!.Bounds;
         window.WindowState = WindowState.Normal;
+        window.Position = new Avalonia.PixelPoint(primary.X + 300, primary.Y + 200);
 
         window.PlaceOnScreen(main.Number);
 
-        window.Position.ShouldBe(window.Screens.Primary!.Bounds.Position);
+        window.WindowState.ShouldBe(WindowState.FullScreen);
+        window.Position.ShouldBe(primary.Position);
         window.Close();
     });
 
