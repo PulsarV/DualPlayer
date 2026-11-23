@@ -35,6 +35,12 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
 
     private static void Press(SessionRig rig) => rig.Engine.Call(() => rig.Session.NextFile());
 
+    // PlaybackSession.MaxBusyPolls (private): the most polls of the adapter's probe worker in one give-up grace on a clock that stands still.
+    private const int MaxBusyPolls = 100;
+
+    // The calls besides those polls: the press's own look before it starts the check, the poll that finds the cap, and a little room.
+    private const int ExtraBusyCalls = 5;
+
     // A press whose scan spends fake time on the folder work before it checks the first file.
     private static void PressOnSlowFolder(SessionRig rig, TimeSpan folderCost)
     {
@@ -353,7 +359,7 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
     }
 
     [Fact]
-    public void A_give_up_on_a_probe_worker_that_stays_busy_forever_costs_a_small_bounded_real_time_AC_08()
+    public void A_give_up_on_a_probe_worker_that_stays_busy_forever_polls_it_a_small_bounded_number_of_times_AC_08()
     {
         using var decoder = new ScriptedDecoder();
         using var probe = new ScriptedProbe();
@@ -362,11 +368,12 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
         probe.Hang("Episode-02.mkv");
         probe.StayBusyAfterTimeout("Episode-02.mkv");
 
-        var wall = System.Diagnostics.Stopwatch.StartNew();
         Press(rig);
-        wall.Stop();
 
-        wall.Elapsed.ShouldBeLessThan(TimeSpan.FromMilliseconds(300), "the give-up grace polled a worker that never lets go 500 times on a frozen clock");
+        // Polls, not wall time: how long a poll takes is the OS timer's business (1 ms on macOS, 15.6 ms at the Windows default).
+        // The press asks once before it starts the check, and the grace polls at most MaxBusyPolls times (plus the one that finds the cap).
+        probe.IsBusyCalls.ShouldBeGreaterThan(MaxBusyPolls, "the give-up grace never polled the worker that stays busy: this test no longer exercises it");
+        probe.IsBusyCalls.ShouldBeLessThanOrEqualTo(MaxBusyPolls + ExtraBusyCalls, "the give-up grace polled a worker that never lets go more often than its cap on a frozen clock");
     }
 
     [Fact]
@@ -514,8 +521,14 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
             }
         }
 
+        /// <summary>How often the session asked <see cref="IsBusy"/>.</summary>
+        public int IsBusyCalls => Volatile.Read(ref _isBusyCalls);
+
+        private int _isBusyCalls;
+
         public bool IsBusy(string path)
         {
+            Interlocked.Increment(ref _isBusyCalls);
             lock (_gate)
             {
                 return _stuck.Contains(Path.GetFileName(path));

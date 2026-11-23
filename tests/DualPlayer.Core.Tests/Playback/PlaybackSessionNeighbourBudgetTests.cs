@@ -134,10 +134,16 @@ public sealed class PlaybackSessionNeighbourBudgetTests : IDisposable
         rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = File("Episode-01.mkv") })).IsSuccess.ShouldBeTrue();
         rig.Engine.Render(300);
 
+        // The listing spends fake time only up to the budget plus the 50 ms slack the press gives a worker (registered with the rig as
+        // its deadline, so the rig never moves the clock past it, however late the session thread wakes), then blocks in real time
+        // until the test lets it go: a listing that never comes back.
+        var release = new ManualResetEventSlim(); // not disposed: the abandoned worker may still be waiting on it
+        using var releaseOnExit = new Defer(release.Set);
         rig.Decoder.BeforeList = () =>
         {
-            var end = rig.Engine.Time.GetTimestamp() + (long)(10 * rig.Engine.Time.TimestampFrequency);
+            var end = rig.Engine.Time.GetTimestamp() + (long)((Budget + TimeSpan.FromMilliseconds(50)).TotalSeconds * rig.Engine.Time.TimestampFrequency);
             rig.Engine.Time.SpinUntil(end);
+            release.Wait(TimeSpan.FromSeconds(30));
         };
 
         var key = rig.Engine.Time.GetUtcNow();
@@ -151,5 +157,10 @@ public sealed class PlaybackSessionNeighbourBudgetTests : IDisposable
         rig.Events.OfType<FileSkipped>().ShouldBeEmpty("a listing that ran out of time is not a skipped file");
         rig.Events.OfType<NoNeighbour>().ShouldBeEmpty();
         rig.Events.OfType<FileChanged>().ShouldBeEmpty();
+    }
+
+    private sealed class Defer(Action action) : IDisposable
+    {
+        public void Dispose() => action();
     }
 }

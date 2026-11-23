@@ -12,7 +12,17 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
 {
     private readonly string _folder = Directory.CreateTempSubdirectory("dualplayer-memory-").FullName;
 
-    public void Dispose() => Directory.Delete(_folder, recursive: true);
+    private readonly List<ScriptedProbe> _probes = [];
+
+    public void Dispose()
+    {
+        foreach (var probe in _probes)
+        {
+            probe.ReleaseWorkers(); // a fake held on its real-time gate by a test that failed before it released it
+        }
+
+        Directory.Delete(_folder, recursive: true);
+    }
 
     private string File(string name)
     {
@@ -24,6 +34,7 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
     private (SessionRig Rig, ScriptedProbe Probe) PlayingRig(string first = "Episode-01.mkv")
     {
         var probe = new ScriptedProbe();
+        _probes.Add(probe);
         var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourPictureProbe: probe, barrierEvery: NeighbourRig.BarrierEvery);
         probe.Time = rig.Engine.Time;
         rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = File(first) })).IsSuccess.ShouldBeTrue();
@@ -289,6 +300,7 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
     {
         var (rig, probe) = PlayingRig();
         using var _ = rig;
+        using var releaseOnExit = new Defer(probe.ReleaseWorkers); // a held worker must not outlive a failed test
         File("Episode-02.mkv");
         var healthy = File("Episode-03.mkv");
         File("Episode-04.mkv");
@@ -306,18 +318,19 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
     {
         var (rig, probe) = PlayingRig();
         using var _ = rig;
+        using var releaseOnExit = new Defer(probe.ReleaseWorkers); // a held worker must not outlive a failed test
         File("Episode-02.mkv");
         var healthy = File("Episode-03.mkv");
         var fourth = File("Episode-04.mkv");
         probe.Hang("Episode-02.mkv");
-        probe.SlowPastItsLimit("Episode-03.mkv", TimeSpan.FromMilliseconds(1500), windDown: TimeSpan.FromMilliseconds(300));
+        probe.SlowPastItsLimitOutlastingTheGrace("Episode-03.mkv", TimeSpan.FromMilliseconds(1500));
 
         rig.Engine.Call(() => rig.Session.NextFile());
         rig.Engine.Call(() => rig.Session.NextFile());
 
         rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("a worker still running after the grace did not make the press step past its file").File.ShouldBe(fourth);
         rig.Events.OfType<FileSkipped>().Where(e => e.File == "Episode-03.mkv").ShouldAllBe(e => e.Reason == "unreadable", "a file whose worker outlasted the grace was judged, not just stepped past");
-        rig.Engine.Render(50); // the wind-down ends
+        probe.ReleaseWorkers(); // the wind-down ends
         RigLoops.WaitForNeighbourWorkers(rig.Session);
         rig.Engine.Call(() => rig.Session.PreviousFile()); // from E4: E3 first, probed again
         rig.Events.OfType<FileChanged>().Last().File.ShouldBe(healthy, "a file whose worker outlasted the grace was remembered");
@@ -349,22 +362,92 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         var healthy = File("Episode-03.mkv");
         var fourth = File("Episode-04.mkv");
         probe.Hang("Episode-02.mkv");
-        probe.AdapterShaped("Episode-03.mkv", TimeSpan.FromMilliseconds(1500), windDown: TimeSpan.FromMilliseconds(300));
+        probe.AdapterShapedOutlastingTheGrace("Episode-03.mkv", TimeSpan.FromMilliseconds(1500));
 
         rig.Engine.Call(() => rig.Session.NextFile());
         rig.Engine.Call(() => rig.Session.NextFile());
 
         rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("a worker still running after the grace did not make the press step past its file").File.ShouldBe(fourth);
         rig.Events.OfType<FileSkipped>().Where(e => e.File == "Episode-03.mkv").ShouldAllBe(e => e.Reason == "unreadable", "a file whose worker outlasted the grace was judged, not just stepped past");
-        rig.Engine.Render(50); // the wind-down ends
+        probe.ReleaseWorkers(); // the wind-down ends
         rig.Engine.Call(() => rig.Session.PreviousFile());
         rig.Events.OfType<FileChanged>().Last().File.ShouldBe(healthy, "a file whose worker outlasted the grace was remembered");
+    }
+
+    private sealed class Defer(Action action) : IDisposable
+    {
+        public void Dispose() => action();
+    }
+
+    /// <summary>
+    /// Watches how often the session's control thread reads the rig clock while it waits in a give-up grace, so a fake can hold a
+    /// worker's end until the session has looked at the clock (and kept looking) rather than race it. The session thread is the one
+    /// that cancelled the worker's token (the cancel callback runs on it, see <see cref="WatchThisThread"/>); a read counts only when
+    /// it is made by the grace wait (<c>AwaitGrace</c>, found by its frame as the rig finds <c>ChangeFile</c>), not by the sync and
+    /// health ticks the same thread runs between commands.
+    /// </summary>
+    private sealed class GraceClockReads(CountingTimeProvider time)
+    {
+        private readonly ManualResetEventSlim _enough = new();
+        private int _thread;
+        private long _from;
+        private int _wanted;
+        private int _reads;
+
+        public void WatchThisThread() => Volatile.Write(ref _thread, Environment.CurrentManagedThreadId);
+
+        /// <summary>
+        /// Waits (real time) until the session thread has read the clock in its grace, at or after <paramref name="from"/>,
+        /// <paramref name="count"/> times from now on. False when <paramref name="abandon"/> was set first (the test is over).
+        /// </summary>
+        public bool WaitForReads(long from, int count, ManualResetEventSlim abandon, TimeSpan failAfter)
+        {
+            Volatile.Write(ref _from, from);
+            Volatile.Write(ref _wanted, count);
+            Volatile.Write(ref _reads, 0);
+            _enough.Reset();
+            time.BeforeRead = OnRead;
+            try
+            {
+                var which = WaitHandle.WaitAny([_enough.WaitHandle, abandon.WaitHandle], failAfter);
+                return which == WaitHandle.WaitTimeout
+                    ? throw new TimeoutException("The session never polled the clock in its give-up grace.")
+                    : which == 0;
+            }
+            finally
+            {
+                time.BeforeRead = null;
+            }
+        }
+
+        private void OnRead()
+        {
+            if (Environment.CurrentManagedThreadId == Volatile.Read(ref _thread)
+                && new System.Diagnostics.StackTrace(false).GetFrames().Any(f => f.GetMethod()?.Name == "AwaitGrace")
+                && time.GetTimestamp() >= Volatile.Read(ref _from)
+                && Interlocked.Increment(ref _reads) >= Volatile.Read(ref _wanted))
+            {
+                _enough.Set();
+            }
+        }
     }
 
     /// <summary>Per-file behaviour on the session's fake time; a file with none probes fine at once.</summary>
     private sealed class ScriptedProbe : IPictureProbe
     {
+        // The session's grace is 50 ms; a worker that must outlast it spends this much fake time (grace + 10 ms) after the cancel.
+        private static readonly TimeSpan OutlastsTheGrace = TimeSpan.FromMilliseconds(60);
+
+        // A wind-down inside the grace ends only after the session has polled the clock this many times, in the grace, at or after the wind-down's end.
+        private const int PollsInsideTheGrace = 3;
+
+        // A failure bound for the real-time waits below, never a pass condition.
+        private static readonly TimeSpan FailAfter = TimeSpan.FromSeconds(30);
+
         private readonly Lock _gate = new();
+        private readonly ManualResetEventSlim _release = new();
+        private readonly HashSet<string> _outlasting = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _heldBusy = new(StringComparer.Ordinal);
         private readonly Dictionary<string, (TimeSpan Cost, string? Code)> _behaviours = new(StringComparer.Ordinal);
         private readonly HashSet<string> _pastLimit = new(StringComparer.Ordinal);
         private readonly HashSet<string> _adapterShaped = new(StringComparer.Ordinal);
@@ -406,7 +489,9 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
 
         /// <summary>
         /// As <see cref="SlowPastItsLimit(string, TimeSpan)"/>, but after a cancel the probe takes <paramref name="windDown"/> of FAKE
-        /// time (inside a waiting scope) to end, instead of 200 ms of real time.
+        /// time (inside a waiting scope) to end, instead of 200 ms of real time. The wind-down starts once the session has begun polling
+        /// its grace and ends only after the session, still waiting in the grace, has polled the clock at or after its end
+        /// several times: a session whose grace is shorter than the wind-down leaves at the first such poll, with the worker still running.
         /// </summary>
         public void SlowPastItsLimit(string name, TimeSpan cost, TimeSpan windDown)
         {
@@ -417,11 +502,46 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
             }
         }
 
+        /// <summary>
+        /// As <see cref="SlowPastItsLimit(string, TimeSpan, TimeSpan)"/>, but the probe's wind-down outlasts the session's grace: after
+        /// the cancel it spends grace + 10 ms of fake time, so the clock is past the grace's end whenever the session reads it, then
+        /// holds the worker on a real-time gate until <see cref="ReleaseWorkers"/>. How late the session thread wakes cannot matter.
+        /// </summary>
+        public void SlowPastItsLimitOutlastingTheGrace(string name, TimeSpan cost)
+        {
+            SlowPastItsLimit(name, cost);
+            lock (_gate)
+            {
+                _outlasting.Add(name);
+            }
+        }
+
+        /// <summary>
+        /// As <see cref="AdapterShaped(string, TimeSpan)"/>, but the adapter's worker outlasts the session's grace: after the answer it
+        /// spends grace + 10 ms of fake time on its own thread and stays busy (<see cref="IsBusy"/>) until <see cref="ReleaseWorkers"/>.
+        /// </summary>
+        public void AdapterShapedOutlastingTheGrace(string name, TimeSpan cost)
+        {
+            AdapterShaped(name, cost);
+            lock (_gate)
+            {
+                _outlasting.Add(name);
+            }
+        }
+
+        /// <summary>Lets the workers held by <see cref="SlowPastItsLimitOutlastingTheGrace"/> and <see cref="AdapterShapedOutlastingTheGrace"/> end.</summary>
+        public void ReleaseWorkers() => _release.Set();
+
         public bool IsBusy(string path)
         {
             lock (_gate)
             {
                 var name = Path.GetFileName(path);
+                if (_heldBusy.Contains(name) && !_release.IsSet)
+                {
+                    return true;
+                }
+
                 if (_busyUntilFake.TryGetValue(name, out var untilFake))
                 {
                     // Busy for the fake wind-down AND for a short real time: the rig moves fake time faster than real, so a grace
@@ -485,9 +605,17 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
                 }
 
                 TimeSpan? fakeWindDown;
+                bool outlasting;
                 lock (_gate)
                 {
-                    fakeWindDown = _windDowns.TryGetValue(Path.GetFileName(path), out var w) ? w : null;
+                    outlasting = _outlasting.Contains(Path.GetFileName(path));
+                    if (outlasting)
+                    {
+                        _heldBusy.Add(Path.GetFileName(path));
+                    }
+
+                    // An outlasting worker is busy until the test releases it; its fake wind-down below only moves the clock past the grace.
+                    fakeWindDown = outlasting ? OutlastsTheGrace : _windDowns.TryGetValue(Path.GetFileName(path), out var w) ? w : null;
                     if (fakeWindDown is null)
                     {
                         _busyUntil[Path.GetFileName(path)] = Environment.TickCount64 + 60; // its worker winds down after the answer
@@ -512,6 +640,8 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
             if (pastLimit)
             {
                 var time = Time!;
+                var watch = new GraceClockReads((CountingTimeProvider)time);
+                using var watching = cancel.CanBeCanceled && !cancel.IsCancellationRequested ? cancel.Register(watch.WatchThisThread) : default;
                 // Never spends fake time past the session's give-up (its limit + the 50 ms slack): the rig moves fake time while this
                 // thread waits for the CPU, so the deadline is the scope's own; then it waits in real time for the cancel.
                 var spend = TimeSpan.FromTicks(Math.Min(behaviour.Cost.Ticks, (timeLimit + TimeSpan.FromMilliseconds(50)).Ticks));
@@ -523,9 +653,33 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
 
                 if (cancel.IsCancellationRequested)
                 {
-                    if (_windDowns.TryGetValue(Path.GetFileName(path), out var windDown))
+                    TimeSpan windDown;
+                    bool winds;
+                    bool outlasts;
+                    lock (_gate)
                     {
-                        time.SpinUntil(time.GetTimestamp() + (long)(windDown.TotalSeconds * time.TimestampFrequency), CancellationToken.None); // closes the file after the cancel, on fake time
+                        winds = _windDowns.TryGetValue(Path.GetFileName(path), out windDown);
+                        outlasts = _outlasting.Contains(Path.GetFileName(path));
+                    }
+
+                    if (outlasts)
+                    {
+                        // The clock stands still from the cancel until this thread spends fake time: let the session read it for its
+                        // grace first (its second read in the grace follows the one that fixes the grace's end), so the grace ends
+                        // exactly 50 ms after the instant this wind-down starts from.
+                        watch.WaitForReads(0, 2, _release, FailAfter);
+                        time.SpinUntil(time.GetTimestamp() + (long)(OutlastsTheGrace.TotalSeconds * time.TimestampFrequency), CancellationToken.None);
+                        _release.Wait(FailAfter); // closes the file only when the test says so
+                    }
+                    else if (winds)
+                    {
+                        // Wind-down inside the grace: the worker may end only once the session, still waiting in its grace, has polled
+                        // the clock at or after the wind-down's end several times. A session whose grace is shorter than the wind-down
+                        // stops waiting at the first such read, so it never polls that often and its worker is still kept.
+                        watch.WaitForReads(0, 2, _release, FailAfter);
+                        var windDownEnd = time.GetTimestamp() + (long)(windDown.TotalSeconds * time.TimestampFrequency);
+                        time.SpinUntil(windDownEnd, CancellationToken.None); // closes the file after the cancel, on fake time
+                        watch.WaitForReads(windDownEnd, PollsInsideTheGrace, _release, FailAfter);
                     }
                     else
                     {

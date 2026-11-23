@@ -59,7 +59,7 @@ public sealed partial class PlaybackSession : IDisposable
     private static readonly TimeSpan ProbeTimingSlack = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan MinProbeTime = TimeSpan.FromMilliseconds(100);
 
-    // At most this many 1 ms polls of the adapter's probe worker in a give-up grace, whatever the clock says (about 100-150 ms).
+    // At most this many 1 ms polls of the adapter's probe worker in a give-up grace, whatever the clock says (100 polls of a 1 ms wait; the real time depends on the OS timer resolution).
     private const int MaxBusyPolls = 100;
     private readonly HashSet<string> _lost = new(StringComparer.Ordinal);
 

@@ -174,6 +174,7 @@ public sealed class PlaybackSessionNeighbourWorkerTimingTests
             // The OS starts the probe wrapper's thread late: its first line (the read of the time it enters at) is held while fake
             // time runs well past the press budget, until the test lets it go.
             var held = 0;
+            var gateTimedOut = 0;
             time.BeforeRead = () =>
             {
                 if (!IsProbeWrapper() || Interlocked.Exchange(ref held, 1) == 1)
@@ -181,7 +182,13 @@ public sealed class PlaybackSessionNeighbourWorkerTimingTests
                     return;
                 }
 
-                time.SpinUntil(time.GetTimestamp() + (long)(5 * time.TimestampFrequency), release.Token);
+                // Fake time runs only to just past the press's bound (budget + slack) and no further, so a session thread that wakes
+                // late cannot find the clock far beyond it; the thread then stays held on a real-time gate until the test lets it go.
+                time.SpinUntil(time.GetTimestamp() + (long)((Budget + Slack + TimeSpan.FromMilliseconds(20)).TotalSeconds * time.TimestampFrequency), release.Token);
+                if (!release.Token.WaitHandle.WaitOne(TimeSpan.FromSeconds(5)))
+                {
+                    Volatile.Write(ref gateTimedOut, 1); // the press was still waiting for this thread after 5 s of real time
+                }
             };
 
             var key = time.GetUtcNow();
@@ -189,6 +196,7 @@ public sealed class PlaybackSessionNeighbourWorkerTimingTests
             var elapsed = time.GetUtcNow() - key;
 
             held.ShouldBe(1, "the probe wrapper was never held back");
+            Volatile.Read(ref gateTimedOut).ShouldBe(0, "the press waited for a probe wrapper that had not started yet, until it was let go");
             elapsed.ShouldBeLessThanOrEqualTo(Budget + Slack + Tolerance, "the press waited for a probe wrapper that had not started yet");
         }
         finally

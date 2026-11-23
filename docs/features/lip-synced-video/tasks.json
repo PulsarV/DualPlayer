@@ -3143,7 +3143,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T132-hold-the-grace-and-listing-budget-fakes-on-real-time-gates-past-the-session-s-deadline-and-count-polls-instead-of-wall-t.md",
       "origin": "review-2026-11-23c: W1, W2, W4",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T133",

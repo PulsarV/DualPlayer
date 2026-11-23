@@ -6,8 +6,8 @@ deps: []
 blocks: ["T133", "T135", "T23"]
 acs: ["AC-08", "AC-09b"]
 files_hint: ["tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourMemoryTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourBudgetTests.cs", "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs", "tests/DualPlayer.Core.Tests/Fakes/CountingTimeProvider.cs", "src/DualPlayer.Core/Playback/PlaybackSession.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -33,9 +33,9 @@ See [spec.md](../spec.md) §5 AC-08, AC-09b.
 
 ## Definition of Done
 
-- [ ] Both "outlasts the grace" fakes (wrapper SlowPastItsLimit and the adapter twin) spin fake time only to about grace + 10 ms (registered with the rig as their end), then hold the worker on a real-time gate the test releases after the second press; they keep failing if the grace is raised past their wind-down and pass regardless of how late the session thread wakes (check with the session's 1 ms waits temporarily set to 16 ms on a scratch copy: 0 failures).
-- [ ] The wrapper "inside the grace" test pins the lower side: it fails with the grace set to 10 ms (and to 0), e.g. the 20 ms wind-down ends only after the session has read the clock at or after that instant, or the second press runs while the first press's worker is still kept.
-- [ ] The bounded give-up test counts the fake's `IsBusy` calls and asserts ≤ `MaxBusyPolls` + a few instead of wall time; the comment at `PlaybackSession.cs:62-63` is OS-neutral (polls, not milliseconds).
-- [ ] The listing fake in `A_track_listing_that_blocks_past_the_budget…` spins fake time to budget + slack (registered as its deadline), then waits on a real-time gate the test releases.
-- [ ] The neighbour and rig tests (`--filter "FullyQualifiedName~Neighbour|FullyQualifiedName~RigLoops"`) pass 20 runs with 3 processes in parallel, each process using its own build output.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Both "outlasts the grace" fakes (wrapper SlowPastItsLimit and the adapter twin) spin fake time only to about grace + 10 ms (registered with the rig as their end), then hold the worker on a real-time gate the test releases after the second press; they keep failing if the grace is raised past their wind-down and pass regardless of how late the session thread wakes (check with the session's 1 ms waits temporarily set to 16 ms on a scratch copy: 0 failures). *(The wrapper variant fails at grace 80 ms. The adapter variant cannot catch a raised grace: its grace is also capped by `MaxBusyPolls`, so a still-busy adapter is left busy either way; the wrapper variant pins the upper side.)*
+- [x] The wrapper "inside the grace" test pins the lower side: it fails with the grace set to 10 ms (and to 0), e.g. the 20 ms wind-down ends only after the session has read the clock at or after that instant, or the second press runs while the first press's worker is still kept.
+- [x] The bounded give-up test counts the fake's `IsBusy` calls and asserts ≤ `MaxBusyPolls` + a few instead of wall time; the comment at `PlaybackSession.cs:62-63` is OS-neutral (polls, not milliseconds).
+- [x] The listing fake in `A_track_listing_that_blocks_past_the_budget…` spins fake time to budget + slack (registered as its deadline), then waits on a real-time gate the test releases.
+- [x] The neighbour and rig tests (`--filter "FullyQualifiedName~Neighbour|FullyQualifiedName~RigLoops"`) pass 20 runs with 3 processes in parallel, each process using its own build output. *(60/60. Also hardened `PlaybackSessionNeighbourWorkerTimingTests.A_probe_wrapper_whose_thread_starts_after_the_budget_…_AC_09b`, which failed 5 of 10 runs with 16 ms waits; the filter now passes 10/10 with 16 ms waits.)*
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
