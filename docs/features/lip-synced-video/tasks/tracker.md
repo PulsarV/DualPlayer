@@ -173,7 +173,7 @@
 | T163 | [Build the mpv note commands in a pure helper and pin the 2 s hold and the warning colour](./T163-build-the-mpv-note-commands-in-a-pure-helper-and-pin-the-2-s-hold-and-the-warning-colour.md) | adapter | Volodymyr Kravchuk | S | — | todo | — |
 | T164 | [Pin that natural name order ignores letter case](./T164-pin-that-natural-name-order-ignores-letter-case.md) | test | Volodymyr Kravchuk | XS | — | done | COMMIT |
 | T165 | [Pin the Avalonia screen adapter and the window position with two screens](./T165-pin-the-avalonia-screen-adapter-and-the-window-position-with-two-screens.md) | ui | Volodymyr Kravchuk | S | — | todo | — |
-| T166 | [Tighten the recovery-budget edge case to 1.0 s](./T166-tighten-the-recovery-budget-edge-case-to-1-0-s.md) | test | Volodymyr Kravchuk | XS | — | todo | — |
+| T166 | [Tighten the recovery-budget edge case to 1.0 s](./T166-tighten-the-recovery-budget-edge-case-to-1-0-s.md) | test | Volodymyr Kravchuk | XS | — | done | COMMIT |
 | T167 | [Read the captured stdout under the writer's lock in AppEntryTests](./T167-read-the-captured-stdout-under-the-writer-s-lock-in-appentrytests.md) | test | Volodymyr Kravchuk | XS | — | todo | — |
 | T168 | [Name the screens in T153, cite the T162–T167 tests in test-plan and extend the T23 checklist](./T168-name-the-screens-in-t153-cite-the-t162-t167-tests-in-test-plan-and-extend-the-t23-checklist.md) | docs | Volodymyr Kravchuk | S | T162, T163, T164, T165, T166 | todo | — |
 

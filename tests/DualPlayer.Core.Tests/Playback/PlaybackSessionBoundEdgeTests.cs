@@ -85,18 +85,20 @@ public sealed class PlaybackSessionBoundEdgeTests
     }
 
     [Fact]
-    public void A_seek_whose_output_qualifies_at_1_1_s_gives_up_AC_17()
+    public void A_seek_whose_output_is_still_off_at_1_0_s_gives_up_AC_17()
     {
+        // The error clears at 1.0 s; outputs are read at most every 100 ms, so the output could first qualify at about
+        // 1.0-1.1 s. That pins the budget below 1.2 s; 1.1 s cannot be told from 1.0 s at this read step.
         using var rig = PlayingRig();
         rig.ForceOutputError("dev-2", 30);
         var seen = rig.Events.Count;
 
         rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(10))).IsSuccess.ShouldBeTrue();
-        rig.Engine.Render(110);
+        rig.Engine.Render(100);
         rig.ForceOutputError("dev-2", 0);
         rig.Engine.Render(30);
 
-        rig.Events.Skip(seen).OfType<NotLipSynced>().Where(e => e.Command == "seek").ShouldHaveSingleItem("recovery that took 1.1 s was not given up on");
+        rig.Events.Skip(seen).OfType<NotLipSynced>().Where(e => e.Command == "seek").ShouldHaveSingleItem("an output still off at the 1 s budget was not given up on");
         SeekRecord(rig).ShouldBeNull("a recovery past the 1 s budget was reported as lip-synced again");
     }
 
