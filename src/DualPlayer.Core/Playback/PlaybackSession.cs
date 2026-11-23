@@ -527,7 +527,7 @@ public sealed partial class PlaybackSession : IDisposable
         var commandAt = commandTimestamp ?? _time.GetTimestamp();
 
         // The scan budget counts from here, when the session starts the command: a key that waited behind a file change
-        // still gets its whole budget. The key's arrival (commandAt) keeps timing the recovery record.
+        // still gets its whole budget. The key's arrival (commandAt) times the start's command record; the recovery counts from chosenAt.
         var scanAt = _time.GetTimestamp();
         StartRequest? request;
         LatencyEstimate? estimateBefore;
@@ -643,6 +643,11 @@ public sealed partial class PlaybackSession : IDisposable
         // The 3 s recovery counts from here, the moment the target is chosen (spec 6), not from the key: the old run's stop counts
         // against it, the queue wait, the folder listing and the target's own check do not.
         var chosenAt = _time.GetTimestamp();
+        // Said as soon as the target is chosen, before the old run stops (its stop can take a second), and ahead of the new
+        // file's output and picture delay lines, which the start publishes; a start that then fails still ends with its note
+        // and log line.
+        _events.Publish(new FileChanged(target, request.File) { ToPrevious = direction == NeighbourDirection.Previous });
+
         lock (_gate)
         {
             CancelFreeze();
@@ -668,10 +673,6 @@ public sealed partial class PlaybackSession : IDisposable
         {
             someStillPlay = request.Outputs.Any(a => a.Device.Id is not { } id || !_lost.Contains(id));
         }
-
-        // Said as soon as the target is chosen, ahead of the new file's output and picture delay lines, which the start
-        // publishes; a start that then fails still ends with its note and log line.
-        _events.Publish(new FileChanged(target, request.File) { ToPrevious = direction == NeighbourDirection.Previous });
 
         // Timed from the key, not from the command line the first file was started with.
         var started = StartCore(request with { File = target, CommandTimestamp = commandAt }, keepLost: someStillPlay, missingIsLost: !someStillPlay);

@@ -6,8 +6,8 @@ deps: ["T129"]
 blocks: ["T131", "T23"]
 acs: ["AC-07", "AC-08"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs", "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,7 +31,7 @@ See [spec.md](../spec.md) §5 AC-07, AC-08.
 
 ## Definition of Done
 
-- [ ] `FileChanged` is published right after the target is chosen (at `chosenAt`), before `CancelFreeze` and `_engine.Stop`; the run summary and the other lines still read in a sensible order (check the App/Console printers and their tests).
-- [ ] Test: the rig's stop takes non-zero fake time (e.g. 1 s) → `FileChanged` is published before the stop ends (its timestamp equals the choice, not the stop's end). Fails if reverted.
-- [ ] The comments at `:529-530` and `:672` describe the order as it now is.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `FileChanged` is published right after the target is chosen (at `chosenAt`), before `CancelFreeze` and `_engine.Stop`; the run summary and the other lines still read in a sensible order (check the App/Console printers and their tests).
+- [x] Test: the rig's stop takes non-zero fake time (e.g. 1 s) → `FileChanged` is published before the stop ends (its timestamp equals the choice, not the stop's end). Fails if reverted.
+- [x] The comments at `:529-530` and `:672` describe the order as it now is.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

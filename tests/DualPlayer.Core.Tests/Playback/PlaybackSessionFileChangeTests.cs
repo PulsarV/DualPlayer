@@ -332,7 +332,7 @@ public sealed class PlaybackSessionFileChangeTests : IDisposable
         checkedFiles.ShouldAllBe(c => c.Reached.Equals(before) && c.Changes == 0);
         rig.Pictures.Probed.Select(Path.GetFileName).ShouldBe(["Episode-03.mkv", "Episode-04.mkv"]);
 
-        // Only then the old run stops and the new file starts.
+        // Only then the file change is announced, the old run stops and the new file starts.
         Path.GetFileName(rig.Events.OfType<FileChanged>().ShouldHaveSingleItem().File).ShouldBe("Episode-04.mkv");
         rig.Engine.Summary.ShouldNotBeNull();
         rig.EngineRunFiles.Select(Path.GetFileName).ShouldBe(["Episode-01.mkv", "Episode-04.mkv"]);

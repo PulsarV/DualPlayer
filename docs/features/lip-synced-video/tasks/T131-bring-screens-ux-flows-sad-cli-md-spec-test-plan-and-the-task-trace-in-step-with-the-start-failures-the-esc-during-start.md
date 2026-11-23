@@ -45,4 +45,5 @@ See [spec.md](../spec.md) §5 AC-01, AC-02, AC-06, AC-07, AC-08, AC-09b.
 - [ ] test-plan.md:217 is split: probe → "(checked 1)"; listing → "(checked 0)" on the first press, "(checked 1)" on later presses while the worker still runs. test-plan.md:182 names `PlaybackSessionNeighbourMemoryTests`. test-plan.md has a row for every test T128–T130 added.
 - [ ] T125's `acs` are `["AC-07", "AC-17"]` in tasks.json and its task file; T20's `acs` include AC-06 in tasks.json and its task file.
 - [ ] Every DoD box of T128–T130 that holds is ticked; the tracker's T23 row and T23's deps include T128–T131.
+- [ ] cli.md §2.1 says the `next` / `previous` line now comes before the old film's `run-summary  file <old>  reason file-change` block (T130), after any `skipped` lines; any cli.md / sad / T23 guide text that puts the summary before the `next` line is fixed.
 - [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

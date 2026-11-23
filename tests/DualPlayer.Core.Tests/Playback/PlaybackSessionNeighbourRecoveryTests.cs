@@ -122,6 +122,43 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
     }
 
     [Fact]
+    public void A_file_change_is_announced_when_the_target_is_chosen_not_after_the_old_run_stop_that_took_1_s_AC_07()
+    {
+        using var decoder = new ScriptedDecoder();
+        using var probe = new ScriptedProbe();
+        File("Episode-02.mkv");
+        using var rig = Playing(decoder, probe);
+        rig.EngineStopTakes = TimeSpan.FromSeconds(1); // the old run's stop waits 1 s for the devices to play past the stop point
+        var announcedAt = new List<DateTimeOffset>();
+        using var watch = rig.Session.Events.Subscribe(new AnnouncementClock(rig.Engine.Time, announcedAt));
+        var chosenAt = rig.Engine.Time.GetUtcNow(); // the folder work and the target's check spend no fake time: the target is chosen now
+
+        Press(rig);
+
+        announcedAt.ShouldHaveSingleItem("the target was not chosen");
+        (announcedAt[0] - chosenAt).ShouldBeLessThan(TimeSpan.FromMilliseconds(100), "the next/previous line waited for the old run's 1 s stop instead of being said when the target was chosen");
+    }
+
+    private sealed class AnnouncementClock(TimeProvider time, List<DateTimeOffset> announcedAt) : IObserver<SessionEvent>
+    {
+        public void OnCompleted()
+        {
+        }
+
+        public void OnError(Exception error)
+        {
+        }
+
+        public void OnNext(SessionEvent value)
+        {
+            if (value is FileChanged)
+            {
+                announcedAt.Add(time.GetUtcNow());
+            }
+        }
+    }
+
+    [Fact]
     public void The_only_neighbour_whose_listing_stayed_blocked_through_a_press_plays_on_the_press_after_it_recovered_AC_09b()
     {
         using var decoder = new ScriptedDecoder();
