@@ -6,8 +6,8 @@ deps: []
 blocks: ["T23"]
 acs: ["AC-08", "AC-09b"]
 files_hint: ["docs/features/lip-synced-video/spec.md", "docs/features/lip-synced-video/contracts/cli.md"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,6 +31,6 @@ See [spec.md](../spec.md) §5 AC-08, AC-09b.
 
 ## Definition of Done
 
-- [ ] spec.md:249 adds the listing exception: a file whose track listing runs out the budget (its own full limit, or as the first check of the press) ends the press; it is remembered as timed out but neither reported as skipped nor counted in that press, including a remembered file checked last whose new listing hangs. "the run-out files are still reported as skipped and counted" is limited to probes that ran out their full limit.
-- [ ] cli.md:85 states the same rule in its own words; the `next-file-timeout  checked N` text and the stepped-past rule are otherwise unchanged.
-- [ ] test-plan.md:234 and the spec/cli wording agree (read check); no code or test changes.
+- [x] spec.md:249 adds the listing exception: a file whose track listing runs out the budget (its own full limit, or as the first check of the press) ends the press; it is remembered as timed out but neither reported as skipped nor counted in that press, including a remembered file checked last whose new listing hangs. "the run-out files are still reported as skipped and counted" is limited to probes that ran out their full limit. *(spec.md:249 now has the listing exception; matches PlaybackSession give-up path and PlaybackSessionNeighbourBudgetTests:159-162)*
+- [x] cli.md:85 states the same rule in its own words; the `next-file-timeout  checked N` text and the stepped-past rule are otherwise unchanged. *(contracts/cli.md:85 states the same rule; next-file-timeout checked N text unchanged)*
+- [x] test-plan.md:234 and the spec/cli wording agree (read check); no code or test changes. *(agrees with test-plan.md:234 (checked 0 first press, checked 1 later); docs only, no code or tests)*

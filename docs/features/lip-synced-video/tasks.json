@@ -3527,7 +3527,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T151-state-in-spec-and-cli-that-a-run-out-track-listing-is-remembered-but-not-printed-or-counted.md",
       "origin": "review-2026-11-23h: Y4",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T152",
