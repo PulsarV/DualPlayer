@@ -3859,7 +3859,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T167-read-the-captured-stdout-under-the-writer-s-lock-in-appentrytests.md",
       "origin": "review-2026-11-23j: AB7",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T168",

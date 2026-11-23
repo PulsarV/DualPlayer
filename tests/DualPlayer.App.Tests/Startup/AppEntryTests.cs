@@ -593,16 +593,25 @@ public sealed class AppEntryTests
             .BuildServiceProvider();
 
     private static StringWriter? _capturedOut;
+    private static TextWriter? _capturedOutWriter;
 
-    // What the running CaptureConsole has had written to standard output so far.
-    private static string PrintedSoFar() => _capturedOut!.ToString();
+    // What the running CaptureConsole has had written to standard output so far. Other threads write through the
+    // synchronised wrapper, which locks on itself; reading under the same lock keeps a snapshot from racing an append.
+    private static string PrintedSoFar()
+    {
+        lock (_capturedOutWriter!)
+        {
+            return _capturedOut!.ToString();
+        }
+    }
 
     private static (string Out, string Error) CaptureConsole(Action body)
     {
         var (oldOut, oldError) = (Console.Out, Console.Error);
         var (output, error) = (new StringWriter(), new StringWriter());
         _capturedOut = output;
-        Console.SetOut(TextWriter.Synchronized(output));
+        _capturedOutWriter = TextWriter.Synchronized(output);
+        Console.SetOut(_capturedOutWriter);
         Console.SetError(TextWriter.Synchronized(error));
         try
         {
