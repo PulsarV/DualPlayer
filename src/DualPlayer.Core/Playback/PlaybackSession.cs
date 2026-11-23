@@ -931,17 +931,22 @@ public sealed partial class PlaybackSession : IDisposable
             probeStart = enteredAt;
         }
 
-        Result<PictureInfo> picture;
-        if (probe.IsCompleted)
+        if (!probe.IsCompleted)
         {
-            picture = probe.GetAwaiter().GetResult();
-        }
-        else
-        {
+            // The wrapper has not answered: it is given up on, cancelled and kept until it ends, and the file is not judged. It is
+            // remembered as timed out (and reported skipped, like a probe that answered at its limit) only if the wrapper entered and
+            // ran its full limit, and that limit was not cut by earlier files (or this file had the press's whole budget); otherwise,
+            // one that entered late or never entered proves nothing, so it is neither remembered nor reported.
             _workers[key] = probe;
-            picture = Result<PictureInfo>.Failure("video.probe_timeout", $"The probe of '{path}' did not return within its limit.");
+            gaveUp = true;
+            graceEnd = pastPressBound ? PressBound(scanAt) : _time.GetTimestamp() + ToTimestamp(ProbeTimingSlack);
+            timedOut = enteredAt != 0
+                && _time.GetElapsedTime(enteredAt) + ProbeTimingSlack >= probeLimit
+                && (!cut || wholeBudget);
+            return timedOut ? (new FileSkipped(name, ReasonOf("video.probe_timeout"), null, null), false) : (null, true);
         }
 
+        var picture = probe.GetAwaiter().GetResult();
         if (picture.IsSuccess)
         {
             return (null, false);

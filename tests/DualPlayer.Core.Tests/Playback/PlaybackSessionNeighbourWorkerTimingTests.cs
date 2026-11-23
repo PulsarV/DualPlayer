@@ -1,3 +1,4 @@
+using DualPlayer.Core.Outputs;
 using DualPlayer.Core.Playback;
 using DualPlayer.Core.Tests.Fakes;
 
@@ -197,6 +198,143 @@ public sealed class PlaybackSessionNeighbourWorkerTimingTests
         }
     }
 
+    [Fact]
+    public void A_probe_wrapper_that_enters_late_on_a_cut_limit_is_given_up_on_not_judged_and_probed_again_on_the_next_press_AC_09b()
+    {
+        var folder = Directory.CreateTempSubdirectory("dualplayer-latecut-").FullName;
+        using var release = new CancellationTokenSource();
+        try
+        {
+            var first = Path.Combine(folder, "Episode-01.mkv");
+            File.WriteAllBytes(first, []);
+            File.WriteAllBytes(Path.Combine(folder, "Episode-02.mkv"), []);
+            var decoder = new SlowListingDecoder(TimeSpan.FromMilliseconds(1200));
+            var probe = new NeverAnsweringProbe(release.Token);
+            using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourDecoder: decoder, neighbourPictureProbe: probe, barrierEvery: NeighbourRig.BarrierEvery);
+            using var releaseFirst = new Defer(release.Cancel); // disposed before the rig: a probe that was never cancelled must not hold its loop
+            var time = rig.Engine.Time;
+            decoder.Time = time;
+            probe.Time = time;
+            rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = first })).IsSuccess.ShouldBeTrue();
+            rig.Engine.Render(300);
+
+            // E2's listing takes 1.2 s of the 3 s budget, so its probe limit is cut to 1.8 s; the wrapper then enters 200 ms late and
+            // the adapter never answers. The limit would end at 3.2 s, after the press's hard bound (3.05 s).
+            var held = 0;
+            time.BeforeRead = () =>
+            {
+                if (!decoder.Done || !IsProbeWrapper() || Interlocked.Exchange(ref held, 1) == 1)
+                {
+                    return;
+                }
+
+                time.SpinUntil(time.GetTimestamp() + (long)(0.2 * time.TimestampFrequency), release.Token);
+            };
+
+            rig.Engine.Call(() => rig.Session.NextFile());
+
+            held.ShouldBe(1, "the probe wrapper was never held back");
+            probe.Probed.ShouldBe(["Episode-02.mkv"]);
+            rig.Events.OfType<FileSkipped>().ShouldBeEmpty("a file the session gave up on while its probe was still running was judged and reported skipped");
+            rig.Events.OfType<NoNeighbour>().ShouldBeEmpty("a file nobody could judge ended the press as no neighbour");
+            rig.Events.OfType<NeighbourSearchTimedOut>().ShouldHaveSingleItem("the press did not end as a search that ran out of time");
+            probe.TokenOf("Episode-02.mkv").IsCancellationRequested.ShouldBeTrue("the session gave up on the probe but never cancelled its worker");
+
+            RigLoops.WaitForNeighbourWorkers(rig.Session);
+            rig.Engine.Call(() => rig.Session.NextFile());
+
+            probe.Probed.ShouldBe(["Episode-02.mkv", "Episode-02.mkv"], "the file was judged on the first press and never probed again");
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void A_probe_wrapper_that_ran_its_full_limit_without_an_answer_gets_its_file_reported_skipped_and_cancelled_AC_09b()
+    {
+        var folder = Directory.CreateTempSubdirectory("dualplayer-fulllimit-").FullName;
+        using var release = new CancellationTokenSource();
+        try
+        {
+            var first = Path.Combine(folder, "Episode-01.mkv");
+            File.WriteAllBytes(first, []);
+            File.WriteAllBytes(Path.Combine(folder, "Episode-02.mkv"), []);
+            var decoder = new SlowListingDecoder(TimeSpan.Zero);
+            var probe = new NeverAnsweringProbe(release.Token);
+            using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourDecoder: decoder, neighbourPictureProbe: probe, barrierEvery: NeighbourRig.BarrierEvery);
+            using var releaseFirst = new Defer(release.Cancel); // disposed before the rig: a probe that was never cancelled must not hold its loop
+            decoder.Time = rig.Engine.Time;
+            probe.Time = rig.Engine.Time;
+            rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = first })).IsSuccess.ShouldBeTrue();
+            rig.Engine.Render(300);
+
+            // E2's listing is instant, so its probe gets its full, uncut 2 s limit; the wrapper enters at once and the adapter never
+            // answers: the file is slow, so it is reported skipped (and remembered), like a probe that answered at its limit.
+            rig.Engine.Call(() => rig.Session.NextFile());
+
+            probe.Probed.ShouldBe(["Episode-02.mkv"]);
+            rig.Events.OfType<FileSkipped>().ShouldHaveSingleItem("a file whose probe ran its full limit was not reported skipped").File.ShouldBe("Episode-02.mkv");
+            rig.Events.OfType<NoNeighbour>().ShouldBeEmpty("a file that was not judged ended the press as no neighbour");
+            rig.Events.OfType<NeighbourSearchTimedOut>().ShouldHaveSingleItem("the press did not end as a search that ran out of time");
+            probe.TokenOf("Episode-02.mkv").IsCancellationRequested.ShouldBeTrue("the session gave up on the probe but never cancelled its worker");
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void A_probe_wrapper_that_never_enters_before_the_press_bound_does_not_get_its_file_remembered_as_timed_out_AC_09b()
+    {
+        var folder = Directory.CreateTempSubdirectory("dualplayer-neverentered-").FullName;
+        using var release = new CancellationTokenSource();
+        try
+        {
+            var first = Path.Combine(folder, "Episode-01.mkv");
+            var second = Path.Combine(folder, "Episode-02.mkv");
+            File.WriteAllBytes(first, []);
+            File.WriteAllBytes(second, []);
+            File.WriteAllBytes(Path.Combine(folder, "Episode-03.mkv"), []);
+            var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, barrierEvery: NeighbourRig.BarrierEvery);
+            using var _ = rig;
+            using var releaseFirst = new Defer(release.Cancel);
+            var time = rig.Engine.Time;
+            rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = first })).IsSuccess.ShouldBeTrue();
+            rig.Engine.Render(300);
+
+            // The OS starts the probe wrapper's thread so late that the press gives up before it has entered: the adapter never ran.
+            var held = 0;
+            time.BeforeRead = () =>
+            {
+                if (!IsProbeWrapper() || Interlocked.Exchange(ref held, 1) == 1)
+                {
+                    return;
+                }
+
+                time.SpinUntil(time.GetTimestamp() + (long)(5 * time.TimestampFrequency), release.Token);
+            };
+
+            rig.Engine.Call(() => rig.Session.NextFile());
+            held.ShouldBe(1, "the probe wrapper was never held back");
+            rig.Events.OfType<FileChanged>().ShouldBeEmpty("the press chose a file although its probe wrapper had not entered");
+            release.Cancel(); // the thread starts at last: the adapter probes E2 and answers at once
+            RigLoops.WaitOrFail(() => rig.Pictures.Probed.Count == 1, TimeSpan.FromSeconds(10), "the released probe wrapper to probe the file");
+            RigLoops.WaitForNeighbourWorkers(rig.Session);
+
+            rig.Engine.Call(() => rig.Session.NextFile());
+
+            rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("the file whose wrapper never entered was remembered as timed out, so the press went past it").File.ShouldBe(second);
+            rig.Pictures.Probed.ShouldBe([second, second]);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
     private static readonly TimeSpan Budget = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan Slack = TimeSpan.FromMilliseconds(50);
 
@@ -213,4 +351,75 @@ public sealed class PlaybackSessionNeighbourWorkerTimingTests
                 && t != typeof(PlaybackSessionNeighbourWorkerTimingTests)
                 && t.DeclaringType != typeof(PlaybackSessionNeighbourWorkerTimingTests))
             ?.Name.StartsWith("<CheckPlayable>", StringComparison.Ordinal) == true;
+
+    private sealed class Defer(Action action) : IDisposable
+    {
+        public void Dispose() => action();
+    }
+
+    /// <summary>Lists tracks 1 and 2 for every file, each listing costing <paramref name="cost"/> of the session's fake time.</summary>
+    private sealed class SlowListingDecoder(TimeSpan cost) : IAudioDecoder
+    {
+        private int _done;
+
+        public TimeProvider? Time { get; set; }
+
+        /// <summary>True once a listing has returned (the probe wrapper starts after it).</summary>
+        public bool Done => Volatile.Read(ref _done) == 1;
+
+        public Result<IReadOnlyList<AudioTrackInfo>> ListTracks(string path)
+        {
+            var time = Time!;
+            time.SpinUntil(time.GetTimestamp() + (long)(cost.TotalSeconds * time.TimestampFrequency));
+            Volatile.Write(ref _done, 1);
+            return Result<IReadOnlyList<AudioTrackInfo>>.Success([.. new[] { 1, 2 }.Select(n => new AudioTrackInfo(n, "und", ChannelLayout.Stereo, 48_000))]);
+        }
+
+        public Result<IDecodeSession> Open(string path, IReadOnlyList<DecodeRequest> outputs) =>
+            Result<IDecodeSession>.Failure("test.not_decoding", "The listing decoder does not decode.");
+    }
+
+    /// <summary>A probe whose adapter never answers on its own: it keeps running until the session cancels it (or the test lets it go).</summary>
+    private sealed class NeverAnsweringProbe(CancellationToken release) : IPictureProbe
+    {
+        private readonly Lock _gate = new();
+        private readonly Dictionary<string, CancellationToken> _tokens = new(StringComparer.Ordinal);
+        private readonly List<string> _probed = [];
+
+        public TimeProvider? Time { get; set; }
+
+        public List<string> Probed
+        {
+            get
+            {
+                lock (_gate)
+                {
+                    return [.. _probed];
+                }
+            }
+        }
+
+        public CancellationToken TokenOf(string fileName)
+        {
+            lock (_gate)
+            {
+                return _tokens[fileName];
+            }
+        }
+
+        public Result<PictureInfo> Probe(string path, TimeSpan timeLimit) => Probe(path, timeLimit, CancellationToken.None);
+
+        public Result<PictureInfo> Probe(string path, TimeSpan timeLimit, CancellationToken cancel)
+        {
+            lock (_gate)
+            {
+                _probed.Add(Path.GetFileName(path));
+                _tokens[Path.GetFileName(path)] = cancel;
+            }
+
+            using var either = CancellationTokenSource.CreateLinkedTokenSource(cancel, release);
+            Time!.SpinUntil(long.MaxValue, either.Token);
+            return Result<PictureInfo>.Failure("video.probe_timeout", "The picture probe never answered.");
+        }
+    }
 }

@@ -6,8 +6,8 @@ deps: ["T122"]
 blocks: []
 acs: ["AC-08", "AC-09b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourWorkerTimingTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,8 +31,8 @@ See [spec.md](../spec.md) §5 AC-08, AC-09b.
 
 ## Definition of Done
 
-- [ ] When the probe has not completed after the wait loop, the session treats it as a give-up: it always cancels the worker (with the grace) and returns `(null, true)` (expired); the file is neither judged nor reported as skipped.
-- [ ] The file is remembered as timed out only if the wrapper entered and ran its full limit (`elapsed(enteredAt) + slack >= probeLimit`) and the limit was not cut, or it had the press's whole budget.
-- [ ] Test: a 1.0–1.5 s listing, then the wrapper held back ~200 ms of fake time on a cut probe → no `FileSkipped` for that file, the press ends `NeighbourSearchTimedOut` (not `NoNeighbour`), and the next press probes that file again. Fails if reverted.
-- [ ] Test: a wrapper that never enters before the press bound → the file is not remembered as timed out (the next press probes it).
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] When the probe has not completed after the wait loop, the session treats it as a give-up: it always cancels the worker (with the grace) and returns `(null, true)` (expired); the file is neither judged nor reported as skipped.
+- [x] The file is remembered as timed out only if the wrapper entered and ran its full limit (`elapsed(enteredAt) + slack >= probeLimit`) and the limit was not cut, or it had the press's whole budget.
+- [x] Test: a 1.0–1.5 s listing, then the wrapper held back ~200 ms of fake time on a cut probe → no `FileSkipped` for that file, the press ends `NeighbourSearchTimedOut` (not `NoNeighbour`), and the next press probes that file again. Fails if reverted.
+- [x] Test: a wrapper that never enters before the press bound → the file is not remembered as timed out (the next press probes it).
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

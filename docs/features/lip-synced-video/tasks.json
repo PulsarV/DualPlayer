@@ -2910,7 +2910,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T123-give-up-on-a-probe-wrapper-that-has-not-answered-when-the-press-bound-is-reached-without-judging-or-remembering-its-file.md",
       "origin": "review-2026-11-23: Y1",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T124",
