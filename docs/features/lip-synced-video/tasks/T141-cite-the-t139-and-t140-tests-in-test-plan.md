@@ -6,8 +6,8 @@ deps: ["T139", "T140"]
 blocks: ["T23"]
 acs: ["AC-05", "AC-06", "AC-06b", "AC-07", "AC-15b"]
 files_hint: ["docs/features/lip-synced-video/test-plan.md"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,5 +31,5 @@ See [spec.md](../spec.md) §5 AC-05, AC-06, AC-06b, AC-07, AC-15b.
 
 ## Definition of Done
 
-- [ ] test-plan.md row 58 (AC-06) cites the T140 exit-while-paused e2e test; a T139/T140 row cites the note-text asserts and the reworked OS-close test by their final names.
-- [ ] Every test name cited in test-plan.md exists under the cited class (grep check)
+- [x] test-plan.md row 58 (AC-06) cites the T140 exit-while-paused e2e test; a T139/T140 row cites the note-text asserts and the reworked OS-close test by their final names. *(Row 58 and new T139 / T140 rows.)*
+- [x] Every test name cited in test-plan.md exists under the cited class (grep check) *(172 unique cited names, 0 missing.)*
