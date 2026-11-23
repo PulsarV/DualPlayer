@@ -598,7 +598,11 @@
         "T128",
         "T129",
         "T130",
-        "T131"
+        "T131",
+        "T132",
+        "T133",
+        "T134",
+        "T135"
       ],
       "acs": [
         "AC-16",
@@ -3118,6 +3122,97 @@
       "file": "docs/features/lip-synced-video/tasks/T131-bring-screens-ux-flows-sad-cli-md-spec-test-plan-and-the-task-trace-in-step-with-the-start-failures-the-esc-during-start.md",
       "origin": "review-2026-11-23b: Z1 (docs), Z7, Z8, Z9, Z10, Z11, Z12, Z13",
       "status": "done"
+    },
+    {
+      "id": "T132",
+      "title": "Hold the grace and listing-budget fakes on real-time gates past the session's deadline, and count polls instead of wall time",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-08",
+        "AC-09b"
+      ],
+      "dod": "Both \"outlasts the grace\" fakes (wrapper SlowPastItsLimit and the adapter twin) spin fake time only to about grace + 10 ms (registered with the rig as their end), then hold the worker on a real-time gate the test releases after the second press; they keep failing if the grace is raised past their wind-down and pass regardless of how late the session thread wakes (check with the session's 1 ms waits temporarily set to 16 ms on a scratch copy: 0 failures).; The wrapper \"inside the grace\" test pins the lower side: it fails with the grace set to 10 ms (and to 0), e.g. the 20 ms wind-down ends only after the session has read the clock at or after that instant, or the second press runs while the first press's worker is still kept.; The bounded give-up test counts the fake's `IsBusy` calls and asserts ≤ `MaxBusyPolls` + a few instead of wall time; the comment at `PlaybackSession.cs:62-63` is OS-neutral (polls, not milliseconds).; The listing fake in `A_track_listing_that_blocks_past_the_budget…` spins fake time to budget + slack (registered as its deadline), then waits on a real-time gate the test releases.; The neighbour and rig tests (`--filter \"FullyQualifiedName~Neighbour|FullyQualifiedName~RigLoops\"`) pass 20 runs with 3 processes in parallel, each process using its own build output.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourMemoryTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourBudgetTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/CountingTimeProvider.cs",
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T132-hold-the-grace-and-listing-budget-fakes-on-real-time-gates-past-the-session-s-deadline-and-count-polls-instead-of-wall-t.md",
+      "origin": "review-2026-11-23c: W1, W2, W4",
+      "status": "todo"
+    },
+    {
+      "id": "T133",
+      "title": "Pin that a cut first-file wrapper that never answers is remembered only under the whole-budget rule",
+      "layer": "test",
+      "deps": [
+        "T132"
+      ],
+      "acs": [
+        "AC-08"
+      ],
+      "dod": "The test adds a healthy Episode-03 and a second press after `WaitForNeighbourWorkers`; it asserts E2 is checked last and printed `skipped … unreadable` (remembered) and E3 plays.; The test fails with `&& (!cut || wholeBudget)` changed to `&& !cut`, and passes as is.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourWorkerTimingTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T133-pin-that-a-cut-first-file-wrapper-that-never-answers-is-remembered-only-under-the-whole-budget-rule.md",
+      "origin": "review-2026-11-23c: W3",
+      "status": "todo"
+    },
+    {
+      "id": "T134",
+      "title": "Close the window from the start worker, not from Exited, while a start is running, so Esc queued during a failed start still reports its error",
+      "layer": "wiring",
+      "deps": [
+        "T133"
+      ],
+      "acs": [
+        "AC-02",
+        "AC-06"
+      ],
+      "dod": "While the session start is running, `Exited` does not close the window; once the start returns, the worker sets `exitCode` (if the start failed) and then closes the window, or, if the start succeeded and Exit was already raised, closes it with exit 0. A window closed by the OS during the start still exits 0 with no error line.; `exitCode` and `closing` are read and written with visibility guarantees across the worker and UI threads.; Test in AppEntryTests: `controls.Exit()` before `RaiseVideoHandleCreated`, with a missing device → the error line is printed and `Shutdown(2)` is called. Fails if reverted (run it repeatedly on the old code to show the race, or make the race deterministic with a hook).; Existing AppEntryTests for Alt+F4 / OS close during the start and Esc after a successful start still pass.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.App/App.axaml.cs",
+        "tests/DualPlayer.App.Tests/Startup/AppEntryTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T134-close-the-window-from-the-start-worker-not-from-exited-while-a-start-is-running-so-esc-queued-during-a-failed-start-stil.md",
+      "origin": "review-2026-11-23c: W7",
+      "status": "todo"
+    },
+    {
+      "id": "T135",
+      "title": "Bring the SCR-01 wireframe, ux-flows, sad flow 1, StartErrors and T20's trace in step with the next-line order and the Esc-during-start path",
+      "layer": "docs",
+      "deps": [
+        "T132",
+        "T133",
+        "T134"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-06",
+        "AC-07"
+      ],
+      "dod": "SCR-01's wireframe shows `next     Episode-04.mkv` above `run-summary  file Episode-01.mkv  reason file-change`.; `PlayEndToEndTests` asserts the `next` line comes before the old file's `run-summary … reason file-change` line; test-plan.md cites it for AC-07's order.; ux-flows.md:159 and the `StartErrors.AfterSessionStart` summary say: the OS closing the window during the start exits 0 with no error line; Esc during the start acts once the start returns (a failed start still reports its error).; sad flow 1's picture-delay block and the presented-position / picture-timing steps sit inside the `start succeeds` branch.; AC-02 is in T20's `acs` in tasks.json and in its task file.; The ux-flows AC-07 row reads \"C yes → AN → RS → NEW; RS → F → END3\" (or matches the flow's node names exactly).; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "docs/features/lip-synced-video/screens.md",
+        "docs/features/lip-synced-video/ux-flows.md",
+        "docs/features/lip-synced-video/sad.md",
+        "docs/features/lip-synced-video/test-plan.md",
+        "docs/features/lip-synced-video/tasks.json",
+        "docs/features/lip-synced-video/tasks/T20-playback-window-keys-and-notes.md",
+        "docs/features/lip-synced-video/tasks/tracker.md",
+        "src/DualPlayer.App/Startup/StartErrors.cs",
+        "tests/DualPlayer.App.Tests/E2E/PlayEndToEndTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T135-bring-the-scr-01-wireframe-ux-flows-sad-flow-1-starterrors-and-t20-s-trace-in-step-with-the-next-line-order-and-the-esc.md",
+      "origin": "review-2026-11-23c: W5, W6, W8, W9, W10",
+      "status": "todo"
     }
   ]
 }
