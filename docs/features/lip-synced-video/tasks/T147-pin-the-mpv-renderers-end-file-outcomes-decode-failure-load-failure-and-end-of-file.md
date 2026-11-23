@@ -6,8 +6,8 @@ deps: []
 blocks: ["T23", "T152"]
 acs: ["AC-06b"]
 files_hint: ["tests/DualPlayer.Media.Tests/Video/MpvEndFileTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,9 +31,9 @@ See [spec.md](../spec.md) §5 AC-06b.
 
 ## Definition of Done
 
-- [ ] New `MpvEndFileTests` drives `OnEndFile` through reflection without native mpv, in the style of `MpvSpeedReplyTests` (renderer state set through its private fields; `IsCurrentFile` true).
-- [ ] An error end-file after the file loaded raises exactly one `DecodeFailed` with code `video.decode_failed` and no `EndOfFile`.
-- [ ] An error end-file while loading (not yet loaded) raises no event, sets the load error `mpv.load_failed` and releases the load wait.
-- [ ] An EOF end-file raises `EndOfFile` and no `DecodeFailed`; an end-file for a file that is no longer current raises nothing.
-- [ ] Mutants on a scratch copy, each failing at least one new test: the after-load error branch raises `EndOfFile`; the `video.decode_failed` code is changed; the EOF branch raises nothing.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] New `MpvEndFileTests` drives `OnEndFile` through reflection without native mpv, in the style of `MpvSpeedReplyTests` (renderer state set through its private fields; `IsCurrentFile` true). *(MpvEndFileTests.cs, reflection, no native mpv for the EOF case)*
+- [x] An error end-file after the file loaded raises exactly one `DecodeFailed` with code `video.decode_failed` and no `EndOfFile`. *(An_error_end_file_after_the_file_loaded_raises_one_decode_failed_and_no_end_of_file_AC_06b)*
+- [x] An error end-file while loading (not yet loaded) raises no event, sets the load error `mpv.load_failed` and releases the load wait. *(An_error_end_file_while_the_file_is_still_loading_sets_the_load_error_releases_the_load_wait_and_raises_no_event_AC_06b)*
+- [x] An EOF end-file raises `EndOfFile` and no `DecodeFailed`; an end-file for a file that is no longer current raises nothing. *(An_end_of_file_end_file_raises_end_of_file_and_no_decode_failed_AC_06b; not-current Theory raises nothing)*
+- [x] Mutants on a scratch copy, each failing at least one new test: the after-load error branch raises `EndOfFile`; the `video.decode_failed` code is changed; the EOF branch raises nothing. *(3 mutants each fail a new test: EndOfFile instead of DecodeFailed, code video.decode_broken, empty EOF branch)*
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean *(build 0 warnings; Media 179 passed/8 skipped, all projects green; format clean; no production change)*

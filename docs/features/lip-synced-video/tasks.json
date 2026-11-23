@@ -3456,7 +3456,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T147-pin-the-mpv-renderers-end-file-outcomes-decode-failure-load-failure-and-end-of-file.md",
       "origin": "review-2026-11-23h: Y1",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T148",
