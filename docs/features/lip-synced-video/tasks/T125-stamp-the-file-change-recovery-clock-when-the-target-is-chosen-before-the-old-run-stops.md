@@ -4,7 +4,7 @@ title: "Stamp the file-change recovery clock when the target is chosen, before t
 layer: "app"
 deps: ["T124"]
 blocks: []
-acs: ["AC-07", "AC-09"]
+acs: ["AC-07", "AC-17"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs", "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs"]
 status: "done"
 step: "COMMIT"

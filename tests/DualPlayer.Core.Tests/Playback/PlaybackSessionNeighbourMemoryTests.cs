@@ -201,7 +201,7 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         Press(rig);
         Press(rig);
 
-        rig.Events.OfType<NeighbourSearchTimedOut>().Count().ShouldBe(2, "a check that ran out its limit was counted as judged");
+        rig.Events.OfType<NeighbourSearchTimedOut>().Select(e => e.Checked).ShouldBe([1, 1], "a probe that ran out its full limit is counted as checked on every press");
         rig.Events.OfType<NoNeighbour>().ShouldBeEmpty("a file that was never judged was reported as no neighbour");
     }
 

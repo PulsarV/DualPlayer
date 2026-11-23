@@ -226,7 +226,7 @@ sequenceDiagram
     Cli->>Media: probe the file: readable, has a picture, decodes in hardware within the start budget
     alt access denied, unreadable, no picture, not hardware-decodable or probe timed out
         Media-->>Cli: refused with its code, codec and profile when known
-        Cli-->>Developer: plain-language error naming the cause, exit code
+        Cli-->>Developer: plain-language error naming the cause, exit code per cli.md §4 (2, or 4 for an access denial)
     else picture ok
         Cli->>Media: list the audio tracks
         Cli->>Platform: check the devices: connected, used once, opened and released
@@ -246,7 +246,7 @@ sequenceDiagram
                 Core->>Platform: silent pre-roll on every output, then release with each output's lag
                 Platform-->>Core: slowest output hears the first frame
                 Core->>Core: master clock starts
-            else start fails (mpv.load_timeout, mpv.load_failed, outputs.device_not_found, outputs.device_open_failed, playback.decoder_fault, playback.start_timeout)
+            else any session-start failure (for example mpv.load_timeout, mpv.load_failed, outputs.device_not_found, outputs.device_access_denied, outputs.device_open_failed, playback.decoder_fault, playback.start_timeout)
                 Cli-->>Developer: plain-language error naming the cause, exit code
                 Cli->>Window: close the window
             end
@@ -312,7 +312,7 @@ sequenceDiagram
             Core-->>Window: note naming the skipped file and why
             Core->>Core: log file, output and reason
         else playable
-            Core->>Core: stop the current file, run summary logged and printed
+            Core->>Core: announce the target (next / previous line), then stop the current file, run summary logged and printed
             Core->>Platform: start the new file on the same outputs, tracks and offsets
             Core->>Media: load the new file and play at clock time 0 plus picture delay
         end

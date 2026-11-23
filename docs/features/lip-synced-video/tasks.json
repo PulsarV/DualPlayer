@@ -420,6 +420,7 @@
         "AC-01",
         "AC-04",
         "AC-05",
+        "AC-06",
         "AC-07",
         "AC-10",
         "AC-11"
@@ -2948,7 +2949,7 @@
       ],
       "acs": [
         "AC-07",
-        "AC-09"
+        "AC-17"
       ],
       "dod": "`chosenAt` is read right after the scan picks the target, before `CancelFreeze` and `_engine.Stop`; `_resync` uses it; `_readingsAfter` stays at or after the stop.; Test: the rig's stop takes non-zero fake time (e.g. 1 s), the new film's lip-sync is reached 2.5 s after the stop ends → `NotLipSynced(file-change)` is published (3.5 s from the choice); with the stop inside the budget → `LipSyncedAgain` with `AfterCommandMs` counted from the choice. Fails if reverted.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
       "files_hint": [
@@ -3116,7 +3117,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T131-bring-screens-ux-flows-sad-cli-md-spec-test-plan-and-the-task-trace-in-step-with-the-start-failures-the-esc-during-start.md",
       "origin": "review-2026-11-23b: Z1 (docs), Z7, Z8, Z9, Z10, Z11, Z12, Z13",
-      "status": "todo"
+      "status": "done"
     }
   ]
 }

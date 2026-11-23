@@ -143,7 +143,8 @@ public partial class App : Application
                     var outputs = validated.Outputs.Select(o => new OutputAssignment(o.TrackNumber, DeviceRef.ById(o.DeviceId))).ToList();
                     var started = session.Start(new CoreStartRequest(validated.File, outputs, request.Screen) { CommandTimestamp = CommandTimestamp });
 
-                    // Esc during the start: the session ran Exit after this start, so nothing plays on; no error, exit 0.
+                    // Esc during the start posts Exit, which waits behind this start, so Esc acts once the start returns: a failed start still
+                    // reports its error (exit 2 or 4). Exit 0 with no error line is only a window the OS closed during the start (`closing`).
                     if (StartErrors.AfterSessionStart(started, Volatile.Read(ref closing), Console.Error, log) is { } code)
                     {
                         exitCode = code;

@@ -45,8 +45,8 @@ flowchart TD
     B -->|"screen not connected - AC-03b"| E3["SCR-01 screen not found plus the list of screens"]
     B -->|"ok - AC-01"| W["SCR-02 window opens, loading"]
     W -->|"first picture and sound - AC-01"| P["SCR-02 fullscreen, playing, every Viewer hears own track"]
-    W -->|"session start failed - AC-02"| E4["SCR-02 closes, SCR-01 error, nothing plays, exit 2"]
-    W -->|"Esc during the start - AC-06"| E5["SCR-02 closes, no error line, exit 0"]
+    W -->|"session start failed - AC-02"| E4["SCR-02 closes, SCR-01 error, nothing plays, exit 2 or 4"]
+    W -->|"window closed by the OS during the start - AC-06"| E5["SCR-02 closes, no error line, exit 0"]
     P -->|"damaged stretch - AC-06b"| D{"Picture decodes again?"}
     D -->|"yes, damaged frames skipped"| P
     D -->|"no"| N1["SCR-03 picture could not be decoded further"]
@@ -58,7 +58,7 @@ flowchart TD
     X --> RS2["SCR-01 run summary printed and logged"]
 ```
 
-The Developer gives the start command in the terminal. If the file has no picture or its picture cannot be decoded in hardware, if the operating system denies access, or if the named screen is not connected, nothing plays and the terminal says why in plain words (for a missing screen it lists the connected ones). Otherwise the window opens fullscreen on the named screen (or the main one) and the film plays, each Viewer hearing their own track. If the start then fails after the window has opened (the renderer does not open the file in time or refuses it, a device cannot be opened, the outputs or the decoder are not ready in time), the window closes again and the terminal says why, exit code 2; Esc during the start closes the window with no error line, exit code 0. A device with a remembered offset is lip-synced from the start (AC-12). A damaged stretch of picture is skipped while the sound plays on. If the picture never decodes again, a brief note says so and the film stops as at its end. At the natural end the picture stays on the last frame and the run summary goes to the terminal and the log. Esc closes the window at any time; while the film plays or is paused the run summary is printed then, and after the end the window just closes, since the end's summary already covers the file.
+The Developer gives the start command in the terminal. If the file has no picture or its picture cannot be decoded in hardware, if the operating system denies access, or if the named screen is not connected, nothing plays and the terminal says why in plain words (for a missing screen it lists the connected ones). Otherwise the window opens fullscreen on the named screen (or the main one) and the film plays, each Viewer hearing their own track. If the start then fails after the window has opened (for example the renderer does not open the file in time or refuses it, a device cannot be opened or is refused, the outputs or the decoder are not ready in time), the window closes again and the terminal says why, exit code per cli.md §4 (2, or 4 for an access denial); Esc during the start acts once the start returns (a failed start still reports its error), and closing the window by the OS during the start exits 0 with no error line. A device with a remembered offset is lip-synced from the start (AC-12). A damaged stretch of picture is skipped while the sound plays on. If the picture never decodes again, a brief note says so and the film stops as at its end. At the natural end the picture stays on the last frame and the run summary goes to the terminal and the log. Esc closes the window at any time; while the film plays or is paused the run summary is printed then, and after the end the window just closes, since the end's summary already covers the file.
 
 ### Flow: US-02 — Control playback from the couch
 
@@ -98,13 +98,14 @@ flowchart TD
     C -->|"unreadable, no picture or not hardware-decodable - AC-09b"| K2["SCR-03 skipped file and why"]
     K1 --> N
     K2 --> N
-    C -->|"yes - AC-07"| RS["SCR-01 run summary of the current file"]
+    C -->|"yes - AC-07"| AN["SCR-01 next or previous line, announced when the target is chosen"]
+    AN --> RS["SCR-01 run summary of the current file"]
     RS --> NEW["SCR-02 playing the new file, same outputs, track numbers and offsets"]
     RS -->|"new file fails to start - AC-07"| F["SCR-03 Could not play the file"]
     F --> END3["SCR-02 ended, run summary reason file-change"]
 ```
 
-From any state of the window, Page Down (next) or Page Up (previous) looks for the neighbouring `.mkv` or `.mp4` file in natural name order. If there is none, a brief note says "no next (or previous) file" and the current film stays exactly as it was. If the neighbour lacks a track number one of the outputs plays, or cannot be read, has no picture, or cannot be decoded in hardware, a brief note names the skipped file and the reason, and the player tries the next file in the same direction. If the 3 s budget for the search runs out before a playable file is found, or every file passed over was only stepped past (its check still running or remembered as timed out) or ran out its own full limit so that none was judged, one note says "Next file not found within 3 s (checked N)" (or "Previous file …"), the terminal prints `next-file-timeout` / `previous-file-timeout`, and the current film stays as it was. When every remaining file is skipped this way, one note says so: "No next file (skipped N; last: <file> - <reason>)" (or "No previous file (…)"), and the current film stays as it was. When a playable neighbour is found, the current file's run summary is printed and logged, and the new file plays on the same outputs with the same track numbers and offsets, lip-synced within the start budget. If the new file then fails to start, the old film has already stopped (its run summary is printed with reason `file-change`): a brief note says "Could not play <file>: <reason>", the window stays on its last frame as ended, and the keys keep answering.
+From any state of the window, Page Down (next) or Page Up (previous) looks for the neighbouring `.mkv` or `.mp4` file in natural name order. If there is none, a brief note says "no next (or previous) file" and the current film stays exactly as it was. If the neighbour lacks a track number one of the outputs plays, or cannot be read, has no picture, or cannot be decoded in hardware, a brief note names the skipped file and the reason, and the player tries the next file in the same direction. If the 3 s budget for the search runs out before a playable file is found, or every file passed over was only stepped past (its check still running or remembered as timed out) or ran out its own full limit so that none was judged, one note says "Next file not found within 3 s (checked N)" (or "Previous file …"), the terminal prints `next-file-timeout` / `previous-file-timeout`, and the current film stays as it was. When every remaining file is skipped this way, one note says so: "No next file (skipped N; last: <file> - <reason>)" (or "No previous file (…)"), and the current film stays as it was. When a playable neighbour is found, the terminal first says which file is next (the `next` / `previous` line, before the old run stops), then the current file's run summary is printed and logged, and the new file plays on the same outputs with the same track numbers and offsets, lip-synced within the start budget. If the new file then fails to start, the old film has already stopped (its run summary is printed with reason `file-change`): a brief note says "Could not play <file>: <reason>", the window stays on its last frame as ended, and the keys keep answering.
 
 ### Flow: US-04 — Correct lip-sync by ear
 
@@ -150,7 +151,7 @@ When one output's device is lost while others remain, a brief note names the los
 | AC | Shown by | Notes |
 |---|---|---|
 | AC-01 | Flow US-01 → B ok → W → P | fullscreen on named or main screen |
-| AC-02 | Flow US-01 → E1; W → E4 | E4: the session start failed after the window opened; the window closes, exit 2 |
+| AC-02 | Flow US-01 → E1; W → E4 | E4: any session-start failure after the window opened; the window closes, exit 2 (4 for an access denial) |
 | AC-03 | Flow US-01 → E2 | |
 | AC-03b | Flow US-01 → E3 | |
 | AC-04 | Flow US-02 → PL → PA → R | |

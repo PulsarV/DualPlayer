@@ -6,8 +6,8 @@ deps: ["T128", "T129", "T130"]
 blocks: ["T23"]
 acs: ["AC-01", "AC-02", "AC-06", "AC-07", "AC-08", "AC-09b"]
 files_hint: ["docs/features/lip-synced-video/spec.md", "docs/features/lip-synced-video/sad.md", "docs/features/lip-synced-video/ux-flows.md", "docs/features/lip-synced-video/screens.md", "docs/features/lip-synced-video/contracts/cli.md", "docs/features/lip-synced-video/test-plan.md", "docs/features/lip-synced-video/tasks.json", "docs/features/lip-synced-video/tasks/tracker.md", "docs/features/lip-synced-video/tasks/T20-playback-window-keys-and-notes.md", "docs/features/lip-synced-video/tasks/T125-stamp-the-file-change-recovery-clock-when-the-target-is-chosen-before-the-old-run-stops.md", "docs/features/lip-synced-video/tasks/T23-measure-lip-sync-on-the-target-pc.md", "src/DualPlayer.App/App.axaml.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -38,12 +38,12 @@ See [spec.md](../spec.md) §5 AC-01, AC-02, AC-06, AC-07, AC-08, AC-09b.
 
 ## Definition of Done
 
-- [ ] spec.md:249 and cli.md:85 match T129: a cut probe is never reported as skipped, whether its adapter answered at the limit or its wrapper did not answer; a wrapper is given up at its own limit + the grace or at the press bound, whichever comes first.
-- [ ] screens (SCR-01 / SCR-02), ux-flows E4 and sad flow 1 say "any session-start failure (for example …) closes the window; exit code per cli.md §4 (2, or 4 for an access denial)"; cli.md §4 and §5 note that these codes can also come from the session start with the window open.
-- [ ] ux-flows E5 and SCR-02 say: Esc during the start acts once the start returns (a failed start still reports its error); closing the window by the OS during the start exits 0 with no error line. The comment at `App.axaml.cs:146` says the same.
-- [ ] screens.md:109 adds "or every file the press passed over was stepped past or ran out its own full limit".
-- [ ] test-plan.md:217 is split: probe → "(checked 1)"; listing → "(checked 0)" on the first press, "(checked 1)" on later presses while the worker still runs. test-plan.md:182 names `PlaybackSessionNeighbourMemoryTests`. test-plan.md has a row for every test T128–T130 added.
-- [ ] T125's `acs` are `["AC-07", "AC-17"]` in tasks.json and its task file; T20's `acs` include AC-06 in tasks.json and its task file.
-- [ ] Every DoD box of T128–T130 that holds is ticked; the tracker's T23 row and T23's deps include T128–T131.
-- [ ] cli.md §2.1 says the `next` / `previous` line now comes before the old film's `run-summary  file <old>  reason file-change` block (T130), after any `skipped` lines; any cli.md / sad / T23 guide text that puts the summary before the `next` line is fixed.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] spec.md:249 and cli.md:85 match T129: a cut probe is never reported as skipped, whether its adapter answered at the limit or its wrapper did not answer; a wrapper is given up at its own limit + the grace or at the press bound, whichever comes first.
+- [x] screens (SCR-01 / SCR-02), ux-flows E4 and sad flow 1 say "any session-start failure (for example …) closes the window; exit code per cli.md §4 (2, or 4 for an access denial)"; cli.md §4 and §5 note that these codes can also come from the session start with the window open.
+- [x] ux-flows E5 and SCR-02 say: Esc during the start acts once the start returns (a failed start still reports its error); closing the window by the OS during the start exits 0 with no error line. The comment at `App.axaml.cs:146` says the same.
+- [x] screens.md:109 adds "or every file the press passed over was stepped past or ran out its own full limit".
+- [x] test-plan.md:217 is split: probe → "(checked 1)"; listing → "(checked 0)" on the first press, "(checked 1)" on later presses while the worker still runs. test-plan.md:182 names `PlaybackSessionNeighbourMemoryTests`. test-plan.md has a row for every test T128–T130 added.
+- [x] T125's `acs` are `["AC-07", "AC-17"]` in tasks.json and its task file; T20's `acs` include AC-06 in tasks.json and its task file.
+- [x] Every DoD box of T128–T130 that holds is ticked; the tracker's T23 row and T23's deps include T128–T131.
+- [x] cli.md §2.1 says the `next` / `previous` line now comes before the old film's `run-summary  file <old>  reason file-change` block (T130), after any `skipped` lines; any cli.md / sad / T23 guide text that puts the summary before the `next` line is fixed.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
