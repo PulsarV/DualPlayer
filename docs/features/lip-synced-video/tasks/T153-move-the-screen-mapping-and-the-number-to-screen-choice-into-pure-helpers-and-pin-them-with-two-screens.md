@@ -29,6 +29,10 @@ Owner decision: fix now.
 
 See [spec.md](../spec.md) §5 AC-01, AC-03b.
 
+## Trace
+
+- Screens: SCR-02 — Playback window ([screens.md](../screens.md)); state: loading — opening, fullscreen on the chosen screen (AC-01 main screen by default, AC-03b `--screen N`). SCR-01 — Developer terminal; state: error — screen not found, with the numbered screen list (AC-03b).
+
 ## Definition of Done
 
 - [x] A pure helper (in `src/DualPlayer.App/Startup/`, no Avalonia types in its signature beyond plain values) maps a list of (bounds, isPrimary) to `ScreenInfo` numbered from 1 in list order with `IsMain` from isPrimary; `AvaloniaScreenCatalog` uses it. *(ScreenChoice.Map in Startup/ScreenChoice.cs (plain ScreenBounds, numbered from 1, IsMain=IsPrimary); AvaloniaScreenCatalog uses it)
