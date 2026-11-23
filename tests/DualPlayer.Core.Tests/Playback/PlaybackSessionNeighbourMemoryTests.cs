@@ -266,16 +266,59 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         rig.Events.OfType<FileSkipped>().Select(e => e.File).ShouldNotContain("Episode-03.mkv", "a healthy file cut by the budget was reported as skipped");
     }
 
+    [Fact]
+    public void A_cut_healthy_neighbour_whose_adapter_probe_has_returned_but_is_still_winding_down_plays_on_a_press_queued_right_after_AC_08()
+    {
+        var (rig, probe) = PlayingRig();
+        using var _ = rig;
+        File("Episode-02.mkv");
+        var healthy = File("Episode-03.mkv");
+        File("Episode-04.mkv");
+        probe.Hang("Episode-02.mkv"); // E2 hangs its full 2 s; E3 is left 1 s of the press
+        probe.AdapterShaped("Episode-03.mkv", TimeSpan.FromMilliseconds(1500)); // needs 1.5 s: returns video.probe_timeout at its cut limit, but its worker is busy for a moment after
+
+        rig.Engine.Call(() => rig.Session.NextFile());
+        rig.Engine.Call(() => rig.Session.NextFile()); // queued at once: no wait for the first press's workers
+
+        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("the second press did not play the next file").File.ShouldBe(healthy, "the adapter's still-running worker made the session step past its healthy file");
+        rig.Events.OfType<FileSkipped>().Select(e => e.File).ShouldNotContain("Episode-03.mkv", "a healthy file cut by the budget was reported as skipped");
+    }
+
     /// <summary>Per-file behaviour on the session's fake time; a file with none probes fine at once.</summary>
     private sealed class ScriptedProbe : IPictureProbe
     {
         private readonly Lock _gate = new();
         private readonly Dictionary<string, (TimeSpan Cost, string? Code)> _behaviours = new(StringComparer.Ordinal);
         private readonly HashSet<string> _pastLimit = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _adapterShaped = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, long> _busyUntil = new(StringComparer.Ordinal);
 
         public TimeProvider? Time { get; set; }
 
         public List<string> Probed { get; } = [];
+
+        /// <summary>
+        /// Shaped like the production adapter: it spends its limit on fake time (or until cancelled), then returns
+        /// <c>video.probe_timeout</c> at once (when its limit is shorter than its cost), but its own worker is still running (<see cref="IsBusy"/> is true) for a short real
+        /// time afterwards. Real time, not fake: fake time stands still once the probe has returned, so the grace must wait on the
+        /// adapter's answer, not on the clock.
+        /// </summary>
+        public void AdapterShaped(string name, TimeSpan cost)
+        {
+            Set(name, cost, null);
+            lock (_gate)
+            {
+                _adapterShaped.Add(name);
+            }
+        }
+
+        public bool IsBusy(string path)
+        {
+            lock (_gate)
+            {
+                return _busyUntil.TryGetValue(Path.GetFileName(path), out var until) && Environment.TickCount64 < until;
+            }
+        }
 
         /// <summary>Takes its whole limit, then fails as a probe that gave up.</summary>
         public void Hang(string name) => Set(name, TimeSpan.MaxValue, "video.probe_timeout");
@@ -307,11 +350,33 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         {
             (TimeSpan Cost, string? Code) behaviour;
             bool pastLimit;
+            bool adapterShaped;
             lock (_gate)
             {
                 Probed.Add(path);
+                adapterShaped = _adapterShaped.Contains(Path.GetFileName(path));
                 behaviour = _behaviours.GetValueOrDefault(Path.GetFileName(path), (TimeSpan.Zero, null));
                 pastLimit = _pastLimit.Contains(Path.GetFileName(path));
+            }
+
+            if (adapterShaped)
+            {
+                // A limit that covers its cost: the probe succeeds. A shorter one: it spends the limit, answers timeout, and its worker winds down.
+                var fits = behaviour.Cost <= timeLimit;
+                var answerAfter = fits ? behaviour.Cost : timeLimit;
+                var clock = Time!;
+                clock.SpinUntil(clock.GetTimestamp() + (long)(answerAfter.TotalSeconds * clock.TimestampFrequency), cancel);
+                if (fits && !cancel.IsCancellationRequested)
+                {
+                    return Result<PictureInfo>.Success(new PictureInfo("h264", "High", 1920, 1080));
+                }
+
+                lock (_gate)
+                {
+                    _busyUntil[Path.GetFileName(path)] = Environment.TickCount64 + 200; // its worker winds down after the answer
+                }
+
+                return Result<PictureInfo>.Failure("video.probe_timeout", "The probe ran out its limit.");
             }
 
             if (pastLimit)

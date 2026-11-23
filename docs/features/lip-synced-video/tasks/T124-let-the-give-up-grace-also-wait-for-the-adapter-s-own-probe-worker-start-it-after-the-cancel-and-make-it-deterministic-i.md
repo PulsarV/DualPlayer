@@ -6,8 +6,8 @@ deps: ["T123"]
 blocks: []
 acs: ["AC-08", "AC-09b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourMemoryTests.cs", "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs", "tests/DualPlayer.Core.Tests/Fakes/CountingTimeProvider.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -32,7 +32,7 @@ See [spec.md](../spec.md) §5 AC-08, AC-09b.
 
 ## Definition of Done
 
-- [ ] The grace starts after `cancel.Cancel()` and waits, bounded by the same end, until both the session's worker has ended and `_pictureProbe.IsBusy(path)` is false (for a listing worker, the worker alone); it polls with a blocking wait (e.g. `worker.Wait(1)`), not a busy spin.
-- [ ] Test with an adapter-shaped fake: it returns `video.probe_timeout` at the cut limit and keeps `IsBusy` true for a short while after the cancel (like `StayBusyAfterTimeout`); two presses with no wait between them → the second press plays the healthy file, no `skipped` line for it. Fails if the `IsBusy` wait is removed.
-- [ ] In the test fakes the `Waiting` scope ends from a `cancel.Register` callback, so fake time stops moving inside `Cancel()` and the grace is deterministic; the X10 test and the new test pass 20 parallel runs in a row.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The grace starts after `cancel.Cancel()` and waits, bounded by the same end, until both the session's worker has ended and `_pictureProbe.IsBusy(path)` is false (for a listing worker, the worker alone); it polls with a blocking wait (e.g. `worker.Wait(1)`), not a busy spin.
+- [x] Test with an adapter-shaped fake: it returns `video.probe_timeout` at the cut limit and keeps `IsBusy` true for a short while after the cancel (like `StayBusyAfterTimeout`); two presses with no wait between them → the second press plays the healthy file, no `skipped` line for it. Fails if the `IsBusy` wait is removed.
+- [x] In the test fakes the `Waiting` scope ends from a `cancel.Register` callback, so fake time stops moving inside `Cancel()` and the grace is deterministic; the X10 test and the new test pass 20 parallel runs in a row.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

@@ -58,6 +58,9 @@ public sealed partial class PlaybackSession : IDisposable
     private static readonly TimeSpan NeighbourScanBudget = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan ProbeTimingSlack = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan MinProbeTime = TimeSpan.FromMilliseconds(100);
+
+    // At most this many 1 ms polls of the adapter's probe worker in a give-up grace, whatever the clock says (about half a second).
+    private const int MaxBusyPolls = 500;
     private readonly HashSet<string> _lost = new(StringComparer.Ordinal);
 
     // Files whose own listing or probe ran its full, uncut limit without an answer since the film started (AC-09b); a press
@@ -745,10 +748,10 @@ public sealed partial class PlaybackSession : IDisposable
         ranOut = false;
         var cancel = new CancellationTokenSource();
         var gaveUp = false;
-        var graceEnd = 0L;
+        var grace = default(Grace);
         try
         {
-            var outcome = CheckPlayable(path, key, request, scanAt, ref checkStarted, cancel.Token, out gaveUp, out graceEnd, out var timedOut, out steppedPast);
+            var outcome = CheckPlayable(path, key, request, scanAt, ref checkStarted, cancel.Token, out gaveUp, out grace, out var timedOut, out steppedPast);
             if (steppedPast)
             {
                 return outcome;
@@ -773,7 +776,7 @@ public sealed partial class PlaybackSession : IDisposable
             {
                 // Left undisposed: the abandoned worker may still be waiting on the token's handle.
                 cancel.Cancel();
-                AwaitGrace(key, graceEnd);
+                AwaitGrace(key, path, grace, scanAt);
             }
             else
             {
@@ -782,32 +785,49 @@ public sealed partial class PlaybackSession : IDisposable
         }
     }
 
-    // A worker the session gave up on and cancelled gets a short bounded grace, until graceEnd, to end: one that ends inside it
-    // is not kept, so the next press (even one already queued) checks its file normally instead of stepping past it. The grace is
-    // short and rare (only after a give-up), so it spins on the session's clock rather than sleeping past its end.
-    private void AwaitGrace(NeighbourKey key, long graceEnd)
+    // A worker the session gave up on and cancelled gets a short bounded grace to end, counted from the cancel (not before it): one
+    // that ends inside it is not kept, so the next press (even one already queued) checks its file normally instead of stepping
+    // past it. For a probe the grace also waits for the adapter's own probe worker (IsBusy), which outlives the wrapper's answer.
+    // It is short and rare (only after a give-up), and polls with a blocking wait so it never burns a core. The wait on the
+    // adapter's worker is also bounded in polls, not only by the clock: that worker answers in real time, so a clock that does not
+    // move (a fake one) cannot hold the press on a worker that never lets go.
+    private void AwaitGrace(NeighbourKey key, string path, Grace grace, long scanAt)
     {
-        if (!_workers.TryGetValue(key, out var worker))
+        var graceEnd = grace.CapAtPressBound ? PressBound(scanAt) : _time.GetTimestamp() + ToTimestamp(ProbeTimingSlack);
+        var busyPolls = 0;
+        while (true)
         {
-            return;
+            var pending = _workers.TryGetValue(key, out var worker) && !worker.IsCompleted ? worker : null;
+            if (pending is null && !(grace.WaitsForProbe && _pictureProbe.IsBusy(path) && ++busyPolls <= MaxBusyPolls))
+            {
+                break;
+            }
+
+            if (_time.GetTimestamp() >= graceEnd)
+            {
+                break;
+            }
+
+            if (pending is not null)
+            {
+                pending.Wait(1);
+            }
+            else
+            {
+                Thread.Sleep(1);
+            }
         }
 
-        var spinner = default(SpinWait);
-        while (!worker.IsCompleted && _time.GetTimestamp() < graceEnd)
-        {
-            spinner.SpinOnce(sleep1Threshold: -1);
-        }
-
-        if (worker.IsCompleted)
+        if (_workers.TryGetValue(key, out var done) && done.IsCompleted)
         {
             _workers.Remove(key);
         }
     }
 
-    private (FileSkipped? Skip, bool Expired) CheckPlayable(string path, NeighbourKey key, StartRequest request, long scanAt, ref bool checkStarted, CancellationToken cancel, out bool gaveUp, out long graceEnd, out bool timedOut, out bool steppedPast)
+    private (FileSkipped? Skip, bool Expired) CheckPlayable(string path, NeighbourKey key, StartRequest request, long scanAt, ref bool checkStarted, CancellationToken cancel, out bool gaveUp, out Grace grace, out bool timedOut, out bool steppedPast)
     {
         gaveUp = false;
-        graceEnd = 0;
+        grace = default;
         timedOut = false;
         steppedPast = false;
         var name = Path.GetFileName(path);
@@ -855,7 +875,7 @@ public sealed partial class PlaybackSession : IDisposable
             {
                 // Cancelled at the budget, the listing has until the press's hard bound (budget + slack) to end before it is kept.
                 gaveUp = true;
-                graceEnd = PressBound(scanAt);
+                grace = new Grace(WaitsForProbe: false, CapAtPressBound: true);
                 timedOut = listingUncut || wholeBudget;
                 _workers[key] = listing;
                 return (null, true);
@@ -939,7 +959,7 @@ public sealed partial class PlaybackSession : IDisposable
             // one that entered late or never entered proves nothing, so it is neither remembered nor reported.
             _workers[key] = probe;
             gaveUp = true;
-            graceEnd = pastPressBound ? PressBound(scanAt) : _time.GetTimestamp() + ToTimestamp(ProbeTimingSlack);
+            grace = new Grace(WaitsForProbe: true, CapAtPressBound: pastPressBound);
             timedOut = enteredAt != 0
                 && _time.GetElapsedTime(enteredAt) + ProbeTimingSlack >= probeLimit
                 && (!cut || wholeBudget);
@@ -964,7 +984,7 @@ public sealed partial class PlaybackSession : IDisposable
         var usedUp = _time.GetElapsedTime(probeStart) + ProbeTimingSlack >= probeLimit
             && picture.Error.Code is "video.not_hardware_decodable" or "video.probe_timeout";
         gaveUp = usedUp;
-        graceEnd = pastPressBound ? PressBound(scanAt) : _time.GetTimestamp() + ToTimestamp(ProbeTimingSlack);
+        grace = new Grace(WaitsForProbe: true, CapAtPressBound: pastPressBound);
 
         // A probe that used up a limit the budget had cut proves nothing about the file: not remembered, not reported.
         if (cut && usedUp)
@@ -987,6 +1007,9 @@ public sealed partial class PlaybackSession : IDisposable
     // The scan budget plus the slack a worker has to answer: the latest a press waits on a listing or a probe wrapper that has
     // not entered yet, grace included, however late the worker thread started.
     private long PressBound(long scanAt) => scanAt + ToTimestamp(NeighbourScanBudget + ProbeTimingSlack);
+
+    // How a given-up worker's grace runs: whether it also waits on the adapter's probe worker, and whether its end is the press's hard bound.
+    private readonly record struct Grace(bool WaitsForProbe, bool CapAtPressBound);
 
     // A media file as the neighbour memory knows it: a file that changed on disk is a different file (CLAUDE.md IDs).
     private readonly record struct NeighbourKey(string Path, long Size, long ModifiedTicks);

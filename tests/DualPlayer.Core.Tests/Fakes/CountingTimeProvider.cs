@@ -95,7 +95,7 @@ internal sealed class CountingTimeProvider : FakeTimeProvider
         return new Scope(this, generation);
     }
 
-    /// <summary>Called by a fake spending fake time: signals the rig that fake time may move, then spins until it has reached <paramref name="end"/>.</summary>
+    /// <summary>Called by a fake spending fake time: signals the rig that fake time may move, then spins until it has reached <paramref name="end"/> or <paramref name="cancel"/> fires (which ends the waiting scope inside the cancel).</summary>
     public void SpinUntil(long end, CancellationToken cancel)
     {
         if (GetTimestamp() >= end)
@@ -103,7 +103,10 @@ internal sealed class CountingTimeProvider : FakeTimeProvider
             return;
         }
 
-        using var _ = Waiting();
+        // The scope also ends from the cancel itself, so fake time stops moving inside Cancel() and a grace the session starts right
+        // after it cannot be spent by the rig before the fake has even seen the cancel.
+        using var scope = Waiting();
+        using var _ = cancel.Register(scope.Dispose);
         while (GetTimestamp() < end && !cancel.IsCancellationRequested)
         {
             Thread.Yield(); // reads fake time often, so a fast-moving clock overshoots its scripted cost by a step at most
