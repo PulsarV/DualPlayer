@@ -85,6 +85,14 @@ public sealed class TerminalPrinterRawLineTests
     }
 
     [Fact]
+    public void A_missing_track_skip_line_keeps_the_output_number_before_the_track_number_AC_09()
+    {
+        var lines = Raw(s => s.Publish(new FileSkipped("b.mkv", "track-missing", 1, 3)), null);
+
+        lines.ShouldBe(["skipped  b.mkv  reason track-missing  output 1  track 3"]);
+    }
+
+    [Fact]
     public void The_neighbour_search_lines_are_exact()
     {
         var lines = Raw(

@@ -65,6 +65,24 @@ public sealed class NeighbourSkipIntegrationTests
     }
 
     [Fact]
+    public void A_real_two_track_neighbour_is_skipped_naming_output_1_and_track_3_when_output_1_plays_track_3_AC_09()
+    {
+        using var media = GeneratedMedia.CreateOrSkip();
+        var current = media.MakeFilm("Episode 1.mkv", audioTracks: 3);
+        media.MakeFilm("Episode 2.mkv", audioTracks: 2);
+        using var rig = new SessionRig(TwoDevices, null, 600, neighbourDecoder: new FfmpegAudioDecoder(), neighbourPictureProbe: new FfmpegPictureProbe());
+        var request = rig.Request(2);
+        request = request with { File = current, Outputs = [request.Outputs[0] with { TrackNumber = 3 }, request.Outputs[1] with { TrackNumber = 1 }] };
+        rig.Engine.Call(() => rig.Session.Start(request)).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(300);
+
+        rig.Engine.Call(() => rig.Session.NextFile());
+
+        rig.Events.OfType<FileSkipped>().ShouldHaveSingleItem().ShouldBeEquivalentTo(new FileSkipped("Episode 2.mkv", "track-missing", 1, 3));
+        rig.Events.OfType<NoteShown>().ShouldHaveSingleItem().Text.ShouldBe("No next file (skipped 1; last: Episode 2.mkv - no track 3 for output 1)");
+    }
+
+    [Fact]
     public void Real_samples_skipped_on_one_press_end_in_one_combined_note_naming_the_last_and_the_count_AC_09_AC_09b()
     {
         using var media = GeneratedMedia.CreateOrSkip();

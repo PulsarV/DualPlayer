@@ -112,6 +112,26 @@ public sealed class PlaybackSessionFileChangeTests : IDisposable
     }
 
     [Fact]
+    public void A_missing_track_skip_names_the_output_and_the_track_apart_when_output_1_plays_track_3_AC_09()
+    {
+        using var rig = new SessionRig(TwoDevices, null, 600);
+        File("Episode-02.mkv");
+        File("Episode-03.mkv");
+        rig.Decoder.Script("Episode-01.mkv", 1, 2, 3);
+        rig.Decoder.Script("Episode-02.mkv", 1, 2);
+        rig.Decoder.Script("Episode-03.mkv", 1, 2, 3);
+        var request = rig.Request(2);
+        request = request with { File = File("Episode-01.mkv"), Outputs = [request.Outputs[0] with { TrackNumber = 3 }, request.Outputs[1] with { TrackNumber = 1 }] };
+        rig.Engine.Call(() => rig.Session.Start(request)).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(300);
+
+        rig.Engine.Call(() => rig.Session.NextFile());
+
+        rig.Events.OfType<FileSkipped>().ShouldHaveSingleItem().ShouldBe(new FileSkipped("Episode-02.mkv", "track-missing", 1, 3));
+        rig.Events.OfType<NoteShown>().ShouldContain(e => e.Text == "Skipped Episode-02.mkv: no track 3 for output 1");
+    }
+
+    [Fact]
     public void A_file_whose_picture_cannot_be_decoded_in_hardware_is_skipped_with_its_reason_AC_09b()
     {
         using var rig = PlayingRig("Episode-01.mkv", "Episode-02.mkv", "Episode-03.mkv");

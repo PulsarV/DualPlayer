@@ -27,6 +27,7 @@ internal sealed class EngineRig : IDisposable
     [
         new AudioTrackInfo(1, "eng", ChannelLayout.Stereo, 48_000),
         new AudioTrackInfo(2, "ukr", ChannelLayout.Stereo, 48_000),
+        new AudioTrackInfo(3, "deu", ChannelLayout.Stereo, 48_000),
     ];
 
     private readonly DeviceRegistry _devices = new();
