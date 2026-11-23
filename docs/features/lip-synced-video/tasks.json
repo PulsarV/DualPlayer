@@ -3509,7 +3509,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T150-pin-that-app-play-passes-the-start-command-time-and-the-real-logger-to-the-session.md",
       "origin": "review-2026-11-23h: Y3",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T151",

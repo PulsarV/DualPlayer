@@ -411,6 +411,73 @@ public sealed class AppEntryTests
         }
     }
 
+    // T150 (review-2026-11-23h Y3): App.Play hands the command time (App.CommandTimestamp, taken at process start) to the session
+    // and the App logger to the session-record writer. Without the time, StartTimings, the `started ... first-frame` line and the
+    // `start` recovery budget count from the session start and under-report the 3 s start budget; with a null logger no cli.md
+    // section 3 record reaches the production log. The command time is set 5 s before the start, so the logged
+    // CommandToFirstFrameMs must carry at least that much (a start counted from itself takes well under a second on the fake clock).
+    [Fact]
+    public void App_Play_passes_the_start_command_time_and_the_real_logger_to_the_session_AC_01_AC_17()
+    {
+        var folder = Directory.CreateTempSubdirectory("dualplayer-app-entry-");
+        var file = Path.Combine(folder.FullName, "Film.mkv");
+        File.WriteAllBytes(file, []);
+        using var rig = new SessionRig(TwoDevices, null, 600);
+        using var controls = new PlaybackControls(rig.Session, NullLogger<PlaybackControls>.Instance, rig.Engine.Time);
+        var log = new RecordingLogger<App>();
+        var desktop = Substitute.For<IClassicDesktopStyleApplicationLifetime>();
+        var services = PlayServices(rig, controls);
+        var validated = new ValidatedStart(
+            file,
+            new PictureInfo("h264", "High", 1920, 1080),
+            [new ResolvedOutput(1, "dev-1"), new ResolvedOutput(2, "dev-2")],
+            MainScreen);
+        var delay = TimeSpan.FromSeconds(5);
+        var previous = App.CommandTimestamp;
+        App.CommandTimestamp = rig.Engine.Time.GetTimestamp() - (long)(delay.TotalSeconds * rig.Engine.Time.TimestampFrequency);
+
+        try
+        {
+            _ = CaptureConsole(() =>
+            {
+                PlaybackWindow? window = null;
+                HeadlessApp.Run(() =>
+                {
+                    window = new PlaybackWindow { DataContext = services.GetRequiredService<PlaybackViewModel>() };
+                    App.Play(desktop, services, new StartRequest(file, [], null), validated, log, () => window);
+                    window.RaiseVideoHandleCreated(1);
+
+                    // The start runs on a worker that waits on the rig's fake time: it moves on from here until the start's timings are logged.
+                    var advancing = Task.Run(() => rig.Engine.AdvanceUntil(() => log.Lines.Any(l => l.StartsWith("StartTimings ", StringComparison.Ordinal))));
+                    advancing.GetAwaiter().GetResult().ShouldBeTrue("the start never logged its StartTimings: " + string.Join('\n', log.Lines));
+
+                    // A pause is the cheapest command that makes the session publish a PictureDelayChanged record (cli.md section 3).
+                    controls.TogglePause();
+                    var paused = Task.Run(() => rig.Engine.AdvanceUntil(() => log.Lines.Any(l => l.StartsWith("PictureDelayChanged ", StringComparison.Ordinal))));
+                    paused.GetAwaiter().GetResult().ShouldBeTrue("the pause never logged a PictureDelayChanged record: " + string.Join('\n', log.Lines));
+
+                    var ending = Task.Run(() => rig.Engine.AdvanceUntil(() => rig.Engine.Summary is not null));
+                    window.Close();
+                    PumpUntilShutdown(desktop).ShouldBeTrue("closing the window never shut the application down");
+                    ending.GetAwaiter().GetResult().ShouldBeTrue("closing the window never ended the session");
+                });
+            });
+
+            var timings = log.Lines.Single(l => l.StartsWith("StartTimings ", StringComparison.Ordinal));
+            var match = Regex.Match(timings, @"CommandToFirstFrameMs=(?<ms>[0-9.,-]+)");
+            match.Success.ShouldBeTrue(timings);
+            double.Parse(match.Groups["ms"].Value, System.Globalization.CultureInfo.InvariantCulture)
+                .ShouldBeGreaterThanOrEqualTo(delay.TotalMilliseconds, "the command time of the start was not passed to the session: " + timings);
+            log.Lines.ShouldContain(l => l.StartsWith("LatencyEstimated", StringComparison.Ordinal), string.Join('\n', log.Lines));
+            log.Lines.ShouldContain(l => l.StartsWith("PictureDelayChanged", StringComparison.Ordinal), string.Join('\n', log.Lines));
+        }
+        finally
+        {
+            App.CommandTimestamp = previous;
+            folder.Delete(recursive: true);
+        }
+    }
+
     // Runs on the headless UI thread: runs the jobs posted to it (the window's close, posted by Esc or by a failed start)
     // between looks at the desktop lifetime, until it was told to shut down.
     private static bool PumpUntilShutdown(IClassicDesktopStyleApplicationLifetime desktop)

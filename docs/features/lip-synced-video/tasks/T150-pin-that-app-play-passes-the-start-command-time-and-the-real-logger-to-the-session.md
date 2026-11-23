@@ -6,8 +6,8 @@ deps: []
 blocks: ["T23", "T152"]
 acs: ["AC-01", "AC-17"]
 files_hint: ["tests/DualPlayer.App.Tests/Startup/AppEntryTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,8 +31,8 @@ See [spec.md](../spec.md) §5 AC-01, AC-17.
 
 ## Definition of Done
 
-- [ ] An `AppEntryTests` case sets `App.CommandTimestamp` to a time before a known delay, runs `App.Play` with a capturing logger, and asserts that the logged `StartTimings` `CommandToFirstFrameMs` includes that delay.
-- [ ] The same run (or a sibling case) asserts that session records reach the capturing logger through `App.Play` (at least `LatencyEstimated` and `PictureDelayChanged`, per cli.md §3).
-- [ ] Mutants on a scratch copy, each failing at least one new test: `App.axaml.cs:179` without `{ CommandTimestamp = CommandTimestamp }`; `:105` passing `NullLogger.Instance` to `SessionEventLogWriter`.
-- [ ] `App.CommandTimestamp` is reset after the test so other tests are unaffected.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] An `AppEntryTests` case sets `App.CommandTimestamp` to a time before a known delay, runs `App.Play` with a capturing logger, and asserts that the logged `StartTimings` `CommandToFirstFrameMs` includes that delay. *(App_Play_passes_the_start_command_time_and_the_real_logger_to_the_session_AC_01_AC_17 asserts CommandToFirstFrameMs >= 5000)*
+- [x] The same run (or a sibling case) asserts that session records reach the capturing logger through `App.Play` (at least `LatencyEstimated` and `PictureDelayChanged`, per cli.md §3). *(same test asserts LatencyEstimated and PictureDelayChanged reach the logger)*
+- [x] Mutants on a scratch copy, each failing at least one new test: `App.axaml.cs:179` without `{ CommandTimestamp = CommandTimestamp }`; `:105` passing `NullLogger.Instance` to `SessionEventLogWriter`. *(both mutants (no CommandTimestamp, NullLogger) fail the test)*
+- [x] `App.CommandTimestamp` is reset after the test so other tests are unaffected. *(App.CommandTimestamp restored in finally)*
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean *(build 0 warnings; App 167/167, all projects green; format clean; no production change)*

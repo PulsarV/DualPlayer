@@ -157,7 +157,7 @@
 | T147 | [Pin the mpv renderer's end-file outcomes: decode failure, load failure and end of file](./T147-pin-the-mpv-renderers-end-file-outcomes-decode-failure-load-failure-and-end-of-file.md) | test | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T148 | [Pin the window-bound renderer's handle, timeout and event forwarding](./T148-pin-the-window-bound-renderers-handle-timeout-and-event-forwarding.md) | test | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T149 | [Pin the default main screen and the screen numbering on the App's path](./T149-pin-the-default-main-screen-and-the-screen-numbering-on-the-apps-path.md) | test | Volodymyr Kravchuk | S | — | done | COMMIT |
-| T150 | [Pin that App.Play passes the start-command time and the real logger to the session](./T150-pin-that-app-play-passes-the-start-command-time-and-the-real-logger-to-the-session.md) | test | Volodymyr Kravchuk | S | — | todo | — |
+| T150 | [Pin that App.Play passes the start-command time and the real logger to the session](./T150-pin-that-app-play-passes-the-start-command-time-and-the-real-logger-to-the-session.md) | test | Volodymyr Kravchuk | S | — | done | COMMIT |
 | T151 | [State in spec and cli.md that a run-out track listing is remembered but not printed or counted](./T151-state-in-spec-and-cli-that-a-run-out-track-listing-is-remembered-but-not-printed-or-counted.md) | docs | Volodymyr Kravchuk | S | — | todo | — |
 | T152 | [Cite the T147–T150 tests in test-plan](./T152-cite-the-t147-t150-tests-in-test-plan.md) | docs | Volodymyr Kravchuk | S | T147, T148, T149, T150 | todo | — |
 
