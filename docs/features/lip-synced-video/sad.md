@@ -320,7 +320,7 @@ sequenceDiagram
     opt no playable file left
         Core-->>Window: note no next file, current film unchanged
     end
-    opt the 3 s budget runs out before a playable file is found
+    opt the 3 s budget runs out before a playable file is found, or every file passed over was stepped past or ran out its own full limit
         Core-->>Window: note next file not found within 3 s (checked N), current film unchanged
         Core->>Core: log and print next-file-timeout with the count checked
     end
@@ -586,7 +586,7 @@ All scenarios apply to the target Windows 11 PC under the step-3 conditions: two
 **QG-2. Seamless changes and fast recovery**
 - **When:** (a) the picture delay changes during playback because an offset is corrected or the slowest output's device is lost; (b) a Viewer pauses, resumes or seeks; (c) the Developer gives the start command, or a Viewer changes file.
 - **Then:** (a) picture and unchanged outputs move together at ≤ 0.2 % speed change (about 5 s per 10 ms of change), each within the lip-sync budget throughout; (b) picture and every output are lip-synced again ≤ 1 s after the key press (3 s for a `return`, a backward seek at the end that returns into the film, as for a start or a file change), where "lip-synced again" means the picture is presented within 20 ms of due and every output is within 10 ms of its due position; (c) start command to picture and sound ≤ 3 s, picture and every output together, and a file change is lip-synced within the start budget.
-- **How verify:** (a) log of picture presentation against due time and of playback speed, plus unit tests with a fake clock and fake renderer for the ramp rate and the lag targets; (b) log of the key's arrival (timing counts from the key press, so the wait in the command queue and the engine's own wait are included), the first picture presentation within 20 ms of due, and each output's position error, plus unit tests with a fake clock; (c) log timestamps of start command, first frame presented and first audio heard per output (logged as first sound given plus assumed latency). The ADR-0002 spike checks (a) and (b) on the target PC before the rest of the step is built.
+- **How verify:** (a) log of picture presentation against due time and of playback speed, plus unit tests with a fake clock and fake renderer for the ramp rate and the lag targets; (b) log of the key's arrival (timing counts from the key press, so the wait in the command queue and the engine's own wait are included; for a file change it counts from the moment the scan chooses the target, so the stop of the old film counts and the queue wait, the folder listing and the target's own check do not), the first picture presentation within 20 ms of due, and each output's position error, plus unit tests with a fake clock; (c) log timestamps of start command, first frame presented and first audio heard per output (logged as first sound given plus assumed latency). The ADR-0002 spike checks (a) and (b) on the target PC before the rest of the step is built.
 
 **QG-3. Smooth picture at low cost**
 - **When:** a 2 h 1080p H.264 film and a 2 h 1080p HEVC film play with hardware decoding on two outputs.

@@ -6,8 +6,8 @@ deps: ["T122", "T123", "T124", "T125", "T127"]
 blocks: []
 acs: ["AC-01", "AC-02", "AC-06", "AC-07", "AC-08", "AC-09b", "AC-17"]
 files_hint: ["docs/features/lip-synced-video/spec.md", "docs/features/lip-synced-video/sad.md", "docs/features/lip-synced-video/ux-flows.md", "docs/features/lip-synced-video/screens.md", "docs/features/lip-synced-video/contracts/cli.md", "docs/features/lip-synced-video/evidence/t23-acceptance-run-guide.md", "docs/features/lip-synced-video/test-plan.md", "docs/features/lip-synced-video/tasks/tracker.md", "docs/features/lip-synced-video/tasks/T23-measure-lip-sync-on-the-target-pc.md", "docs/features/lip-synced-video/tasks.json"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -35,9 +35,9 @@ See [spec.md](../spec.md) §5 AC-01, AC-02, AC-06, AC-07, AC-08, AC-09b, AC-17.
 
 ## Definition of Done
 
-- [ ] spec AC-08's Then and spec §6.1 add "or a file whose own listing or probe ran out its full limit in this press" to the timeout outcome; sad flow 3's opt and the ux-flows US-03 edge match.
-- [ ] spec.md:235's parenthetical no longer says the two moments are the same (the stop of the old film counts; the queue wait, the folder listing and the target's own check do not). cli.md §3: for `file-change`, `AfterCommandMs` counts from the target choice, and `StartTimings` for a file change counts from the key, scan included. The T23 run guide's L2/L4 judge the file-change 3 s on `LipSyncedAgain(file-change).AfterCommandMs` and the L4 key answer on the `next` / `previous` line time against the 3 s scan budget.
-- [ ] screens.md SCR-02 `loading — opening` has "start failed → window closed, SCR-01 prints the error, exit 2"; SCR-02 `error` and SCR-01 `error` say start errors found before the window never open it and a session-start failure closes it; the ux-flows US-01 flowchart has that branch.
-- [ ] cli.md §4's `0` row adds "or the window was closed during the start (no error line; the abandoned start is logged)".
-- [ ] test-plan.md has a row for every test T122–T125 added, and rows :173 / :180 cite the renamed X9 test and `RigLoopsTests.Disposing_a_session_rig_with_a_stuck_command_returns_within_a_bounded_time`; every DoD box of T122–T125 that holds is ticked; the tracker's T23 row and T23's deps include T122–T126.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] spec AC-08's Then and spec §6.1 add "or a file whose own listing or probe ran out its full limit in this press" to the timeout outcome; sad flow 3's opt and the ux-flows US-03 edge match.
+- [x] spec.md:235's parenthetical no longer says the two moments are the same (the stop of the old film counts; the queue wait, the folder listing and the target's own check do not). cli.md §3: for `file-change`, `AfterCommandMs` counts from the target choice, and `StartTimings` for a file change counts from the key, scan included. The T23 run guide's L2/L4 judge the file-change 3 s on `LipSyncedAgain(file-change).AfterCommandMs` and the L4 key answer on the `next` / `previous` line time against the 3 s scan budget.
+- [x] screens.md SCR-02 `loading — opening` has "start failed → window closed, SCR-01 prints the error, exit 2"; SCR-02 `error` and SCR-01 `error` say start errors found before the window never open it and a session-start failure closes it; the ux-flows US-01 flowchart has that branch.
+- [x] cli.md §4's `0` row adds "or the window was closed during the start (no error line; the abandoned start is logged)".
+- [x] test-plan.md has a row for every test T122–T125 added, and rows :173 / :180 cite the renamed X9 test and `RigLoopsTests.Disposing_a_session_rig_with_a_stuck_command_returns_within_a_bounded_time`; every DoD box of T122–T125 that holds is ticked; the tracker's T23 row and T23's deps include T122–T126.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

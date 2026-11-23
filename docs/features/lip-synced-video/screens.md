@@ -31,7 +31,7 @@ Text only; every line's exact format is in `contracts/cli.md` (section in bracke
 | loading | N/A: nothing prints between the command and the start lines; the start budget is ≤ 3 s and the window shows the opening state (SCR-02) | — | — |
 | empty | N/A: a start command always names a file and ≥ 1 output; usage errors cover a missing one | — | — |
 | validation | Malformed arguments, more than three outputs (`cli.usage`, `outputs.too_many`) | `error <code>: <message>` on standard error, exit 2 [cli §5] | wireframe below |
-| error | File access denied (AC-03, exit 4), unreadable, no picture or not hardware-decodable (AC-02), track or device not found, device twice, device access denied, screen not found with the screen list (AC-03b), renderer missing — nothing plays, no window [cli §4, §5] | `error <code>: <message>`, exit 2 or 4 | wireframe below |
+| error | File access denied (AC-03, exit 4), unreadable, no picture or not hardware-decodable (AC-02), track or device not found, device twice, device access denied, screen not found with the screen list (AC-03b), renderer missing — nothing plays and the window is never opened; a session-start failure after the window opened (`mpv.load_timeout`, `mpv.load_failed`, `outputs.device_open_failed`, `playback.start_timeout`, `playback.decoder_fault`) closes it and the same `error` line is printed, exit 2 [cli §4, §5] | `error <code>: <message>`, exit 2 or 4 | wireframe below |
 | warning | Remembered offsets unreadable / invalid / too new, or a value clamped (spec §6.1) — the film still starts | `warning <code>: <message>` before the start lines [cli §1.1] | wireframe below |
 | running | During the film: files skipped, next file, device lost, picture failed (AC-07…AC-09b, AC-15, AC-15b, AC-06b) | `skipped`, `next`, `previous`, `no-next-file`, `next-file-timeout`, `device-lost`, `picture-failed` lines [cli §2.2, §2.3] | wireframe below |
 | success | Natural end, exit or file change — run summary per output (AC-06, AC-07, AC-15b) | `run-summary …` + step-3 summary block; exit 0 after the window closes [cli §2.1, §4] | wireframe below |
@@ -70,12 +70,12 @@ One fullscreen Avalonia window on the chosen screen (main screen by default); no
 
 | State | Trigger / condition | Components (from the inventory) | Source-ref |
 |---|---|---|---|
-| loading — opening | Window opened after validation, until the first frame is presented (≤ 3 s, flow 1) | `Window` (fullscreen, `SurfaceBrush` black), NEW: `VideoHost` | wireframe below |
+| loading — opening | Window opened after validation, until the first frame is presented (≤ 3 s, flow 1); if the session start then fails (`mpv.load_timeout`, `mpv.load_failed`, `outputs.device_open_failed`, `playback.start_timeout`, `playback.decoder_fault`), the window closes, SCR-01 prints the error, exit 2 [cli §5]; closed by the Viewer during the start, it closes with no error line, exit 0 [cli §4] | `Window` (fullscreen, `SurfaceBrush` black), NEW: `VideoHost` | wireframe below |
 | default — playing | Film playing, lip-synced (AC-01); also during a seek re-alignment (AC-05) and a picture-delay move, which look identical — no visible indicator (AC-14) | `Window`, `VideoHost` | wireframe below |
 | paused | Pause key: picture runs on until the sound already in the devices has played out (≤ picture delay), then holds the frame matching the last sound heard (AC-04); a seek while paused shows the new frame (AC-05) | `Window`, `VideoHost` | wireframe below |
 | ended | Natural end (last frame), seek past the end, last output lost (AC-15b, picture frozen), picture could not be decoded further (AC-06b, last good frame), or a file change whose new file failed to start (AC-07, reason `file-change`, SCR-03 "Could not play" note); pause key ignored; next, previous, backward seek and exit still work | `Window`, `VideoHost`, with SCR-03 note when caused by loss or decode failure | wireframe below |
 | closed | Exit key from any state — window closes; while playing or paused the terminal shows the run summary (AC-06), after the film has ended it adds nothing, as the end's summary already covers the file | — | — |
-| error | N/A: start errors never open the window (AC-02, AC-03, AC-03b → SCR-01); errors during play show as SCR-03 notes and the `ended` state | — | — |
+| error | N/A: start errors found before the window (AC-02, AC-03, AC-03b → SCR-01) never open it, and a session-start failure after it opened closes it again with the error printed on SCR-01 (see `loading — opening`); errors during play show as SCR-03 notes and the `ended` state | — | — |
 | empty | N/A: the window only exists while a file is open | — | — |
 
 ```text
