@@ -6,8 +6,8 @@ deps: ["T145"]
 blocks: ["T23"]
 acs: ["AC-02", "AC-09b"]
 files_hint: ["docs/features/lip-synced-video/test-plan.md"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -32,5 +32,5 @@ See [spec.md](../spec.md) §5 AC-02, AC-09b.
 
 ## Definition of Done
 
-- [ ] test-plan.md row 75 (AC-09b `access-denied`) cites the T145 session theory; the AC-02 row (line 37) has ". " before "Tests:".
-- [ ] Every test name cited in test-plan.md exists under the cited class (grep check)
+- [x] test-plan.md row 75 (AC-09b `access-denied`) cites the T145 session theory; the AC-02 row (line 37) has ". " before "Tests:". *(Rows 37 and 75, and a new T145 row.)*
+- [x] Every test name cited in test-plan.md exists under the cited class (grep check) *(121 cited class.method names, 0 missing; `A_seek_whose_engine_call_takes_300_ms_...` resolves as a prefix.)*
