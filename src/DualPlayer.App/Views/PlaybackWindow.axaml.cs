@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using DualPlayer.App.Startup;
 using DualPlayer.App.ViewModels;
 
 namespace DualPlayer.App.Views;
@@ -29,19 +30,16 @@ public partial class PlaybackWindow : Window
     /// </summary>
     public void PlaceOnScreen(int? screenNumber)
     {
-        var screens = Screens.All;
-        var target = screenNumber is >= 1 && screenNumber <= screens.Count
-            ? screens[screenNumber.Value - 1]
-            : Screens.Primary;
+        var target = ScreenChoice.Pick(AvaloniaScreenCatalog.ToBounds(Screens.All), screenNumber);
 
-        if (target is null)
+        if (target is not { } chosen)
         {
             return;
         }
 
         // Fullscreen goes to the screen the window is on, so move it there first.
         WindowStartupLocation = WindowStartupLocation.Manual;
-        Position = target.Bounds.Position;
+        Position = new PixelPoint(chosen.X, chosen.Y);
         WindowState = WindowState.FullScreen;
     }
 

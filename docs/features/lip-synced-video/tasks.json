@@ -3580,7 +3580,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T153-move-the-screen-mapping-and-the-number-to-screen-choice-into-pure-helpers-and-pin-them-with-two-screens.md",
       "origin": "review-2026-11-23i: AA6",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T154",

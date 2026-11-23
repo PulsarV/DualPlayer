@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Platform;
 using Avalonia.Threading;
 
 namespace DualPlayer.App.Startup;
@@ -10,13 +11,17 @@ internal sealed class AvaloniaScreenCatalog : IScreenCatalog
     public IReadOnlyList<ScreenInfo> Screens =>
         Dispatcher.UIThread.CheckAccess() ? Read() : Dispatcher.UIThread.Invoke(Read);
 
+    /// <summary>Reads the plain values the pure screen helpers work on from Avalonia's screens.</summary>
+    internal static IReadOnlyList<ScreenBounds> ToBounds(IReadOnlyList<Screen> screens) =>
+        [.. screens.Select(s => new ScreenBounds(s.Bounds.X, s.Bounds.Y, s.Bounds.Width, s.Bounds.Height, s.IsPrimary))];
+
     private static IReadOnlyList<ScreenInfo> Read()
     {
         var window = new Window();
         try
         {
             var all = window.Screens.All;
-            return [.. all.Select((s, i) => new ScreenInfo(i + 1, s.Bounds.Width, s.Bounds.Height, s.IsPrimary))];
+            return ScreenChoice.Map(ToBounds(all));
         }
         finally
         {
