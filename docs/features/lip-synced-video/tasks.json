@@ -614,7 +614,13 @@
         "T143",
         "T144",
         "T145",
-        "T146"
+        "T146",
+        "T147",
+        "T148",
+        "T149",
+        "T150",
+        "T151",
+        "T152"
       ],
       "acs": [
         "AC-16",
@@ -3435,6 +3441,117 @@
       "file": "docs/features/lip-synced-video/tasks/T146-cite-the-t145-test-in-test-plan-and-fix-the-ac-02-row-punctuation.md",
       "origin": "review-2026-11-23g: X1, X2",
       "status": "done"
+    },
+    {
+      "id": "T147",
+      "title": "Pin the mpv renderer's end-file outcomes: decode failure, load failure and end of file",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-06b"
+      ],
+      "dod": "New `MpvEndFileTests` drives `OnEndFile` through reflection without native mpv, in the style of `MpvSpeedReplyTests` (renderer state set through its private fields; `IsCurrentFile` true).; An error end-file after the file loaded raises exactly one `DecodeFailed` with code `video.decode_failed` and no `EndOfFile`.; An error end-file while loading (not yet loaded) raises no event, sets the load error `mpv.load_failed` and releases the load wait.; An EOF end-file raises `EndOfFile` and no `DecodeFailed`; an end-file for a file that is no longer current raises nothing.; Mutants on a scratch copy, each failing at least one new test: the after-load error branch raises `EndOfFile`; the `video.decode_failed` code is changed; the EOF branch raises nothing.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Media.Tests/Video/MpvEndFileTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T147-pin-the-mpv-renderers-end-file-outcomes-decode-failure-load-failure-and-end-of-file.md",
+      "origin": "review-2026-11-23h: Y1",
+      "status": "todo"
+    },
+    {
+      "id": "T148",
+      "title": "Pin the window-bound renderer's handle, timeout and event forwarding",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-06b",
+        "AC-01"
+      ],
+      "dod": "New `WindowBoundRendererTests` over an NSubstitute `IVideoRenderer` inner and a `VideoSurface` with a known handle.; `Load` with handle 0 passes the surface's handle to the inner renderer; `Load` with a non-zero handle passes that handle through; `file`, `startPaused` and `timeout` are forwarded unchanged (assert a 3 s timeout arrives as 3 s).; Each event (`DecodeFailed`, `EndOfFile`, `HardwareDecodingInactive`) raised on the inner reaches a handler subscribed on the wrapper, and an unsubscribed handler no longer receives it; `DecodeFailed` carries the inner's `Error` unchanged.; Mutants on a scratch copy, each failing at least one new test: `DecodeFailed { add { } remove { } }`; `Load` dropping `timeout`; `Load` ignoring the surface handle.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.App.Tests/Startup/WindowBoundRendererTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T148-pin-the-window-bound-renderers-handle-timeout-and-event-forwarding.md",
+      "origin": "review-2026-11-23h: Y1, Y2",
+      "status": "todo"
+    },
+    {
+      "id": "T149",
+      "title": "Pin the default main screen and the screen numbering on the App's path",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-03b"
+      ],
+      "dod": "A `StartCommandTests` case with the main screen listed second: an omitted `--screen` resolves to screen number 2 (the main one).; A headless test that `AvaloniaScreenCatalog.Screens` numbers from 1 in Avalonia's order and marks `Screens.Primary` as main, and that `PlaybackWindow.PlaceOnScreen(n)` places the window on the screen the catalog calls n.; Mutants on a scratch copy, each failing at least one new test: `StartCommand.cs:113` → `list.FirstOrDefault()`; catalog numbering `i + 1` → `i`.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.App.Tests/Startup/StartCommandTests.cs",
+        "tests/DualPlayer.App.Tests/Views/PlaybackWindowHeadlessTests.cs",
+        "tests/DualPlayer.App.Tests/Startup/AvaloniaScreenCatalogTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T149-pin-the-default-main-screen-and-the-screen-numbering-on-the-apps-path.md",
+      "origin": "review-2026-11-23h: Y2",
+      "status": "todo"
+    },
+    {
+      "id": "T150",
+      "title": "Pin that App.Play passes the start-command time and the real logger to the session",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-17"
+      ],
+      "dod": "An `AppEntryTests` case sets `App.CommandTimestamp` to a time before a known delay, runs `App.Play` with a capturing logger, and asserts that the logged `StartTimings` `CommandToFirstFrameMs` includes that delay.; The same run (or a sibling case) asserts that session records reach the capturing logger through `App.Play` (at least `LatencyEstimated` and `PictureDelayChanged`, per cli.md §3).; Mutants on a scratch copy, each failing at least one new test: `App.axaml.cs:179` without `{ CommandTimestamp = CommandTimestamp }`; `:105` passing `NullLogger.Instance` to `SessionEventLogWriter`.; `App.CommandTimestamp` is reset after the test so other tests are unaffected.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.App.Tests/Startup/AppEntryTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T150-pin-that-app-play-passes-the-start-command-time-and-the-real-logger-to-the-session.md",
+      "origin": "review-2026-11-23h: Y3",
+      "status": "todo"
+    },
+    {
+      "id": "T151",
+      "title": "State in spec and cli.md that a run-out track listing is remembered but not printed or counted",
+      "layer": "docs",
+      "deps": [],
+      "acs": [
+        "AC-08",
+        "AC-09b"
+      ],
+      "dod": "spec.md:249 adds the listing exception: a file whose track listing runs out the budget (its own full limit, or as the first check of the press) ends the press; it is remembered as timed out but neither reported as skipped nor counted in that press, including a remembered file checked last whose new listing hangs. \"the run-out files are still reported as skipped and counted\" is limited to probes that ran out their full limit.; cli.md:85 states the same rule in its own words; the `next-file-timeout  checked N` text and the stepped-past rule are otherwise unchanged.; test-plan.md:234 and the spec/cli wording agree (read check); no code or test changes.",
+      "files_hint": [
+        "docs/features/lip-synced-video/spec.md",
+        "docs/features/lip-synced-video/contracts/cli.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T151-state-in-spec-and-cli-that-a-run-out-track-listing-is-remembered-but-not-printed-or-counted.md",
+      "origin": "review-2026-11-23h: Y4",
+      "status": "todo"
+    },
+    {
+      "id": "T152",
+      "title": "Cite the T147–T150 tests in test-plan",
+      "layer": "docs",
+      "deps": [
+        "T147",
+        "T148",
+        "T149",
+        "T150"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-03b",
+        "AC-06b",
+        "AC-17"
+      ],
+      "dod": "The AC-06b rows cite the T147 and T148 tests; the AC-01 and AC-03b rows cite the T149 tests (and T148's handle case for AC-01); the AC-01 start-budget and AC-17 rows cite the T150 test; one row per task T147–T150 is added in the task table, as for T145.; test-plan.md:19 describes the renderer contract checks that exist (the fake's behaviour tests, the real adapter's `OnEndFile` and wrapper tests, the hardware tests) instead of the shared suite that was never built.; Every test name cited in test-plan.md exists under the cited class (script check).",
+      "files_hint": [
+        "docs/features/lip-synced-video/test-plan.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T152-cite-the-t147-t150-tests-in-test-plan.md",
+      "origin": "review-2026-11-23h: Y1, Y2, Y3",
+      "status": "todo"
     }
   ]
 }
