@@ -24,12 +24,16 @@ public partial class PlaybackWindow : Window
     /// <summary>Raises <see cref="VideoHandleCreated"/> as the native host does; for tests on a platform without a native child.</summary>
     internal void RaiseVideoHandleCreated(nint handle) => Video.RaiseNativeHandleCreated(handle);
 
+    /// <summary>The screen number last requested through <see cref="PlaceOnScreen"/>; tests read it.</summary>
+    internal int? PlacedScreenNumber { get; private set; }
+
     /// <summary>
     /// Places the window on the screen with the given number (from 1, in the order Avalonia lists them); when no number is
     /// given, or it is unknown, on the main screen. Call before <see cref="Window.Show()"/>.
     /// </summary>
     public void PlaceOnScreen(int? screenNumber)
     {
+        PlacedScreenNumber = screenNumber;
         var target = ScreenChoice.Pick(AvaloniaScreenCatalog.ToBounds(Screens.All), screenNumber);
 
         if (target is not { } chosen)

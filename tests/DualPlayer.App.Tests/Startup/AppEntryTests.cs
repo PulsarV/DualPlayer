@@ -478,6 +478,64 @@ public sealed class AppEntryTests
         }
     }
 
+    // T154 (review-2026-11-23i AA1): what App.Play prints at the start and where it places the window (cli.md section 1.1).
+    // Output 2 carries track 2 on the second device, so a label that is the same for every output, or a device id in place of
+    // the name, shows; a screen other than the main one shows in the picture line and in the number the window was placed on.
+    [Theory]
+    [InlineData(1, 1920, 1080, true)]
+    [InlineData(2, 1280, 720, false)]
+    public void App_Play_prints_the_output_and_picture_lines_and_places_the_window_on_the_validated_screen_AC_01_AC_03b_AC_12_AC_13(
+        int screenNumber, int width, int height, bool isMain)
+    {
+        var folder = Directory.CreateTempSubdirectory("dualplayer-app-entry-");
+        var file = Path.Combine(folder.FullName, "Film.mkv");
+        File.WriteAllBytes(file, []);
+        using var rig = new SessionRig(TwoDevices, null, 600);
+        using var controls = new PlaybackControls(rig.Session, NullLogger<PlaybackControls>.Instance, rig.Engine.Time);
+        var desktop = Substitute.For<IClassicDesktopStyleApplicationLifetime>();
+        var services = PlayServices(rig, controls);
+        var validated = new ValidatedStart(
+            file,
+            new PictureInfo("h264", "High", 1920, 1080),
+            [new ResolvedOutput(1, "dev-1"), new ResolvedOutput(2, "dev-2")],
+            new ScreenInfo(screenNumber, width, height, isMain));
+        int? placedOn = null;
+
+        try
+        {
+            var stdout = CaptureConsole(() =>
+            {
+                PlaybackWindow? window = null;
+                HeadlessApp.Run(() =>
+                {
+                    window = new PlaybackWindow { DataContext = services.GetRequiredService<PlaybackViewModel>() };
+                    App.Play(desktop, services, new StartRequest(file, [], null), validated, NullLogger.Instance, () => window);
+                    placedOn = window.PlacedScreenNumber;
+                    window.RaiseVideoHandleCreated(1);
+
+                    var advancing = Task.Run(() => rig.Engine.AdvanceUntil(() => PrintedSoFar().Contains("picture ", StringComparison.Ordinal)));
+                    advancing.GetAwaiter().GetResult().ShouldBeTrue("the start never printed its picture line");
+
+                    var ending = Task.Run(() => rig.Engine.AdvanceUntil(() => rig.Engine.Summary is not null));
+                    window.Close();
+                    PumpUntilShutdown(desktop).ShouldBeTrue("closing the window never shut the application down");
+                    ending.GetAwaiter().GetResult().ShouldBeTrue("closing the window never ended the session");
+                });
+            }).Out;
+
+            var lines = stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(l => Regex.Replace(l.Trim(), "\\s+", " ")).ToList();
+            var all = string.Join('\n', lines);
+            lines.ShouldContain(l => l.StartsWith("output 1 track 1 device Device 1", StringComparison.Ordinal), all);
+            lines.ShouldContain(l => l.StartsWith("output 2 track 2 device Device 2", StringComparison.Ordinal), all);
+            lines.ShouldContain(l => Regex.IsMatch(l, $"^picture delay \\S+ screen {screenNumber} {width}x{height}$"), all);
+            placedOn.ShouldBe(screenNumber);
+        }
+        finally
+        {
+            folder.Delete(recursive: true);
+        }
+    }
+
     // Runs on the headless UI thread: runs the jobs posted to it (the window's close, posted by Esc or by a failed start)
     // between looks at the desktop lifetime, until it was told to shut down.
     private static bool PumpUntilShutdown(IClassicDesktopStyleApplicationLifetime desktop)
@@ -534,10 +592,16 @@ public sealed class AppEntryTests
             .AddSingleton(new PlaybackViewModel(controls, rig.Renderer))
             .BuildServiceProvider();
 
+    private static StringWriter? _capturedOut;
+
+    // What the running CaptureConsole has had written to standard output so far.
+    private static string PrintedSoFar() => _capturedOut!.ToString();
+
     private static (string Out, string Error) CaptureConsole(Action body)
     {
         var (oldOut, oldError) = (Console.Out, Console.Error);
         var (output, error) = (new StringWriter(), new StringWriter());
+        _capturedOut = output;
         Console.SetOut(TextWriter.Synchronized(output));
         Console.SetError(TextWriter.Synchronized(error));
         try
