@@ -3622,7 +3622,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T155-pin-the-spec-6-lip-sync-late-frame-and-recovery-bounds-just-inside-and-just-outside-their-edges.md",
       "origin": "review-2026-11-23i: AA2",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T156",

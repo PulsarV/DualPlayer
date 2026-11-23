@@ -6,8 +6,8 @@ deps: []
 blocks: ["T23", "T161"]
 acs: ["AC-04", "AC-05", "AC-07", "AC-17"]
 files_hint: ["tests/DualPlayer.Core.Tests/Playback/PlaybackSessionBoundEdgeTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,9 +31,9 @@ See [spec.md](../spec.md) §5 AC-04, AC-05, AC-07, AC-17.
 
 ## Definition of Done
 
-- [ ] Output bound: an output 11 ms off gives no `LipSyncedAgain`; 9 ms gives one.
-- [ ] Picture bound: a picture 21 ms off gives no `LipSyncedAgain`; 19 ms gives one.
-- [ ] Late frame: a frame 21 ms after due counts as late in `FrameCounters`; 19 ms does not.
-- [ ] Recovery budget: a seek whose picture first qualifies at 1.1 s gives `NotLipSynced`; one that qualifies at 0.9 s gives `LipSyncedAgain`.
-- [ ] Mutants on a scratch copy, each failing at least one new test: `LipSyncedMs = 30`; `OutputLipSyncedMs = 15`; `LateMs = 25`; `RecoveryBudget = 1.3 s`.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] Output bound: an output 11 ms off gives no `LipSyncedAgain`; 9 ms gives one. *(Output 11/-11 ms gives no LipSyncedAgain, 9 ms gives one (new test, passes))
+- [x] Picture bound: a picture 21 ms off gives no `LipSyncedAgain`; 19 ms gives one. *(Picture 21/-21 ms gives none, 19 ms gives one (new test, passes))
+- [x] Late frame: a frame 21 ms after due counts as late in `FrameCounters`; 19 ms does not. *(Frame 21 ms late counts as late, 19 ms does not (new test, passes))
+- [x] Recovery budget: a seek whose picture first qualifies at 1.1 s gives `NotLipSynced`; one that qualifies at 0.9 s gives `LipSyncedAgain`. *(Seek qualifying at 1.1 s gives NotLipSynced, 0.9 s gives LipSyncedAgain (new tests, pass))
+- [x] Mutants on a scratch copy, each failing at least one new test: `LipSyncedMs = 30`; `OutputLipSyncedMs = 15`; `LateMs = 25`; `RecoveryBudget = 1.3 s`. *(4 mutants (applied to the real constants 20/10/20/1 s) each fail a new test; all reverted)
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean *(build 0 warnings, test all green, format clean)
