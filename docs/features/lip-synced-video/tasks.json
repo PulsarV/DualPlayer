@@ -603,7 +603,10 @@
         "T132",
         "T133",
         "T134",
-        "T135"
+        "T135",
+        "T136",
+        "T137",
+        "T138"
       ],
       "acs": [
         "AC-16",
@@ -3214,6 +3217,66 @@
       "file": "docs/features/lip-synced-video/tasks/T135-bring-the-scr-01-wireframe-ux-flows-sad-flow-1-starterrors-and-t20-s-trace-in-step-with-the-next-line-order-and-the-esc.md",
       "origin": "review-2026-11-23c: W5, W6, W8, W9, W10",
       "status": "done"
+    },
+    {
+      "id": "T136",
+      "title": "Decide the exit code, write the error line and store it under one lock, and pin Esc and the OS close during a running start",
+      "layer": "wiring",
+      "deps": [],
+      "acs": [
+        "AC-02",
+        "AC-06"
+      ],
+      "dod": "The start worker reads `closing`, calls `StartErrors.AfterSessionStart` (the error line) and writes `exitCode` / `startRunning` / `close` inside one `lock (gate)`, so `Closed` sees either the OS close first (exit 0, no error line) or the written code (2 / 4 with the line).; Test in AppEntryTests (the V2 repro): missing device, the stderr write posts `window.Close()` and waits for `Closed` → `Shutdown(0)` is never received with an `error` line on stderr; it fails on the current two-lock code (10 of 10 in review) and passes after the fix.; Test in AppEntryTests: valid devices, `controls.Exit()` while the start is held by `HoldingObserver`, then release → `Received(1).Shutdown(0)`, `run-summary … reason exit` printed, empty stderr; fails with `close = code is not null`.; Test in AppEntryTests: missing device, `window.Close()` while the start is held, then release → `Received(1).Shutdown(0)`, no `error` line on stderr, the \"window closed during the start\" log entry; fails with `windowClosing = closing && false`.; AppEntryTests pass 30 runs with 3 processes in parallel.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.App/App.axaml.cs",
+        "src/DualPlayer.App/Startup/StartErrors.cs",
+        "tests/DualPlayer.App.Tests/Startup/AppEntryTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T136-decide-the-exit-code-write-the-error-line-and-store-it-under-one-lock-and-pin-esc-and-the-os-close-during-a-running-start.md",
+      "origin": "review-2026-11-23d: V1, V2",
+      "status": "todo"
+    },
+    {
+      "id": "T137",
+      "title": "Re-pin the listing budget cut, stop abandoned grace fakes from spinning, and keep the rig barrier from starting a phantom run",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-08",
+        "AC-09b"
+      ],
+      "dod": "In `A_track_listing_that_blocks_past_the_budget…` the listing fake waits on its gate with a short bound (about 5 s) and records `gateTimedOut`; the test asserts it is 0 after the press. With the budget check at `PlaybackSession.cs:879` disabled (scratch copy) the test fails; as is it passes.; The grace fakes in PlaybackSessionNeighbourMemoryTests return as soon as `WaitForReads` returns false, and their `SpinUntil` calls take a token tied to `_release`; with the grace set to 0 (scratch copy) the test fails on its own assertion, not on the 10 s neighbour-worker timeout. The comments at :303 and :321 stay true.; The strict rig barrier checks the run is still active without calling `StartRun(string.Empty, [])` (as the `EndsAllowed` path does), or the final assertion of `The_engine_rig_barrier_fails_once_the_run_has_ended…` no longer depends on a phantom run.; The neighbour and rig tests (`--filter \"FullyQualifiedName~Neighbour|FullyQualifiedName~RigLoops\"`) pass 20 runs with 3 processes in parallel, each process using its own build output (0 RigLoops failures).; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourBudgetTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourMemoryTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/RigLoopsTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T137-re-pin-the-listing-budget-cut-stop-abandoned-grace-fakes-from-spinning-and-keep-the-rig-barrier-from-starting-a-phantom-run.md",
+      "origin": "review-2026-11-23d: V3, V5, V6",
+      "status": "todo"
+    },
+    {
+      "id": "T138",
+      "title": "Bring test-plan in step with the T132-T137 test names and the start-path tests",
+      "layer": "docs",
+      "deps": [
+        "T136",
+        "T137"
+      ],
+      "acs": [
+        "AC-06",
+        "AC-08",
+        "AC-09b"
+      ],
+      "dod": "test-plan.md:193 cites `…_polls_it_a_small_bounded_number_of_times_AC_08` and says \"polls the adapter at most `MaxBusyPolls` times\".; Rows cite T132's rebuilt grace and listing-budget tests, T133's `A_cut_first_file_whose_wrapper_never_answers_is_remembered_only_under_the_whole_budget_rule_AC_08`, and T136's and T137's tests by their final names.; Row 200 is labelled T134; the sentence at :206 no longer says the Closing test raises its video handle and cites the T136 start-path tests.; Every test name cited in test-plan.md exists under the cited class (grep check)",
+      "files_hint": [
+        "docs/features/lip-synced-video/test-plan.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T138-bring-test-plan-in-step-with-the-t132-t137-test-names-and-the-start-path-tests.md",
+      "origin": "review-2026-11-23d: V4",
+      "status": "todo"
     }
   ]
 }
