@@ -3829,7 +3829,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T165-pin-the-avalonia-screen-adapter-and-the-window-position-with-two-screens.md",
       "origin": "review-2026-11-23j: AB5",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T166",
