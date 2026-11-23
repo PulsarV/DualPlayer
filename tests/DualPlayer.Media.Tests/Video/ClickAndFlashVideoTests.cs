@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using DualPlayer.Core.Outputs;
 using DualPlayer.Core.Playback;
 using DualPlayer.Media.Audio;
@@ -7,9 +8,10 @@ using DualPlayer.Media.Tests.Generated;
 namespace DualPlayer.Media.Tests.Video;
 
 /// <summary>
-/// AC-16 happy path, the part a computer can check: a click-and-flash video made with the filter graph of
-/// <c>build/make-click-flash-video.ps1</c> (a black picture with one white frame at the start of every 1001 ms and, on each
-/// of two audio tracks, a 5 ms 2 kHz click at the same instants), cut to 4 seconds. The flashes are read from the decoded
+/// AC-16 happy path, the part a computer can check: a click-and-flash video made with the filter graphs and the codec
+/// arguments of each encoding that <c>build/make-click-flash-video.ps1</c> itself holds (read from the script, found from the
+/// repository root, so a change to the script changes what is checked; H.264 and HEVC, as T23 plays both): a black picture with one white frame at the start of every 1001 ms and, on each
+/// of two audio tracks, a 5 ms 2 kHz click at the same instants, cut to 4 seconds. The flashes are read from the decoded
 /// picture's brightness with FFmpeg's <c>signalstats</c> filter (the decoders in the product never expose pixels); the clicks
 /// are read from the audio each track decodes to with the product's own <see cref="FfmpegAudioDecoder"/>.
 /// </summary>
@@ -19,25 +21,44 @@ public sealed class ClickAndFlashVideoTests
     private const double ClickToFlashSeconds = 0.002; // sample-exact clicks: far inside the 45 ms budget (AC-16)
     private const int SampleRate = 48_000;
 
-    // The graphs of the script, verbatim.
-    private const string Picture = "color=c=black:s=1920x1080:r=24000/1001,drawbox=x=0:y=0:w=iw:h=ih:color=white:t=fill:enable='lt(mod(n\\,24)\\,1)'";
-    private const string Click = "aevalsrc='if(lt(mod(t\\,1001/1000)\\,0.005)\\,0.8*sin(2*PI*2000*t)\\,0)':s=48000:c=stereo";
-
     private static readonly double[] ExpectedSeconds = [0, 1.001, 2.002, 3.003];
 
-    [Fact]
-    public void The_flash_and_the_click_of_every_audio_track_fall_on_the_same_instant_once_per_second_AC_16()
+    /// <summary>The output file names of the script's <c>$encodings</c>, one theory case each.</summary>
+    public static TheoryData<string> EncodingNames()
     {
+        var names = new TheoryData<string>();
+        foreach (var encoding in GeneratorScript.Read().Encodings)
+        {
+            names.Add(encoding.Name);
+        }
+
+        return names;
+    }
+
+    [Theory]
+    [MemberData(nameof(EncodingNames))]
+    public void The_flash_and_the_click_of_every_audio_track_fall_on_the_same_instant_once_per_second_AC_16(string encodingName)
+    {
+        var script = GeneratorScript.Read();
+        var encoding = script.Encodings.Single(e => e.Name == encodingName);
         using var media = GeneratedMedia.CreateOrSkip();
+        var codec = encoding.Codec[1]; // after "-c:v"
+        Assert.SkipUnless(
+            media.Run("-encoders").Split('\n').Any(l => l.Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(1).FirstOrDefault() == codec),
+            $"The local FFmpeg cannot write {codec}, so {encodingName} was not checked.");
+
         var film = media.Make(
-            "click-flash.mkv",
-            "-f", "lavfi", "-i", Picture,
-            "-f", "lavfi", "-i", Click,
-            "-f", "lavfi", "-i", Click,
-            "-t", "4",
-            "-map", "0:v", "-map", "1:a", "-map", "2:a",
-            "-c:v", "libx264", "-profile:v", "high", "-pix_fmt", "yuv420p", "-g", "24", "-preset", "veryfast",
-            "-c:a", "aac", "-b:a", "192k");
+            encodingName,
+            [
+                "-f", "lavfi", "-i", script.Picture,
+                "-f", "lavfi", "-i", script.Click,
+                "-f", "lavfi", "-i", script.Click,
+                "-t", "4",
+                "-map", "0:v", "-map", "1:a", "-map", "2:a",
+                .. encoding.Codec,
+                "-pix_fmt", "yuv420p", "-g", "24", "-preset", "veryfast",
+                "-c:a", "aac", "-b:a", "192k",
+            ]);
 
         var flashes = FlashTimes(media, film);
         var clicksOnTrack1 = ClickTimes(film, track: 1);
@@ -115,6 +136,51 @@ public sealed class ClickAndFlashVideoTests
 
                 lastLoud = frame;
             }
+        }
+    }
+
+    /// <summary>What the test takes from <c>build/make-click-flash-video.ps1</c>: the two filter graphs and each encoding's codec arguments.</summary>
+    private sealed record Encoding(string Name, string[] Codec);
+
+    private sealed record GeneratorScript(string Picture, string Click, Encoding[] Encodings)
+    {
+        public static GeneratorScript Read()
+        {
+            var path = Path.Combine(RepositoryRoot(), "build", "make-click-flash-video.ps1");
+            File.Exists(path).ShouldBeTrue($"the generator script is not at {path}");
+            var text = File.ReadAllText(path);
+
+            var encodings = Regex.Matches(text, @"@\{\s*Name\s*=\s*'(?<name>[^']+)'\s*;\s*Codec\s*=\s*@\((?<args>[^)]*)\)\s*\}")
+                .Select(m => new Encoding(
+                    m.Groups["name"].Value,
+                    [.. Regex.Matches(m.Groups["args"].Value, "'([^']*)'").Select(a => a.Groups[1].Value)]))
+                .ToArray();
+            encodings.Length.ShouldBeGreaterThanOrEqualTo(2, "the script's $encodings (H.264 and HEVC) were not found");
+            encodings.ShouldAllBe(e => e.Codec.Length >= 2 && e.Codec[0] == "-c:v");
+            return new GeneratorScript(Assignment(text, "video"), Assignment(text, "click"), encodings);
+        }
+
+        // `$name = "..."` on one line; PowerShell's double-quoted string: a backtick escapes the next character, "" is one quote.
+        private static string Assignment(string text, string name)
+        {
+            var match = Regex.Match(text, "^\\$" + name + "\\s*=\\s*\"(?<value>.*)\"\\s*$", RegexOptions.Multiline);
+            match.Success.ShouldBeTrue($"the script has no ${name} assignment");
+            var value = match.Groups["value"].Value;
+            value.ShouldNotContain("$", customMessage: $"${name} uses a PowerShell variable; the test reads only literal graphs");
+            return Regex.Replace(value.Replace("\"\"", "\""), "`(.)", "$1");
+        }
+
+        private static string RepositoryRoot()
+        {
+            for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+            {
+                if (File.Exists(Path.Combine(directory.FullName, "DualPlayer.slnx")))
+                {
+                    return directory.FullName;
+                }
+            }
+
+            throw new InvalidOperationException("DualPlayer.slnx was not found above " + AppContext.BaseDirectory);
         }
     }
 }
