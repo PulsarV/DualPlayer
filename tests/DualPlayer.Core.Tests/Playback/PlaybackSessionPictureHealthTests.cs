@@ -155,4 +155,53 @@ public sealed class PlaybackSessionPictureHealthTests
         rig.Engine.Render(30);
         rig.Events.OfType<PictureTimingReported>().Count().ShouldBeGreaterThan(afterPause);
     }
+
+    [Fact]
+    public void A_seek_while_playing_logs_the_picture_timing_at_once_AC_17()
+    {
+        using var rig = PlayingRig();
+        var before = rig.Events.OfType<PictureTimingReported>().Count();
+
+        rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-1))).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(3);
+
+        rig.Events.OfType<PictureTimingReported>().Count().ShouldBeGreaterThan(before);
+    }
+
+    [Fact]
+    public void An_offset_press_while_playing_logs_the_picture_timing_at_once_AC_17()
+    {
+        using var rig = PlayingRig();
+        var before = rig.Events.OfType<PictureTimingReported>().Count();
+
+        rig.Engine.Call(() => rig.Session.ChangeOffset(2, 10)).IsSuccess.ShouldBeTrue();
+        rig.Engine.Render(3);
+
+        rig.Events.OfType<PictureTimingReported>().Count().ShouldBeGreaterThan(before);
+    }
+
+    [Fact]
+    public void A_loss_that_moves_the_picture_delay_logs_the_picture_timing_at_once_AC_17()
+    {
+        using var rig = PlayingRig();
+        var before = rig.Events.OfType<PictureTimingReported>().Count();
+
+        rig.Engine.Devices[0].SimulateLoss();
+        rig.Engine.Barrier();
+        rig.Events.OfType<PictureDelayChanged>().ShouldContain(e => e.Cause == PictureDelayCause.DeviceLost);
+
+        rig.Events.OfType<PictureTimingReported>().Count().ShouldBeGreaterThan(before);
+    }
+
+    [Fact]
+    public void Exactly_one_frame_counters_report_comes_at_a_minute_of_playback_and_none_before_AC_06b()
+    {
+        using var rig = PlayingRig();
+
+        rig.Engine.Render(5_000);
+        rig.Events.OfType<FrameCountersReported>().ShouldBeEmpty("a minute of playback has not passed yet");
+
+        rig.Engine.Render(1_500);
+        rig.Events.OfType<FrameCountersReported>().ShouldHaveSingleItem();
+    }
 }

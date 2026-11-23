@@ -6,8 +6,8 @@ deps: []
 blocks: ["T23", "T161"]
 acs: ["AC-17", "AC-06b"]
 files_hint: ["tests/DualPlayer.Core.Tests/Playback/PlaybackSessionPictureHealthTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,7 +31,7 @@ See [spec.md](../spec.md) §5 AC-17, AC-06b.
 
 ## Definition of Done
 
-- [ ] A seek while playing, an offset press while playing and a loss that moves the picture delay each yield a `PictureTimingReported` within a few 5 ms ticks, well before the 1 s tick.
-- [ ] Exactly one `FrameCountersReported` at 60 s of playback, none before.
-- [ ] Mutants on a scratch copy, each failing at least one new test: each of the three `ReportTiming(sync)` calls removed; `TicksPerCounterReport = 30`.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] A seek while playing, an offset press while playing and a loss that moves the picture delay each yield a `PictureTimingReported` within a few 5 ms ticks, well before the 1 s tick. *(Three new tests (seek, offset press, device loss) each assert a PictureTimingReported right after the command, before the 1 s tick; all green)
+- [x] Exactly one `FrameCountersReported` at 60 s of playback, none before. *(Frame-counters test expects none after about 53 s and exactly one after about 68 s; green)
+- [x] Mutants on a scratch copy, each failing at least one new test: each of the three `ReportTiming(sync)` calls removed; `TicksPerCounterReport = 30`. *(4 mutants (the 3 ReportTiming(sync) calls removed, TicksPerCounterReport=30) each fail exactly one new test; all reverted)
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean *(Build 0 warnings and 0 errors; all test projects pass (Core 630/630); dotnet format --verify-no-changes exit 0)

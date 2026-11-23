@@ -3657,7 +3657,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T157-pin-the-picture-timing-record-at-a-seek-an-offset-press-and-a-device-loss-and-the-once-a-minute-frame-counters.md",
       "origin": "review-2026-11-23i: AA4",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T158",
