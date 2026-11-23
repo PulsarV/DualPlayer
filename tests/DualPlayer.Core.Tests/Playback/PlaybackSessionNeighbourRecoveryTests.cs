@@ -85,6 +85,43 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
     }
 
     [Fact]
+    public void A_file_change_whose_old_run_stop_took_1_s_counts_its_3_s_recovery_from_the_choice_so_a_new_film_lip_synced_3_5_s_after_it_is_given_up_on_AC_07()
+    {
+        using var decoder = new ScriptedDecoder();
+        using var probe = new ScriptedProbe();
+        File("Episode-02.mkv");
+        using var rig = Playing(decoder, probe);
+        rig.EngineStopTakes = TimeSpan.FromSeconds(1); // the old run's stop waits 1 s for the devices to play past the stop point
+        rig.EngineCommandTakes = TimeSpan.FromMilliseconds(2300); // the new film's engine start (pre-roll): lip-synced about 2.5 s after the stop ended
+
+        Press(rig);
+        rig.Engine.Render(300);
+
+        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("the target was not chosen");
+        rig.Events.OfType<LipSyncedAgain>().Where(e => e.Command == "file-change").ShouldBeEmpty("the old run's 1 s stop was left out of the 3 s recovery counted from the choice");
+        rig.Events.OfType<NotLipSynced>().Where(e => e.Command == "file-change").ShouldHaveSingleItem("a new film lip-synced 3.5 s after the choice was not given up on");
+    }
+
+    [Fact]
+    public void A_file_change_whose_old_run_stop_took_500_ms_reports_lip_synced_again_counted_from_the_choice_AC_07()
+    {
+        using var decoder = new ScriptedDecoder();
+        using var probe = new ScriptedProbe();
+        File("Episode-02.mkv");
+        using var rig = Playing(decoder, probe);
+        rig.EngineStopTakes = TimeSpan.FromMilliseconds(500);
+        rig.EngineCommandTakes = TimeSpan.FromMilliseconds(1500);
+
+        Press(rig);
+        rig.Engine.Render(300);
+
+        rig.Events.OfType<NotLipSynced>().Where(e => e.Command == "file-change").ShouldBeEmpty("a recovery inside 3 s from the choice was given up on");
+        var again = rig.Events.OfType<LipSyncedAgain>().Where(e => e.Command == "file-change").ShouldHaveSingleItem("the new film never reported lip-synced again");
+        again.AfterCommandMs.ShouldBeGreaterThanOrEqualTo(2000, "the old run's 500 ms stop was left out of the time since the choice");
+        again.AfterCommandMs.ShouldBeLessThan(3000);
+    }
+
+    [Fact]
     public void The_only_neighbour_whose_listing_stayed_blocked_through_a_press_plays_on_the_press_after_it_recovered_AC_09b()
     {
         using var decoder = new ScriptedDecoder();

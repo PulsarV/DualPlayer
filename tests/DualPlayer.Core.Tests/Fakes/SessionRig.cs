@@ -73,16 +73,24 @@ internal sealed class SessionRig : IDisposable
     /// </summary>
     public TimeSpan EngineCommandTakes { get; set; }
 
-    private void EngineCommandTook()
+    /// <summary>
+    /// How long every engine stop takes on the fake clock (the engine waiting for the devices to play past the stop point, up to its
+    /// 2 s limit): the stop returns only once the caller's rendered steps have moved the clock on that far, the devices fed meanwhile.
+    /// </summary>
+    public TimeSpan EngineStopTakes { get; set; }
+
+    private void EngineCommandTook() => WaitFakeTime(EngineCommandTakes, "engine command");
+
+    private void WaitFakeTime(TimeSpan takes, string what)
     {
-        if (EngineCommandTakes <= TimeSpan.Zero)
+        if (takes <= TimeSpan.Zero)
         {
             return;
         }
 
-        var until = Engine.Time.GetUtcNow() + EngineCommandTakes;
+        var until = Engine.Time.GetUtcNow() + takes;
         Engine.Time.SignalWait(); // the command now waits on fake time: it may move
-        RigLoops.WaitOrFail(() => Engine.Time.GetUtcNow() >= until, TimeSpan.FromSeconds(10), $"the caller to render {EngineCommandTakes.TotalMilliseconds:F0} ms of the engine command");
+        RigLoops.WaitOrFail(() => Engine.Time.GetUtcNow() >= until, TimeSpan.FromSeconds(10), $"the caller to render {takes.TotalMilliseconds:F0} ms of the {what}");
     }
 
     /// <summary>
@@ -273,6 +281,7 @@ internal sealed class SessionRig : IDisposable
         {
             owner.Record($"engine.Stop({reason})");
             Rig.Time.SignalWait();
+            owner.WaitFakeTime(owner.EngineStopTakes, "engine stop");
             Rig.Engine.Stop(reason);
         }
     }

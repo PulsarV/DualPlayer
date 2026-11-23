@@ -2954,7 +2954,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T125-stamp-the-file-change-recovery-clock-when-the-target-is-chosen-before-the-old-run-stops.md",
       "origin": "review-2026-11-23: Y7 (code)",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T127",

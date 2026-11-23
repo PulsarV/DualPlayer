@@ -6,8 +6,8 @@ deps: ["T124"]
 blocks: []
 acs: ["AC-07", "AC-09"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs", "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,6 +31,6 @@ See [spec.md](../spec.md) §5 AC-07, AC-09.
 
 ## Definition of Done
 
-- [ ] `chosenAt` is read right after the scan picks the target, before `CancelFreeze` and `_engine.Stop`; `_resync` uses it; `_readingsAfter` stays at or after the stop.
-- [ ] Test: the rig's stop takes non-zero fake time (e.g. 1 s), the new film's lip-sync is reached 2.5 s after the stop ends → `NotLipSynced(file-change)` is published (3.5 s from the choice); with the stop inside the budget → `LipSyncedAgain` with `AfterCommandMs` counted from the choice. Fails if reverted.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `chosenAt` is read right after the scan picks the target, before `CancelFreeze` and `_engine.Stop`; `_resync` uses it; `_readingsAfter` stays at or after the stop.
+- [x] Test: the rig's stop takes non-zero fake time (e.g. 1 s), the new film's lip-sync is reached 2.5 s after the stop ends → `NotLipSynced(file-change)` is published (3.5 s from the choice); with the stop inside the budget → `LipSyncedAgain` with `AfterCommandMs` counted from the choice. Fails if reverted.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
