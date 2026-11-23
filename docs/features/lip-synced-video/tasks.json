@@ -620,7 +620,16 @@
         "T149",
         "T150",
         "T151",
-        "T152"
+        "T152",
+        "T153",
+        "T154",
+        "T155",
+        "T156",
+        "T157",
+        "T158",
+        "T159",
+        "T160",
+        "T161"
       ],
       "acs": [
         "AC-16",
@@ -3552,6 +3561,191 @@
       "file": "docs/features/lip-synced-video/tasks/T152-cite-the-t147-t150-tests-in-test-plan.md",
       "origin": "review-2026-11-23h: Y1, Y2, Y3",
       "status": "done"
+    },
+    {
+      "id": "T153",
+      "title": "Move the screen mapping and the number-to-screen choice into pure helpers and pin them with two screens",
+      "layer": "ui",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-03b"
+      ],
+      "dod": "A pure helper (in `src/DualPlayer.App/Startup/`, no Avalonia types in its signature beyond plain values) maps a list of (bounds, isPrimary) to `ScreenInfo` numbered from 1 in list order with `IsMain` from isPrimary; `AvaloniaScreenCatalog` uses it.; A pure helper picks the screen for a number (1-based index into the same list; `null` → the primary); `PlaybackWindow.PlaceOnScreen` uses it.; New `ScreenChoiceTests` with two screens, the primary listed second: the mapping numbers 1 and 2 and marks screen 2 main; no number picks screen 2; number 2 picks the second bounds; number 1 picks the first.; Mutants on a scratch copy, each failing at least one new test: `IsPrimary` → `true`; `screens[n - 1]` → `screens[0]`; numbering `i + 1` → `i`.; Existing headless tests stay green; no behaviour change.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.App/Startup/AvaloniaScreenCatalog.cs",
+        "src/DualPlayer.App/Views/PlaybackWindow.axaml.cs",
+        "src/DualPlayer.App/Startup/ScreenChoice.cs",
+        "tests/DualPlayer.App.Tests/Startup/ScreenChoiceTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T153-move-the-screen-mapping-and-the-number-to-screen-choice-into-pure-helpers-and-pin-them-with-two-screens.md",
+      "origin": "review-2026-11-23i: AA6",
+      "status": "todo"
+    },
+    {
+      "id": "T154",
+      "title": "Pin the App.Play hand-off to the start lines and the window's screen number",
+      "layer": "test",
+      "deps": [
+        "T153"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-03b",
+        "AC-12",
+        "AC-13"
+      ],
+      "dod": "The T150 `AppEntryTests` start (or a sibling case) captures stdout and asserts the lines `output 1  track 1  device <rig device name>`, `output 2  track 2  device <rig device name>` and `picture   delay …  screen 1  1920x1080` per cli.md §1.1.; `PlaybackWindow` records the screen number it was last placed on (or the test observes it through a seam), and a case validated on screen 2 asserts `App.Play` passes number 2.; Mutants on a scratch copy, each failing at least one new test: `new OutputLabel(1, …)`; `?.Id` for `?.Name`; `Screen with { Number = 9 }` in `TerminalContext`; `PlaceOnScreen(null)`.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.App.Tests/Startup/AppEntryTests.cs",
+        "src/DualPlayer.App/Views/PlaybackWindow.axaml.cs",
+        "src/DualPlayer.App/App.axaml.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T154-pin-the-app-play-hand-off-to-the-start-lines-and-the-window-s-screen-number.md",
+      "origin": "review-2026-11-23i: AA1",
+      "status": "todo"
+    },
+    {
+      "id": "T155",
+      "title": "Pin the spec §6 lip-sync, late-frame and recovery bounds just inside and just outside their edges",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-04",
+        "AC-05",
+        "AC-07",
+        "AC-17"
+      ],
+      "dod": "Output bound: an output 11 ms off gives no `LipSyncedAgain`; 9 ms gives one.; Picture bound: a picture 21 ms off gives no `LipSyncedAgain`; 19 ms gives one.; Late frame: a frame 21 ms after due counts as late in `FrameCounters`; 19 ms does not.; Recovery budget: a seek whose picture first qualifies at 1.1 s gives `NotLipSynced`; one that qualifies at 0.9 s gives `LipSyncedAgain`.; Mutants on a scratch copy, each failing at least one new test: `LipSyncedMs = 30`; `OutputLipSyncedMs = 15`; `LateMs = 25`; `RecoveryBudget = 1.3 s`.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionBoundEdgeTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T155-pin-the-spec-6-lip-sync-late-frame-and-recovery-bounds-just-inside-and-just-outside-their-edges.md",
+      "origin": "review-2026-11-23i: AA2",
+      "status": "todo"
+    },
+    {
+      "id": "T156",
+      "title": "Pin three file-change outcomes: the picture stops after a failed change, a loss keeps its output number, a just-pressed offset survives",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-07",
+        "AC-15",
+        "AC-15b"
+      ],
+      "dod": "(a) After a file change that fails with `outputs.device_not_found`, the renderer is not playing.; (b) Three outputs: lose output 1, press Page Down, lose output 3 → `OutputLost.OutputNumber == 3` and the note \"Output 3 lost\".; (c) An offset press followed at once by Page Down → the new file's `LatencyEstimated` carries the pressed offset.; Mutants on a scratch copy, each failing at least one new test: `_renderer.Pause()` at :689 removed; `number = lost.OutputIndex + 1`; offsets re-read at every start.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionFileChangeTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T156-pin-three-file-change-outcomes-the-picture-stops-after-a-failed-change-a-loss-keeps-its-output-number-a-just-p.md",
+      "origin": "review-2026-11-23i: AA3",
+      "status": "todo"
+    },
+    {
+      "id": "T157",
+      "title": "Pin the picture-timing record at a seek, an offset press and a device loss, and the once-a-minute frame counters",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-17",
+        "AC-06b"
+      ],
+      "dod": "A seek while playing, an offset press while playing and a loss that moves the picture delay each yield a `PictureTimingReported` within a few 5 ms ticks, well before the 1 s tick.; Exactly one `FrameCountersReported` at 60 s of playback, none before.; Mutants on a scratch copy, each failing at least one new test: each of the three `ReportTiming(sync)` calls removed; `TicksPerCounterReport = 30`.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionPictureHealthTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T157-pin-the-picture-timing-record-at-a-seek-an-offset-press-and-a-device-loss-and-the-once-a-minute-frame-counters.md",
+      "origin": "review-2026-11-23i: AA4",
+      "status": "todo"
+    },
+    {
+      "id": "T158",
+      "title": "Pin every cli.md §3 record name and the offset save time in the session log",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-17",
+        "AC-10",
+        "AC-06b"
+      ],
+      "dod": "`SessionEventLogWriterTests` asserts the `{OriginalFormat}` prefix (the record name of cli.md §3) of every record the writer logs.; An `OffsetChanged` with a save time logs that time; one without logs none.; Mutants on a scratch copy, each failing at least one new test: each of the six record names renamed; `SavedAt` logged as null.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.App.Tests/Startup/SessionEventLogWriterTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T158-pin-every-cli-md-3-record-name-and-the-offset-save-time-in-the-session-log.md",
+      "origin": "review-2026-11-23i: AA5",
+      "status": "todo"
+    },
+    {
+      "id": "T159",
+      "title": "Let the stale-file end-file theory run without libmpv",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-06b"
+      ],
+      "dod": "`RequireLibmpv()` is removed from the stale-file theory; both rows run and pass without libmpv.; Mutant on a scratch copy: removing the `IsCurrentFile` guard fails both rows.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Media.Tests/Video/MpvEndFileTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T159-let-the-stale-file-end-file-theory-run-without-libmpv.md",
+      "origin": "review-2026-11-23i: AA8",
+      "status": "todo"
+    },
+    {
+      "id": "T160",
+      "title": "Add the run-out listing exception to sad.md and name SCR-03 in T120",
+      "layer": "docs",
+      "deps": [],
+      "acs": [
+        "AC-08",
+        "AC-09b",
+        "AC-11"
+      ],
+      "dod": "sad.md:543 adds the clause: a file whose track listing runs out the budget ends the press, stays remembered, and is neither reported as skipped nor counted in that press, including a remembered file checked last whose new listing hangs. Wording agrees with spec.md:249 and cli.md:85 (read check).; T120's task file names SCR-03 (states: no next file; offset limit) in its trace.; No code or test changes.",
+      "files_hint": [
+        "docs/features/lip-synced-video/sad.md",
+        "docs/features/lip-synced-video/tasks/T120-drive-the-real-session-through-the-view-model-to-the-renderers-notes-in-an-app-end-to-end-test.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T160-add-the-run-out-listing-exception-to-sad-md-and-name-scr-03-in-t120.md",
+      "origin": "review-2026-11-23i: AA7, AA9",
+      "status": "todo"
+    },
+    {
+      "id": "T161",
+      "title": "Cite the T153–T159 tests in test-plan and narrow the headless screen rows",
+      "layer": "docs",
+      "deps": [
+        "T153",
+        "T154",
+        "T155",
+        "T156",
+        "T157",
+        "T158",
+        "T159"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-03b",
+        "AC-04",
+        "AC-05",
+        "AC-06b",
+        "AC-07",
+        "AC-10",
+        "AC-12",
+        "AC-13",
+        "AC-15",
+        "AC-15b",
+        "AC-17"
+      ],
+      "dod": "The AC-01, AC-03b rows cite the T153 and T154 tests; :35 and :45 say what headless shows and that the two-screen choice is pinned by `ScreenChoiceTests`.; The AC-04, AC-05, AC-07, AC-17 rows cite the T155 tests; AC-07, AC-15, AC-15b cite T156; the AC-17 row (:107) cites T157; AC-17, AC-10, AC-06b cite T158; AC-12, AC-13 cite T154's output-line checks.; test-plan.md:19 and :64 say \"the two error end-file tests\" are skipped without libmpv.; One row per task T153–T160 is added in the task table, as for T147.; Every test name cited in test-plan.md exists under the cited class (script check).",
+      "files_hint": [
+        "docs/features/lip-synced-video/test-plan.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T161-cite-the-t153-t159-tests-in-test-plan-and-narrow-the-headless-screen-rows.md",
+      "origin": "review-2026-11-23i: AA1–AA6, AA8",
+      "status": "todo"
     }
   ]
 }
