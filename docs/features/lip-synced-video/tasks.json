@@ -609,7 +609,10 @@
         "T138",
         "T139",
         "T140",
-        "T141"
+        "T141",
+        "T142",
+        "T143",
+        "T144"
       ],
       "acs": [
         "AC-16",
@@ -3341,6 +3344,59 @@
       "file": "docs/features/lip-synced-video/tasks/T141-cite-the-t139-and-t140-tests-in-test-plan.md",
       "origin": "review-2026-11-23e: U2",
       "status": "done"
+    },
+    {
+      "id": "T142",
+      "title": "Pin the AC-09b skip reasons and note texts for no picture, access denied and unreadable through the session",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-09b"
+      ],
+      "dod": "New theory in `PlaybackSessionFileChangeTests` with `rig.Pictures.Fail(<Episode-02>, code, …)`: `video.no_picture` → reason `no-picture` and note `\"Skipped Episode-02.mkv: no picture\"`; `playback.file_access_denied` → `access-denied` and `\"Skipped Episode-02.mkv: access denied\"`; `playback.file_unreadable` → `unreadable` and `\"Skipped Episode-02.mkv: file cannot be read\"`; each asserts `FileSkipped.Reason` and the exact `NoteShown` text with `NoteStyle.Warning`.; With `SkipText` \"no picture\"/\"access denied\" changed, or `ReasonOf` mapping `playback.file_access_denied` to `unreadable` (scratch copy), the theory fails.; `TerminalPrinterRawLineTests` pins `skipped  X.mkv  reason access-denied`.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionFileChangeTests.cs",
+        "tests/DualPlayer.App.Tests/Startup/TerminalPrinterRawLineTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T142-pin-the-ac-09b-skip-reasons-and-note-texts-through-the-session.md",
+      "origin": "review-2026-11-23f: W1",
+      "status": "todo"
+    },
+    {
+      "id": "T143",
+      "title": "Pin the plain-words no-picture message of the picture probe",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-02"
+      ],
+      "dod": "`FfmpegPictureProbeTests.Probe_reports_no_picture_for_a_file_with_audio_only` asserts the message contains `\"has no picture\"`; with the text at `FfmpegPictureProbe.cs:164` changed (scratch copy) it fails.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Media.Tests/Video/FfmpegPictureProbeTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T143-pin-the-plain-words-no-picture-message-of-the-picture-probe.md",
+      "origin": "review-2026-11-23f: W2",
+      "status": "todo"
+    },
+    {
+      "id": "T144",
+      "title": "Cite the T142 and T143 tests in test-plan",
+      "layer": "docs",
+      "deps": [
+        "T142",
+        "T143"
+      ],
+      "acs": [
+        "AC-02",
+        "AC-09b"
+      ],
+      "dod": "test-plan.md rows 74–75 (AC-09b) cite the T142 session theory and the access-denied terminal line test; the AC-02 no-picture row cites the strengthened probe test.; Every test name cited in test-plan.md exists under the cited class (grep check)",
+      "files_hint": [
+        "docs/features/lip-synced-video/test-plan.md"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T144-cite-the-t142-and-t143-tests-in-test-plan.md",
+      "origin": "review-2026-11-23f: W1",
+      "status": "todo"
     }
   ]
 }
