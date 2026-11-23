@@ -340,12 +340,16 @@ internal sealed class SessionRig : IDisposable
     }
 }
 
-/// <summary>Lists tracks per file name (unscripted files have audio tracks 1 and 2); never decodes.</summary>
+/// <summary>Lists tracks per file name (unscripted files have audio tracks 1 and 2, a failed file returns its error); never decodes.</summary>
 internal sealed class TrackListingDecoder : IAudioDecoder
 {
     private readonly Dictionary<string, int[]> _tracks = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Error> _failures = new(StringComparer.Ordinal);
 
     public void Script(string fileName, params int[] trackNumbers) => _tracks[fileName] = trackNumbers;
+
+    /// <summary>Makes <see cref="ListTracks"/> of <paramref name="fileName"/> fail the way the real decoder reports it.</summary>
+    public void Fail(string fileName, string code, string message) => _failures[fileName] = new Error(code, message);
 
     /// <summary>When set, runs at the start of every <see cref="ListTracks"/> (a test can block a command there).</summary>
     public Action? BeforeList { get; set; }
@@ -353,6 +357,11 @@ internal sealed class TrackListingDecoder : IAudioDecoder
     public Result<IReadOnlyList<AudioTrackInfo>> ListTracks(string path)
     {
         BeforeList?.Invoke();
+        if (_failures.TryGetValue(Path.GetFileName(path), out var failure))
+        {
+            return Result<IReadOnlyList<AudioTrackInfo>>.Failure(failure);
+        }
+
         var numbers = _tracks.TryGetValue(Path.GetFileName(path), out var scripted) ? scripted : [1, 2];
         return Result<IReadOnlyList<AudioTrackInfo>>.Success([.. numbers.Select(n => new AudioTrackInfo(n, "und", ChannelLayout.Stereo, 48_000))]);
     }

@@ -139,6 +139,21 @@ public sealed class PlaybackSessionFileChangeTests : IDisposable
         Path.GetFileName(rig.Events.OfType<FileChanged>().ShouldHaveSingleItem().File).ShouldBe("Episode-03.mkv");
     }
 
+    [Theory]
+    [InlineData("playback.file_access_denied", "access-denied", "Skipped Episode-02.mkv: access denied")]
+    [InlineData("playback.file_unreadable", "unreadable", "Skipped Episode-02.mkv: file cannot be read")]
+    public void A_file_whose_track_listing_fails_is_skipped_with_the_decoders_reason_and_a_warning_note_AC_09b(string code, string reason, string note)
+    {
+        using var rig = PlayingRig("Episode-01.mkv", "Episode-02.mkv", "Episode-03.mkv");
+        rig.Decoder.Fail("Episode-02.mkv", code, "no");
+
+        rig.Engine.Call(() => rig.Session.NextFile());
+
+        rig.Events.OfType<FileSkipped>().ShouldHaveSingleItem().Reason.ShouldBe(reason);
+        rig.Events.OfType<NoteShown>().ShouldContain(n => n.Style == NoteStyle.Warning && n.Text == note);
+        Path.GetFileName(rig.Events.OfType<FileChanged>().ShouldHaveSingleItem().File).ShouldBe("Episode-03.mkv");
+    }
+
     [Fact]
     public void Several_skipped_files_end_in_one_note_naming_the_last_and_the_count_AC_09b()
     {
