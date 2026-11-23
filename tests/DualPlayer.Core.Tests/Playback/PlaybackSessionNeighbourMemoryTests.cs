@@ -446,6 +446,7 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
 
         private readonly Lock _gate = new();
         private readonly ManualResetEventSlim _release = new();
+        private readonly CancellationTokenSource _releaseToken = new(); // cancelled with _release: a spinning fake stops with the test
         private readonly HashSet<string> _outlasting = new(StringComparer.Ordinal);
         private readonly HashSet<string> _heldBusy = new(StringComparer.Ordinal);
         private readonly Dictionary<string, (TimeSpan Cost, string? Code)> _behaviours = new(StringComparer.Ordinal);
@@ -530,7 +531,11 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         }
 
         /// <summary>Lets the workers held by <see cref="SlowPastItsLimitOutlastingTheGrace"/> and <see cref="AdapterShapedOutlastingTheGrace"/> end.</summary>
-        public void ReleaseWorkers() => _release.Set();
+        public void ReleaseWorkers()
+        {
+            _release.Set();
+            _releaseToken.Cancel();
+        }
 
         public bool IsBusy(string path)
         {
@@ -667,8 +672,12 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
                         // The clock stands still from the cancel until this thread spends fake time: let the session read it for its
                         // grace first (its second read in the grace follows the one that fixes the grace's end), so the grace ends
                         // exactly 50 ms after the instant this wind-down starts from.
-                        watch.WaitForReads(0, 2, _release, FailAfter);
-                        time.SpinUntil(time.GetTimestamp() + (long)(OutlastsTheGrace.TotalSeconds * time.TimestampFrequency), CancellationToken.None);
+                        if (!watch.WaitForReads(0, 2, _release, FailAfter))
+                        {
+                            return Result<PictureInfo>.Failure("video.probe_timeout", "The probe was cancelled."); // the test is over
+                        }
+
+                        time.SpinUntil(time.GetTimestamp() + (long)(OutlastsTheGrace.TotalSeconds * time.TimestampFrequency), _releaseToken.Token);
                         _release.Wait(FailAfter); // closes the file only when the test says so
                     }
                     else if (winds)
@@ -676,9 +685,13 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
                         // Wind-down inside the grace: the worker may end only once the session, still waiting in its grace, has polled
                         // the clock at or after the wind-down's end several times. A session whose grace is shorter than the wind-down
                         // stops waiting at the first such read, so it never polls that often and its worker is still kept.
-                        watch.WaitForReads(0, 2, _release, FailAfter);
+                        if (!watch.WaitForReads(0, 2, _release, FailAfter))
+                        {
+                            return Result<PictureInfo>.Failure("video.probe_timeout", "The probe was cancelled."); // the test is over
+                        }
+
                         var windDownEnd = time.GetTimestamp() + (long)(windDown.TotalSeconds * time.TimestampFrequency);
-                        time.SpinUntil(windDownEnd, CancellationToken.None); // closes the file after the cancel, on fake time
+                        time.SpinUntil(windDownEnd, _releaseToken.Token); // closes the file after the cancel, on fake time
                         watch.WaitForReads(windDownEnd, PollsInsideTheGrace, _release, FailAfter);
                     }
                     else

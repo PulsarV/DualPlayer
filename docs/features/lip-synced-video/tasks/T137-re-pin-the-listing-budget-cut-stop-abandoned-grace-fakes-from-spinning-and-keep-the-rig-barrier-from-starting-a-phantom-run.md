@@ -6,8 +6,8 @@ deps: []
 blocks: ["T138", "T23"]
 acs: ["AC-08", "AC-09b"]
 files_hint: ["tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourBudgetTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourMemoryTests.cs", "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs", "tests/DualPlayer.Core.Tests/Fakes/RigLoopsTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -33,8 +33,8 @@ See [spec.md](../spec.md) §5 AC-08, AC-09b.
 
 ## Definition of Done
 
-- [ ] In `A_track_listing_that_blocks_past_the_budget…` the listing fake waits on its gate with a short bound (about 5 s) and records `gateTimedOut`; the test asserts it is 0 after the press. With the budget check at `PlaybackSession.cs:879` disabled (scratch copy) the test fails; as is it passes.
-- [ ] The grace fakes in PlaybackSessionNeighbourMemoryTests return as soon as `WaitForReads` returns false, and their `SpinUntil` calls take a token tied to `_release`; with the grace set to 0 (scratch copy) the test fails on its own assertion, not on the 10 s neighbour-worker timeout. The comments at :303 and :321 stay true.
-- [ ] The strict rig barrier checks the run is still active without calling `StartRun(string.Empty, [])` (as the `EndsAllowed` path does), or the final assertion of `The_engine_rig_barrier_fails_once_the_run_has_ended…` no longer depends on a phantom run.
-- [ ] The neighbour and rig tests (`--filter "FullyQualifiedName~Neighbour|FullyQualifiedName~RigLoops"`) pass 20 runs with 3 processes in parallel, each process using its own build output (0 RigLoops failures).
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] In `A_track_listing_that_blocks_past_the_budget…` the listing fake waits on its gate with a short bound (about 5 s) and records `gateTimedOut`; the test asserts it is 0 after the press. With the budget check at `PlaybackSession.cs:879` disabled (scratch copy) the test fails; as is it passes. *(Mutant failure: `gateTimedOut should be 0 but was 1`.)*
+- [x] The grace fakes in PlaybackSessionNeighbourMemoryTests return as soon as `WaitForReads` returns false, and their `SpinUntil` calls take a token tied to `_release`; with the grace set to 0 (scratch copy) the test fails on its own assertion, not on the 10 s neighbour-worker timeout. The comments at :303 and :321 stay true. *(Grace 0: both "inside the grace" tests fail in 133–221 ms on `FileChanged` being Episode-04, not Episode-03.)*
+- [x] The strict rig barrier checks the run is still active without calling `StartRun(string.Empty, [])` (as the `EndsAllowed` path does), or the final assertion of `The_engine_rig_barrier_fails_once_the_run_has_ended…` no longer depends on a phantom run. *(The strict barrier now asserts `Engine.PositionErrors()` is not empty, which goes through the engine's loop and never starts a run. Cause inferred from code, not reproduced: on the fake decoder, the old probe start succeeds once the run has ended and leaves a phantom run behind.)*
+- [x] The neighbour and rig tests (`--filter "FullyQualifiedName~Neighbour|FullyQualifiedName~RigLoops"`) pass 20 runs with 3 processes in parallel, each process using its own build output (0 RigLoops failures). *(0 of 60.)*
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

@@ -139,17 +139,22 @@ public sealed class PlaybackSessionNeighbourBudgetTests : IDisposable
         // until the test lets it go: a listing that never comes back.
         var release = new ManualResetEventSlim(); // not disposed: the abandoned worker may still be waiting on it
         using var releaseOnExit = new Defer(release.Set);
+        var gateTimedOut = 0;
         rig.Decoder.BeforeList = () =>
         {
             var end = rig.Engine.Time.GetTimestamp() + (long)((Budget + TimeSpan.FromMilliseconds(50)).TotalSeconds * rig.Engine.Time.TimestampFrequency);
             rig.Engine.Time.SpinUntil(end);
-            release.Wait(TimeSpan.FromSeconds(30));
+            if (!release.Wait(TimeSpan.FromSeconds(5)))
+            {
+                Volatile.Write(ref gateTimedOut, 1); // the press was still waiting for this listing after 5 s of real time
+            }
         };
 
         var key = rig.Engine.Time.GetUtcNow();
         rig.Engine.Call(() => rig.Session.NextFile());
         var elapsed = rig.Engine.Time.GetUtcNow() - key;
 
+        Volatile.Read(ref gateTimedOut).ShouldBe(0, "the press waited for a listing that never came back, until it was let go");
         elapsed.ShouldBeLessThanOrEqualTo(Budget + TimeSpan.FromMilliseconds(250), "the press waited for a listing that never came back within the budget");
         var timedOut = rig.Events.OfType<NeighbourSearchTimedOut>().ShouldHaveSingleItem();
         timedOut.Next.ShouldBeTrue();

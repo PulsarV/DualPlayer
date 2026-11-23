@@ -329,10 +329,10 @@ internal sealed class EngineRig : IDisposable
             return;
         }
 
-        // Strict (step 3): the run must still be active; a refused start proves it and waits for the loop.
-        var refused = Engine.StartRun(string.Empty, [], new EngineOptions());
-        refused.IsSuccess.ShouldBeFalse($"the run is no longer active; it ended with {Summary?.EndReason.ToString() ?? "no summary"} at {Summary?.ClockPosition}");
-        refused.Error.Code.ShouldBe("playback.run_active");
+        // Strict (step 3): the run must still be active. The same round trip through the engine's loop, which answers with the
+        // outputs of the current run (none once the run has ended, pre-roll included while it runs). No start is attempted: a probe
+        // start of an ended run would succeed on the fake decoder and leave a phantom run behind.
+        Engine.PositionErrors().ShouldNotBeEmpty($"the run is no longer active; it ended with {Summary?.EndReason.ToString() ?? "no summary"} at {Summary?.ClockPosition}");
     }
 
     /// <summary>Waits for <paramref name="condition"/>; once it holds, also for <see cref="AfterStep"/> (what the session still has to handle).</summary>
