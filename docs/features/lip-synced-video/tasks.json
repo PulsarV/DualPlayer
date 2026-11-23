@@ -3473,7 +3473,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T148-pin-the-window-bound-renderers-handle-timeout-and-event-forwarding.md",
       "origin": "review-2026-11-23h: Y1, Y2",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T149",
