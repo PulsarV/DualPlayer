@@ -108,8 +108,7 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
     private bool _delayLogged;
     private volatile bool _disposed;
     private nint _windowHandle;
-    private NoteStyle? _appliedNoteStyle;
-    private bool _noteLayoutApplied;
+    private NoteState _noteState = new(LayoutApplied: false, AppliedStyle: null);
 
     // Written by the event thread only (reset there when a file starts); read lock-free by the control loop.
     private volatile PresentedPicture? _presented;
@@ -470,15 +469,22 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
             }
 
             // Every call is a queued (non-blocking) one.
-            foreach (var command in NoteCommands(_noteStyle, text, style, _noteLayoutApplied, _appliedNoteStyle))
+            var (commands, next) = NextNote(_noteStyle, text, style, _noteState);
+            foreach (var command in commands)
             {
                 RunCommandAsync(_handle, command);
             }
 
-            _noteLayoutApplied = true;
-            _appliedNoteStyle = style;
+            _noteState = next;
         }
     }
+
+    /// <summary>What ShowNote remembers between notes: whether the layout options were sent and the style of the last note.</summary>
+    public readonly record struct NoteState(bool LayoutApplied, NoteStyle? AppliedStyle);
+
+    /// <summary>The commands that show a note given the <paramref name="state"/> so far, and the state after them (pure).</summary>
+    public static (IReadOnlyList<string[]> Commands, NoteState State) NextNote(OsdNoteStyle style, string text, NoteStyle note, NoteState state)
+        => (NoteCommands(style, text, note, state.LayoutApplied, state.AppliedStyle), new NoteState(LayoutApplied: true, AppliedStyle: note));
 
     /// <summary>
     /// The mpv commands that show <paramref name="text"/> as a <paramref name="note"/> note, in order (pure): the layout

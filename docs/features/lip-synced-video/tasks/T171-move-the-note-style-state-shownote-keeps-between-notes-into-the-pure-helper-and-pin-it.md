@@ -6,8 +6,8 @@ deps: []
 blocks: ["T23", "T173"]
 acs: ["AC-06b", "AC-08", "AC-09", "AC-09b", "AC-10", "AC-11", "AC-15", "AC-15b"]
 files_hint: ["src/DualPlayer.Media/Video/MpvVideoRenderer.cs", "tests/DualPlayer.Media.Tests/Video/MpvVideoRendererTests.cs"]
-status: "todo"
-step: "SELECT"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,8 +31,8 @@ See [spec.md](../spec.md) §5 AC-06b, AC-08, AC-09, AC-09b, AC-10, AC-11, AC-15,
 
 ## Definition of Done
 
-- [ ] The state transition lives in a pure helper: given the current `(layoutApplied, appliedStyle)`, the style options, the text and the note style, it returns the commands **and** the next state; `ShowNote` only runs the returned commands and stores the returned state.
-- [ ] New tests over a sequence Warning → Info → Info: the warning sends `set osd-color #FFFFD400`, the following info note sends `set osd-color <foreground>`, the third sends only `show-text`; layout `set`s only on the first note.
-- [ ] Mutants on a scratch copy, each failing at least one new test: the next applied style always `Info`; the next applied style never updated; layout never marked applied.
-- [ ] `ShowNote` keeps the `_handle == 0` guard and the lock; no other behaviour change.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The state transition lives in a pure helper: given the current `(layoutApplied, appliedStyle)`, the style options, the text and the note style, it returns the commands **and** the next state; `ShowNote` only runs the returned commands and stores the returned state. *(Added public readonly record struct NoteState and static NextNote(style, text, note, state) returning (Commands, State); ShowNote runs the commands and stores the state, replacing the two fields with one _noteState)*
+- [x] New tests over a sequence Warning → Info → Info: the warning sends `set osd-color #FFFFD400`, the following info note sends `set osd-color <foreground>`, the third sends only `show-text`; layout `set`s only on the first note. *(3 new tests (Warning -> Info -> Info sequence, state after a note, info after a warning not yellow) pass; they assert the osd-color #FFFFD400 and #FFEEEEEE sends, layout only on the first note, show-text only on the third)*
+- [x] Mutants on a scratch copy, each failing at least one new test: the next applied style always `Info`; the next applied style never updated; layout never marked applied. *(3 mutants (next style always Info, never updated, layout never marked applied) each fail 2-3 new tests; reverted from backup, diff clean)*
+- [x] `ShowNote` keeps the `_handle == 0` guard and the lock; no other behaviour change. *(ShowNote keeps the _handle == 0 guard and the lock; NoteCommands unchanged; no other behaviour change)*
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean *(build 0 warnings 0 errors; dotnet test DualPlayer.slnx all pass; format --verify-no-changes exit 0)*

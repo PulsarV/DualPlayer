@@ -167,6 +167,45 @@ public sealed class MpvVideoRendererTests
         commands.ShouldBe(["show-text Paused 2000"]);
     }
 
+    // The state ShowNote keeps between notes lives in the pure helper: NextNote(style, text, note, state) returns the
+    // commands to run and the state to store. Warning -> Info -> Info is the sequence the screens show (SCR-03).
+    private static readonly MpvVideoRenderer.NoteState NoNoteYet = new(LayoutApplied: false, AppliedStyle: null);
+
+    [Fact]
+    public void A_warning_then_an_info_note_then_another_info_note_sends_the_layout_once_and_the_colour_only_on_a_style_change_AC_06b_AC_08_AC_09_AC_09b_AC_10_AC_11_AC_15_AC_15b()
+    {
+        var layout = MpvVideoRenderer.NoteOptions(CommandStyle).Select(o => $"set {o.Key} {o.Value}");
+
+        var first = MpvVideoRenderer.NextNote(CommandStyle, "Output 2 lost", NoteStyle.Warning, NoNoteYet);
+        var second = MpvVideoRenderer.NextNote(CommandStyle, "Output 2 back", NoteStyle.Info, first.State);
+        var third = MpvVideoRenderer.NextNote(CommandStyle, "Paused", NoteStyle.Info, second.State);
+
+        Joined(first.Commands).ShouldBe([.. layout, "set osd-color #FFFFD400", "show-text Output 2 lost 2000"]);
+        Joined(second.Commands).ShouldBe(["set osd-color #FFEEEEEE", "show-text Output 2 back 2000"]);
+        Joined(third.Commands).ShouldBe(["show-text Paused 2000"]);
+    }
+
+    [Fact]
+    public void The_state_after_a_note_is_the_layout_applied_and_the_style_of_that_note_AC_06b_AC_08_AC_09_AC_09b_AC_10_AC_11_AC_15_AC_15b()
+    {
+        var afterWarning = MpvVideoRenderer.NextNote(CommandStyle, "Output 2 lost", NoteStyle.Warning, NoNoteYet).State;
+        var afterInfo = MpvVideoRenderer.NextNote(CommandStyle, "Paused", NoteStyle.Info, afterWarning).State;
+
+        afterWarning.ShouldBe(new MpvVideoRenderer.NoteState(LayoutApplied: true, AppliedStyle: NoteStyle.Warning));
+        afterInfo.ShouldBe(new MpvVideoRenderer.NoteState(LayoutApplied: true, AppliedStyle: NoteStyle.Info));
+    }
+
+    [Fact]
+    public void An_info_note_after_a_warning_is_not_left_yellow_AC_06b_AC_08_AC_09_AC_09b_AC_10_AC_11_AC_15_AC_15b()
+    {
+        var warning = MpvVideoRenderer.NextNote(CommandStyle, "Output 2 lost", NoteStyle.Warning, new(LayoutApplied: true, AppliedStyle: NoteStyle.Info));
+        var info = MpvVideoRenderer.NextNote(CommandStyle, "Paused", NoteStyle.Info, warning.State);
+
+        Joined(warning.Commands).ShouldContain("set osd-color #FFFFD400");
+        Joined(info.Commands).ShouldContain("set osd-color #FFEEEEEE");
+        Joined(info.Commands).ShouldNotContain("set osd-color #FFFFD400");
+    }
+
     [Fact]
     public void A_dollar_in_the_note_text_is_doubled_so_mpv_does_not_expand_it()
     {
