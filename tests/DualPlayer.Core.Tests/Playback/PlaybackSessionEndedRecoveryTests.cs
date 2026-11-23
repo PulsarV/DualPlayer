@@ -113,7 +113,9 @@ public sealed class PlaybackSessionEndedRecoveryTests : IDisposable
         rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-10)));
 
         rig.Session.State.ShouldBe(PlaybackState.Ended, "a failed return into the film leaves the film ended, not idle");
-        rig.Events.OfType<NoteShown>().Count().ShouldBeGreaterThan(notesBefore, "the failed return says why");
+        rig.Events.OfType<NoteShown>().Skip(notesBefore).ShouldContain(
+            n => n.Style == NoteStyle.Warning && n.Text.StartsWith("Could not go back: ", StringComparison.Ordinal),
+            "the failed return says why (SCR-03)");
     }
 
     [Fact]
@@ -182,7 +184,9 @@ public sealed class PlaybackSessionEndedRecoveryTests : IDisposable
 
         rig.Session.State.ShouldBe(PlaybackState.Ended);
         rig.EngineStartPositions.Count.ShouldBe(1, "no audio without a picture");
-        rig.Events.OfType<NoteShown>().Count().ShouldBeGreaterThan(notesBefore);
+        rig.Events.OfType<NoteShown>().Skip(notesBefore).ShouldContain(
+            n => n.Style == NoteStyle.Warning && n.Text == "Could not go back: mpv could not open the file.",
+            "the failed reload says why (SCR-03)");
     }
 
     // Output 1 is lost early and stays unlisted; output 2 carries on alone, is lost too (AC-15b), then comes back.
@@ -239,6 +243,8 @@ public sealed class PlaybackSessionEndedRecoveryTests : IDisposable
         rig.Engine.Call(() => rig.Session.Seek(TimeSpan.FromSeconds(-10)));
 
         rig.Session.State.ShouldBe(PlaybackState.Ended);
-        rig.Events.OfType<NoteShown>().Count().ShouldBeGreaterThan(notesBefore);
+        rig.Events.OfType<NoteShown>().Skip(notesBefore).ShouldContain(
+            n => n.Style == NoteStyle.Warning && n.Text.StartsWith("Could not go back: ", StringComparison.Ordinal),
+            "the failed return says why (SCR-03)");
     }
 }

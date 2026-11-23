@@ -310,8 +310,8 @@ internal sealed class EngineRig : IDisposable
     }
 
     /// <summary>
-    /// Waits until the engine has handled everything queued so far (a start while running is refused on the loop), then
-    /// runs <see cref="AfterStep"/>.
+    /// Waits until the engine has handled everything queued so far (a round trip through the engine's loop; strict: the run
+    /// must still be active), then runs <see cref="AfterStep"/>.
     /// </summary>
     public void Barrier()
     {

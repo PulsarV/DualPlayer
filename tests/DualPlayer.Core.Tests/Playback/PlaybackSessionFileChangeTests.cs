@@ -261,7 +261,7 @@ public sealed class PlaybackSessionFileChangeTests : IDisposable
         rig.Engine.Call(() => rig.Session.NextFile()).IsSuccess.ShouldBeFalse();
 
         rig.Session.State.ShouldBe(PlaybackState.Ended);
-        rig.Events.OfType<NoteShown>().ShouldContain(n => n.Style == NoteStyle.Warning && n.Text.Contains("Episode 2.mkv"));
+        rig.Events.OfType<NoteShown>().ShouldContain(n => n.Style == NoteStyle.Warning && n.Text == "Could not play Episode 2.mkv: mpv could not open the file.");
         rig.Engine.Call(() => rig.Session.Pause()).IsSuccess.ShouldBeTrue("keys after a failed file change must not answer 'no film is playing'");
     }
 

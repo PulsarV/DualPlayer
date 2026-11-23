@@ -6,8 +6,8 @@ deps: []
 blocks: ["T141", "T23"]
 acs: ["AC-05", "AC-06b", "AC-07", "AC-15b"]
 files_hint: ["tests/DualPlayer.Core.Tests/Playback/PlaybackSessionEndedRecoveryTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionFileChangeTests.cs", "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -32,7 +32,7 @@ See [spec.md](../spec.md) §5 AC-05, AC-06b, AC-07, AC-15b.
 
 ## Definition of Done
 
-- [ ] `PlaybackSessionEndedRecoveryTests` at :116, :185 and :242 assert the new note starts with `"Could not go back: "` and has the warning style; with the text at `PlaybackSession.cs:1407` changed to `"Output 9 lost"` (scratch copy) they fail.
-- [ ] `PlaybackSessionFileChangeTests` at :264 asserts the exact note `"Could not play Episode 2.mkv: mpv could not open the file."`; with the text at `PlaybackSession.cs:682` changed to `$"Skipped {file}"` (scratch copy) it fails.
-- [ ] The `Barrier()` doc comment at `EngineRig.cs:313` describes the strict check as a round trip through the engine's loop that requires the run to still be active, with no mention of a probe start.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `PlaybackSessionEndedRecoveryTests` at :116, :185 and :242 assert the new note starts with `"Could not go back: "` and has the warning style; with the text at `PlaybackSession.cs:1407` changed to `"Output 9 lost"` (scratch copy) they fail. *(Mutant "Output 9 lost": all three fail.)*
+- [x] `PlaybackSessionFileChangeTests` at :264 asserts the exact note `"Could not play Episode 2.mkv: mpv could not open the file."`; with the text at `PlaybackSession.cs:682` changed to `$"Skipped {file}"` (scratch copy) it fails. *(Mutant $"Skipped {file}": it fails.)*
+- [x] The `Barrier()` doc comment at `EngineRig.cs:313` describes the strict check as a round trip through the engine's loop that requires the run to still be active, with no mention of a probe start.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean *(Build 0 warnings; tests Core 621, Media 174, Console 151, App 166, Windows 41, MacOS 12 passed; format clean.)*
