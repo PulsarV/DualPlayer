@@ -3769,7 +3769,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T162-run-the-start-command-through-a-testable-program-run-and-pin-the-start-clock-and-the-refusal-exit-code.md",
       "origin": "review-2026-11-23j: AB1",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T163",
