@@ -9,6 +9,7 @@ using DualPlayer.App.Views;
 using DualPlayer.Core;
 using DualPlayer.Core.Outputs;
 using DualPlayer.Core.Playback;
+using DualPlayer.Core.Settings;
 using DualPlayer.Core.Tests.Fakes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -163,6 +164,57 @@ public sealed class AppEntryTests
         stderr.ShouldContain("error outputs.device_not_found");
     }
 
+    // T134 (review-2026-11-23c W7): Esc pressed while a start is running waits behind that start in the session's loop and
+    // acts when the start returns. A failed start still prints its error and exits 2; the posted close must not shut the
+    // application down with 0 before the start worker has set the exit code. The start is held inside the session (an
+    // unreadable offsets file publishes a warning, and the subscriber below blocks on it), so Esc is queued behind it.
+    // The race itself needs a seam: App.Play's optional `afterStart` runs on the start worker right after session.Start
+    // returns, before the worker reads the closing flag and sets the exit code. Here it holds the worker until the UI
+    // thread has handled Exited (the window closed) or one second has passed (the close then waits for the worker).
+    [Fact]
+    public void Esc_pressed_during_a_start_that_fails_still_prints_the_error_and_exits_2_AC_02_AC_06()
+    {
+        using var rig = new SessionRig(TwoDevices, null, 600, stored: Result<DeviceOffsets>.Failure("state.unreadable", "offsets file unreadable"));
+        using var controls = new PlaybackControls(rig.Session, NullLogger<PlaybackControls>.Instance, rig.Engine.Time);
+        var desktop = Substitute.For<IClassicDesktopStyleApplicationLifetime>();
+        var services = PlayServices(rig, controls);
+        var validated = new ValidatedStart(FilePath, new PictureInfo("h264", "High", 1920, 1080), [new ResolvedOutput(1, "no-such-device")], MainScreen);
+        using var startHeld = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        using var windowClosed = new ManualResetEventSlim();
+        using var holdOnWarning = rig.Session.Events.Subscribe(new HoldingObserver(startHeld, release));
+
+        var stderr = CaptureConsole(() =>
+        {
+            PlaybackWindow? window = null;
+            HeadlessApp.Run(() =>
+            {
+                window = new PlaybackWindow { DataContext = services.GetRequiredService<PlaybackViewModel>() };
+                window.Closed += (_, _) => windowClosed.Set();
+                App.Play(
+                    desktop,
+                    services,
+                    new StartRequest(FilePath, [], null),
+                    validated,
+                    NullLogger.Instance,
+                    () => window,
+                    afterStart: () => windowClosed.Wait(TimeSpan.FromSeconds(1)));
+                window.RaiseVideoHandleCreated(1);
+                startHeld.Wait(TimeSpan.FromSeconds(10)).ShouldBeTrue("the start never reached the held point");
+
+                controls.Exit();
+                Thread.Sleep(200); // Esc reaches the session's loop and waits there behind the held start
+                release.Set();
+
+                PumpUntilShutdown(desktop).ShouldBeTrue("the failed start never shut the application down");
+            });
+        }).Error;
+
+        desktop.Received(1).Shutdown(2);
+        desktop.DidNotReceive().Shutdown(0);
+        stderr.ShouldContain("error outputs.device_not_found");
+    }
+
     // Closing the window without Esc (the OS, Alt+F4) must end the session like Esc: the run summary is
     // printed and the exit code is 0. Esc alone would hide a Closed handler that forgets to end the session.
     [Fact]
@@ -284,6 +336,27 @@ public sealed class AppEntryTests
         }
 
         return (output.ToString(), error.ToString());
+    }
+
+    // Blocks the session's loop on the first offsets warning (published inside Start) until released.
+    private sealed class HoldingObserver(ManualResetEventSlim held, ManualResetEventSlim release) : IObserver<SessionEvent>
+    {
+        public void OnNext(SessionEvent value)
+        {
+            if (value is OffsetsWarning)
+            {
+                held.Set();
+                release.Wait(TimeSpan.FromSeconds(10));
+            }
+        }
+
+        public void OnError(Exception error)
+        {
+        }
+
+        public void OnCompleted()
+        {
+        }
     }
 
     private sealed class FailingProbe(Error error) : IPictureProbe

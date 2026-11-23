@@ -84,7 +84,8 @@ public partial class App : Application
         StartRequest request,
         ValidatedStart validated,
         ILogger log,
-        Func<PlaybackWindow>? createWindow = null)
+        Func<PlaybackWindow>? createWindow = null,
+        Action? afterStart = null)
     {
         var session = services.GetRequiredService<PlaybackSession>();
         var controls = services.GetRequiredService<PlaybackControls>();
@@ -106,55 +107,113 @@ public partial class App : Application
         var window = createWindow?.Invoke() ?? new PlaybackWindow { DataContext = services.GetRequiredService<PlaybackViewModel>() };
         window.PlaceOnScreen(validated.Screen.Number);
 
+        // The UI thread (Exited, Closed) and the start worker both touch this state, so it is read and written under `gate`.
+        var gate = new object();
         var exitCode = 0;
         var closing = false;
+        var startRunning = false;
+        var exitRequested = false;
+
         controls.Exited += () => Dispatcher.UIThread.Post(() =>
         {
-            if (!closing)
+            lock (gate)
             {
+                if (closing)
+                {
+                    return;
+                }
+
+                if (startRunning)
+                {
+                    // Esc acts when the start returns: the start worker closes the window, after it has set the exit code.
+                    exitRequested = true;
+                    return;
+                }
+
                 closing = true;
-                window.Close();
             }
+
+            window.Close();
         });
         window.Closed += (_, _) =>
         {
-            Volatile.Write(ref closing, true);
+            int code;
+            lock (gate)
+            {
+                closing = true;
+                code = exitCode;
+            }
+
             // Closed by the OS or Alt+F4 is the same as Esc: the session ends, the run summary prints, the exit code is 0.
             controls.ExitNow();
             sessionLog.Dispose();
             printer.Dispose();
-            desktop.Shutdown(exitCode);
+            desktop.Shutdown(code);
         };
 
         void CloseWindow() => Dispatcher.UIThread.Post(() =>
         {
-            closing = true;
+            lock (gate)
+            {
+                closing = true;
+            }
+
             window.Close();
         });
 
         window.VideoHandleCreated += handle =>
         {
             surface.Handle = handle;
+            lock (gate)
+            {
+                startRunning = true;
+            }
+
             _ = Task.Run(() =>
             {
+                var close = false;
                 try
                 {
                     // The devices as validated, by OS id: every later start (a file change) keeps them even if the list is renumbered.
                     var outputs = validated.Outputs.Select(o => new OutputAssignment(o.TrackNumber, DeviceRef.ById(o.DeviceId))).ToList();
                     var started = session.Start(new CoreStartRequest(validated.File, outputs, request.Screen) { CommandTimestamp = CommandTimestamp });
+                    afterStart?.Invoke();
 
-                    // Esc during the start posts Exit, which waits behind this start, so Esc acts once the start returns: a failed start still
-                    // reports its error (exit 2 or 4). Exit 0 with no error line is only a window the OS closed during the start (`closing`).
-                    if (StartErrors.AfterSessionStart(started, Volatile.Read(ref closing), Console.Error, log) is { } code)
+                    // Esc during the start waits behind it and the Exited handler leaves the window open until this worker is done, so a
+                    // failed start sets its exit code (2 or 4, with the error line) before the window closes. Exit 0 with no error line is
+                    // only a window the OS closed during the start (`closing`); a start that succeeded closes at once if Esc was pressed.
+                    bool windowClosing;
+                    lock (gate)
                     {
-                        exitCode = code;
-                        CloseWindow();
+                        windowClosing = closing;
+                    }
+
+                    var code = StartErrors.AfterSessionStart(started, windowClosing, Console.Error, log);
+                    lock (gate)
+                    {
+                        if (code is { } failed)
+                        {
+                            exitCode = failed;
+                        }
+
+                        startRunning = false;
+                        close = code is not null || exitRequested;
                     }
                 }
                 catch (Exception ex)
                 {
                     log.LogCritical(ex, "DualPlayer terminated unexpectedly");
-                    exitCode = 1;
+                    lock (gate)
+                    {
+                        exitCode = 1;
+                        startRunning = false;
+                    }
+
+                    close = true;
+                }
+
+                if (close)
+                {
                     CloseWindow();
                 }
             });

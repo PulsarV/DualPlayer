@@ -6,8 +6,8 @@ deps: ["T133"]
 blocks: ["T135", "T23"]
 acs: ["AC-02", "AC-06"]
 files_hint: ["src/DualPlayer.App/App.axaml.cs", "tests/DualPlayer.App.Tests/Startup/AppEntryTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,8 +31,8 @@ See [spec.md](../spec.md) §5 AC-02, AC-06.
 
 ## Definition of Done
 
-- [ ] While the session start is running, `Exited` does not close the window; once the start returns, the worker sets `exitCode` (if the start failed) and then closes the window, or, if the start succeeded and Exit was already raised, closes it with exit 0. A window closed by the OS during the start still exits 0 with no error line.
-- [ ] `exitCode` and `closing` are read and written with visibility guarantees across the worker and UI threads.
-- [ ] Test in AppEntryTests: `controls.Exit()` before `RaiseVideoHandleCreated`, with a missing device → the error line is printed and `Shutdown(2)` is called. Fails if reverted (run it repeatedly on the old code to show the race, or make the race deterministic with a hook).
-- [ ] Existing AppEntryTests for Alt+F4 / OS close during the start and Esc after a successful start still pass.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] While the session start is running, `Exited` does not close the window; once the start returns, the worker sets `exitCode` (if the start failed) and then closes the window, or, if the start succeeded and Exit was already raised, closes it with exit 0. A window closed by the OS during the start still exits 0 with no error line.
+- [x] `exitCode` and `closing` are read and written with visibility guarantees across the worker and UI threads.
+- [x] Test in AppEntryTests: `controls.Exit()` before `RaiseVideoHandleCreated`, with a missing device → the error line is printed and `Shutdown(2)` is called. Fails if reverted (run it repeatedly on the old code to show the race, or make the race deterministic with a hook). *(Without a hook the test false-passed 60/60, so `App.Play` got an internal `afterStart` seam, called right after `session.Start` returns; before the fix the test failed with `Shutdown(0)` received instead of `Shutdown(2)`.)*
+- [x] Existing AppEntryTests for Alt+F4 / OS close during the start and Esc after a successful start still pass.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

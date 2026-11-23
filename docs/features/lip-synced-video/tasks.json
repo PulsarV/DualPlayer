@@ -3181,7 +3181,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T134-close-the-window-from-the-start-worker-not-from-exited-while-a-start-is-running-so-esc-queued-during-a-failed-start-stil.md",
       "origin": "review-2026-11-23c: W7",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T135",
