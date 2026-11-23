@@ -320,14 +320,90 @@ public sealed class PlaybackSessionNeighbourWorkerTimingTests
             rig.Engine.Call(() => rig.Session.NextFile());
             held.ShouldBe(1, "the probe wrapper was never held back");
             rig.Events.OfType<FileChanged>().ShouldBeEmpty("the press chose a file although its probe wrapper had not entered");
-            release.Cancel(); // the thread starts at last: the adapter probes E2 and answers at once
-            RigLoops.WaitOrFail(() => rig.Pictures.Probed.Count == 1, TimeSpan.FromSeconds(10), "the released probe wrapper to probe the file");
+            release.Cancel(); // the thread starts at last, sees the press gave up and returns without calling the adapter (Z5)
             RigLoops.WaitForNeighbourWorkers(rig.Session);
+            rig.Pictures.Probed.ShouldBeEmpty("the late wrapper called the adapter for a file the press had already given up on");
 
             rig.Engine.Call(() => rig.Session.NextFile());
 
             rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("the file whose wrapper never entered was remembered as timed out, so the press went past it").File.ShouldBe(second);
-            rig.Pictures.Probed.ShouldBe([second, second]);
+            rig.Pictures.Probed.ShouldBe([second]);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void A_first_file_whose_listing_cut_the_probe_limit_and_whose_wrapper_never_answers_is_not_reported_skipped_AC_08()
+    {
+        var folder = Directory.CreateTempSubdirectory("dualplayer-cutfirst-").FullName;
+        using var release = new CancellationTokenSource();
+        try
+        {
+            var first = Path.Combine(folder, "Episode-01.mkv");
+            File.WriteAllBytes(first, []);
+            File.WriteAllBytes(Path.Combine(folder, "Episode-02.mkv"), []);
+            var decoder = new SlowListingDecoder(TimeSpan.FromMilliseconds(1200));
+            var probe = new NeverAnsweringProbe(release.Token);
+            using var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, neighbourDecoder: decoder, neighbourPictureProbe: probe, barrierEvery: NeighbourRig.BarrierEvery);
+            using var releaseFirst = new Defer(release.Cancel);
+            decoder.Time = rig.Engine.Time;
+            probe.Time = rig.Engine.Time;
+            rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = first })).IsSuccess.ShouldBeTrue();
+            rig.Engine.Render(300);
+
+            // E2 is the first file of the press and has the whole budget; its 1.2 s listing cuts the probe limit to 1.8 s, and the
+            // wrapper enters at once and never answers: the probe was cut short by the budget, so the file is not reported skipped.
+            rig.Engine.Call(() => rig.Session.NextFile());
+
+            probe.Probed.ShouldBe(["Episode-02.mkv"]);
+            rig.Events.OfType<FileSkipped>().ShouldBeEmpty("a file whose probe was cut short by the budget was reported skipped");
+            rig.Events.OfType<NoNeighbour>().ShouldBeEmpty("a file nobody could judge ended the press as no neighbour");
+            rig.Events.OfType<NeighbourSearchTimedOut>().ShouldHaveSingleItem("the press did not end as a search that ran out of time");
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void A_probe_wrapper_whose_thread_starts_after_the_press_gave_up_never_calls_the_adapter_AC_09b()
+    {
+        var folder = Directory.CreateTempSubdirectory("dualplayer-lateadapter-").FullName;
+        using var release = new CancellationTokenSource();
+        try
+        {
+            var first = Path.Combine(folder, "Episode-01.mkv");
+            File.WriteAllBytes(first, []);
+            File.WriteAllBytes(Path.Combine(folder, "Episode-02.mkv"), []);
+            var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600, barrierEvery: NeighbourRig.BarrierEvery);
+            using var _ = rig;
+            using var releaseFirst = new Defer(release.Cancel);
+            var time = rig.Engine.Time;
+            rig.Engine.Call(() => rig.Session.Start(rig.Request(2) with { File = first })).IsSuccess.ShouldBeTrue();
+            rig.Engine.Render(300);
+
+            var held = 0;
+            time.BeforeRead = () =>
+            {
+                if (!IsProbeWrapper() || Interlocked.Exchange(ref held, 1) == 1)
+                {
+                    return;
+                }
+
+                time.SpinUntil(time.GetTimestamp() + (long)(5 * time.TimestampFrequency), release.Token);
+            };
+
+            rig.Engine.Call(() => rig.Session.NextFile());
+            held.ShouldBe(1, "the probe wrapper was never held back");
+
+            release.Cancel(); // the wrapper's thread starts at last, after the press gave up and cancelled it
+            RigLoops.WaitForNeighbourWorkers(rig.Session);
+
+            rig.Pictures.Probed.ShouldBeEmpty("the wrapper called the adapter for a file the press had already given up on");
         }
         finally
         {

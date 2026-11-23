@@ -3059,7 +3059,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T129-keep-a-cut-first-file-probe-unreported-whether-or-not-its-wrapper-answers-and-skip-the-adapter-when-the-wrapper-starts-a.md",
       "origin": "review-2026-11-23b: Z1, Z5",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T130",

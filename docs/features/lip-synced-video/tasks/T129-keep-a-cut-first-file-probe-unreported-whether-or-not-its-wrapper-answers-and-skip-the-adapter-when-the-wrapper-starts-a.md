@@ -6,8 +6,8 @@ deps: ["T128"]
 blocks: ["T130", "T131", "T23"]
 acs: ["AC-08", "AC-09b"]
 files_hint: ["src/DualPlayer.Core/Playback/PlaybackSession.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourWorkerTimingTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -32,9 +32,9 @@ See [spec.md](../spec.md) §5 AC-08, AC-09b.
 
 ## Definition of Done
 
-- [ ] In the unanswered branch the session reports a skip only when the limit was not cut; a cut probe returns `(null, true)` with `timedOut = wholeBudget`, the same as an adapter answer at the limit; the comment at `:960-963` says so.
-- [ ] Test: a first file with a 1.2 s listing and a wrapper that never answers → no `FileSkipped`, the press ends `NeighbourSearchTimedOut`, and the file is remembered only per the whole-budget rule. Fails if reverted.
-- [ ] Before marking itself entered, the wrapper checks `cancel.IsCancellationRequested` and returns a failure without calling the adapter.
-- [ ] Test: a wrapper whose thread starts after the press gave up → the picture probe's `Probe` is never called for that file. Fails if reverted.
-- [ ] Test `PlaybackSessionNeighbourWorkerTimingTests.A_probe_wrapper_that_enters_late_on_a_cut_limit_is_given_up_on_not_judged_and_probed_again_on_the_next_press_AC_09b` (6/45 flaky before T128: an unexpected `FileSkipped(Episode-02, unreadable)`) and the neighbour + rig filter pass 20 runs with 3 processes in parallel.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] In the unanswered branch the session reports a skip only when the limit was not cut; a cut probe returns `(null, true)` with `timedOut = wholeBudget`, the same as an adapter answer at the limit; the comment at `:960-963` says so.
+- [x] Test: a first file with a 1.2 s listing and a wrapper that never answers → no `FileSkipped`, the press ends `NeighbourSearchTimedOut`, and the file is remembered only per the whole-budget rule. Fails if reverted. *(The existing never-entered test now also asserts the late wrapper does not call the adapter, and the next press probes E2 once.)*
+- [x] Before marking itself entered, the wrapper checks `cancel.IsCancellationRequested` and returns a failure without calling the adapter.
+- [x] Test: a wrapper whose thread starts after the press gave up → the picture probe's `Probe` is never called for that file. Fails if reverted.
+- [x] Test `PlaybackSessionNeighbourWorkerTimingTests.A_probe_wrapper_that_enters_late_on_a_cut_limit_is_given_up_on_not_judged_and_probed_again_on_the_next_press_AC_09b` (6/45 flaky before T128: an unexpected `FileSkipped(Episode-02, unreadable)`) and the neighbour + rig filter pass 20 runs with 3 processes in parallel.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

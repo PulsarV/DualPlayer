@@ -922,7 +922,14 @@ public sealed partial class PlaybackSession : IDisposable
         var probe = Task.Factory.StartNew(
             () =>
             {
-                Volatile.Write(ref entered, _time.GetTimestamp());
+                // A wrapper whose thread gets going after the press gave up and cancelled it never calls the adapter.
+                var now = _time.GetTimestamp();
+                if (cancel.IsCancellationRequested)
+                {
+                    return Result<PictureInfo>.Failure("video.probe_cancelled", "The press gave up before the probe started.");
+                }
+
+                Volatile.Write(ref entered, now);
                 return _pictureProbe.Probe(path, probeLimit, cancel);
             },
             CancellationToken.None,
@@ -958,16 +965,17 @@ public sealed partial class PlaybackSession : IDisposable
         if (!probe.IsCompleted)
         {
             // The wrapper has not answered: it is given up on, cancelled and kept until it ends, and the file is not judged. It is
-            // remembered as timed out (and reported skipped, like a probe that answered at its limit) only if the wrapper entered and
-            // ran its full limit, and that limit was not cut by earlier files (or this file had the press's whole budget); otherwise,
-            // one that entered late or never entered proves nothing, so it is neither remembered nor reported.
+            // remembered as timed out only if the wrapper entered and ran its full limit, and that limit was not cut by earlier files
+            // (or this file had the press's whole budget). It is reported skipped, like a probe that answered at its limit, only when
+            // the limit was not cut; a cut limit proves nothing to report, as in the answered branch. One that entered late or never
+            // entered proves nothing, so it is neither remembered nor reported.
             _workers[key] = probe;
             gaveUp = true;
             grace = new Grace(WaitsForProbe: true, CapAtPressBound: pastPressBound);
             timedOut = enteredAt != 0
                 && _time.GetElapsedTime(enteredAt) + ProbeTimingSlack >= probeLimit
                 && (!cut || wholeBudget);
-            return timedOut ? (new FileSkipped(name, ReasonOf("video.probe_timeout"), null, null), false) : (null, true);
+            return timedOut && !cut ? (new FileSkipped(name, ReasonOf("video.probe_timeout"), null, null), false) : (null, true);
         }
 
         var picture = probe.GetAwaiter().GetResult();
