@@ -6,8 +6,8 @@ deps: []
 blocks: ["T138", "T23"]
 acs: ["AC-02", "AC-06"]
 files_hint: ["src/DualPlayer.App/App.axaml.cs", "src/DualPlayer.App/Startup/StartErrors.cs", "tests/DualPlayer.App.Tests/Startup/AppEntryTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -32,9 +32,9 @@ See [spec.md](../spec.md) §5 AC-02, AC-06.
 
 ## Definition of Done
 
-- [ ] The start worker reads `closing`, calls `StartErrors.AfterSessionStart` (the error line) and writes `exitCode` / `startRunning` / `close` inside one `lock (gate)`, so `Closed` sees either the OS close first (exit 0, no error line) or the written code (2 / 4 with the line).
-- [ ] Test in AppEntryTests (the V2 repro): missing device, the stderr write posts `window.Close()` and waits for `Closed` → `Shutdown(0)` is never received with an `error` line on stderr; it fails on the current two-lock code (10 of 10 in review) and passes after the fix.
-- [ ] Test in AppEntryTests: valid devices, `controls.Exit()` while the start is held by `HoldingObserver`, then release → `Received(1).Shutdown(0)`, `run-summary … reason exit` printed, empty stderr; fails with `close = code is not null`.
-- [ ] Test in AppEntryTests: missing device, `window.Close()` while the start is held, then release → `Received(1).Shutdown(0)`, no `error` line on stderr, the "window closed during the start" log entry; fails with `windowClosing = closing && false`.
-- [ ] AppEntryTests pass 30 runs with 3 processes in parallel.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The start worker reads `closing`, calls `StartErrors.AfterSessionStart` (the error line) and writes `exitCode` / `startRunning` / `close` inside one `lock (gate)`, so `Closed` sees either the OS close first (exit 0, no error line) or the written code (2 / 4 with the line).
+- [x] Test in AppEntryTests (the V2 repro): missing device, the stderr write posts `window.Close()` and waits for `Closed` → `Shutdown(0)` is never received with an `error` line on stderr; it fails on the current two-lock code (10 of 10 in review) and passes after the fix. *(Test `A_window_closed_while_the_error_line_is_written_still_exits_2_with_the_line_AC_02_AC_06`: failed 10 of 10 before the fix with `Shutdown(0)` received. After the fix its writer's 2 s wait for `Closed` times out by design, because `Closed` waits on the lock.)*
+- [x] Test in AppEntryTests: valid devices, `controls.Exit()` while the start is held by `HoldingObserver`, then release → `Received(1).Shutdown(0)`, `run-summary … reason exit` printed, empty stderr; fails with `close = code is not null`. *(That mutant does not compile, CS0219, so `close = code is not null || (exitRequested & false)` was used. The test needed an `afterStart` hold until `Exited` has been handled; with the mutant it fails after about 10 s.)*
+- [x] Test in AppEntryTests: missing device, `window.Close()` while the start is held, then release → `Received(1).Shutdown(0)`, no `error` line on stderr, the "window closed during the start" log entry; fails with `windowClosing = closing && false`.
+- [x] AppEntryTests pass 30 runs with 3 processes in parallel. *(30/30 × 3.)*
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

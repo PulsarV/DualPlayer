@@ -215,6 +215,156 @@ public sealed class AppEntryTests
         stderr.ShouldContain("error outputs.device_not_found");
     }
 
+    // T136 (review-2026-11-23d V2): the start worker reads `closing`, prints the error line and stores the exit code. A Closed that
+    // lands between the line and the stored code used to read exit code 0 and shut down with 0 with the line already printed
+    // (cli.md section 4). Here the error line itself posts the window's close and waits for Closed, so the close lands exactly in
+    // that gap. The test's Closed handler is added after App.Play's, so it runs last: the app's handler has read the code by then.
+    // After the fix the line is written under the lock, Closed waits for the stored code, and the wait below only times out.
+    [Fact]
+    public void A_window_closed_while_the_error_line_is_written_still_exits_2_with_the_line_AC_02_AC_06()
+    {
+        using var rig = new SessionRig(TwoDevices, null, 600);
+        using var controls = new PlaybackControls(rig.Session, NullLogger<PlaybackControls>.Instance, rig.Engine.Time);
+        var desktop = Substitute.For<IClassicDesktopStyleApplicationLifetime>();
+        var services = PlayServices(rig, controls);
+        var validated = new ValidatedStart(FilePath, new PictureInfo("h264", "High", 1920, 1080), [new ResolvedOutput(1, "no-such-device")], MainScreen);
+        using var windowClosed = new ManualResetEventSlim();
+
+        var stderr = CaptureConsole(() =>
+        {
+            PlaybackWindow? window = null;
+            Console.SetError(new AfterErrorLineWriter(Console.Error, () =>
+            {
+                Dispatcher.UIThread.Post(() => window!.Close());
+                windowClosed.Wait(TimeSpan.FromSeconds(2));
+            }));
+            HeadlessApp.Run(() =>
+            {
+                window = new PlaybackWindow { DataContext = services.GetRequiredService<PlaybackViewModel>() };
+                App.Play(desktop, services, new StartRequest(FilePath, [], null), validated, NullLogger.Instance, () => window);
+                window.Closed += (_, _) => windowClosed.Set();
+                window.RaiseVideoHandleCreated(1);
+                PumpUntilShutdown(desktop).ShouldBeTrue("the failed start never shut the application down");
+                Thread.Sleep(200); // a second Shutdown, if the code were ever reported twice, would arrive now
+                Dispatcher.UIThread.RunJobs();
+            });
+        }).Error;
+
+        stderr.ShouldContain("error outputs.device_not_found");
+        desktop.DidNotReceive().Shutdown(0);
+        desktop.Received(1).Shutdown(2);
+    }
+
+    // T136 (review-2026-11-23d V1): Esc during a start that succeeds acts when the start returns; the worker closes the window.
+    [Fact]
+    public void Esc_pressed_during_a_start_that_succeeds_closes_the_window_prints_the_run_summary_and_exits_0_AC_06()
+    {
+        var folder = Directory.CreateTempSubdirectory("dualplayer-app-entry-");
+        var file = Path.Combine(folder.FullName, "Film.mkv");
+        File.WriteAllBytes(file, []);
+        using var rig = new SessionRig(TwoDevices, null, 600, stored: Result<DeviceOffsets>.Failure("state.unreadable", "offsets file unreadable"));
+        using var controls = new PlaybackControls(rig.Session, NullLogger<PlaybackControls>.Instance, rig.Engine.Time);
+        var desktop = Substitute.For<IClassicDesktopStyleApplicationLifetime>();
+        var services = PlayServices(rig, controls);
+        var validated = new ValidatedStart(
+            file,
+            new PictureInfo("h264", "High", 1920, 1080),
+            [new ResolvedOutput(1, "dev-1"), new ResolvedOutput(2, "dev-2")],
+            MainScreen);
+        using var startHeld = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        using var exited = new ManualResetEventSlim();
+        using var holdOnWarning = rig.Session.Events.Subscribe(new HoldingObserver(startHeld, release));
+
+        try
+        {
+            var captured = CaptureConsole(() =>
+            {
+                PlaybackWindow? window = null;
+                HeadlessApp.Run(() =>
+                {
+                    window = new PlaybackWindow { DataContext = services.GetRequiredService<PlaybackViewModel>() };
+                    App.Play(
+                        desktop,
+                        services,
+                        new StartRequest(file, [], null),
+                        validated,
+                        NullLogger.Instance,
+                        () => window,
+                        afterStart: () =>
+                        {
+                            // Holds the worker until the UI thread has handled Exited (added after App.Play's handler, so its post is already
+                            // queued ahead of the no-op posted here): the window stays open and only the worker's `exitRequested` check closes it.
+                            exited.Wait(TimeSpan.FromSeconds(10));
+                            Dispatcher.UIThread.InvokeAsync(() => { }).GetTask().Wait(TimeSpan.FromSeconds(10));
+                        });
+                    controls.Exited += () => exited.Set();
+                    window.RaiseVideoHandleCreated(1);
+                    startHeld.Wait(TimeSpan.FromSeconds(10)).ShouldBeTrue("the start never reached the held point");
+
+                    controls.Exit();
+                    Thread.Sleep(200); // Esc reaches the session's loop and waits there behind the held start
+                    release.Set();
+
+                    var advancing = Task.Run(() => rig.Engine.AdvanceUntil(() => rig.Engine.Summary is not null));
+                    PumpUntilShutdown(desktop).ShouldBeTrue("Esc during the start never closed the window");
+                    advancing.GetAwaiter().GetResult().ShouldBeTrue("Esc never ended the session");
+                });
+            });
+
+            desktop.Received(1).Shutdown(0);
+            captured.Error.ShouldBeEmpty();
+            var lines = captured.Out.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(l => Regex.Replace(l.Trim(), "\\s+", " ")).ToList();
+            lines.ShouldContain("run-summary file Film.mkv reason exit", string.Join('\n', lines));
+        }
+        finally
+        {
+            folder.Delete(recursive: true);
+        }
+    }
+
+    // T136 (review-2026-11-23d V1): the OS closes the window while the start is running and the start then fails: exit 0, no
+    // error line, the abandoned start is logged (cli.md section 4). The close runs on the UI thread and waits behind the held
+    // start in the session's loop, so a worker task releases the hold.
+    [Fact]
+    public void A_window_closed_by_the_OS_during_a_start_that_fails_exits_0_without_an_error_line_and_logs_the_abandoned_start_AC_06()
+    {
+        using var rig = new SessionRig(TwoDevices, null, 600, stored: Result<DeviceOffsets>.Failure("state.unreadable", "offsets file unreadable"));
+        using var controls = new PlaybackControls(rig.Session, NullLogger<PlaybackControls>.Instance, rig.Engine.Time);
+        var desktop = Substitute.For<IClassicDesktopStyleApplicationLifetime>();
+        var services = PlayServices(rig, controls);
+        var validated = new ValidatedStart(FilePath, new PictureInfo("h264", "High", 1920, 1080), [new ResolvedOutput(1, "no-such-device")], MainScreen);
+        var log = new RecordingLogger<App>();
+        using var startHeld = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        using var holdOnWarning = rig.Session.Events.Subscribe(new HoldingObserver(startHeld, release));
+
+        var stderr = CaptureConsole(() =>
+        {
+            PlaybackWindow? window = null;
+            HeadlessApp.Run(() =>
+            {
+                window = new PlaybackWindow { DataContext = services.GetRequiredService<PlaybackViewModel>() };
+                App.Play(desktop, services, new StartRequest(FilePath, [], null), validated, log, () => window);
+                window.RaiseVideoHandleCreated(1);
+                startHeld.Wait(TimeSpan.FromSeconds(10)).ShouldBeTrue("the start never reached the held point");
+
+                _ = Task.Run(() =>
+                {
+                    Thread.Sleep(300);
+                    release.Set();
+                });
+                window.Close(); // the OS closes the window: Closed marks the close, then waits for the session to end
+                PumpUntilShutdown(desktop).ShouldBeTrue("closing the window never shut the application down");
+                SpinWait.SpinUntil(() => log.Lines.Any(l => l.Contains("The window closed during the start", StringComparison.Ordinal)), TimeSpan.FromSeconds(5));
+            });
+        }).Error;
+
+        desktop.Received(1).Shutdown(0);
+        stderr.ShouldNotContain("error");
+        log.Lines.ShouldContain(l => l.Contains("The window closed during the start", StringComparison.Ordinal));
+    }
+
     // Closing the window without Esc (the OS, Alt+F4) must end the session like Esc: the run summary is
     // printed and the exit code is 0. Esc alone would hide a Closed handler that forgets to end the session.
     [Fact]
@@ -356,6 +506,25 @@ public sealed class AppEntryTests
 
         public void OnCompleted()
         {
+        }
+    }
+
+    // Forwards to the writer it wraps; after each error line it runs `afterLine` (on the thread that wrote it).
+    private sealed class AfterErrorLineWriter(TextWriter inner, Action afterLine) : TextWriter
+    {
+        public override System.Text.Encoding Encoding => inner.Encoding;
+
+        public override void Write(char value) => inner.Write(value);
+
+        public override void Write(string? value) => inner.Write(value);
+
+        public override void WriteLine(string? value)
+        {
+            inner.WriteLine(value);
+            if (value is not null && value.StartsWith("error", StringComparison.Ordinal))
+            {
+                afterLine();
+            }
         }
     }
 

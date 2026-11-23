@@ -3235,7 +3235,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T136-decide-the-exit-code-write-the-error-line-and-store-it-under-one-lock-and-pin-esc-and-the-os-close-during-a-running-start.md",
       "origin": "review-2026-11-23d: V1, V2",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T137",

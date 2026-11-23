@@ -182,15 +182,11 @@ public partial class App : Application
                     // Esc during the start waits behind it and the Exited handler leaves the window open until this worker is done, so a
                     // failed start sets its exit code (2 or 4, with the error line) before the window closes. Exit 0 with no error line is
                     // only a window the OS closed during the start (`closing`); a start that succeeded closes at once if Esc was pressed.
-                    bool windowClosing;
+                    // The close check, the error line and the exit code are one step under the lock, so a window the OS closes meanwhile
+                    // either came first (exit 0, no line) or finds the code written (2 or 4, with the line).
                     lock (gate)
                     {
-                        windowClosing = closing;
-                    }
-
-                    var code = StartErrors.AfterSessionStart(started, windowClosing, Console.Error, log);
-                    lock (gate)
-                    {
+                        var code = StartErrors.AfterSessionStart(started, closing, Console.Error, log);
                         if (code is { } failed)
                         {
                             exitCode = failed;
