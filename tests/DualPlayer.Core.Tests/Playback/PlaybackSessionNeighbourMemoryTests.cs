@@ -284,6 +284,83 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         rig.Events.OfType<FileSkipped>().Select(e => e.File).ShouldNotContain("Episode-03.mkv", "a healthy file cut by the budget was reported as skipped");
     }
 
+    [Fact]
+    public void A_cut_neighbour_whose_worker_ends_inside_the_50_ms_grace_plays_on_a_press_queued_right_after_AC_08()
+    {
+        var (rig, probe) = PlayingRig();
+        using var _ = rig;
+        File("Episode-02.mkv");
+        var healthy = File("Episode-03.mkv");
+        File("Episode-04.mkv");
+        probe.Hang("Episode-02.mkv");
+        probe.SlowPastItsLimit("Episode-03.mkv", TimeSpan.FromMilliseconds(1500), windDown: TimeSpan.FromMilliseconds(20));
+
+        rig.Engine.Call(() => rig.Session.NextFile());
+        rig.Engine.Call(() => rig.Session.NextFile());
+
+        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("a wind-down inside the grace was kept").File.ShouldBe(healthy);
+    }
+
+    [Fact]
+    public void A_cut_neighbour_whose_worker_outlasts_the_50_ms_grace_is_stepped_past_neither_judged_nor_remembered_AC_08()
+    {
+        var (rig, probe) = PlayingRig();
+        using var _ = rig;
+        File("Episode-02.mkv");
+        var healthy = File("Episode-03.mkv");
+        var fourth = File("Episode-04.mkv");
+        probe.Hang("Episode-02.mkv");
+        probe.SlowPastItsLimit("Episode-03.mkv", TimeSpan.FromMilliseconds(1500), windDown: TimeSpan.FromMilliseconds(300));
+
+        rig.Engine.Call(() => rig.Session.NextFile());
+        rig.Engine.Call(() => rig.Session.NextFile());
+
+        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("a worker still running after the grace did not make the press step past its file").File.ShouldBe(fourth);
+        rig.Events.OfType<FileSkipped>().Where(e => e.File == "Episode-03.mkv").ShouldAllBe(e => e.Reason == "unreadable", "a file whose worker outlasted the grace was judged, not just stepped past");
+        rig.Engine.Render(50); // the wind-down ends
+        RigLoops.WaitForNeighbourWorkers(rig.Session);
+        rig.Engine.Call(() => rig.Session.PreviousFile()); // from E4: E3 first, probed again
+        rig.Events.OfType<FileChanged>().Last().File.ShouldBe(healthy, "a file whose worker outlasted the grace was remembered");
+    }
+
+    [Fact]
+    public void A_cut_neighbour_whose_adapter_worker_ends_inside_the_50_ms_grace_plays_on_a_press_queued_right_after_AC_08()
+    {
+        var (rig, probe) = PlayingRig();
+        using var _ = rig;
+        File("Episode-02.mkv");
+        var healthy = File("Episode-03.mkv");
+        File("Episode-04.mkv");
+        probe.Hang("Episode-02.mkv");
+        probe.AdapterShaped("Episode-03.mkv", TimeSpan.FromMilliseconds(1500), windDown: TimeSpan.FromMilliseconds(20));
+
+        rig.Engine.Call(() => rig.Session.NextFile());
+        rig.Engine.Call(() => rig.Session.NextFile());
+
+        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("a wind-down inside the grace was kept").File.ShouldBe(healthy);
+    }
+
+    [Fact]
+    public void A_cut_neighbour_whose_adapter_worker_outlasts_the_50_ms_grace_is_stepped_past_neither_judged_nor_remembered_AC_08()
+    {
+        var (rig, probe) = PlayingRig();
+        using var _ = rig;
+        File("Episode-02.mkv");
+        var healthy = File("Episode-03.mkv");
+        var fourth = File("Episode-04.mkv");
+        probe.Hang("Episode-02.mkv");
+        probe.AdapterShaped("Episode-03.mkv", TimeSpan.FromMilliseconds(1500), windDown: TimeSpan.FromMilliseconds(300));
+
+        rig.Engine.Call(() => rig.Session.NextFile());
+        rig.Engine.Call(() => rig.Session.NextFile());
+
+        rig.Events.OfType<FileChanged>().ShouldHaveSingleItem("a worker still running after the grace did not make the press step past its file").File.ShouldBe(fourth);
+        rig.Events.OfType<FileSkipped>().Where(e => e.File == "Episode-03.mkv").ShouldAllBe(e => e.Reason == "unreadable", "a file whose worker outlasted the grace was judged, not just stepped past");
+        rig.Engine.Render(50); // the wind-down ends
+        rig.Engine.Call(() => rig.Session.PreviousFile());
+        rig.Events.OfType<FileChanged>().Last().File.ShouldBe(healthy, "a file whose worker outlasted the grace was remembered");
+    }
+
     /// <summary>Per-file behaviour on the session's fake time; a file with none probes fine at once.</summary>
     private sealed class ScriptedProbe : IPictureProbe
     {
@@ -292,6 +369,8 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
         private readonly HashSet<string> _pastLimit = new(StringComparer.Ordinal);
         private readonly HashSet<string> _adapterShaped = new(StringComparer.Ordinal);
         private readonly Dictionary<string, long> _busyUntil = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, TimeSpan> _windDowns = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, long> _busyUntilFake = new(StringComparer.Ordinal);
 
         public TimeProvider? Time { get; set; }
 
@@ -312,11 +391,45 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
             }
         }
 
+        /// <summary>
+        /// As <see cref="AdapterShaped"/>, but the worker's wind-down after the answer is <paramref name="windDown"/> of FAKE time spent
+        /// inside a waiting scope (a helper thread holds the scope), so the rig moves the clock during the session's give-up grace.
+        /// </summary>
+        public void AdapterShaped(string name, TimeSpan cost, TimeSpan windDown)
+        {
+            AdapterShaped(name, cost);
+            lock (_gate)
+            {
+                _windDowns[name] = windDown;
+            }
+        }
+
+        /// <summary>
+        /// As <see cref="SlowPastItsLimit(string, TimeSpan)"/>, but after a cancel the probe takes <paramref name="windDown"/> of FAKE
+        /// time (inside a waiting scope) to end, instead of 200 ms of real time.
+        /// </summary>
+        public void SlowPastItsLimit(string name, TimeSpan cost, TimeSpan windDown)
+        {
+            SlowPastItsLimit(name, cost);
+            lock (_gate)
+            {
+                _windDowns[name] = windDown;
+            }
+        }
+
         public bool IsBusy(string path)
         {
             lock (_gate)
             {
-                return _busyUntil.TryGetValue(Path.GetFileName(path), out var until) && Environment.TickCount64 < until;
+                var name = Path.GetFileName(path);
+                if (_busyUntilFake.TryGetValue(name, out var untilFake))
+                {
+                    // Busy for the fake wind-down AND for a short real time: the rig moves fake time faster than real, so a grace
+                    // cut short by the clock (too short a slack) ends while the worker is still running.
+                    return Time!.GetTimestamp() < untilFake || (_busyUntil.TryGetValue(name, out var real) && Environment.TickCount64 < real);
+                }
+
+                return _busyUntil.TryGetValue(name, out var until) && Environment.TickCount64 < until;
             }
         }
 
@@ -371,9 +484,26 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
                     return Result<PictureInfo>.Success(new PictureInfo("h264", "High", 1920, 1080));
                 }
 
+                TimeSpan? fakeWindDown;
                 lock (_gate)
                 {
-                    _busyUntil[Path.GetFileName(path)] = Environment.TickCount64 + 200; // its worker winds down after the answer
+                    fakeWindDown = _windDowns.TryGetValue(Path.GetFileName(path), out var w) ? w : null;
+                    if (fakeWindDown is null)
+                    {
+                        _busyUntil[Path.GetFileName(path)] = Environment.TickCount64 + 60; // its worker winds down after the answer
+                    }
+                    else
+                    {
+                        _busyUntilFake[Path.GetFileName(path)] = clock.GetTimestamp() + (long)(fakeWindDown.Value.TotalSeconds * clock.TimestampFrequency);
+                        _busyUntil[Path.GetFileName(path)] = Environment.TickCount64 + (long)Math.Min(fakeWindDown.Value.TotalMilliseconds, 20);
+                    }
+                }
+
+                if (fakeWindDown is { } windDown)
+                {
+                    // The worker's wind-down runs on its own thread, in a waiting scope, so fake time moves while it lasts.
+                    var until = clock.GetTimestamp() + (long)(windDown.TotalSeconds * clock.TimestampFrequency);
+                    _ = Task.Factory.StartNew(() => clock.SpinUntil(until, CancellationToken.None), CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
                 }
 
                 return Result<PictureInfo>.Failure("video.probe_timeout", "The probe ran out its limit.");
@@ -382,10 +512,26 @@ public sealed class PlaybackSessionNeighbourMemoryTests : IDisposable
             if (pastLimit)
             {
                 var time = Time!;
-                time.SpinUntil(time.GetTimestamp() + (long)(behaviour.Cost.TotalSeconds * time.TimestampFrequency), cancel);
+                // Never spends fake time past the session's give-up (its limit + the 50 ms slack): the rig moves fake time while this
+                // thread waits for the CPU, so the deadline is the scope's own; then it waits in real time for the cancel.
+                var spend = TimeSpan.FromTicks(Math.Min(behaviour.Cost.Ticks, (timeLimit + TimeSpan.FromMilliseconds(50)).Ticks));
+                time.SpinUntil(time.GetTimestamp() + (long)(spend.TotalSeconds * time.TimestampFrequency), cancel);
+                if (spend < behaviour.Cost && !cancel.IsCancellationRequested)
+                {
+                    cancel.WaitHandle.WaitOne(TimeSpan.FromSeconds(10));
+                }
+
                 if (cancel.IsCancellationRequested)
                 {
-                    Thread.Sleep(200); // closes the file after the cancel
+                    if (_windDowns.TryGetValue(Path.GetFileName(path), out var windDown))
+                    {
+                        time.SpinUntil(time.GetTimestamp() + (long)(windDown.TotalSeconds * time.TimestampFrequency), CancellationToken.None); // closes the file after the cancel, on fake time
+                    }
+                    else
+                    {
+                        Thread.Sleep(200); // closes the file after the cancel
+                    }
+
                     return Result<PictureInfo>.Failure("video.probe_timeout", "The probe was cancelled.");
                 }
 

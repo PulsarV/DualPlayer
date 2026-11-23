@@ -59,8 +59,8 @@ public sealed partial class PlaybackSession : IDisposable
     private static readonly TimeSpan ProbeTimingSlack = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan MinProbeTime = TimeSpan.FromMilliseconds(100);
 
-    // At most this many 1 ms polls of the adapter's probe worker in a give-up grace, whatever the clock says (about half a second).
-    private const int MaxBusyPolls = 500;
+    // At most this many 1 ms polls of the adapter's probe worker in a give-up grace, whatever the clock says (about 100-150 ms).
+    private const int MaxBusyPolls = 100;
     private readonly HashSet<string> _lost = new(StringComparer.Ordinal);
 
     // Files whose own listing or probe ran its full, uncut limit without an answer since the film started (AC-09b); a press

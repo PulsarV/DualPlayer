@@ -316,6 +316,23 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
     }
 
     [Fact]
+    public void A_give_up_on_a_probe_worker_that_stays_busy_forever_costs_a_small_bounded_real_time_AC_08()
+    {
+        using var decoder = new ScriptedDecoder();
+        using var probe = new ScriptedProbe();
+        File("Episode-02.mkv");
+        using var rig = Playing(decoder, probe);
+        probe.Hang("Episode-02.mkv");
+        probe.StayBusyAfterTimeout("Episode-02.mkv");
+
+        var wall = System.Diagnostics.Stopwatch.StartNew();
+        Press(rig);
+        wall.Stop();
+
+        wall.Elapsed.ShouldBeLessThan(TimeSpan.FromMilliseconds(300), "the give-up grace polled a worker that never lets go 500 times on a frozen clock");
+    }
+
+    [Fact]
     public void The_probe_wrapper_runs_off_the_shared_thread_pool_and_the_chosen_file_starts_AC_09b()
     {
         using var decoder = new ScriptedDecoder();

@@ -36,4 +36,5 @@ See [spec.md](../spec.md) §5 AC-08, AC-09b.
 - [ ] Test: a first file with a 1.2 s listing and a wrapper that never answers → no `FileSkipped`, the press ends `NeighbourSearchTimedOut`, and the file is remembered only per the whole-budget rule. Fails if reverted.
 - [ ] Before marking itself entered, the wrapper checks `cancel.IsCancellationRequested` and returns a failure without calling the adapter.
 - [ ] Test: a wrapper whose thread starts after the press gave up → the picture probe's `Probe` is never called for that file. Fails if reverted.
+- [ ] Test `PlaybackSessionNeighbourWorkerTimingTests.A_probe_wrapper_that_enters_late_on_a_cut_limit_is_given_up_on_not_judged_and_probed_again_on_the_next_press_AC_09b` (6/45 flaky before T128: an unexpected `FileSkipped(Episode-02, unreadable)`) and the neighbour + rig filter pass 20 runs with 3 processes in parallel.
 - [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

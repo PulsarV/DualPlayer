@@ -6,8 +6,8 @@ deps: []
 blocks: ["T129", "T131", "T23"]
 acs: ["AC-08", "AC-17"]
 files_hint: ["tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourMemoryTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs", "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs", "tests/DualPlayer.Core.Tests/Fakes/CountingTimeProvider.cs", "tests/DualPlayer.Core.Tests/Fakes/FakeVideoRenderer.cs", "tests/DualPlayer.Core.Tests/Fakes/FakeVideoRendererTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "M"
 context_budget: "M"
@@ -33,9 +33,9 @@ See [spec.md](../spec.md) §5 AC-08, AC-17.
 
 ## Definition of Done
 
-- [ ] The wind-down fakes (the X10 fake and the adapter-shaped busy fake) spend their wind-down as fake time inside a waiting scope, so the rig moves the clock during the grace and production's 50 ms is what the tests exercise.
-- [ ] Test: a wind-down shorter than the 50 ms grace → the queued second press plays E3. Test: a wind-down longer than the grace → E3 is stepped past, neither judged nor remembered (the next press probes it again). Each fails if the grace length is changed past its side.
-- [ ] A give-up on a fake that stays busy forever costs a bounded, small real time (no 500 × `Sleep(1)` per give-up on a frozen clock).
-- [ ] The X10 fake stops at its time limit + slack (registered with the rig as its end time) and then waits in real time for the cancel, so fake time cannot run past the session's give-up while the session thread waits for the CPU. The neighbour and rig tests (`--filter "FullyQualifiedName~Neighbour|FullyQualifiedName~RigLoops"`) pass 20 runs with 3 processes in parallel.
-- [ ] `FakeVideoRendererTests` case: `FrameDuration` 40 ms, re-anchor, read `Presented` twice in the same instant (and once with `SnapshotAge > 0`) → one grid frame start. Fails if `at > _anchorTimestamp` is reverted.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The wind-down fakes (the X10 fake and the adapter-shaped busy fake) spend their wind-down as fake time inside a waiting scope, so the rig moves the clock during the grace and production's 50 ms is what the tests exercise.
+- [x] Test: a wind-down shorter than the 50 ms grace → the queued second press plays E3. Test: a wind-down longer than the grace → E3 is stepped past, neither judged nor remembered (the next press probes it again). Each fails if the grace length is changed past its side.
+- [x] A give-up on a fake that stays busy forever costs a bounded, small real time (no 500 × `Sleep(1)` per give-up on a frozen clock).
+- [x] The X10 fake stops at its time limit + slack (registered with the rig as its end time) and then waits in real time for the cancel, so fake time cannot run past the session's give-up while the session thread waits for the CPU. The neighbour and rig tests (`--filter "FullyQualifiedName~Neighbour|FullyQualifiedName~RigLoops"`) pass 20 runs with 3 processes in parallel. *(X10 and the new tests: 60/60. The late-entry Y1 test `A_probe_wrapper_that_enters_late_on_a_cut_limit_…_AC_09b` failed 6/60 — also 6/45 on HEAD without T128; it hits the Z1 race, so its 20×3 check moved to T129.)*
+- [x] `FakeVideoRendererTests` case: `FrameDuration` 40 ms, re-anchor, read `Presented` twice in the same instant (and once with `SnapshotAge > 0`) → one grid frame start. Fails if T127's removal of `at > _anchorTimestamp` is reverted (the condition put back).
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

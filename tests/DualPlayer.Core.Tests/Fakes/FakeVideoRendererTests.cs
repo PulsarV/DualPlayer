@@ -177,6 +177,24 @@ public class FakeVideoRendererTests
     }
 
     [Fact]
+    public void A_re_anchored_picture_read_in_the_same_instant_shows_the_grid_frame_not_a_frame_of_its_own_AC_17()
+    {
+        var (time, renderer) = Loaded(startPaused: false);
+        renderer.FrameDuration = TimeSpan.FromMilliseconds(40);
+        time.Advance(TimeSpan.FromMilliseconds(100));
+        renderer.Seek(TimeSpan.FromMilliseconds(55)); // re-anchors off the 40 ms grid, at this very instant
+
+        var first = renderer.Presented.ShouldNotBeNull();
+        var second = renderer.Presented.ShouldNotBeNull();
+        renderer.SnapshotAge = TimeSpan.FromMilliseconds(10);
+        var aged = renderer.Presented.ShouldNotBeNull();
+
+        first.Position.ShouldBe(TimeSpan.FromMilliseconds(40), "a read at the anchor's own instant named a position off the frame grid");
+        second.ShouldBe(first);
+        aged.Position.ShouldBe(TimeSpan.FromMilliseconds(40), "a read older than the anchor named a position off the frame grid");
+    }
+
+    [Fact]
     public void Injected_late_and_dropped_frames_accumulate_in_the_counters()
     {
         var (_, renderer) = Loaded();
