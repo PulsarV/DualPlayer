@@ -3793,7 +3793,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T163-build-the-mpv-note-commands-in-a-pure-helper-and-pin-the-2-s-hold-and-the-warning-colour.md",
       "origin": "review-2026-11-23j: AB2",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T164",

@@ -137,6 +137,44 @@ public sealed class MpvVideoRendererTests
         MpvVideoRenderer.NoteHold.ShouldBe(TimeSpan.FromSeconds(2));
     }
 
+    private static readonly OsdNoteStyle CommandStyle =
+        new(32, ForegroundArgb: 0xFFEEEEEE, WarningArgb: 0xFFFFD400, BackingArgb: 0xFF000000, BottomMarginRatio: 0.05);
+
+    private static string[] Joined(IReadOnlyList<string[]> commands) => [.. commands.Select(c => string.Join(' ', c))];
+
+    [Fact]
+    public void The_first_note_sets_the_layout_then_its_colour_then_shows_the_text_for_2000_ms()
+    {
+        var commands = Joined(MpvVideoRenderer.NoteCommands(CommandStyle, "Picture delay 120 ms", NoteStyle.Info, layoutApplied: false, appliedStyle: null));
+
+        var layout = MpvVideoRenderer.NoteOptions(CommandStyle).Select(o => $"set {o.Key} {o.Value}");
+        commands.ShouldBe([.. layout, "set osd-color #FFEEEEEE", "show-text Picture delay 120 ms 2000"]);
+    }
+
+    [Fact]
+    public void A_warning_after_an_info_note_turns_the_text_yellow_and_keeps_the_2_s_hold()
+    {
+        var commands = Joined(MpvVideoRenderer.NoteCommands(CommandStyle, "Output 2 lost", NoteStyle.Warning, layoutApplied: true, appliedStyle: NoteStyle.Info));
+
+        commands.ShouldBe(["set osd-color #FFFFD400", "show-text Output 2 lost 2000"]);
+    }
+
+    [Fact]
+    public void A_note_in_the_style_already_applied_only_shows_the_text()
+    {
+        var commands = Joined(MpvVideoRenderer.NoteCommands(CommandStyle, "Paused", NoteStyle.Info, layoutApplied: true, appliedStyle: NoteStyle.Info));
+
+        commands.ShouldBe(["show-text Paused 2000"]);
+    }
+
+    [Fact]
+    public void A_dollar_in_the_note_text_is_doubled_so_mpv_does_not_expand_it()
+    {
+        var show = MpvVideoRenderer.NoteCommands(CommandStyle, "Could not play $film.mkv", NoteStyle.Warning, layoutApplied: true, appliedStyle: NoteStyle.Warning).ShouldHaveSingleItem();
+
+        show.ShouldBe(["show-text", "Could not play $$film.mkv", "2000"]);
+    }
+
     [Fact]
     public void AddMedia_registers_the_libmpv_renderer_as_the_video_renderer_as_a_singleton()
     {

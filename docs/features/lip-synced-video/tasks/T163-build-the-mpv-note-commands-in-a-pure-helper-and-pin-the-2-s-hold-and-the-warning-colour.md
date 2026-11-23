@@ -6,8 +6,8 @@ deps: []
 blocks: ["T23", "T168"]
 acs: ["AC-06b", "AC-08", "AC-09", "AC-09b", "AC-10", "AC-11", "AC-15", "AC-15b"]
 files_hint: ["src/DualPlayer.Media/Video/MpvVideoRenderer.cs", "tests/DualPlayer.Media.Tests/Video/MpvVideoRendererTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,7 +31,7 @@ See [spec.md](../spec.md) §5 AC-06b, AC-08, AC-09, AC-09b, AC-10, AC-11, AC-15,
 
 ## Definition of Done
 
-- [ ] A pure `MpvVideoRenderer.NoteCommands(OsdNoteStyle style, string text, NoteStyle note, bool layoutApplied, NoteStyle? appliedStyle)` returns the mpv command argument lists in order; `ShowNote` runs exactly those and then records layout and style as applied.
-- [ ] New tests: the first note sends every `NoteOptions` `set`, then `set osd-color <NoteColor>`, then `show-text <text> 2000`; a warning after an info note sends `set osd-color #FFFFD400`; a second note in the same style sends only `show-text`; `$` in the text is doubled.
-- [ ] Mutants on a scratch copy, each failing at least one new test: duration `"1000"`; the `osd-color` command dropped; layout `set`s repeated on every note.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] A pure `MpvVideoRenderer.NoteCommands(OsdNoteStyle style, string text, NoteStyle note, bool layoutApplied, NoteStyle? appliedStyle)` returns the mpv command argument lists in order; `ShowNote` runs exactly those and then records layout and style as applied. *(MpvVideoRenderer.NoteCommands returns the ordered mpv argument lists; ShowNote runs exactly those, then records layout and style as applied)*
+- [x] New tests: the first note sends every `NoteOptions` `set`, then `set osd-color <NoteColor>`, then `show-text <text> 2000`; a warning after an info note sends `set osd-color #FFFFD400`; a second note in the same style sends only `show-text`; `$` in the text is doubled. *(4 new MpvVideoRendererTests: first note (layout, colour, show-text 2000), warning after info (#FFFFD400), same style (show-text only), dollar doubled)*
+- [x] Mutants on a scratch copy, each failing at least one new test: duration `"1000"`; the `osd-color` command dropped; layout `set`s repeated on every note. *(duration 1000, osd-color dropped, layout on every note: each fails at least one new test; reverted)*
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean *(build 0 warnings, Media 183 and all suites pass, format clean; one full run showed 1 unnamed Core failure, not reproduced in 3 Core-only and 3 full re-runs — T163 does not touch Core)*

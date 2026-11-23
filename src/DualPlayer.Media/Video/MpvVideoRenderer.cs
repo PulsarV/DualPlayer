@@ -469,26 +469,39 @@ public sealed partial class MpvVideoRenderer : IVideoRenderer
                 return;
             }
 
-            // Style properties are set when they change, not per note; every call is a queued (non-blocking) one.
-            if (!_noteLayoutApplied)
+            // Every call is a queued (non-blocking) one.
+            foreach (var command in NoteCommands(_noteStyle, text, style, _noteLayoutApplied, _appliedNoteStyle))
             {
-                foreach (var (name, value) in NoteOptions(_noteStyle))
-                {
-                    RunCommandAsync(_handle, "set", name, value);
-                }
-
-                _noteLayoutApplied = true;
+                RunCommandAsync(_handle, command);
             }
 
-            if (_appliedNoteStyle != style)
-            {
-                RunCommandAsync(_handle, "set", "osd-color", NoteColor(_noteStyle, style));
-                _appliedNoteStyle = style;
-            }
-
-            // A new note replaces the current one; "$" would start a property expansion, so it is doubled.
-            RunCommandAsync(_handle, "show-text", text.Replace("$", "$$", StringComparison.Ordinal), ((int)NoteHold.TotalMilliseconds).ToString(CultureInfo.InvariantCulture));
+            _noteLayoutApplied = true;
+            _appliedNoteStyle = style;
         }
+    }
+
+    /// <summary>
+    /// The mpv commands that show <paramref name="text"/> as a <paramref name="note"/> note, in order (pure): the layout
+    /// options the first time, the text colour when the style changes, then the text, held for <see cref="NoteHold"/>.
+    /// </summary>
+    public static IReadOnlyList<string[]> NoteCommands(OsdNoteStyle style, string text, NoteStyle note, bool layoutApplied, NoteStyle? appliedStyle)
+    {
+        ArgumentNullException.ThrowIfNull(style);
+        ArgumentNullException.ThrowIfNull(text);
+        var commands = new List<string[]>();
+        if (!layoutApplied)
+        {
+            commands.AddRange(NoteOptions(style).Select(o => new[] { "set", o.Key, o.Value }));
+        }
+
+        if (appliedStyle != note)
+        {
+            commands.Add(["set", "osd-color", NoteColor(style, note)]);
+        }
+
+        // A new note replaces the current one; "$" would start a property expansion, so it is doubled.
+        commands.Add(["show-text", text.Replace("$", "$$", StringComparison.Ordinal), ((int)NoteHold.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)]);
+        return commands;
     }
 
     public void Dispose()
