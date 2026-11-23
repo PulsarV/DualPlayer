@@ -6,8 +6,8 @@ deps: []
 blocks: ["T144", "T23"]
 acs: ["AC-02"]
 files_hint: ["tests/DualPlayer.Media.Tests/Video/FfmpegPictureProbeTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,5 +31,5 @@ See [spec.md](../spec.md) §5 AC-02.
 
 ## Definition of Done
 
-- [ ] `FfmpegPictureProbeTests.Probe_reports_no_picture_for_a_file_with_audio_only` asserts the message contains `"has no picture"`; with the text at `FfmpegPictureProbe.cs:164` changed (scratch copy) it fails.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `FfmpegPictureProbeTests.Probe_reports_no_picture_for_a_file_with_audio_only` asserts the message contains `"has no picture"`; with the text at `FfmpegPictureProbe.cs:164` changed (scratch copy) it fails. *(Mutant "is broken.": it fails.)*
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean *(Build 0 warnings; tests Core 624, Media 174, Console 151, App 166, Windows 41, MacOS 12 passed; format clean.)*

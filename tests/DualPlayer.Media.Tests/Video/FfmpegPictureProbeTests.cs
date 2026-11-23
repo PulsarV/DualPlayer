@@ -32,6 +32,7 @@ public sealed class FfmpegPictureProbeTests
 
         result.IsSuccess.ShouldBeFalse();
         result.Error!.Code.ShouldBe("video.no_picture");
+        result.Error.Message.ShouldContain("has no picture");
     }
 
     [Theory]
