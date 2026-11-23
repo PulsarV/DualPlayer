@@ -6,8 +6,8 @@ deps: ["T142", "T143"]
 blocks: ["T23"]
 acs: ["AC-02", "AC-09b"]
 files_hint: ["docs/features/lip-synced-video/test-plan.md"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -31,5 +31,5 @@ See [spec.md](../spec.md) §5 AC-02, AC-09b.
 
 ## Definition of Done
 
-- [ ] test-plan.md rows 74–75 (AC-09b) cite the T142 session theory and the access-denied terminal line test; the AC-02 no-picture row cites the strengthened probe test.
-- [ ] Every test name cited in test-plan.md exists under the cited class (grep check)
+- [x] test-plan.md rows 74–75 (AC-09b) cite the T142 session theory and the access-denied terminal line test; the AC-02 no-picture row cites the strengthened probe test. *(Rows 37 and 74, and a new T142 / T143 row.)*
+- [x] Every test name cited in test-plan.md exists under the cited class (grep check) *(194 cited names, 0 missing.)*
