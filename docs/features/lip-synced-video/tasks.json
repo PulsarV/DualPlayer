@@ -3675,7 +3675,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T158-pin-every-cli-md-3-record-name-and-the-offset-save-time-in-the-session-log.md",
       "origin": "review-2026-11-23i: AA5",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T159",

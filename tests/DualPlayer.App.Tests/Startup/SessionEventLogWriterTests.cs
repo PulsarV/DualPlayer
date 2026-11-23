@@ -197,6 +197,51 @@ public sealed class SessionEventLogWriterTests
     }
 
     [Fact]
+    public void Every_record_is_logged_under_its_cli_md_section_3_name()
+    {
+        var h = new Harness();
+        h.Feed.Publish(new LatencyEstimated(new LatencyEstimate([Out], 200)));
+        h.Feed.Publish(new PictureDelayChanged(TimeSpan.Zero, PictureDelayCause.Offset, 200, 240, [Out]));
+        h.Feed.Publish(new PictureDelayMoved(TimeSpan.Zero, PictureDelayCause.Offset, 240, 230, TimeSpan.FromSeconds(5), -2000, [new OutputRamp(Dev, 1500)]));
+        h.Feed.Publish(new OffsetChanged(1, Dev, 0, 10, null));
+        h.Feed.Publish(new PictureTimingReported(TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero, 1.0));
+        h.Feed.Publish(new FrameCountersReported(TimeSpan.Zero, new FrameCounters(1, 1, 1)));
+        h.Feed.Publish(new StartTimings(5, 1905, new Dictionary<string, long> { [Dev] = 1950 }) { TimestampFrequency = 1000 });
+        h.Feed.Publish(new PictureFailed(TimeSpan.Zero, "x") { Code = "video.decode_failed" });
+        h.Feed.Publish(new PictureReloadFinished(TimeSpan.Zero, PictureReloadOutcome.Reloaded));
+
+        string Name(Dictionary<string, object?> e) =>
+            e.TryGetValue("Event", out var ev) ? (string)ev! : ((string)e["{OriginalFormat}"]!).Split(' ')[0];
+
+        h.Log.Entries.Select(Name).ShouldBe(
+        [
+            "LatencyEstimated",
+            "PictureDelayChanged",
+            "PictureDelayChanged.Output",
+            "PictureDelayMoved",
+            "PictureDelayMoved.Output",
+            "OffsetChanged",
+            "PictureTiming",
+            "FrameCounters",
+            "StartTimings",
+            "PictureFailed",
+            "PictureReload",
+        ]);
+    }
+
+    [Fact]
+    public void An_offset_change_logs_its_save_time_when_it_has_one_and_none_when_it_has_not()
+    {
+        var h = new Harness();
+        var saved = new DateTimeOffset(2026, 11, 23, 10, 30, 0, TimeSpan.Zero);
+        h.Feed.Publish(new OffsetChanged(1, Dev, 0, 10, saved));
+        h.Feed.Publish(new OffsetChanged(1, Dev, 10, 20, null));
+
+        h.Log.Entries[0]["SavedAt"].ShouldBe(saved);
+        h.Log.Entries[1]["SavedAt"].ShouldBeNull();
+    }
+
+    [Fact]
     public void Nothing_is_logged_after_dispose()
     {
         var h = new Harness();
