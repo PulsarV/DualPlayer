@@ -2,7 +2,6 @@ using DualPlayer.Core.Diagnostics;
 using DualPlayer.Core.Outputs;
 using DualPlayer.Core.Playback;
 using DualPlayer.Core.Tests.Fakes;
-using Microsoft.Extensions.Time.Testing;
 
 namespace DualPlayer.Core.Tests.Playback;
 
@@ -280,7 +279,7 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
     }
 
     [Fact]
-    public void A_probe_wrapper_the_thread_pool_starts_late_is_not_given_up_on_before_the_adapter_answers_AC_09b()
+    public void The_probe_wrapper_runs_off_the_shared_thread_pool_and_the_chosen_file_starts_AC_09b()
     {
         using var decoder = new ScriptedDecoder();
         using var probe = new ScriptedProbe();
@@ -313,8 +312,6 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
         private readonly Dictionary<string, int> _listed = new(StringComparer.Ordinal);
 
         public TimeProvider? Time { get; set; }
-
-        public Action? AfterListing { get; set; }
 
         public int Listed(string name)
         {
@@ -395,7 +392,6 @@ public sealed class PlaybackSessionNeighbourRecoveryTests : IDisposable
                 _returned.Add(name);
             }
 
-            AfterListing?.Invoke();
             return Result<IReadOnlyList<AudioTrackInfo>>.Success([.. new[] { 1, 2 }.Select(n => new AudioTrackInfo(n, "und", ChannelLayout.Stereo, 48_000))]);
         }
 

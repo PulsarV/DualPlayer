@@ -29,7 +29,7 @@ internal sealed class EngineRig : IDisposable
         new AudioTrackInfo(2, "ukr", ChannelLayout.Stereo, 48_000),
     ];
 
-    private readonly List<FakeAudioDevice> _devices = [];
+    private readonly DeviceRegistry _devices = new();
     private readonly List<EngineEvent> _events = [];
     private readonly Lock _gate = new();
     private readonly RigDevice[] _specs;
@@ -103,7 +103,8 @@ internal sealed class EngineRig : IDisposable
 
     public AudioEngine Engine { get; }
 
-    public IReadOnlyList<FakeAudioDevice> Devices => _devices;
+    /// <summary>A snapshot of the current run's outputs: the engine loop may re-open them while a reader walks the list.</summary>
+    public IReadOnlyList<FakeAudioDevice> Devices => _devices.Snapshot();
 
     public TimeSpan Elapsed => Time.GetUtcNow() - _origin;
 
@@ -358,7 +359,7 @@ internal sealed class EngineRig : IDisposable
     /// </summary>
     public double MaxDriftMs(int deviceIndex, TimeSpan commandAt, TimeSpan positionAtCommand, TimeSpan from, TimeSpan to)
     {
-        var device = _devices[deviceIndex];
+        var device = _devices.Snapshot()[deviceIndex];
         var rate = _specs[deviceIndex].Rate;
         var max = 0.0;
         var seen = 0;
@@ -402,7 +403,7 @@ internal sealed class EngineRig : IDisposable
 
         if (_observe)
         {
-            _observations.Add((Elapsed, [.. _devices.Select(d => d.PlayedFramesNow)]));
+            _observations.Add((Elapsed, [.. _devices.Snapshot().Select(d => d.PlayedFramesNow)]));
         }
 
         if (barrier && ++_steps % _barrierEvery == 0)
@@ -418,7 +419,7 @@ internal sealed class EngineRig : IDisposable
 
     private void Fill()
     {
-        foreach (var device in _devices)
+        foreach (var device in _devices.Snapshot())
         {
             if (device.IsClosed || device.IsHung || device.IsLost)
             {
@@ -437,9 +438,10 @@ internal sealed class EngineRig : IDisposable
     private void PaceToDecoder()
     {
         var wanted = Math.Min(Position.TotalSeconds + 1.0, _decoder.TotalSeconds);
-        for (var i = 0; i < _devices.Count; i++)
+        var devices = _devices.Snapshot();
+        for (var i = 0; i < devices.Count; i++)
         {
-            if (_devices[i].IsClosed || _devices[i].IsLost || _devices[i].IsHung)
+            if (devices[i].IsClosed || devices[i].IsLost || devices[i].IsHung)
             {
                 continue;
             }
@@ -454,9 +456,10 @@ internal sealed class EngineRig : IDisposable
     private void WaitForDecoder()
     {
         var wanted = Math.Min(Position.TotalSeconds + 1.0, _decoder.TotalSeconds);
-        for (var i = 0; i < _devices.Count; i++)
+        var devices = _devices.Snapshot();
+        for (var i = 0; i < devices.Count; i++)
         {
-            if (_devices[i].IsClosed || _devices[i].IsLost || _devices[i].IsHung)
+            if (devices[i].IsClosed || devices[i].IsLost || devices[i].IsHung)
             {
                 continue;
             }
@@ -466,7 +469,35 @@ internal sealed class EngineRig : IDisposable
         }
     }
 
-    private sealed class CapturingBackend(IAudioBackend inner, List<FakeAudioDevice> devices) : IAudioBackend
+    /// <summary>
+    /// The current run's outputs, copy-on-write: the engine loop re-opens them (<see cref="Add"/>) while the test thread walks
+    /// a <see cref="Snapshot"/>, which never changes after it is taken.
+    /// </summary>
+    private sealed class DeviceRegistry
+    {
+        private readonly Lock _lock = new();
+        private FakeAudioDevice[] _devices = [];
+
+        public IReadOnlyList<FakeAudioDevice> Snapshot()
+        {
+            lock (_lock)
+            {
+                return _devices;
+            }
+        }
+
+        public void Add(FakeAudioDevice device)
+        {
+            lock (_lock)
+            {
+                // A new run after the previous one ended: the rig follows the new run's outputs.
+                var keep = _devices.Length > 0 && _devices.All(d => d.IsClosed) ? [] : _devices;
+                _devices = [.. keep, device];
+            }
+        }
+    }
+
+    private sealed class CapturingBackend(IAudioBackend inner, DeviceRegistry devices) : IAudioBackend
     {
         public IReadOnlyList<AudioDeviceInfo> ListDevices() => inner.ListDevices();
 
@@ -475,11 +506,6 @@ internal sealed class EngineRig : IDisposable
             var result = inner.Open(deviceId, requestedBuffer, source);
             if (result.IsSuccess)
             {
-                if (devices.Count > 0 && devices.All(d => d.IsClosed))
-                {
-                    devices.Clear(); // a new run after the previous one ended: the rig follows the new run's outputs
-                }
-
                 devices.Add((FakeAudioDevice)result.Value);
             }
 

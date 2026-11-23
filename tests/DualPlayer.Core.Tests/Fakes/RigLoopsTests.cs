@@ -1,3 +1,4 @@
+using DualPlayer.Core.Diagnostics;
 using DualPlayer.Core.Outputs;
 using DualPlayer.Core.Playback;
 using Microsoft.Extensions.Time.Testing;
@@ -139,13 +140,93 @@ public sealed class RigLoopsTests
         var rig = new SessionRig([new RigDevice(48_000), new RigDevice(48_000)], null, 600);
 
         // A start nobody drives: the engine waits on fake time that never moves, so the session thread is stuck in the command.
-        var stuck = new Thread(() => rig.Session.Start(rig.Request(2))) { IsBackground = true };
+        Exception? stuckFailure = null;
+        var stuck = new Thread(() =>
+        {
+            try
+            {
+                rig.Session.Start(rig.Request(2));
+            }
+            catch (Exception ex)
+            {
+                stuckFailure = ex; // a failure fails the test; it must not end the test process from a raw thread
+            }
+        })
+        { IsBackground = true };
         stuck.Start();
-        Thread.Sleep(500);
+
+        // The engine has opened its first output: the start command is in the engine and waits on fake time (a bound, not a pass condition).
+        SpinWait.SpinUntil(() => rig.Engine.Devices.Count > 0 || stuckFailure is not null, TimeSpan.FromSeconds(30));
+        stuckFailure.ShouldBeNull(stuckFailure?.ToString());
+        rig.Engine.Devices.Count.ShouldBeGreaterThan(0, "the session never reached the engine start");
 
         var dispose = new Thread(rig.Dispose) { IsBackground = true };
         dispose.Start();
 
         dispose.Join(TimeSpan.FromSeconds(15)).ShouldBeTrue("SessionRig.Dispose hung on a stuck command: the engine must be disposed before the session");
+        stuck.Join(TimeSpan.FromSeconds(15)).ShouldBeTrue("the stuck command never ended after the rig was disposed");
+
+        // The command that outlives its engine may meet the disposed engine; anything else is a failure.
+        if (stuckFailure is not null and not ObjectDisposedException)
+        {
+            stuckFailure.ShouldBeNull(stuckFailure.ToString());
+        }
+    }
+
+    [Fact]
+    public void Enumerating_the_engine_rig_devices_while_the_outputs_are_reopened_does_not_throw()
+    {
+        using var rig = new EngineRig([new RigDevice(48_000), new RigDevice(48_000), new RigDevice(48_000)], totalSeconds: 600);
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(1.5);
+        Exception? enumerationFailure = null;
+        Exception? reopenFailure = null;
+        var assignments = Enumerable.Range(0, 3).Select(i => new OutputAssignment((i % 2) + 1, DeviceRef.ByNumber(i + 1))).ToArray();
+
+        // The test thread's reader, as Fill and the barrier loops see the list, against the engine loop's re-open of the outputs.
+        var reader = new Thread(() =>
+        {
+            try
+            {
+                while (DateTime.UtcNow < deadline)
+                {
+                    foreach (var device in rig.Devices)
+                    {
+                        _ = device.IsClosed;
+                        Thread.Yield();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                enumerationFailure = ex;
+            }
+        })
+        { IsBackground = true };
+
+        // Each start after the previous run ended re-opens the outputs: the rig clears its list and adds the new run's devices.
+        var reopener = new Thread(() =>
+        {
+            try
+            {
+                while (DateTime.UtcNow < deadline && enumerationFailure is null)
+                {
+                    rig.Engine.StartRun("film.mkv", assignments, new EngineOptions()).IsSuccess.ShouldBeTrue();
+                    rig.Engine.Stop(RunEndReason.Stop);
+                }
+            }
+            catch (Exception ex)
+            {
+                reopenFailure = ex;
+            }
+        })
+        { IsBackground = true };
+
+        reader.Start();
+        reopener.Start();
+        reader.Join(TimeSpan.FromSeconds(10)).ShouldBeTrue("the reader never finished");
+        reopener.Join(TimeSpan.FromSeconds(10)).ShouldBeTrue("the re-opener never finished");
+
+        reopenFailure.ShouldBeNull(reopenFailure?.ToString());
+        enumerationFailure.ShouldBeNull(enumerationFailure?.ToString());
     }
 }

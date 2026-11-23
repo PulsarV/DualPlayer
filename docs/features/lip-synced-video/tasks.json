@@ -2890,7 +2890,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T122-make-the-engine-rig-s-device-list-thread-safe-wait-on-a-signal-in-the-dispose-order-test-and-clean-up-after-the-x9-rewri.md",
       "origin": "review-2026-11-23: Y4, Y5, Y10",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T123",

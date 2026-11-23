@@ -6,8 +6,8 @@ deps: []
 blocks: []
 acs: ["AC-09b"]
 files_hint: ["tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs", "tests/DualPlayer.Core.Tests/Fakes/RigLoopsTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -33,8 +33,8 @@ See [spec.md](../spec.md) §5 AC-09b.
 
 ## Definition of Done
 
-- [ ] `_devices` is guarded by the rig's lock (or copy-on-write): the Add/Clear in `CapturingBackend.Open` and every enumeration (`Fill`, `PaceToDecoder`, `WaitForDecoder`, `Devices`) work on a consistent snapshot. A rig self-test enumerates while another thread re-opens the outputs and does not throw.
-- [ ] The dispose-order test waits on a deterministic signal that the session has reached the engine start (e.g. the engine start waiting on fake time) instead of `Thread.Sleep(500)`, and the `stuck` thread body catches and records any exception, so a failure fails the test rather than the process.
-- [ ] The X9 test is renamed (e.g. `The_probe_wrapper_runs_off_the_shared_thread_pool_and_the_chosen_file_starts_AC_09b`); the unused `using` and the dead `AfterListing` member are removed.
-- [ ] The neighbour, rig and App end-to-end tests (`--filter "FullyQualifiedName~Neighbour|FullyQualifiedName~RigLoops"` in Core, `FullyQualifiedName~PlayEndToEnd` in App) pass 10 parallel runs with no "Collection was modified" and no host crash (use `--blame-hang-timeout 120s`).
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `_devices` is guarded by the rig's lock (or copy-on-write): the Add/Clear in `CapturingBackend.Open` and every enumeration (`Fill`, `PaceToDecoder`, `WaitForDecoder`, `Devices`) work on a consistent snapshot. A rig self-test enumerates while another thread re-opens the outputs and does not throw.
+- [x] The dispose-order test waits on a deterministic signal that the session has reached the engine start (e.g. the engine start waiting on fake time) instead of `Thread.Sleep(500)`, and the `stuck` thread body catches and records any exception, so a failure fails the test rather than the process.
+- [x] The X9 test is renamed (e.g. `The_probe_wrapper_runs_off_the_shared_thread_pool_and_the_chosen_file_starts_AC_09b`); the unused `using` and the dead `AfterListing` member are removed.
+- [x] The neighbour, rig and App end-to-end tests (`--filter "FullyQualifiedName~Neighbour|FullyQualifiedName~RigLoops"` in Core, `FullyQualifiedName~PlayEndToEnd` in App) pass 10 parallel runs with no "Collection was modified" and no host crash (use `--blame-hang-timeout 120s`).
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
