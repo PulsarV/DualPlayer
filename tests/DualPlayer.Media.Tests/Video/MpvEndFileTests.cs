@@ -68,10 +68,11 @@ public sealed class MpvEndFileTests
     [InlineData(EndReasonEof)]
     public void An_end_file_of_a_file_that_is_no_longer_current_raises_nothing_AC_06b(int reason)
     {
-        RequireLibmpv();
         using var renderer = new MpvVideoRenderer(TimeProvider.System);
         var events = Watch(renderer);
-        Arrange(renderer, loaded: true, loading: false);
+        // Still loading: past the guard an error would build its text with mpv_error_string and set the load error, so the
+        // guard is pinned without libmpv (the call would throw, or set _loadError, instead of returning).
+        Arrange(renderer, loaded: false, loading: true);
         Set(renderer, "_currentLoad", 2);
 
         EndFile(renderer, reason, ErrorLoadingFailed);

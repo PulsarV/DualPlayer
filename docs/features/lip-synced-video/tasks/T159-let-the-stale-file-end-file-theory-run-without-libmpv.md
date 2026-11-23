@@ -6,8 +6,8 @@ deps: []
 blocks: ["T23", "T161"]
 acs: ["AC-06b"]
 files_hint: ["tests/DualPlayer.Media.Tests/Video/MpvEndFileTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "XS"
 context_budget: "S"
@@ -31,6 +31,6 @@ See [spec.md](../spec.md) §5 AC-06b.
 
 ## Definition of Done
 
-- [ ] `RequireLibmpv()` is removed from the stale-file theory; both rows run and pass without libmpv.
-- [ ] Mutant on a scratch copy: removing the `IsCurrentFile` guard fails both rows.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] `RequireLibmpv()` is removed from the stale-file theory; both rows run and pass without libmpv. *(RequireLibmpv() removed from the stale-file theory; arrangement changed to loaded:false, loading:true; both rows pass, 0 skipped, without libmpv)
+- [x] Mutant on a scratch copy: removing the `IsCurrentFile` guard fails both rows. *(Mutant removing the IsCurrentFile guard in OnEndFile (MpvVideoRenderer.cs:905): reason 0 fails (events.EndOfFiles), reason 4 fails (DllNotFoundException); reverted)
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean *(build 0 warnings/0 errors; all tests pass; dotnet format --verify-no-changes exit 0)
