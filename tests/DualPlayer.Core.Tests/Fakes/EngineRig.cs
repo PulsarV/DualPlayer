@@ -201,7 +201,14 @@ internal sealed class EngineRig : IDisposable
             {
                 if (Time.Waiters > 0)
                 {
-                    Advance(barrier: false); // a fake is spending fake time: it moves only while one is
+                    // A fake is spending fake time: it moves only while one is, and never past the earliest deadline of a fake that
+                    // spins to one: that fake, however late its thread is scheduled, sees its deadline and leaves its scope first.
+                    var room = Time.RoomBeforeDeadline();
+                    if (room is null || room > TimeSpan.Zero)
+                    {
+                        Advance(barrier: false, room is { } r && r < Step ? r : Step);
+                    }
+
                     PaceToDecoder();
                 }
                 else
@@ -392,9 +399,9 @@ internal sealed class EngineRig : IDisposable
 
     public void Dispose() => Engine.Dispose();
 
-    private void Advance(bool barrier)
+    private void Advance(bool barrier, TimeSpan? step = null)
     {
-        Time.Advance(Step);
+        Time.Advance(step ?? Step);
         Fill();
         if (barrier)
         {

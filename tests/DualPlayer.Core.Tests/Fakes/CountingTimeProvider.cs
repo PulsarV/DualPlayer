@@ -66,6 +66,7 @@ internal sealed class CountingTimeProvider : FakeTimeProvider
         lock (_waitersLock)
         {
             _generation++;
+            _deadlines.Clear();
             Volatile.Write(ref _waiters, 0);
         }
 
@@ -82,17 +83,46 @@ internal sealed class CountingTimeProvider : FakeTimeProvider
     }
 
     /// <summary>A fake is blocked in real time until the session gives up on it by fake time: fake time moves on until the scope ends.</summary>
-    public IDisposable Waiting()
+    public IDisposable Waiting() => Waiting(null);
+
+    private Scope Waiting(long? deadline)
     {
         int generation;
         lock (_waitersLock)
         {
             generation = _generation;
             Interlocked.Increment(ref _waiters);
+            if (deadline is not null)
+            {
+                _deadlines.Add(deadline.Value);
+            }
         }
 
         Pulse();
-        return new Scope(this, generation);
+        return new Scope(this, generation, deadline);
+    }
+
+    private readonly List<long> _deadlines = [];
+
+    /// <summary>
+    /// How much fake time the rig may still move on before it reaches the earliest deadline of a fake that is spinning on it
+    /// (<see cref="SpinUntil"/>): null when no fake has a deadline, zero (or less) when one has been reached and must leave its scope first.
+    /// </summary>
+    public TimeSpan? RoomBeforeDeadline()
+    {
+        long? earliest;
+        lock (_waitersLock)
+        {
+            earliest = _deadlines.Count == 0 ? null : _deadlines.Min();
+        }
+
+        if (earliest is null)
+        {
+            return null;
+        }
+
+        var left = earliest.Value - base.GetTimestamp();
+        return left <= 0 ? TimeSpan.Zero : TimeSpan.FromTicks((long)Math.Ceiling(left * (double)TimeSpan.TicksPerSecond / TimestampFrequency));
     }
 
     /// <summary>Called by a fake spending fake time: signals the rig that fake time may move, then spins until it has reached <paramref name="end"/> or <paramref name="cancel"/> fires (which ends the waiting scope inside the cancel).</summary>
@@ -105,7 +135,8 @@ internal sealed class CountingTimeProvider : FakeTimeProvider
 
         // The scope also ends from the cancel itself, so fake time stops moving inside Cancel() and a grace the session starts right
         // after it cannot be spent by the rig before the fake has even seen the cancel.
-        using var scope = Waiting();
+        // The scope also carries the fake's deadline, so the rig never moves fake time past it while this thread waits for the CPU.
+        using var scope = Waiting(end);
         using var _ = cancel.Register(scope.Dispose);
         while (GetTimestamp() < end && !cancel.IsCancellationRequested)
         {
@@ -113,7 +144,7 @@ internal sealed class CountingTimeProvider : FakeTimeProvider
         }
     }
 
-    private sealed class Scope(CountingTimeProvider owner, int generation) : IDisposable
+    private sealed class Scope(CountingTimeProvider owner, int generation, long? deadline) : IDisposable
     {
         private int _done;
 
@@ -123,6 +154,11 @@ internal sealed class CountingTimeProvider : FakeTimeProvider
             {
                 lock (owner._waitersLock)
                 {
+                    if (deadline is not null)
+                    {
+                        owner._deadlines.Remove(deadline.Value);
+                    }
+
                     if (owner._generation == generation)
                     {
                         Interlocked.Decrement(ref owner._waiters);

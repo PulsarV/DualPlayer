@@ -2976,7 +2976,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T127-keep-the-rig-s-fake-time-from-running-past-a-fake-s-own-deadline-while-its-thread-waits-for-the-cpu-and-steady-the-late-f.md",
       "origin": "implement run T122-T124: flaky neighbour and late-frame tests under parallel load",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T126",

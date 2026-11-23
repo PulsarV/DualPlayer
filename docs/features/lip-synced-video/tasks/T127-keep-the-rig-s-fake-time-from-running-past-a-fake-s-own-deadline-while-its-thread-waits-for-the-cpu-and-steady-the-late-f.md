@@ -6,8 +6,8 @@ deps: ["T125"]
 blocks: []
 acs: ["AC-08", "AC-17"]
 files_hint: ["tests/DualPlayer.Core.Tests/Fakes/CountingTimeProvider.cs", "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs", "tests/DualPlayer.Core.Tests/Fakes/RigLoopsTests.cs", "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionLateFrameTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "S"
 context_budget: "S"
@@ -33,8 +33,8 @@ See [spec.md](../spec.md) §5 AC-08, AC-17.
 
 ## Definition of Done
 
-- [ ] The rig never advances fake time past the earliest deadline of a fake that is spinning on it (`CountingTimeProvider.SpinUntil(end, …)`) until that fake has seen the deadline and left its waiting scope: e.g. `SpinUntil` registers its `end`, and the rig's advance clamps to the minimum registered deadline. A rig self-test: a fake spinning to a deadline whose thread is held for 200 ms of real time while the rig keeps advancing → fake time, when the fake returns, is at most one rig step past its deadline.
-- [ ] `PlaybackSessionNeighbourMemoryTests.A_file_skipped_for_its_picture_keeps_that_reason_and_is_not_probed_again_on_the_next_press_AC_08` no longer depends on scheduling: the session never sees elapsed ≥ limit + slack before a fake that answers at its limit has returned.
-- [ ] `PlaybackSessionLateFrameTests.Frames_presented_30_ms_after_due_are_each_counted_late_once_AC_17` (Late = 28 against 22–27 about 1 run in 5): the cause is found and fixed in the rig or the test (not by widening the range unless the spec tolerance justifies it; say which).
-- [ ] All Core neighbour classes (`--filter "FullyQualifiedName~Neighbour"`) pass 12 of 12 runs at 3 processes in parallel (4 rounds), and the full Core suite passes 5 runs in a row.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] The rig never advances fake time past the earliest deadline of a fake that is spinning on it (`CountingTimeProvider.SpinUntil(end, …)`) until that fake has seen the deadline and left its waiting scope: e.g. `SpinUntil` registers its `end`, and the rig's advance clamps to the minimum registered deadline. A rig self-test: a fake spinning to a deadline whose thread is held for 200 ms of real time while the rig keeps advancing → fake time, when the fake returns, is at most one rig step past its deadline.
+- [x] `PlaybackSessionNeighbourMemoryTests.A_file_skipped_for_its_picture_keeps_that_reason_and_is_not_probed_again_on_the_next_press_AC_08` no longer depends on scheduling: the session never sees elapsed ≥ limit + slack before a fake that answers at its limit has returned.
+- [x] `PlaybackSessionLateFrameTests.Frames_presented_30_ms_after_due_are_each_counted_late_once_AC_17` (Late = 28 against 22–27 about 1 run in 5): the cause is found and fixed in the rig or the test (not by widening the range unless the spec tolerance justifies it; say which).
+- [x] All Core neighbour classes (`--filter "FullyQualifiedName~Neighbour"`) pass 12 of 12 runs at 3 processes in parallel (4 rounds), and the full Core suite passes 5 runs in a row.
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean

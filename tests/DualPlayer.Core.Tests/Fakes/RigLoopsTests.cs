@@ -229,4 +229,37 @@ public sealed class RigLoopsTests
         reopenFailure.ShouldBeNull(reopenFailure?.ToString());
         enumerationFailure.ShouldBeNull(enumerationFailure?.ToString());
     }
+
+    [Fact]
+    public void A_fake_spinning_to_its_deadline_is_not_run_past_it_by_the_rig_while_its_thread_waits_for_the_cpu_AC_08()
+    {
+        using var rig = new EngineRig([new RigDevice(48_000)], totalSeconds: 600) { StrictGate = true };
+        var time = rig.Time;
+        var spent = TimeSpan.FromMilliseconds(100);
+        var origin = time.GetUtcNow();
+        var end = time.GetTimestamp() + (long)(spent.TotalSeconds * time.TimestampFrequency);
+        var fakeThread = 0;
+        var fakeReads = 0;
+
+        // A descheduled thread: the fake's first read of the time is the check before its scope opens, its second is the first
+        // inside the scope. The thread is held for 200 ms of real time right there, while the rig sees an open waiting scope.
+        time.BeforeRead = () =>
+        {
+            if (Environment.CurrentManagedThreadId == Volatile.Read(ref fakeThread) && Interlocked.Increment(ref fakeReads) == 2)
+            {
+                Thread.Sleep(TimeSpan.FromMilliseconds(200));
+            }
+        };
+
+        rig.Call(() =>
+        {
+            Volatile.Write(ref fakeThread, Environment.CurrentManagedThreadId);
+            time.SpinUntil(end, CancellationToken.None);
+            return 0;
+        });
+
+        var pastDeadline = time.GetUtcNow() - origin - spent;
+        pastDeadline.ShouldBeGreaterThanOrEqualTo(TimeSpan.Zero, "the fake returned before its deadline");
+        pastDeadline.ShouldBeLessThanOrEqualTo(EngineRig.Step, $"fake time ran {pastDeadline.TotalMilliseconds:F0} ms past the fake's own deadline while its thread waited for the CPU");
+    }
 }

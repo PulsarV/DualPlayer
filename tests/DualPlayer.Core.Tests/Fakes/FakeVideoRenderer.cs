@@ -143,9 +143,11 @@ internal sealed class FakeVideoRenderer(TimeProvider time) : IVideoRenderer
 
         var at = now - (long)Math.Round(SnapshotAge.TotalSeconds * time.TimestampFrequency);
         var position = PositionAt(at);
-        if (FrameDuration is { } frame && _playing && at > _anchorTimestamp)
+        if (FrameDuration is { } frame && _playing)
         {
-            // The frame on screen began when the picture reached its position; it has been shown since then.
+            // The frame on screen began when the picture reached its position; it has been shown since then. At or before the
+            // anchor (a second tick in the instant a tick re-anchored it) the position is the anchor's, off the frame grid: it is
+            // still the grid's frame, never a frame of its own.
             var start = TimeSpan.FromTicks(position.Ticks / frame.Ticks * frame.Ticks);
             var shownFor = (position - start) / (_speed * (1 + RateError));
             return new PresentedPicture(start, at - (long)Math.Round(shownFor.TotalSeconds * time.TimestampFrequency));
