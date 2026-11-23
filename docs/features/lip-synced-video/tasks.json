@@ -3810,7 +3810,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T164-pin-that-natural-name-order-ignores-letter-case.md",
       "origin": "review-2026-11-23j: AB3",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T165",

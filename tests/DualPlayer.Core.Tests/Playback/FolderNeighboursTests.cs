@@ -57,6 +57,20 @@ public sealed class FolderNeighboursTests : IDisposable
     }
 
     [Fact]
+    public void Natural_order_ignores_letter_case_so_Episode_10_follows_episode_3_AC_07_AC_08()
+    {
+        // Upper-case letters sort before lower-case ones in an exact comparison, so these names would come out as
+        // A, Episode 10, b, episode 3 if case counted, and Page Down from "episode 3" would find no next file.
+        var a = Touch("A.mkv");
+        Touch("b.mkv");
+        var e3 = Touch("episode 3.mkv");
+        Touch("Episode 10.mkv");
+
+        Names(e3, NeighbourDirection.Next).ShouldBe(["Episode 10.mkv"]);
+        Names(a, NeighbourDirection.Next).ShouldBe(["b.mkv", "episode 3.mkv", "Episode 10.mkv"]);
+    }
+
+    [Fact]
     public void Names_equal_apart_from_letter_case_are_both_kept_and_ordered_by_exact_comparison()
     {
         // Windows (NTFS) and macOS (APFS) folders cannot hold two such names, so the rule is checked on the comparer itself.

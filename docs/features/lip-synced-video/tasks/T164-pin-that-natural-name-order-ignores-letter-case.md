@@ -6,8 +6,8 @@ deps: []
 blocks: ["T23", "T168"]
 acs: ["AC-07", "AC-08"]
 files_hint: ["tests/DualPlayer.Core.Tests/Playback/FolderNeighboursTests.cs"]
-status: "todo"
-step: "—"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "XS"
 context_budget: "S"
@@ -31,6 +31,6 @@ See [spec.md](../spec.md) §5 AC-07, AC-08.
 
 ## Definition of Done
 
-- [ ] New `FolderNeighboursTests` case: a folder with `A.mkv`, `b.mkv`, `episode 3.mkv`, `Episode 10.mkv`; Next from `episode 3.mkv` lists `Episode 10.mkv`; Next from `A.mkv` lists `b.mkv`, `episode 3.mkv`, `Episode 10.mkv`.
-- [ ] Mutant on a scratch copy fails the new test: `char.ToUpperInvariant(x[i]).CompareTo(char.ToUpperInvariant(y[j]))` → `x[i].CompareTo(y[j])`.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] New `FolderNeighboursTests` case: a folder with `A.mkv`, `b.mkv`, `episode 3.mkv`, `Episode 10.mkv`; Next from `episode 3.mkv` lists `Episode 10.mkv`; Next from `A.mkv` lists `b.mkv`, `episode 3.mkv`, `Episode 10.mkv`. *(FolderNeighboursTests.Natural_order_ignores_letter_case_so_Episode_10_follows_episode_3_AC_07_AC_08)*
+- [x] Mutant on a scratch copy fails the new test: `char.ToUpperInvariant(x[i]).CompareTo(char.ToUpperInvariant(y[j]))` → `x[i].CompareTo(y[j])`. *(the case-sensitive mutant fails the new test (Core 1 failed); reverted)*
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean *(build 0 warnings, Core 646 / App 193 / Media 179 / Console 151 / Windows 41 / MacOS 12 pass, format clean)*
