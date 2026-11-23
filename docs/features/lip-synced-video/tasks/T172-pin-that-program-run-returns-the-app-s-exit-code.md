@@ -6,8 +6,8 @@ deps: []
 blocks: ["T23", "T173"]
 acs: ["AC-02", "AC-03", "AC-03b"]
 files_hint: ["tests/DualPlayer.App.Tests/Startup/ProgramRunTests.cs"]
-status: "todo"
-step: "SELECT"
+status: "done"
+step: "COMMIT"
 owner: "Volodymyr Kravchuk"
 estimate: "XS"
 context_budget: "XS"
@@ -31,7 +31,7 @@ See [spec.md](../spec.md) §5 AC-02, AC-03, AC-03b.
 
 ## Definition of Done
 
-- [ ] A `ProgramRunTests` theory over exit codes 2 and 4: a valid command whose `startApp` returns the code makes `Run` return the same code.
-- [ ] Mutant on a scratch copy fails the new test: `_ = startApp(parsed.Value, loggerFactory); return 0;`.
-- [ ] No production code changes.
-- [ ] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean
+- [x] A `ProgramRunTests` theory over exit codes 2 and 4: a valid command whose `startApp` returns the code makes `Run` return the same code. *(ProgramRunTests theory A_valid_command_returns_the_exit_code_the_app_ended_with_AC_02_AC_03_AC_03b has cases 2 and 4. startApp returns the code and Run returns the same code. Both cases pass.)*
+- [x] Mutant on a scratch copy fails the new test: `_ = startApp(parsed.Value, loggerFactory); return 0;`. *(The mutant `_ = startApp(parsed.Value, loggerFactory); return 0;` was re-applied to Program.cs. Both new cases (appExitCode 2 and 4) failed. Reverted with git checkout -- src.)*
+- [x] No production code changes. *(`git diff -- src` is empty. Only tests/DualPlayer.App.Tests/Startup/ProgramRunTests.cs is modified.)*
+- [x] `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean *(`dotnet build DualPlayer.slnx` gave 0 warnings and 0 errors. `dotnet test DualPlayer.slnx` exited 0 with 0 failures. `dotnet format DualPlayer.slnx --verify-no-changes` exited 0.)*

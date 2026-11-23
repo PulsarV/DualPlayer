@@ -3970,7 +3970,7 @@
       ],
       "file": "docs/features/lip-synced-video/tasks/T172-pin-that-program-run-returns-the-app-s-exit-code.md",
       "origin": "review-2026-11-24: AD4",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T173",

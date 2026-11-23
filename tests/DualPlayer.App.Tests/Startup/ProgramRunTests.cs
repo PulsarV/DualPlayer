@@ -85,6 +85,16 @@ public sealed class ProgramRunTests
         request.ShouldNotBeNull().File.ShouldBe("film.mkv");
     }
 
+    [Theory]
+    [InlineData(2)]
+    [InlineData(4)]
+    public void A_valid_command_returns_the_exit_code_the_app_ended_with_AC_02_AC_03_AC_03b(int appExitCode)
+    {
+        var code = Run(["play", "film.mkv", "--out", "1=a"], new StringWriter(), (_, _) => appExitCode);
+
+        code.ShouldBe(appExitCode, "a failure after the app started must reach the shell (cli.md section 4)");
+    }
+
     [Fact]
     public void An_exception_from_the_app_exits_1()
     {
