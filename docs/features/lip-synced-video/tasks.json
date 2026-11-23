@@ -593,7 +593,11 @@
         "T124",
         "T125",
         "T126",
-        "T127"
+        "T127",
+        "T128",
+        "T129",
+        "T130",
+        "T131"
       ],
       "acs": [
         "AC-16",
@@ -3014,6 +3018,105 @@
       "file": "docs/features/lip-synced-video/tasks/T126-bring-spec-sad-ux-flows-screens-cli-md-the-t23-guide-and-test-plan-in-step-with-the-timeout-rule-the-recovery-clock-and.md",
       "origin": "review-2026-11-23: Y6, Y7 (docs), Y8, Y9, Y10 (docs)",
       "status": "done"
+    },
+    {
+      "id": "T128",
+      "title": "Let fake time move during the give-up grace, pin the 50 ms grace from both sides, steady the X10 test and pin the fake renderer's anchor rule",
+      "layer": "test",
+      "deps": [],
+      "acs": [
+        "AC-08",
+        "AC-17"
+      ],
+      "dod": "The wind-down fakes (the X10 fake and the adapter-shaped busy fake) spend their wind-down as fake time inside a waiting scope, so the rig moves the clock during the grace and production's 50 ms is what the tests exercise.; Test: a wind-down shorter than the 50 ms grace → the queued second press plays E3. Test: a wind-down longer than the grace → E3 is stepped past, neither judged nor remembered (the next press probes it again). Each fails if the grace length is changed past its side.; A give-up on a fake that stays busy forever costs a bounded, small real time (no 500 × `Sleep(1)` per give-up on a frozen clock).; The X10 fake stops at its time limit + slack (registered with the rig as its end time) and then waits in real time for the cancel, so fake time cannot run past the session's give-up while the session thread waits for the CPU. The neighbour and rig tests (`--filter \"FullyQualifiedName~Neighbour|FullyQualifiedName~RigLoops\"`) pass 20 runs with 3 processes in parallel.; `FakeVideoRendererTests` case: `FrameDuration` 40 ms, re-anchor, read `Presented` twice in the same instant (and once with `SnapshotAge > 0`) → one grid frame start. Fails if `at > _anchorTimestamp` is reverted.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourMemoryTests.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/CountingTimeProvider.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/FakeVideoRenderer.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/FakeVideoRendererTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T128-let-fake-time-move-during-the-give-up-grace-pin-the-50-ms-grace-from-both-sides-steady-the-x10-test-and-pin-the-fake-ren.md",
+      "origin": "review-2026-11-23b: Z3, Z4, Z6",
+      "status": "todo"
+    },
+    {
+      "id": "T129",
+      "title": "Keep a cut first-file probe unreported whether or not its wrapper answers, and skip the adapter when the wrapper starts after a give-up",
+      "layer": "app",
+      "deps": [
+        "T128"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-09b"
+      ],
+      "dod": "In the unanswered branch the session reports a skip only when the limit was not cut; a cut probe returns `(null, true)` with `timedOut = wholeBudget`, the same as an adapter answer at the limit; the comment at `:960-963` says so.; Test: a first file with a 1.2 s listing and a wrapper that never answers → no `FileSkipped`, the press ends `NeighbourSearchTimedOut`, and the file is remembered only per the whole-budget rule. Fails if reverted.; Before marking itself entered, the wrapper checks `cancel.IsCancellationRequested` and returns a failure without calling the adapter.; Test: a wrapper whose thread starts after the press gave up → the picture probe's `Probe` is never called for that file. Fails if reverted.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourWorkerTimingTests.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T129-keep-a-cut-first-file-probe-unreported-whether-or-not-its-wrapper-answers-and-skip-the-adapter-when-the-wrapper-starts-a.md",
+      "origin": "review-2026-11-23b: Z1, Z5",
+      "status": "todo"
+    },
+    {
+      "id": "T130",
+      "title": "Announce the next or previous file when the target is chosen, before the old run stops",
+      "layer": "app",
+      "deps": [
+        "T129"
+      ],
+      "acs": [
+        "AC-07",
+        "AC-08"
+      ],
+      "dod": "`FileChanged` is published right after the target is chosen (at `chosenAt`), before `CancelFreeze` and `_engine.Stop`; the run summary and the other lines still read in a sensible order (check the App/Console printers and their tests).; Test: the rig's stop takes non-zero fake time (e.g. 1 s) → `FileChanged` is published before the stop ends (its timestamp equals the choice, not the stop's end). Fails if reverted.; The comments at `:529-530` and `:672` describe the order as it now is.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "src/DualPlayer.Core/Playback/PlaybackSession.cs",
+        "tests/DualPlayer.Core.Tests/Playback/PlaybackSessionNeighbourRecoveryTests.cs",
+        "tests/DualPlayer.Core.Tests/Fakes/EngineRig.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T130-announce-the-next-or-previous-file-when-the-target-is-chosen-before-the-old-run-stops.md",
+      "origin": "review-2026-11-23b: Z2",
+      "status": "todo"
+    },
+    {
+      "id": "T131",
+      "title": "Bring screens, ux-flows, sad, cli.md, spec, test-plan and the task trace in step with the start failures, the Esc-during-start path and the cut-probe rule",
+      "layer": "docs",
+      "deps": [
+        "T128",
+        "T129",
+        "T130"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-06",
+        "AC-07",
+        "AC-08",
+        "AC-09b"
+      ],
+      "dod": "spec.md:249 and cli.md:85 match T129: a cut probe is never reported as skipped, whether its adapter answered at the limit or its wrapper did not answer; a wrapper is given up at its own limit + the grace or at the press bound, whichever comes first.; screens (SCR-01 / SCR-02), ux-flows E4 and sad flow 1 say \"any session-start failure (for example …) closes the window; exit code per cli.md §4 (2, or 4 for an access denial)\"; cli.md §4 and §5 note that these codes can also come from the session start with the window open.; ux-flows E5 and SCR-02 say: Esc during the start acts once the start returns (a failed start still reports its error); closing the window by the OS during the start exits 0 with no error line. The comment at `App.axaml.cs:146` says the same.; screens.md:109 adds \"or every file the press passed over was stepped past or ran out its own full limit\".; test-plan.md:217 is split: probe → \"(checked 1)\"; listing → \"(checked 0)\" on the first press, \"(checked 1)\" on later presses while the worker still runs. test-plan.md:182 names `PlaybackSessionNeighbourMemoryTests`. test-plan.md has a row for every test T128–T130 added.; T125's `acs` are `[\"AC-07\", \"AC-17\"]` in tasks.json and its task file; T20's `acs` include AC-06 in tasks.json and its task file.; Every DoD box of T128–T130 that holds is ticked; the tracker's T23 row and T23's deps include T128–T131.; `dotnet build DualPlayer.slnx` (warnings are errors), `dotnet test DualPlayer.slnx` and `dotnet format DualPlayer.slnx --verify-no-changes` clean",
+      "files_hint": [
+        "docs/features/lip-synced-video/spec.md",
+        "docs/features/lip-synced-video/sad.md",
+        "docs/features/lip-synced-video/ux-flows.md",
+        "docs/features/lip-synced-video/screens.md",
+        "docs/features/lip-synced-video/contracts/cli.md",
+        "docs/features/lip-synced-video/test-plan.md",
+        "docs/features/lip-synced-video/tasks.json",
+        "docs/features/lip-synced-video/tasks/tracker.md",
+        "docs/features/lip-synced-video/tasks/T20-playback-window-keys-and-notes.md",
+        "docs/features/lip-synced-video/tasks/T125-stamp-the-file-change-recovery-clock-when-the-target-is-chosen-before-the-old-run-stops.md",
+        "docs/features/lip-synced-video/tasks/T23-measure-lip-sync-on-the-target-pc.md",
+        "src/DualPlayer.App/App.axaml.cs"
+      ],
+      "file": "docs/features/lip-synced-video/tasks/T131-bring-screens-ux-flows-sad-cli-md-spec-test-plan-and-the-task-trace-in-step-with-the-start-failures-the-esc-during-start.md",
+      "origin": "review-2026-11-23b: Z1 (docs), Z7, Z8, Z9, Z10, Z11, Z12, Z13",
+      "status": "todo"
     }
   ]
 }
