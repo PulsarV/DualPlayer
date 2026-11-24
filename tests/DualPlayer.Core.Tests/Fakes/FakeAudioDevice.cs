@@ -67,10 +67,18 @@ internal sealed class FakeAudioDevice(TimeProvider time, MixFormat format, TimeS
 
     public event EventHandler? DeviceLost;
 
+    /// <summary>When set, the device is lost the moment it is started: before it has rendered anything (a loss in the pre-roll).</summary>
+    public bool LoseOnStart { get; set; }
+
     public void Start()
     {
         _startTimestamp = time.GetTimestamp();
         _started = true;
+        (time as CountingTimeProvider)?.SignalWait(); // the engine now waits for this device to play: fake time may move
+        if (LoseOnStart)
+        {
+            SimulateLoss();
+        }
     }
 
     public void Close() => _closed = true;

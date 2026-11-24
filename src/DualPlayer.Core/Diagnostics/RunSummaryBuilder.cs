@@ -4,9 +4,17 @@ namespace DualPlayer.Core.Diagnostics;
 public sealed class RunSummaryBuilder
 {
     private readonly Dictionary<string, State> _outputs = [];
+    private RunSummary? _carried;
 
     public void OutputStarted(string deviceId, TimeSpan clockPosition) =>
         _outputs[deviceId] = new State(clockPosition);
+
+    /// <summary>
+    /// Makes the built summary cover the playback of <paramref name="previous"/> as well (a run that continues the file after
+    /// its end): played time, corrections, underruns and device-lost events add up, the drift is the larger and the clock
+    /// mismatch the latest measured. An output only the previous run had (lost before the return) keeps its figures.
+    /// </summary>
+    public void CarryOver(RunSummary previous) => _carried = previous;
 
     public void RecordDrift(string deviceId, double driftMs, bool inRecoveryWindow)
     {
@@ -58,9 +66,9 @@ public sealed class RunSummaryBuilder
         }
     }
 
-    public RunSummary Build(RunEndReason reason, TimeSpan clockPosition)
+    public RunSummary Build(RunEndReason reason, TimeSpan clockPosition, string file)
     {
-        var outputs = _outputs
+        var current = _outputs
             .Select(kv => new OutputSummary(
                 kv.Key,
                 (kv.Value.EndedAt ?? clockPosition) - kv.Value.StartedAt - kv.Value.Jumped,
@@ -69,8 +77,31 @@ public sealed class RunSummaryBuilder
                 kv.Value.Corrections,
                 kv.Value.Underruns,
                 kv.Value.Lost.ToArray()))
-            .ToArray();
-        return new RunSummary(reason, clockPosition, outputs);
+            .ToList();
+        return new RunSummary(reason, clockPosition, _carried is null ? current : Merge(_carried.Outputs, current), file);
+    }
+
+    // The previous run's outputs keep their order (and so their numbers); the current run's are folded into them.
+    private static List<OutputSummary> Merge(IReadOnlyList<OutputSummary> previous, List<OutputSummary> current)
+    {
+        var merged = new List<OutputSummary>();
+        foreach (var before in previous)
+        {
+            var now = current.Find(o => o.DeviceId == before.DeviceId);
+            merged.Add(now is null
+                ? before
+                : new OutputSummary(
+                    before.DeviceId,
+                    before.Played + now.Played,
+                    Math.Max(before.MaxDriftMs, now.MaxDriftMs),
+                    now.ClockMismatchPpm != 0 ? now.ClockMismatchPpm : before.ClockMismatchPpm,
+                    before.Corrections + now.Corrections,
+                    before.Underruns + now.Underruns,
+                    [.. before.DeviceLostEvents, .. now.DeviceLostEvents]));
+        }
+
+        merged.AddRange(current.Where(o => !previous.Any(p => p.DeviceId == o.DeviceId)));
+        return merged;
     }
 
     private sealed class State(TimeSpan startedAt)

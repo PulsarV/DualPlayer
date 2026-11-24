@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using DualPlayer.Core;
 using DualPlayer.Core.Outputs;
 using DualPlayer.Core.Playback;
@@ -13,10 +14,70 @@ public sealed class FfmpegAudioDecoderTests
 
     private static FfmpegAudioDecoder NewDecoder() => new();
 
+    [Theory]
+    [InlineData(13)] // EACCES
+    [InlineData(1)] // EPERM
+    public void An_open_failure_of_eacces_or_eperm_is_reported_as_access_denied(int posixError)
+    {
+        var result = FfmpegAudioDecoder.OpenFailure("/x/film.mkv", -posixError);
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Error!.Code.ShouldBe("playback.file_access_denied");
+    }
+
+    [Theory]
+    [InlineData(2)] // ENOENT
+    [InlineData(5)] // EIO
+    public void Any_other_open_failure_is_reported_as_unreadable(int posixError)
+    {
+        var result = FfmpegAudioDecoder.OpenFailure("/x/film.mkv", -posixError);
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Error!.Code.ShouldBe("playback.file_unreadable");
+    }
+
+    [Fact]
+    public void ListTracks_reports_access_denied_when_the_operating_system_refuses_the_read()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip("File modes are POSIX; Windows would need an ACL to refuse the read.");
+        }
+        else if (Environment.UserName == "root")
+        {
+            Assert.Skip("root reads a file whatever its mode.");
+        }
+        else
+        {
+            ListTracksOfAFileTheOsRefuses();
+        }
+    }
+
+    [UnsupportedOSPlatform("windows")]
+    private static void ListTracksOfAFileTheOsRefuses()
+    {
+        var dir = Directory.CreateTempSubdirectory("decoder-denied");
+        var copy = Path.Combine(dir.FullName, "locked.mkv");
+        File.Copy(Media("two-tracks.mkv"), copy);
+        File.SetUnixFileMode(copy, UnixFileMode.None);
+        try
+        {
+            var result = NewDecoder().ListTracks(copy);
+
+            result.IsSuccess.ShouldBeFalse();
+            result.Error!.Code.ShouldBe("playback.file_access_denied");
+        }
+        finally
+        {
+            File.SetUnixFileMode(copy, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            dir.Delete(true);
+        }
+    }
+
     [Fact]
     public void ListTracks_numbers_audio_tracks_from_1_with_language_layout_and_rate()
     {
-        var result = NewDecoder().ListTracks(Media("two-tracks.mkv"));
+        var result = NewDecoder().ListTracks(Media("two-tracks.mkv"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue(result.Error?.Message);
         result.Value.Count.ShouldBe(2);
@@ -27,7 +88,7 @@ public sealed class FfmpegAudioDecoderTests
     [Fact]
     public void ListTracks_reports_a_mono_track_without_language_as_und()
     {
-        var result = NewDecoder().ListTracks(Media("mono.wav"));
+        var result = NewDecoder().ListTracks(Media("mono.wav"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue(result.Error?.Message);
         result.Value.Count.ShouldBe(1);
@@ -42,7 +103,7 @@ public sealed class FfmpegAudioDecoderTests
     [InlineData("tones-7.1.wav", ChannelLayout.Surround71)]
     public void ListTracks_labels_a_source_5_1_or_7_1_only_when_it_has_an_LFE(string file, ChannelLayout layout)
     {
-        var result = NewDecoder().ListTracks(Media(file));
+        var result = NewDecoder().ListTracks(Media(file), TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue(result.Error?.Message);
         result.Value[0].ChannelLayout.ShouldBe(layout);
@@ -56,7 +117,7 @@ public sealed class FfmpegAudioDecoderTests
     [InlineData("tones-7.1.wav", 8, true)]
     public void ListTracks_reports_the_channel_count_and_whether_the_source_has_an_LFE(string file, int channels, bool hasLfe)
     {
-        var result = NewDecoder().ListTracks(Media(file));
+        var result = NewDecoder().ListTracks(Media(file), TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue(result.Error?.Message);
         result.Value[0].Channels.ShouldBe(channels);
@@ -69,7 +130,7 @@ public sealed class FfmpegAudioDecoderTests
     [InlineData("does-not-exist.mkv")]
     public void ListTracks_of_a_file_that_is_not_media_fails_with_file_unreadable_and_a_reason(string name)
     {
-        var result = NewDecoder().ListTracks(Media(name));
+        var result = NewDecoder().ListTracks(Media(name), TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeFalse();
         result.Error.Code.ShouldBe("playback.file_unreadable");

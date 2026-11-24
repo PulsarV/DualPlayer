@@ -1,4 +1,5 @@
 using DualPlayer.Core.Outputs;
+using DualPlayer.Core.Sync;
 using DualPlayer.Platform.MacOS.Audio;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -12,6 +13,7 @@ public static class MacOSPlatformServiceCollectionExtensions
     {
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<IAudioBackend>(sp => new AudioQueueBackend(sp.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<IDeviceLatencyProbe, CoreAudioLatencyProbe>();
         return services;
     }
 }

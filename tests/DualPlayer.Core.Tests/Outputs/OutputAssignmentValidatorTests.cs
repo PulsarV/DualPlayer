@@ -55,6 +55,17 @@ public sealed class OutputAssignmentValidatorTests
     }
 
     [Fact]
+    public void Track_error_on_a_later_output_comes_before_device_error_on_an_earlier_one()
+    {
+        var result = OutputAssignmentValidator.Validate(
+            Tracks,
+            Catalog(),
+            [new OutputAssignment(1, DeviceRef.ByNumber(99)), new OutputAssignment(5, DeviceRef.ByNumber(1))]);
+
+        result.Error!.Code.ShouldBe("playback.track_not_found");
+    }
+
+    [Fact]
     public void Track_number_zero_is_refused_as_track_not_found()
     {
         var result = OutputAssignmentValidator.Validate(Tracks, Catalog(), [new OutputAssignment(0, DeviceRef.ByNumber(1))]);

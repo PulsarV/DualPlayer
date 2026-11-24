@@ -3,7 +3,11 @@ using System.Diagnostics.CodeAnalysis;
 namespace DualPlayer.Core;
 
 /// <summary>An expected runtime failure. Exceptions mean bugs; expected failures travel as <see cref="Error"/>.</summary>
-public sealed record Error(string Code, string Message);
+public sealed record Error(string Code, string Message)
+{
+    /// <summary>Structured details a contract prints next to the code (e.g. <c>codec</c>, <c>profile</c>); null when none.</summary>
+    public IReadOnlyDictionary<string, string>? Fields { get; init; }
+}
 
 /// <summary>Outcome of an operation that returns no value.</summary>
 public readonly record struct Result

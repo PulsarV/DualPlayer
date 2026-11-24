@@ -384,7 +384,8 @@ public sealed class ConsoleRunTests
                 [
                     new OutputSummary("dev-1", TimeSpan.FromSeconds(10), 1, 0, 0, 0, []),
                     new OutputSummary("dev-2", TimeSpan.FromSeconds(10), 1, 0, 0, 0, []),
-                ]));
+                ],
+                "film.mkv"));
         }
 
         private void Publish(EngineEvent e)

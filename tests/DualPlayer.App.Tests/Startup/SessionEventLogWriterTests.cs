@@ -1,0 +1,427 @@
+using DualPlayer.App.Startup;
+using DualPlayer.Core.Diagnostics;
+using DualPlayer.Core.Playback;
+using DualPlayer.Core.Sync;
+using Microsoft.Extensions.Logging;
+
+namespace DualPlayer.App.Tests.Startup;
+
+public sealed class SessionEventLogWriterTests
+{
+    private const string Dev = "{0.0.0.00000000}.{0001}";
+
+    private static readonly OutputLatency Out = new(Dev, DeviceType.BluetoothHeadphones, 10, 200, 40, 170, 30);
+
+    [Fact]
+    public void Latency_estimated_is_logged_per_output_with_the_reported_default_offset_split()
+    {
+        var h = new Harness();
+        h.Feed.Publish(new LatencyEstimated(new LatencyEstimate([Out], 200)));
+
+        var e = h.Log.Entries.ShouldHaveSingleItem();
+        e["Output"].ShouldBe(1);
+        e["DeviceId"].ShouldBe(Dev);
+        e["ReportedMs"].ShouldBe(10);
+        e["DefaultMs"].ShouldBe(200);
+        e["OffsetMs"].ShouldBe(40);
+        e["AssumedMs"].ShouldBe(170);
+        e["LagMs"].ShouldBe(30);
+        e["PictureDelayMs"].ShouldBe(200);
+    }
+
+    [Fact]
+    public void A_lost_output_is_logged_as_lost_with_its_number_and_no_stale_assumed_or_lag()
+    {
+        var h = new Harness();
+        var lost = Out with { OutputNumber = 1, IsLost = true };
+        var playing = Out with { DeviceId = "dev-2", OutputNumber = 2, AssumedMs = 0, LagMs = 0 };
+        h.Feed.Publish(new LatencyEstimated(new LatencyEstimate([lost, playing], 0)));
+        h.Feed.Publish(new PictureDelayChanged(TimeSpan.Zero, PictureDelayCause.FileChange, 200, 0, [lost, playing]));
+
+        foreach (var index in new[] { 0, 3 })
+        {
+            var e = h.Log.Entries[index];
+            e["Output"].ShouldBe(1);
+            e["Lost"].ShouldBe(true);
+            e.ContainsKey("AssumedMs").ShouldBeFalse();
+            e.ContainsKey("LagMs").ShouldBeFalse();
+        }
+
+        h.Log.Entries[1]["Output"].ShouldBe(2);
+        h.Log.Entries[1]["LagMs"].ShouldBe(0);
+    }
+
+    [Fact]
+    public void Picture_delay_change_is_logged_with_clock_cause_and_old_and_new_delay()
+    {
+        var h = new Harness();
+        h.Feed.Publish(new PictureDelayChanged(TimeSpan.FromSeconds(75), PictureDelayCause.Offset, 200, 240, [Out]));
+
+        var e = h.Log.Entries[0];
+        e["Clock"].ShouldBe("00:01:15.000");
+        e["Cause"].ShouldBe("offset");
+        e["OldPictureDelayMs"].ShouldBe(200);
+        e["NewPictureDelayMs"].ShouldBe(240);
+        h.Log.Entries.Count.ShouldBe(2);
+        h.Log.Entries[1]["LagMs"].ShouldBe(30);
+    }
+
+    [Fact]
+    public void Picture_delay_move_is_logged_with_cause_delays_duration_and_speeds_in_ppm()
+    {
+        var h = new Harness();
+        h.Feed.Publish(new PictureDelayMoved(
+            TimeSpan.FromSeconds(75),
+            PictureDelayCause.DeviceLost,
+            240,
+            230,
+            TimeSpan.FromSeconds(5),
+            -2000,
+            [new OutputRamp(Dev, 1500)]));
+
+        // One record for the move, then one line per output ramp (same shape as the per-output latency lines).
+        h.Log.Entries.Count.ShouldBe(2);
+        var e = h.Log.Entries[0];
+        e["Clock"].ShouldBe("00:01:15.000");
+        e["Cause"].ShouldBe("device-lost");
+        e["FromMs"].ShouldBe(240);
+        e["ToMs"].ShouldBe(230);
+        Convert.ToDouble(e["DurationMs"]).ShouldBe(5000, 0.5);
+        Convert.ToDouble(e["PicturePpm"]).ShouldBe(-2000, 0.5);
+        var ramp = h.Log.Entries[1];
+        ramp["Output"].ShouldBe(1);
+        ramp["DeviceId"].ShouldBe(Dev);
+        Convert.ToDouble(ramp["RampPpm"]).ShouldBe(1500, 0.5);
+    }
+
+    [Fact]
+    public void Per_output_records_print_the_output_number_from_the_start_command_not_the_list_position_AC_17()
+    {
+        var h = new Harness();
+        h.Feed.Publish(new PictureDelayChanged(TimeSpan.FromSeconds(75), PictureDelayCause.Offset, 200, 240, [Out with { OutputNumber = 2 }, Out with { OutputNumber = 3 }]));
+        h.Feed.Publish(new PictureDelayMoved(
+            TimeSpan.FromSeconds(75),
+            PictureDelayCause.Offset,
+            200,
+            240,
+            TimeSpan.FromSeconds(5),
+            -2000,
+            [new OutputRamp(Dev, 1500) { OutputNumber = 2 }, new OutputRamp(Dev, 100) { OutputNumber = 3 }]));
+
+        h.Log.Entries.Where(e => e.ContainsKey("Output")).Select(e => e["Output"]).ShouldBe([2, 3, 2, 3]);
+    }
+
+    [Fact]
+    public void Each_output_line_of_a_move_logs_its_applied_ramp_drift_correction_and_total_speed_AC_14_AC_17()
+    {
+        var h = new Harness();
+        h.Feed.Publish(new PictureDelayMoved(
+            TimeSpan.FromSeconds(75),
+            PictureDelayCause.Offset,
+            240,
+            230,
+            TimeSpan.FromSeconds(5),
+            2000,
+            [new OutputRamp(Dev, -2500) { OutputNumber = 1, CorrectionPpm = 120, TotalPpm = -2380 }]));
+
+        var line = h.Log.Entries[1];
+        Convert.ToDouble(line["RampPpm"]).ShouldBe(-2500, 0.5);
+        Convert.ToDouble(line["CorrectionPpm"]).ShouldBe(120, 0.5);
+        Convert.ToDouble(line["TotalPpm"]).ShouldBe(-2380, 0.5);
+    }
+
+    [Fact]
+    public void Offset_change_picture_timing_frame_counters_and_start_timings_are_logged_with_their_fields()
+    {
+        var h = new Harness();
+        h.Feed.Publish(new OffsetChanged(2, Dev, 0, 10, null));
+        h.Feed.Publish(new PictureTimingReported(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1.5), TimeSpan.FromSeconds(1.51), 10.0));
+        h.Feed.Publish(new FrameCountersReported(TimeSpan.FromSeconds(60), new FrameCounters(3, 2, 1)));
+        h.Feed.Publish(new StartTimings(5, 1905, new Dictionary<string, long> { [Dev] = 1950 }) { TimestampFrequency = 1000 });
+
+        var entries = h.Log.Entries;
+        entries[0]["Output"].ShouldBe(2);
+        entries[0]["OldOffsetMs"].ShouldBe(0);
+        entries[0]["NewOffsetMs"].ShouldBe(10);
+        entries[1]["Clock"].ShouldBe("00:00:01.000");
+        entries[1]["FrameDue"].ShouldBe("00:00:01.500");
+        entries[1]["Presented"].ShouldBe("00:00:01.510");
+        entries[1]["ErrorMs"].ShouldBe(10.0);
+        entries[2]["Late"].ShouldBe(3L);
+        entries[2]["Dropped"].ShouldBe(2L);
+        entries[2]["SkippedDamaged"].ShouldBe(1L);
+        Convert.ToDouble(entries[3]["CommandToFirstFrameMs"]).ShouldBe(1900, 0.5);
+        entries[3]["CommandToFirstAudioMs"].ShouldBe($"{Dev}=1945");
+    }
+
+    [Fact]
+    public void Start_timings_are_logged_in_milliseconds_not_as_raw_clock_ticks_AC_01()
+    {
+        var h = new Harness();
+        // 10 MHz ticks (the Windows performance counter): 19 000 000 ticks are 1900 ms.
+        h.Feed.Publish(new StartTimings(100_000_000, 119_000_000, new Dictionary<string, long> { [Dev] = 120_500_000, ["dev-2"] = 118_000_000 }) { TimestampFrequency = 10_000_000 });
+
+        var e = h.Log.Entries.ShouldHaveSingleItem();
+        Convert.ToDouble(e["CommandToFirstFrameMs"]).ShouldBe(1900, 0.5);
+        e["CommandToFirstAudioMs"].ShouldBe($"{Dev}=2050 dev-2=1800");
+        e.ContainsKey("CommandTimestamp").ShouldBeFalse("raw ticks without their frequency cannot be read");
+        e.ContainsKey("FirstFramePresented").ShouldBeFalse();
+        e.ContainsKey("FirstAudioHeard").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void A_picture_failure_is_logged_with_its_clock_error_code_and_reason_AC_06b()
+    {
+        var h = new Harness();
+        h.Feed.Publish(new PictureFailed(new TimeSpan(1, 10, 5), "The picture could not be decoded further: broken.") { Code = "video.decode_failed" });
+
+        var e = h.Log.Entries.ShouldHaveSingleItem();
+        e["Clock"].ShouldBe("01:10:05.000");
+        e["Code"].ShouldBe("video.decode_failed");
+        e["Reason"].ShouldBe("The picture could not be decoded further: broken.");
+    }
+
+    [Theory]
+    [InlineData(PictureReloadOutcome.Reloaded, "reloaded")]
+    [InlineData(PictureReloadOutcome.Failed, "failed")]
+    [InlineData(PictureReloadOutcome.TimedOut, "timed-out")]
+    [InlineData(PictureReloadOutcome.FailedAgain, "failed-again")]
+    public void The_reload_of_the_last_frame_is_logged_with_its_outcome_and_position_AC_06b(PictureReloadOutcome outcome, string logged)
+    {
+        var h = new Harness();
+        h.Feed.Publish(new PictureReloadFinished(new TimeSpan(1, 10, 5), outcome));
+
+        var e = h.Log.Entries.ShouldHaveSingleItem();
+        e["Clock"].ShouldBe("01:10:05.000");
+        e["Outcome"].ShouldBe(logged);
+    }
+
+    [Fact]
+    public void Every_record_is_logged_under_its_cli_md_section_3_name()
+    {
+        var h = new Harness();
+        h.Feed.Publish(new LatencyEstimated(new LatencyEstimate([Out], 200)));
+        h.Feed.Publish(new PictureDelayChanged(TimeSpan.Zero, PictureDelayCause.Offset, 200, 240, [Out]));
+        h.Feed.Publish(new PictureDelayMoved(TimeSpan.Zero, PictureDelayCause.Offset, 240, 230, TimeSpan.FromSeconds(5), -2000, [new OutputRamp(Dev, 1500)]));
+        h.Feed.Publish(new OffsetChanged(1, Dev, 0, 10, null));
+        h.Feed.Publish(new PictureTimingReported(TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero, 1.0));
+        h.Feed.Publish(new FrameCountersReported(TimeSpan.Zero, new FrameCounters(1, 1, 1)));
+        h.Feed.Publish(new StartTimings(5, 1905, new Dictionary<string, long> { [Dev] = 1950 }) { TimestampFrequency = 1000 });
+        h.Feed.Publish(new PictureFailed(TimeSpan.Zero, "x") { Code = "video.decode_failed" });
+        h.Feed.Publish(new PictureReloadFinished(TimeSpan.Zero, PictureReloadOutcome.Reloaded));
+
+        string Name(Dictionary<string, object?> e) =>
+            e.TryGetValue("Event", out var ev) ? (string)ev! : ((string)e["{OriginalFormat}"]!).Split(' ')[0];
+
+        h.Log.Entries.Select(Name).ShouldBe(
+        [
+            "LatencyEstimated",
+            "PictureDelayChanged",
+            "PictureDelayChanged.Output",
+            "PictureDelayMoved",
+            "PictureDelayMoved.Output",
+            "OffsetChanged",
+            "PictureTiming",
+            "FrameCounters",
+            "StartTimings",
+            "PictureFailed",
+            "PictureReload",
+        ]);
+    }
+
+    [Fact]
+    public void An_offset_change_logs_its_save_time_when_it_has_one_and_none_when_it_has_not()
+    {
+        var h = new Harness();
+        var saved = new DateTimeOffset(2026, 11, 23, 10, 30, 0, TimeSpan.Zero);
+        h.Feed.Publish(new OffsetChanged(1, Dev, 0, 10, saved));
+        h.Feed.Publish(new OffsetChanged(1, Dev, 10, 20, null));
+
+        h.Log.Entries[0]["SavedAt"].ShouldBe(saved);
+        h.Log.Entries[1]["SavedAt"].ShouldBeNull();
+    }
+
+    [Fact]
+    public void Nothing_is_logged_after_dispose()
+    {
+        var h = new Harness();
+        h.Writer.Dispose();
+        h.Feed.Publish(new OffsetChanged(1, Dev, 0, 10, null));
+
+        h.Log.Entries.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Each_output_latency_is_logged_with_its_source()
+    {
+        var h = new Harness();
+        h.Feed.Publish(new LatencyEstimated(new LatencyEstimate([Out with { Source = "wasapi-stream-latency" }], 200)));
+
+        h.Log.Entries.ShouldHaveSingleItem()["Source"].ShouldBe("wasapi-stream-latency");
+    }
+
+    [Fact]
+    public void Lip_synced_again_is_logged_with_the_command_and_how_long_after_it()
+    {
+        var h = new Harness();
+        h.Feed.Publish(new LipSyncedAgain(TimeSpan.FromSeconds(75), "seek", 420.5, -3.25));
+
+        var e = h.Log.Entries.ShouldHaveSingleItem();
+        e["{OriginalFormat}"]!.ToString()!.ShouldStartWith("LipSyncedAgain");
+        e["Clock"].ShouldBe("00:01:15.000");
+        e["Command"].ShouldBe("seek");
+        e["AfterCommandMs"].ShouldBe(420.5);
+        e["ErrorMs"].ShouldBe(-3.25);
+    }
+
+    [Fact]
+    public void Lip_synced_again_is_logged_with_each_outputs_position_error()
+    {
+        const string Other = "{0.0.0.00000000}.{0002}";
+        var h = new Harness();
+        h.Feed.Publish(new LipSyncedAgain(TimeSpan.FromSeconds(75), "seek", 420.5, -3.25)
+        {
+            OutputErrorsMs = new Dictionary<string, double> { [Dev] = 2.5, [Other] = -4.25 },
+        });
+
+        var e = h.Log.Entries.ShouldHaveSingleItem();
+        e["{OriginalFormat}"]!.ToString()!.ShouldStartWith("LipSyncedAgain");
+        var errors = e["OutputErrorsMs"].ShouldBeOfType<string>();
+        errors.ShouldContain($"{Dev}=2.5");
+        errors.ShouldContain($"{Other}=-4.25");
+    }
+
+    [Fact]
+    public void Not_lip_synced_is_logged_with_the_cause_the_picture_error_and_each_outputs_error()
+    {
+        const string Other = "{0.0.0.00000000}.{0002}";
+        var h = new Harness();
+        h.Feed.Publish(new NotLipSynced(TimeSpan.FromSeconds(75), "seek", 1000.5, 2.5)
+        {
+            OutputErrorsMs = new Dictionary<string, double> { [Dev] = 30, [Other] = -4.25 },
+        });
+
+        var e = h.Log.Entries.ShouldHaveSingleItem();
+        e["{OriginalFormat}"]!.ToString()!.ShouldStartWith("NotLipSynced");
+        e["Clock"].ShouldBe("00:01:15.000");
+        e["Command"].ShouldBe("seek");
+        e["AfterCommandMs"].ShouldBe(1000.5);
+        e["ErrorMs"].ShouldBe(2.5);
+        var errors = e["OutputErrorsMs"].ShouldBeOfType<string>();
+        errors.ShouldContain($"{Dev}=30");
+        errors.ShouldContain($"{Other}=-4.25");
+    }
+
+    [Fact]
+    public void A_skipped_damaged_stretch_is_logged_with_where_how_long_and_how_many_frames()
+    {
+        var h = new Harness();
+        h.Feed.Publish(new DamagedStretchSkipped(TimeSpan.FromSeconds(75), TimeSpan.FromMilliseconds(400), 12));
+
+        var e = h.Log.Entries.ShouldHaveSingleItem();
+        e["{OriginalFormat}"]!.ToString()!.ShouldStartWith("DamagedStretchSkipped");
+        e["Clock"].ShouldBe("00:01:15.000");
+        e["LengthMs"].ShouldBe(400.0);
+        e["Frames"].ShouldBe(12L);
+    }
+
+    [Theory]
+    [InlineData(PictureDelayCause.Offset, "offset")]
+    [InlineData(PictureDelayCause.DeviceLost, "device-lost")]
+    [InlineData(PictureDelayCause.Seek, "seek")]
+    [InlineData(PictureDelayCause.Pause, "pause")]
+    [InlineData(PictureDelayCause.Resume, "resume")]
+    [InlineData(PictureDelayCause.FileChange, "file-change")]
+    public void The_picture_delay_cause_is_logged_as_cli_md_names_it(PictureDelayCause cause, string logged)
+    {
+        var h = new Harness();
+        h.Feed.Publish(new PictureDelayChanged(TimeSpan.FromSeconds(1), cause, 200, 240, []));
+
+        h.Log.Entries[0]["Cause"].ShouldBe(logged);
+    }
+
+    [Theory]
+    [InlineData(DeviceType.BluetoothHeadphones, "bluetooth-headphones")]
+    [InlineData(DeviceType.BluetoothSpeaker, "bluetooth-speaker")]
+    [InlineData(DeviceType.Wired, "wired")]
+    [InlineData(DeviceType.Hdmi, "hdmi")]
+    [InlineData(DeviceType.Other, "other")]
+    public void The_device_type_is_logged_as_cli_md_names_it(DeviceType type, string logged)
+    {
+        var h = new Harness();
+        h.Feed.Publish(new LatencyEstimated(new LatencyEstimate([Out with { Type = type }], 200)));
+
+        h.Log.Entries.ShouldHaveSingleItem()["Type"].ShouldBe(logged);
+    }
+
+    [Theory]
+    [InlineData(DualPlayer.Core.Diagnostics.RunEndReason.FileChange, "file-change")]
+    [InlineData(DualPlayer.Core.Diagnostics.RunEndReason.PictureFailed, "picture-failed")]
+    [InlineData(DualPlayer.Core.Diagnostics.RunEndReason.Stop, "exit")]
+    [InlineData(DualPlayer.Core.Diagnostics.RunEndReason.FileEnd, "end")]
+    [InlineData(DualPlayer.Core.Diagnostics.RunEndReason.AllDevicesLost, "last-output-lost")]
+    public void The_run_summary_reason_is_printed_as_cli_md_names_it(DualPlayer.Core.Diagnostics.RunEndReason reason, string printed) =>
+        RunSummaryLines.Reason(reason).ShouldBe(printed);
+
+    private sealed class Harness
+    {
+        public Harness()
+        {
+            Writer = new SessionEventLogWriter(Feed, Log);
+        }
+
+        public Feed Feed { get; } = new();
+
+        public CaptureLogger Log { get; } = new();
+
+        public SessionEventLogWriter Writer { get; }
+    }
+
+    private sealed class Feed : IObservable<SessionEvent>
+    {
+        private readonly List<IObserver<SessionEvent>> _observers = [];
+
+        public IDisposable Subscribe(IObserver<SessionEvent> observer)
+        {
+            _observers.Add(observer);
+            return new Unsubscribe(() => _observers.Remove(observer));
+        }
+
+        public void Publish(SessionEvent value)
+        {
+            foreach (var o in _observers.ToList())
+            {
+                o.OnNext(value);
+            }
+        }
+
+        private sealed class Unsubscribe(Action action) : IDisposable
+        {
+            public void Dispose() => action();
+        }
+    }
+
+    private sealed class CaptureLogger : ILogger
+    {
+        public List<Dictionary<string, object?>> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            var fields = new Dictionary<string, object?>();
+            if (state is IEnumerable<KeyValuePair<string, object?>> pairs)
+            {
+                foreach (var p in pairs)
+                {
+                    fields[p.Key] = p.Value;
+                }
+            }
+
+            Entries.Add(fields);
+        }
+    }
+}

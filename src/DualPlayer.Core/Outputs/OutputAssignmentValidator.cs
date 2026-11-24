@@ -21,7 +21,10 @@ public static class OutputAssignmentValidator
                     "playback.track_not_found",
                     $"track {assignment.TrackNumber} does not exist, {DescribeTracks(tracks)}");
             }
+        }
 
+        foreach (var assignment in assignments)
+        {
             var device = catalog.Find(assignment.Device);
             if (device is null)
             {

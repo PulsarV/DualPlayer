@@ -1,4 +1,5 @@
 using Avalonia;
+using DualPlayer.App.Startup;
 using DualPlayer.Core;
 using Microsoft.Extensions.Logging;
 using Serilog;
@@ -11,25 +12,60 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
-        var paths = CompositionRoot.PathsForCurrentUser();
-        using var serilog = CreateSerilog(paths);
-        using var loggerFactory = new SerilogLoggerFactory(serilog);
+        AppPaths? paths = null;
+        return Run(
+            args,
+            TimeProvider.System,
+            Console.Error,
+            () =>
+            {
+                paths = CompositionRoot.PathsForCurrentUser();
+                return new SerilogLoggerFactory(CreateSerilog(paths), dispose: true);
+            },
+            (request, loggerFactory) =>
+            {
+                using var services = CompositionRoot.Build(paths!, loggerFactory);
+                App.Services = services;
+                App.Request = request;
+                return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            });
+    }
+
+    /// <summary>
+    /// The process entry without the process: takes the start command's time, sets up logging, parses the command line
+    /// and either refuses it (cli.md §4/§5) or starts the App.
+    /// </summary>
+    internal static int Run(
+        string[] args,
+        TimeProvider time,
+        TextWriter stderr,
+        Func<ILoggerFactory> createLogging,
+        Func<StartRequest, ILoggerFactory, int> startApp)
+    {
+        // The start command's time, before anything else runs: the start budget is measured from here (spec §6).
+        App.CommandTimestamp = time.GetTimestamp();
+        using var loggerFactory = createLogging();
         var log = loggerFactory.CreateLogger(typeof(Program));
         log.LogInformation(
             "DualPlayer starting {Version} on {OS}",
             typeof(Program).Assembly.GetName().Version,
             System.Runtime.InteropServices.RuntimeInformation.OSDescription);
 
+        var parsed = StartCommand.Parse(args);
+        if (!parsed.IsSuccess)
+        {
+            StartErrors.Report(parsed.Error, stderr, log);
+            return StartExitCodes.For(parsed.Error);
+        }
+
         try
         {
-            using var services = CompositionRoot.Build(paths, loggerFactory);
-            App.Services = services;
-            return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            return startApp(parsed.Value, loggerFactory);
         }
         catch (Exception ex)
         {
             log.LogCritical(ex, "DualPlayer terminated unexpectedly");
-            throw;
+            return 1;
         }
         finally
         {

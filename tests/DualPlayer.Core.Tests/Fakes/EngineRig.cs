@@ -27,9 +27,10 @@ internal sealed class EngineRig : IDisposable
     [
         new AudioTrackInfo(1, "eng", ChannelLayout.Stereo, 48_000),
         new AudioTrackInfo(2, "ukr", ChannelLayout.Stereo, 48_000),
+        new AudioTrackInfo(3, "deu", ChannelLayout.Stereo, 48_000),
     ];
 
-    private readonly List<FakeAudioDevice> _devices = [];
+    private readonly DeviceRegistry _devices = new();
     private readonly List<EngineEvent> _events = [];
     private readonly Lock _gate = new();
     private readonly RigDevice[] _specs;
@@ -38,6 +39,7 @@ internal sealed class EngineRig : IDisposable
     private readonly int _barrierEvery;
     private readonly List<(TimeSpan At, long[] Played)> _observations = [];
     private readonly bool _observe;
+    private readonly FakeAudioBackend _fakeBackend;
     private TimeSpan _positionBase;
     private TimeSpan _positionSince;
     private bool _paused;
@@ -57,7 +59,7 @@ internal sealed class EngineRig : IDisposable
         _specs = devices;
         _observe = observe;
         _barrierEvery = barrierEvery;
-        Time = new FakeTimeProvider();
+        Time = new CountingTimeProvider();
         var backend = new FakeAudioBackend(Time, new MixFormat(48_000, 2, ChannelLayout.Stereo)) { KeepRendered = keepRendered };
         for (var i = 0; i < devices.Length; i++)
         {
@@ -69,16 +71,41 @@ internal sealed class EngineRig : IDisposable
         }
 
         _decoder = new RealisticAudioDecoder(Tracks, totalSeconds, blockFrames ?? [1536, 1024], seekLandsEarly, seekLandsLate, startLandsLate);
+        Backend = backend;
+        _fakeBackend = backend;
         Engine = new AudioEngine(new CapturingBackend(backend, _devices), _decoder, Time, NullLogger<AudioEngine>.Instance);
         Engine.Events.Subscribe(new Collector(this));
         _origin = Time.GetUtcNow();
     }
 
-    public FakeTimeProvider Time { get; }
+    public CountingTimeProvider Time { get; }
+
+    /// <summary>
+    /// When set (a session rig), fake time stands still during a command until a fake signals that it waits on it, with no real-time
+    /// cap. When clear (a bare engine rig), the engine's own gate applies: any new timer, or 2 s of real time.
+    /// </summary>
+    public bool StrictGate { get; set; }
+
+    public IAudioBackend Backend { get; }
+
+    /// <summary>Device <paramref name="number"/> (dev-n) is lost the moment the engine starts it: in the pre-roll, before its first audio.</summary>
+    public void LoseOutputInPreRoll(int number) => _fakeBackend.LoseOnStart($"dev-{number}");
+
+    /// <summary>Device <paramref name="number"/> (dev-n) refuses to open (access denied) until <see cref="AllowAccess"/>.</summary>
+    public void DenyAccess(int number) => _fakeBackend.DenyAccess($"dev-{number}");
+
+    public void AllowAccess(int number) => _fakeBackend.AllowAccess($"dev-{number}");
+
+    /// <summary>Device <paramref name="number"/> (dev-n) leaves the device list (a run already playing on it keeps it open).</summary>
+    public void Unlist(int number) => _fakeBackend.RemoveDevice($"dev-{number}");
+
+    /// <summary>Device <paramref name="number"/> (dev-n) is listed again, at the end of the list.</summary>
+    public void Relist(int number) => _fakeBackend.AddDevice(new AudioDeviceInfo($"Device {number}", null, $"dev-{number}"));
 
     public AudioEngine Engine { get; }
 
-    public IReadOnlyList<FakeAudioDevice> Devices => _devices;
+    /// <summary>A snapshot of the current run's outputs: the engine loop may re-open them while a reader walks the list.</summary>
+    public IReadOnlyList<FakeAudioDevice> Devices => _devices.Snapshot();
 
     public TimeSpan Elapsed => Time.GetUtcNow() - _origin;
 
@@ -105,13 +132,13 @@ internal sealed class EngineRig : IDisposable
 
     public RunSummary? Summary => Events.OfType<RunSummary>().FirstOrDefault();
 
-    public void Start()
+    public void Start(EngineOptions? options = null)
     {
         var assignments = Enumerable.Range(0, _specs.Length)
             .Select(i => new OutputAssignment((i % 2) + 1, DeviceRef.ByNumber(i + 1)))
             .ToArray();
         var commandAt = Elapsed;
-        Engine.StartRun("film.mkv", assignments, new EngineOptions()).IsSuccess.ShouldBeTrue();
+        Engine.StartRun("film.mkv", assignments, options ?? new EngineOptions()).IsSuccess.ShouldBeTrue();
         _positionBase = TimeSpan.Zero;
         _paused = true; // the clock holds 00:00 through the silent pre-roll
         Fill();
@@ -142,25 +169,93 @@ internal sealed class EngineRig : IDisposable
     public T Call<T>(Func<T> command)
     {
         using var started = new ManualResetEventSlim();
+        var signals = Time.Signals;
+        Time.BeginCall();
         var task = Task.Factory.StartNew(
             () =>
             {
+                Time.WatchCommandThread(Environment.CurrentManagedThreadId);
                 started.Set();
-                return command();
+                try
+                {
+                    return command();
+                }
+                finally
+                {
+                    Time.WatchCommandThread(0);
+                }
             },
             CancellationToken.None,
             TaskCreationOptions.LongRunning,
             TaskScheduler.Default);
         started.Wait(TimeSpan.FromSeconds(10)).ShouldBeTrue("the command thread never started");
-        task.Wait(200);
+
+        // Fake time stands still until the command waits on it, or finishes: a worker the pool starts late must see the time the
+        // command began at. A session rig waits for an explicit signal from a fake (a scripted decoder or probe spending fake time,
+        // an engine command) or a timer the command waits on; real time and an unrelated timer never open the gate. It sleeps until
+        // something it looks at changes; a command that neither finishes nor waits fails the test after 60 s, it never moves time.
+        // A bare engine rig keeps the engine's own gate: any new timer, or 2 s.
+        if (StrictGate)
+        {
+            _ = task.ContinueWith(_ => Time.Pulse(), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            while (!task.IsCompleted && Time.Signals == signals)
+            {
+                if (Time.Waiters > 0)
+                {
+                    // A fake is spending fake time: it moves only while one is, and never past the earliest deadline of a fake that
+                    // spins to one: that fake, however late its thread is scheduled, sees its deadline and leaves its scope first.
+                    var room = Time.RoomBeforeDeadline();
+                    if (room is null || room > TimeSpan.Zero)
+                    {
+                        Advance(barrier: false, room is { } r && r < Step ? r : Step);
+                    }
+
+                    PaceToDecoder();
+                }
+                else
+                {
+                    Time.WaitForPulse(TimeSpan.FromSeconds(60)).ShouldBeTrue("the command neither finished nor waited on fake time within 60 s");
+                }
+            }
+        }
+        else
+        {
+            var timers = Time.TimersCreated;
+            var gate = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+            while (!task.IsCompleted && Time.TimersCreated == timers && DateTime.UtcNow < gate)
+            {
+                task.Wait(5);
+            }
+        }
+
         for (var i = 0; i < 3_000 && !task.IsCompleted; i++)
         {
+            Thread.Sleep(1); // the command, woken by its own signal, reaches its read of the time before the clock moves
             Advance(barrier: false);
-            Thread.Sleep(1);
         }
 
         task.IsCompleted.ShouldBeTrue("the command never completed");
         return task.GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// Moves fake time on, without barriers, until <paramref name="condition"/> holds — for a command that runs on another
+    /// thread (a queued window key) and waits for time itself, as <see cref="Call{T}"/> does for its own command.
+    /// </summary>
+    public bool AdvanceUntil(Func<bool> condition, int maxSteps = 3_000)
+    {
+        for (var i = 0; i < maxSteps; i++)
+        {
+            if (condition())
+            {
+                return true;
+            }
+
+            Advance(barrier: false);
+            Thread.Sleep(1);
+        }
+
+        return condition();
     }
 
     /// <summary>Seeks and tells the rig where the master clock now is (it jumps when the command starts).</summary>
@@ -191,6 +286,21 @@ internal sealed class EngineRig : IDisposable
         _paused = false;
     }
 
+    /// <summary>Tells the rig a transport command is starting: where the master clock now reads (the paused state stays).</summary>
+    public void CommandStarting(TimeSpan position)
+    {
+        _positionBase = position;
+        _positionSince = Elapsed;
+    }
+
+    /// <summary>Tells the rig where the master clock stands after a transport command finished.</summary>
+    public void CommandDone(TimeSpan position, bool paused)
+    {
+        _positionBase = position;
+        _positionSince = Elapsed;
+        _paused = paused;
+    }
+
     public void Stop(RunEndReason reason)
     {
         Call(() =>
@@ -200,14 +310,33 @@ internal sealed class EngineRig : IDisposable
         });
     }
 
-    /// <summary>Waits until the engine has handled everything queued so far (a start while running is refused on the loop).</summary>
+    /// <summary>
+    /// Waits until the engine has handled everything queued so far (a round trip through the engine's loop; strict: the run
+    /// must still be active), then runs <see cref="AfterStep"/>.
+    /// </summary>
     public void Barrier()
     {
-        var refused = Engine.StartRun(string.Empty, [], new EngineOptions());
-        refused.IsSuccess.ShouldBeFalse($"the run is no longer active; it ended with {Summary?.EndReason.ToString() ?? "no summary"} at {Summary?.ClockPosition}");
-        refused.Error.Code.ShouldBe("playback.run_active");
+        EngineBarrier();
+        AfterStep?.Invoke();
     }
 
+    private void EngineBarrier()
+    {
+        if (EndsAllowed)
+        {
+            // A round trip through the engine's loop: everything queued before it has run. No run is started, so a film
+            // that ended meanwhile leaves no phantom run behind.
+            _ = Engine.FrameZeroTimestamp;
+            return;
+        }
+
+        // Strict (step 3): the run must still be active. The same round trip through the engine's loop, which answers with the
+        // outputs of the current run (none once the run has ended, pre-roll included while it runs). No start is attempted: a probe
+        // start of an ended run would succeed on the fake decoder and leave a phantom run behind.
+        Engine.PositionErrors().ShouldNotBeEmpty($"the run is no longer active; it ended with {Summary?.EndReason.ToString() ?? "no summary"} at {Summary?.ClockPosition}");
+    }
+
+    /// <summary>Waits for <paramref name="condition"/>; once it holds, also for <see cref="AfterStep"/> (what the session still has to handle).</summary>
     public bool WaitFor(Func<bool> condition, int milliseconds = 10_000)
     {
         var deadline = DateTime.UtcNow + TimeSpan.FromMilliseconds(milliseconds);
@@ -215,13 +344,20 @@ internal sealed class EngineRig : IDisposable
         {
             if (condition())
             {
+                AfterStep?.Invoke();
                 return true;
             }
 
             Thread.Sleep(2);
         }
 
-        return condition();
+        var held = condition();
+        if (held)
+        {
+            AfterStep?.Invoke();
+        }
+
+        return held;
     }
 
     /// <summary>
@@ -231,7 +367,7 @@ internal sealed class EngineRig : IDisposable
     /// </summary>
     public double MaxDriftMs(int deviceIndex, TimeSpan commandAt, TimeSpan positionAtCommand, TimeSpan from, TimeSpan to)
     {
-        var device = _devices[deviceIndex];
+        var device = _devices.Snapshot()[deviceIndex];
         var rate = _specs[deviceIndex].Rate;
         var max = 0.0;
         var seen = 0;
@@ -253,11 +389,20 @@ internal sealed class EngineRig : IDisposable
         return max;
     }
 
+    /// <summary>
+    /// Set by a session rig: the film may end on its own or by a session command while a test renders, so the barrier only
+    /// waits for the engine's loop. Engine tests keep the strict barrier, which fails once the run has ended.
+    /// </summary>
+    public bool EndsAllowed { get; set; }
+
+    /// <summary>Runs after every <see cref="Render"/> step (a session rig waits there for what the step posted to the session).</summary>
+    public Action? AfterStep { get; set; }
+
     public void Dispose() => Engine.Dispose();
 
-    private void Advance(bool barrier)
+    private void Advance(bool barrier, TimeSpan? step = null)
     {
-        Time.Advance(Step);
+        Time.Advance(step ?? Step);
         Fill();
         if (barrier)
         {
@@ -266,18 +411,23 @@ internal sealed class EngineRig : IDisposable
 
         if (_observe)
         {
-            _observations.Add((Elapsed, [.. _devices.Select(d => d.PlayedFramesNow)]));
+            _observations.Add((Elapsed, [.. _devices.Snapshot().Select(d => d.PlayedFramesNow)]));
         }
 
         if (barrier && ++_steps % _barrierEvery == 0)
         {
-            Barrier();
+            EngineBarrier();
+        }
+
+        if (barrier)
+        {
+            AfterStep?.Invoke();
         }
     }
 
     private void Fill()
     {
-        foreach (var device in _devices)
+        foreach (var device in _devices.Snapshot())
         {
             if (device.IsClosed || device.IsHung || device.IsLost)
             {
@@ -289,12 +439,35 @@ internal sealed class EngineRig : IDisposable
         }
     }
 
+    /// <summary>
+    /// Gives the playing film's decoder the real time it needs to stay ahead of fake time, as <see cref="WaitForDecoder"/> does between
+    /// rendered steps, but never fails and never waits longer than a few ms (a stopped or seeking run has no decoder to wait for).
+    /// </summary>
+    private void PaceToDecoder()
+    {
+        var wanted = Math.Min(Position.TotalSeconds + 1.0, _decoder.TotalSeconds);
+        var devices = _devices.Snapshot();
+        for (var i = 0; i < devices.Count; i++)
+        {
+            if (devices[i].IsClosed || devices[i].IsLost || devices[i].IsHung)
+            {
+                continue;
+            }
+
+            var index = i;
+            SpinWait.SpinUntil(() => _decoder.DecodedSeconds(index) >= wanted, TimeSpan.FromMilliseconds(5));
+        }
+
+        Thread.Yield();
+    }
+
     private void WaitForDecoder()
     {
         var wanted = Math.Min(Position.TotalSeconds + 1.0, _decoder.TotalSeconds);
-        for (var i = 0; i < _devices.Count; i++)
+        var devices = _devices.Snapshot();
+        for (var i = 0; i < devices.Count; i++)
         {
-            if (_devices[i].IsClosed || _devices[i].IsLost || _devices[i].IsHung)
+            if (devices[i].IsClosed || devices[i].IsLost || devices[i].IsHung)
             {
                 continue;
             }
@@ -304,7 +477,35 @@ internal sealed class EngineRig : IDisposable
         }
     }
 
-    private sealed class CapturingBackend(IAudioBackend inner, List<FakeAudioDevice> devices) : IAudioBackend
+    /// <summary>
+    /// The current run's outputs, copy-on-write: the engine loop re-opens them (<see cref="Add"/>) while the test thread walks
+    /// a <see cref="Snapshot"/>, which never changes after it is taken.
+    /// </summary>
+    private sealed class DeviceRegistry
+    {
+        private readonly Lock _lock = new();
+        private FakeAudioDevice[] _devices = [];
+
+        public IReadOnlyList<FakeAudioDevice> Snapshot()
+        {
+            lock (_lock)
+            {
+                return _devices;
+            }
+        }
+
+        public void Add(FakeAudioDevice device)
+        {
+            lock (_lock)
+            {
+                // A new run after the previous one ended: the rig follows the new run's outputs.
+                var keep = _devices.Length > 0 && _devices.All(d => d.IsClosed) ? [] : _devices;
+                _devices = [.. keep, device];
+            }
+        }
+    }
+
+    private sealed class CapturingBackend(IAudioBackend inner, DeviceRegistry devices) : IAudioBackend
     {
         public IReadOnlyList<AudioDeviceInfo> ListDevices() => inner.ListDevices();
 
@@ -368,6 +569,17 @@ internal static class RigLoops
         }
 
         condition().ShouldBeTrue($"timed out after {timeout.TotalSeconds:F0} s waiting for {what}");
+    }
+
+    /// <summary>
+    /// Waits until every neighbour worker the session keeps (a listing or probe it gave up on) has ended: for a press that relies
+    /// on an earlier worker having ended. Read between commands, when the session's control thread does not touch its worker map.
+    /// </summary>
+    public static void WaitForNeighbourWorkers(PlaybackSession session)
+    {
+        var workers = typeof(PlaybackSession).GetField("_workers", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(session) as System.Collections.IDictionary
+            ?? throw new InvalidOperationException("PlaybackSession no longer keeps its neighbour workers in _workers.");
+        WaitOrFail(() => workers.Values.Cast<Task>().All(t => t.IsCompleted), TimeSpan.FromSeconds(10), "the session's neighbour workers to end");
     }
 
     /// <summary>True when <paramref name="task"/> finished within <paramref name="timeout"/>; never blocks the calling thread.</summary>

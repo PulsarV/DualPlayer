@@ -1,9 +1,14 @@
+using DualPlayer.App.Startup;
 using DualPlayer.App.ViewModels;
 using DualPlayer.Core;
+using DualPlayer.Core.Outputs;
+using DualPlayer.Core.Playback;
 using DualPlayer.Media;
+using DualPlayer.Media.Video;
 using DualPlayer.Platform.MacOS;
 using DualPlayer.Platform.Windows;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
 namespace DualPlayer.App;
@@ -31,7 +36,16 @@ public static class CompositionRoot
         services.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
 
         services.AddCore(paths.StateDirectory);
+
+        // Notes take the design tokens (read when the renderer is first resolved, after Avalonia has loaded them).
+        services.AddSingleton(_ => Avalonia.Application.Current is { } app ? OsdNoteTokens.From(app.Resources) : OsdNoteStyle.Default);
         services.AddMedia();
+
+        // The picture goes into the playback window: Media's renderer, decorated explicitly after AddMedia.
+        services.AddSingleton<VideoSurface>();
+        services.Replace(ServiceDescriptor.Singleton<IVideoRenderer>(sp => new WindowBoundRenderer(
+            sp.GetRequiredService<MpvVideoRenderer>(),
+            sp.GetRequiredService<VideoSurface>())));
         if (OperatingSystem.IsWindows())
         {
             services.AddWindowsPlatform();
@@ -41,7 +55,12 @@ public static class CompositionRoot
             services.AddMacOSPlatform();
         }
 
+        services.AddSingleton<IScreenCatalog, AvaloniaScreenCatalog>();
+        services.AddSingleton<IDeviceAccessProbe, BackendDeviceAccessProbe>();
+        services.AddSingleton<PlaybackControls>();
+        services.AddSingleton<IPlaybackControls>(sp => sp.GetRequiredService<PlaybackControls>());
         services.AddTransient<MainWindowViewModel>();
+        services.AddTransient<PlaybackViewModel>();
 
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
     }

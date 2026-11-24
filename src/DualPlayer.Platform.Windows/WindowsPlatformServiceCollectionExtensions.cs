@@ -1,5 +1,6 @@
 using System.Runtime.Versioning;
 using DualPlayer.Core.Outputs;
+using DualPlayer.Core.Sync;
 using DualPlayer.Platform.Windows.Audio;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -20,5 +21,7 @@ public static class WindowsPlatformServiceCollectionExtensions
 
     [SupportedOSPlatform("windows")]
     private static void AddBackend(IServiceCollection services) =>
-        services.AddSingleton<IAudioBackend, WasapiAudioBackend>();
+        services
+            .AddSingleton<IAudioBackend, WasapiAudioBackend>()
+            .AddSingleton<IDeviceLatencyProbe, WasapiLatencyProbe>();
 }

@@ -8,6 +8,12 @@ public enum RunEndReason
     Interrupt,
     SeekPastEnd,
     AllDevicesLost,
+
+    /// <summary>The session moved to another file (cli.md §2.1 <c>file-change</c>).</summary>
+    FileChange,
+
+    /// <summary>The picture could not be decoded further (cli.md §2.1 <c>picture-failed</c>).</summary>
+    PictureFailed,
 }
 
 /// <summary>Closed set of events the engine-control loop publishes.</summary>
@@ -35,4 +41,4 @@ public sealed record OutputSummary(
     long Underruns,
     IReadOnlyList<DeviceLost> DeviceLostEvents);
 
-public sealed record RunSummary(RunEndReason EndReason, TimeSpan ClockPosition, IReadOnlyList<OutputSummary> Outputs) : EngineEvent;
+public sealed record RunSummary(RunEndReason EndReason, TimeSpan ClockPosition, IReadOnlyList<OutputSummary> Outputs, string File) : EngineEvent;

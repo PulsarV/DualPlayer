@@ -99,16 +99,15 @@ public sealed class AudioEngineSyncRecordTests
         }
 
         /// <summary>
-        /// As <see cref="Render"/>, but after every step waits until the engine-control loop has handled everything queued
-        /// (a start while running is refused on the loop), so each 100 ms sync sample is taken at the instant its timer
-        /// fired however slow the machine is.
+        /// As <see cref="Render"/>, but after every clock step waits until the engine-control loop has handled everything
+        /// the step queued before the devices render: each 100 ms sync sample then runs at its own fake instant and never
+        /// overlaps a render, however slow the machine is. Not for use while the loop itself is blocked (a stop).
         /// </summary>
         public void RenderSettled(int steps)
         {
             for (var i = 0; i < steps; i++)
             {
-                Render(1);
-                Engine.StartRun(string.Empty, [], new EngineOptions()).IsSuccess.ShouldBeFalse();
+                RenderStep(settle: true);
             }
         }
 
@@ -117,19 +116,29 @@ public sealed class AudioEngineSyncRecordTests
         {
             for (var i = 0; i < steps; i++)
             {
-                Time.Advance(Step);
-                foreach (var device in Backend.Devices.Values)
-                {
-                    device.PumpRender(480);
-                }
-
-                if (WaitForDecoder)
-                {
-                    AwaitDecoder();
-                }
-
-                Thread.Sleep(1);
+                RenderStep(settle: false);
             }
+        }
+
+        private void RenderStep(bool settle)
+        {
+            Time.Advance(Step);
+            if (settle)
+            {
+                _ = Engine.ClockStartTimestamp; // a loop round-trip: runs after the sync sample the clock step posted
+            }
+
+            foreach (var device in Backend.Devices.Values)
+            {
+                device.PumpRender(480);
+            }
+
+            if (WaitForDecoder)
+            {
+                AwaitDecoder();
+            }
+
+            Thread.Sleep(1);
         }
 
         /// <summary>
@@ -368,10 +377,10 @@ public sealed class AudioEngineSyncRecordTests
     {
         using var rig = new Rig(0, 0);
         rig.Start(2);
-        rig.Render(450);
+        rig.RenderSettled(450);
 
         rig.Backend.Devices["dev-1"].StepPosition(2880); // 60 ms
-        rig.Render(600);
+        rig.RenderSettled(600);
         rig.WaitFor(() => rig.Records.Count == 2 * 10).ShouldBeTrue($"records: {rig.Records.Count}");
         rig.Stop(RunEndReason.Stop);
 
@@ -456,10 +465,10 @@ public sealed class AudioEngineSyncRecordTests
     {
         using var rig = new Rig(0, 0);
         rig.Start(2);
-        rig.Render(450);
+        rig.RenderSettled(450);
 
         rig.Backend.Devices["dev-1"].StepPosition(2880); // 60 ms
-        rig.Render(600);
+        rig.RenderSettled(600);
         rig.WaitFor(() => rig.Records.Count == 2 * 10).ShouldBeTrue($"records: {rig.Records.Count}");
         rig.Stop(RunEndReason.Stop);
 

@@ -103,6 +103,23 @@ public sealed class AudioEngineRunTests
             task.Wait(TimeSpan.FromSeconds(10)).ShouldBeTrue("the stop did not complete");
         }
 
+        /// <summary>Keeps rendering 10 ms steps until <paramref name="condition"/> holds (or the timeout), so a slow engine thread never starves the devices.</summary>
+        public bool RenderUntil(Func<bool> condition)
+        {
+            var deadline = DateTime.UtcNow + Timeout;
+            while (DateTime.UtcNow < deadline)
+            {
+                if (condition())
+                {
+                    return true;
+                }
+
+                Render(1);
+            }
+
+            return condition();
+        }
+
         public bool WaitFor(Func<bool> condition)
         {
             var deadline = DateTime.UtcNow + Timeout;
@@ -439,9 +456,10 @@ public sealed class AudioEngineRunTests
         rig.Events.OfType<AudioStarted>().ShouldBeEmpty("device 2 has not rendered yet");
 
         rig.Time.Advance(TimeSpan.FromMilliseconds(290));
-        rig.Render(5);
 
-        rig.WaitFor(() => rig.Events.OfType<AudioStarted>().Any()).ShouldBeTrue();
+        rig.Render(1); // the last output renders: the engine thread now releases the pre-roll
+        rig.WaitFor(() => ((IOutputLagControl)rig.Engine).ClockStartTimestamp is not null).ShouldBeTrue("the pre-roll was not released");
+        rig.RenderUntil(() => rig.Events.OfType<AudioStarted>().Any()).ShouldBeTrue();
         var started = rig.Events.OfType<AudioStarted>().Single();
         started.StartToAudio.ShouldBeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(300));
         started.StartToAudio.ShouldBeLessThanOrEqualTo(TimeSpan.FromMilliseconds(360));

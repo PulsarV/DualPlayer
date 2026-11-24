@@ -3,6 +3,7 @@
   "tasks": [
     {
       "id": "S1",
+      "status": "done",
       "title": "Create DualPlayer.slnx with Core, Media, Platform.Windows, Platform.MacOS and App projects (net10.0), Directory.Build.props, Directory.Packages.props, and an Avalonia entry point that opens an empty dark window",
       "layer": "scaffold",
       "deps": [],
@@ -12,6 +13,7 @@
     },
     {
       "id": "S2",
+      "status": "done",
       "title": "Wire the test harness: Core, App and Platform.Windows test projects (xUnit v3 + Shouldly + NSubstitute), a [HardwareFact] attribute gated by DUALPLAYER_HARDWARE=1, and an app-boots smoke test",
       "layer": "scaffold",
       "deps": ["S1"],
@@ -21,6 +23,7 @@
     },
     {
       "id": "S3",
+      "status": "done",
       "title": "Set up the state store: IStateStore port in Core, JSON file adapter with schemaVersion, an upgrader chain and atomic temp+rename writes, plus an initial empty settings file v1",
       "layer": "scaffold",
       "deps": ["S1"],
@@ -30,6 +33,7 @@
     },
     {
       "id": "S4",
+      "status": "done",
       "title": "Add logging (Microsoft.Extensions.Logging + Serilog rolling file in app-data logs/) and the GitHub Actions CI workflow (windows-latest + macos-latest: build + test + lint)",
       "layer": "scaffold",
       "deps": ["S2"],
@@ -39,6 +43,7 @@
     },
     {
       "id": "S5",
+      "status": "done",
       "title": "Write CLAUDE.md from the foundation conventions (module boundaries, platform selection, Result over exceptions, TimeProvider, threading, tests, persistence)",
       "layer": "scaffold",
       "deps": ["S1"],

@@ -93,9 +93,15 @@ public sealed partial class DecodePump : IDisposable
     /// <summary>An expected decoder failure (read or seek); the pump thread ends after raising this once.</summary>
     public event Action<Error>? DecodeFailed;
 
-    public void Start(int epoch)
+    /// <summary>Starts decoding; with a <paramref name="position"/> beyond zero the first thing the pump thread does is seek there.</summary>
+    public void Start(int epoch, TimeSpan position = default)
     {
         _epoch = epoch;
+        if (position > TimeSpan.Zero)
+        {
+            _pendingSeek = (position, epoch);
+        }
+
         _startTimestamp = _time.GetTimestamp();
         _thread = new Thread(Run) { Name = "DecodePump", IsBackground = true };
         _thread.Start();

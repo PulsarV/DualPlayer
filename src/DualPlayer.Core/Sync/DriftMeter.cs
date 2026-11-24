@@ -11,9 +11,9 @@ public sealed class DriftMeter(MasterClock clock)
     private double _sumTicks;
     private long _count;
 
-    public TimeSpan Record(TimeSpan contentPosition, long readingTimestamp)
+    public TimeSpan Record(TimeSpan contentPosition, long readingTimestamp, TimeSpan lag = default)
     {
-        var drift = contentPosition - clock.PositionAt(readingTimestamp);
+        var drift = contentPosition - (clock.PositionAt(readingTimestamp) - lag);
         _sumTicks += drift.Ticks;
         _count++;
         return drift;

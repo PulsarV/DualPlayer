@@ -1,0 +1,16 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:DualPlayer.App.ViewModels"
+        xmlns:controls="using:DualPlayer.App.Controls"
+        x:Class="DualPlayer.App.Views.PlaybackWindow"
+        x:DataType="vm:PlaybackViewModel"
+        Title="DualPlayer"
+        WindowState="FullScreen"
+        SystemDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
+        ShowInTaskbar="False"
+        Cursor="None"
+        Focusable="True"
+        Background="{StaticResource SurfaceBrush}">
+  <controls:VideoHost x:Name="Video" />
+</Window>

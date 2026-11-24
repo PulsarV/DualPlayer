@@ -49,11 +49,13 @@ public sealed class ListAndPlayCommandTests
     public void Tracks_command_lists_audio_tracks_with_language_layout_and_rate_and_plays_nothing()
     {
         var decoder = Substitute.For<IAudioDecoder>();
+#pragma warning disable xUnit1051 // The console calls the plain overload; the substitute is set up for exactly that call.
         decoder.ListTracks(File).Returns(Result<IReadOnlyList<AudioTrackInfo>>.Success(
         [
             new AudioTrackInfo(1, "ukr", ChannelLayout.Surround51, 48000),
             new AudioTrackInfo(2, "eng", ChannelLayout.Stereo, 44100),
         ]));
+#pragma warning restore xUnit1051
 
         var exit = new TracksCommand(decoder).Run(new TracksRequest(File), _out, _err);
 
@@ -72,7 +74,9 @@ public sealed class ListAndPlayCommandTests
     public void Tracks_command_reports_file_unreadable_on_stderr_and_exits_2()
     {
         var decoder = Substitute.For<IAudioDecoder>();
+#pragma warning disable xUnit1051 // The console calls the plain overload; the substitute is set up for exactly that call.
         decoder.ListTracks(File).Returns(Result<IReadOnlyList<AudioTrackInfo>>.Failure("playback.file_unreadable", "cannot open movie.mkv"));
+#pragma warning restore xUnit1051
 
         var exit = new TracksCommand(decoder).Run(new TracksRequest(File), _out, _err);
 

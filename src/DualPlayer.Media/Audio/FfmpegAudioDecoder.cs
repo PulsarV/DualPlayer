@@ -10,7 +10,9 @@ public sealed unsafe class FfmpegAudioDecoder : IAudioDecoder
 {
     internal const string Unreadable = "playback.file_unreadable";
 
-    public Result<IReadOnlyList<AudioTrackInfo>> ListTracks(string path)
+    public Result<IReadOnlyList<AudioTrackInfo>> ListTracks(string path) => ListTracks(path, CancellationToken.None);
+
+    public Result<IReadOnlyList<AudioTrackInfo>> ListTracks(string path, CancellationToken cancel)
     {
         var loaded = FfmpegLibrary.Load();
         if (!loaded.IsSuccess)
@@ -19,9 +21,10 @@ public sealed unsafe class FfmpegAudioDecoder : IAudioDecoder
         }
 
         AVFormatContext* fmt = null;
+        using var interrupt = new FfmpegInterrupt(cancel);
         try
         {
-            var open = OpenInput(path, &fmt);
+            var open = OpenInput(path, &fmt, interrupt);
             if (!open.IsSuccess)
             {
                 return Result<IReadOnlyList<AudioTrackInfo>>.Failure(open.Error);
@@ -66,17 +69,24 @@ public sealed unsafe class FfmpegAudioDecoder : IAudioDecoder
         return FfmpegDecodeSession.Create(path, outputs, RewindSeekHook);
     }
 
-    internal static Result OpenInput(string path, AVFormatContext** fmt)
+    // With an interrupt, a cancelled token aborts the open and the stream-info read; the caller closes the context and
+    // disposes the interrupt after that.
+    internal static Result OpenInput(string path, AVFormatContext** fmt, FfmpegInterrupt? interrupt = null)
     {
         if (!File.Exists(path))
         {
             return Result.Failure(Unreadable, $"The file '{path}' does not exist.");
         }
 
+        if (interrupt is not null && !interrupt.Attach(fmt))
+        {
+            return Result.Failure(Unreadable, $"The file '{path}' cannot be opened: out of memory.");
+        }
+
         var rc = ffmpeg.avformat_open_input(fmt, path, null, null);
         if (rc < 0)
         {
-            return Result.Failure(Unreadable, $"The file '{path}' cannot be opened as media: {ErrorText(rc)}.");
+            return OpenFailure(path, rc);
         }
 
         rc = ffmpeg.avformat_find_stream_info(*fmt, null);
@@ -87,6 +97,9 @@ public sealed unsafe class FfmpegAudioDecoder : IAudioDecoder
 
         return Result.Success();
     }
+
+    internal static Result OpenFailure(string path, int rc) =>
+        Result.Failure(FfmpegErrors.OpenFailure(path, rc, ErrorText(rc)));
 
     internal static List<nint> AudioStreams(AVFormatContext* fmt)
     {
@@ -124,6 +137,12 @@ public sealed unsafe class FfmpegAudioDecoder : IAudioDecoder
 
     internal static string ErrorText(int code)
     {
+        // av_strerror needs the native library bound; Load is idempotent.
+        if (!FfmpegLibrary.Load().IsSuccess)
+        {
+            return $"error {code}";
+        }
+
         var buffer = stackalloc byte[256];
         ffmpeg.av_strerror(code, buffer, 256);
         return System.Runtime.InteropServices.Marshal.PtrToStringAnsi((IntPtr)buffer) ?? $"error {code}";

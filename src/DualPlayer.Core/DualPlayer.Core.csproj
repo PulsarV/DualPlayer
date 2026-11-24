@@ -6,5 +6,9 @@
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="DualPlayer.Core.Tests" />
+    <!-- These compile the Core.Tests fakes (SessionRig bounds the engine's stop wait). -->
+    <InternalsVisibleTo Include="DualPlayer.App.Tests" />
+    <InternalsVisibleTo Include="DualPlayer.Console.Tests" />
+    <InternalsVisibleTo Include="DualPlayer.Media.Tests" />
   </ItemGroup>
 </Project>

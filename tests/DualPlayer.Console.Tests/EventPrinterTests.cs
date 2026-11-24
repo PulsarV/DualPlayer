@@ -38,7 +38,7 @@ public sealed class EventPrinterTests
         line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
     private static RunSummary Summary(RunEndReason reason, params OutputSummary[] outputs) =>
-        new(reason, TimeSpan.FromSeconds(4330), outputs);
+        new(reason, TimeSpan.FromSeconds(4330), outputs, "film.mkv");
 
     [Fact]
     public void A_held_started_line_is_written_when_released_and_other_events_are_not_held()
@@ -442,7 +442,7 @@ public sealed class EventPrinterTests
         public void Stop(RunEndReason reason)
         {
             StopReasons.Add(reason);
-            Publish(new RunSummary(reason, TimeSpan.FromSeconds(10), []));
+            Publish(new RunSummary(reason, TimeSpan.FromSeconds(10), [], "film.mkv"));
         }
 
         private sealed class Source(FakeEngine owner) : IObservable<EngineEvent>

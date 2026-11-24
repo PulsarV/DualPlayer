@@ -13,3 +13,6 @@ TestResults/
 
 # Fetched FFmpeg (build/fetch-ffmpeg.ps1)
 build/ffmpeg/
+
+# Fetched libmpv (build/fetch-libmpv.ps1)
+build/mpv/

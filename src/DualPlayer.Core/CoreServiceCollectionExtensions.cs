@@ -1,5 +1,6 @@
 using DualPlayer.Core.Playback;
 using DualPlayer.Core.Settings;
+using DualPlayer.Core.Sync;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DualPlayer.Core;
@@ -12,7 +13,11 @@ public static class CoreServiceCollectionExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(stateDirectory);
         services.AddSingleton<IStateStore>(_ => new JsonFileStateStore(stateDirectory));
         services.AddSingleton(TimeProvider.System);
-        services.AddSingleton<IAudioEngine, AudioEngine>();
+        services.AddSingleton<AudioEngine>();
+        services.AddSingleton<IAudioEngine>(sp => sp.GetRequiredService<AudioEngine>());
+        services.AddSingleton<IOutputLagControl>(sp => sp.GetRequiredService<AudioEngine>());
+        services.AddSingleton<OffsetBook>();
+        services.AddSingleton<PlaybackSession>();
         return services;
     }
 }

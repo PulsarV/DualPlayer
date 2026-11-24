@@ -17,11 +17,11 @@ internal sealed class EngineControlLoop : IDisposable
     private readonly Thread _thread;
     private int _disposed;
 
-    public EngineControlLoop(Action poll, Action<Exception> onError)
+    public EngineControlLoop(Action poll, Action<Exception> onError, string name = "EngineControlLoop")
     {
         _poll = poll;
         _onError = onError;
-        _thread = new Thread(Run) { Name = "EngineControlLoop", IsBackground = true };
+        _thread = new Thread(Run) { Name = name, IsBackground = true };
         _thread.Start();
     }
 
