@@ -368,7 +368,7 @@ public sealed class MpvVideoRendererTests
         time.GetElapsedTime(start, held.Timestamp).ShouldBe(TimeSpan.FromMilliseconds(30), TimeSpan.FromMilliseconds(1));
     }
 
-    [Fact]
+    [RealTimeVideoFact]
     public void A_seek_while_playing_presents_the_target_as_due_at_the_moment_of_the_seek_and_never_ahead_of_it()
     {
         // A seek while playing is a start "now" from the target: the renderer pauses, seeks ahead by its seek time and
@@ -403,7 +403,7 @@ public sealed class MpvVideoRendererTests
         behind.ShouldBeGreaterThan(TimeSpan.FromMilliseconds(-10), "the picture should resume on the seek's schedule, not a seek time late");
     }
 
-    [Fact]
+    [RealTimeVideoFact]
     public void A_start_whose_seek_overruns_its_budget_is_replanned_and_resumes_on_its_due_frame_not_late()
     {
         // A start 200 ms past whose first seek is planned as if it took no time from then (budget -200 ms): it seeks to
@@ -505,7 +505,7 @@ public sealed class MpvVideoRendererTests
         renderer.Presented.ShouldNotBeNull().Position.ShouldBe(TimeSpan.FromSeconds(7), TimeSpan.FromMilliseconds(50));
     }
 
-    [Fact]
+    [RealTimeVideoFact]
     public void Set_speed_two_moves_the_position_about_twice_as_fast_as_real_time()
     {
         RequireLibmpv();

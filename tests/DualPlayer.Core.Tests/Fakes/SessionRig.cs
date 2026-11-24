@@ -21,6 +21,7 @@ internal sealed class SessionRig : IDisposable
     private readonly List<string> _callOrder = [];
     private readonly List<TimeSpan> _seekTargets = [];
     private readonly List<TimeSpan> _startPositions = [];
+    private readonly List<int> _stopWaitMaxPolls = [];
     private readonly Lock _gate = new();
     private readonly Dictionary<string, double> _forcedErrors = new(StringComparer.Ordinal);
     private readonly OffsetBook _offsets;
@@ -124,6 +125,18 @@ internal sealed class SessionRig : IDisposable
         }
     }
 
+    /// <summary>The stop-wait poll bound of every engine run the rig started, in order.</summary>
+    public IReadOnlyList<int> EngineStopWaitMaxPolls
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return [.. _stopWaitMaxPolls];
+            }
+        }
+    }
+
     /// <summary>The start position of every engine run the session asked for, in order.</summary>
     public IReadOnlyList<TimeSpan> EngineStartPositions
     {
@@ -205,6 +218,9 @@ internal sealed class SessionRig : IDisposable
     }
 
     /// <summary>The engine as the session sees it; every transport command also tells the rig where the master clock stands.</summary>
+    /// <summary>The engine's stop-wait poll bound in this rig (as in <c>AudioEngineStopBoundTests</c>).</summary>
+    private const int StopWaitMaxPolls = 50;
+
     private sealed class FollowingEngine(SessionRig owner) : IAudioEngine
     {
         private EngineRig Rig => owner.Engine;
@@ -220,7 +236,15 @@ internal sealed class SessionRig : IDisposable
                 owner._startPositions.Add(options.StartPosition);
             }
 
-            var result = Rig.Engine.StartRun(file, assignments, options);
+            // A stop the rig does not drive (a renderer event, an exit outside Call) leaves fake time standing, so the stop
+            // wait ends only on its poll bound; the production bound is seconds of real sleeps on a CI runner.
+            var bounded = options with { StopWaitMaxPolls = StopWaitMaxPolls };
+            lock (owner._gate)
+            {
+                owner._stopWaitMaxPolls.Add(bounded.StopWaitMaxPolls);
+            }
+
+            var result = Rig.Engine.StartRun(file, assignments, bounded);
             if (result.IsSuccess)
             {
                 Rig.CommandDone(options.StartPosition, paused: false); // the new run's clock reads its start position from now on
