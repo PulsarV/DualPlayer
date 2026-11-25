@@ -210,7 +210,9 @@ public sealed class AudioEngineRecoveryTests
 
             var second = rig.Summary!.Outputs.Single(o => o.DeviceId == "dev-2");
             var first = rig.Summary.Outputs.Single(o => o.DeviceId == "dev-1");
-            (second.Underruns - underrunsAtRecovery).ShouldBe(0, "dev-2 underruns after recovery");
+            // Fails only on a loaded CI runner so far: the timeline says when the underrun came (at the recovery or later).
+            var timeline = string.Join("; ", rig.RecordsOf("dev-2").Select(r => $"{r.ClockPosition.TotalSeconds:F2}s u={r.Underruns} d={r.DriftMs:F1} c={r.CorrectionPpm:F0}"));
+            (second.Underruns - underrunsAtRecovery).ShouldBe(0, $"dev-2 underruns after recovery (recovered at {recoveredAt.TotalSeconds:F2} s, {underrunsAtRecovery} before); dev-2 records: {timeline}");
             first.Underruns.ShouldBe(0, "the healthy output must never underrun");
             (withHang - baseline).ShouldBeLessThanOrEqualTo(1, "corrections dev-2 needed after the hang beyond a run without it");
         }

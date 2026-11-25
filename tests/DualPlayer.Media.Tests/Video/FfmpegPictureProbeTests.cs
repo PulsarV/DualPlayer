@@ -101,9 +101,14 @@ public sealed class FfmpegPictureProbeTests
     [Fact]
     public void Probe_returns_within_the_time_limit_with_probe_timeout_when_the_first_picture_is_not_in_time()
     {
+        // The worker is held once the format is read, before any verdict on the picture, so it cannot answer first: on a
+        // runner without hardware decoding a 1-tick limit otherwise races a worker that fails fast with not-hardware-decodable.
+        using var release = new ManualResetEventSlim();
+        var probe = new FfmpegPictureProbe { AfterFormatRead = () => release.Wait(TimeSpan.FromSeconds(10)) };
         var clock = Stopwatch.StartNew();
 
-        var result = NewProbe().Probe(Media("long-gop-ramp.mkv"), TimeSpan.FromTicks(1), TestContext.Current.CancellationToken);
+        var result = probe.Probe(Media("long-gop-ramp.mkv"), TimeSpan.FromTicks(1), TestContext.Current.CancellationToken);
+        release.Set();
 
         clock.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(3));
         result.IsSuccess.ShouldBeFalse();
